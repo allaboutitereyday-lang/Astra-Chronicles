@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 
+const FALLBACK_MODELS = [
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "dots-studio/dots-3-note-preview:free",
+  "nvidia/nemotron-3.5-lightning:free",
+];
+
 export async function POST(req: Request) {
   try {
     const {
@@ -19,45 +25,78 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
     }
 
-    // Build the dynamic instruction depending on whether input was selected or typed
+    // Dynamic player input directive
     const inputHandlingInstruction = isCustom
       ? `[INPUT TYPE: CUSTOM PLAYER ACTION]
-The user typed their own action directly: "${action}".
-- Do NOT rewrite, embellish, expand, or speak for the player.
+The user wrote their own action verbatim: "${action}".
+- Do NOT rewrite, expand, paraphrase, or narrate what the player does or says.
 - Set "player_execution" to null or "".
-- Treat "${action}" as canon and react to it directly through the world and NPCs in "narrative_text".`
-      : `[INPUT TYPE: PRE-GENERATED OPTION SELECTED]
-The user picked the following prompt option: "${action}".
-- In "player_execution", write a vivid, immersive first- or third-person action/dialogue for ${playerProfile.name} that roleplays out this selected option.
-- Then, have the world and NPCs respond in "narrative_text".`;
+- Accept their action as immediate canon and advance the scene through NPC actions and world reactions in "narrative_text".`
+      : `[INPUT TYPE: PRESET CHOICE SELECTED]
+The user selected this prompt vector: "${action}".
+- In "player_execution", author a vivid, immersive execution of this action from ${playerProfile.name}'s perspective matching their role (${playerProfile.role}).
+- Then follow up with the world and companion reaction in "narrative_text".`;
 
-    const systemPrompt = `You are the Game Master and Storyteller engine for "Astra Chronicles", an interactive grimdark fantasy visual novel set on the Astra Continent.
+    const systemPrompt = `You are the Game Master, Narrator, and World Engine for "Astra Chronicles", an interactive high-fantasy visual novel set on the Astra Continent.
 
-Atmosphere Tone: ${narrationStyle || "Grimdark & Atmospheric"}
+Atmosphere Tone: ${narrationStyle || "Grimdark & Atmospheric"} (sensory-rich, visceral, morally gray, high tension).
 
-Current State:
+--- HEROINE DOSSIERS & VOICE PROFILES ---
+1. Evelyn Abbandonato:
+   - Role: High Arcanist of House Abbandonato.
+   - Persona: Aristocratic, sharp-tongued, supremely confident, analytical, subtle manipulator. Smug yet fascinated by genuine cunning.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+
+2. Aria Shadowthorn:
+   - Role: Rogue Infiltrator of the Veil Seekers.
+   - Persona: Cynical, hyper-vigilant, razor-sharp pragmatic operative. Speaks in clipped, guarded sentences. Respects competence and quiet stealth.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+
+3. Serena:
+   - Role: Dutiful Demi-Human Combat Maid (sheep ears/horns, wields colossal spiked mace).
+   - Persona: Impeccably polite, formal, completely unfazed by carnage, lethal deadpan humor, unflinchingly loyal.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+
+4. Morgana:
+   - Role: Demon Realm Noblewoman (curved horns, bat wings, wine chalice).
+   - Persona: Hedonistic, detached, predatory curiosity, ancient planar insight. Amused by mortal struggle.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt, beckon.
+
+5. Perci:
+   - Role: Timid Kitsune Rogue (sarashi wrap, loose robe, fluffy fox ears).
+   - Persona: Highly anxious, jumpy, soft-spoken, deeply loyal once safety is assured. Uses stuttering or hesitant phrasing when startled.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+
+--- CURRENT CAMPAIGN STATE ---
 - Protagonist: ${playerProfile.name} (Lv.${playerProfile.level} ${playerProfile.role})
-- Stats: STR ${playerProfile.stats.str}, DEX ${playerProfile.stats.dex}, INT ${playerProfile.stats.int}
-- Equipped: Weapon: ${playerProfile.gear.weapon}, Armor: ${playerProfile.gear.armor}, Relic: ${playerProfile.gear.relic}
+- Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
+- Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
 - Active Location: ${gameState.location}
 - Active Speaker: ${gameState.speaker}
-- Companions in party: ${partyMembers.map((c: any) => `${c.name} (Favor: ${c.affection}\%, Present:${c.isPresent})`).join(", ")}
-- Major Memories: ${plotMemories?.slice(-5).join(" | ") || "None"}
+- Party Roster:
+${partyMembers.map((c: any) => `  * ${c.name} [Present: ${c.isPresent}] - Favor:${c.affection}%`).join("\n")}
+- Canonical Memories:
+${plotMemories?.slice(-5).map((m: string) => `  * ${m}`).join("\n") || "  * Journey commenced."}
 
 ${inputHandlingInstruction}
 
-OUTPUT REQUIREMENTS:
-You MUST respond with valid, parseable JSON only (no markdown code blocks, no backticks, no text outside the JSON object) following this exact schema:
+--- MECHANICAL RULES ---
+1. Favor: Assign affection_delta (-10 to +10) based on how the active companion genuinely views the action.
+2. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest/archive occurs, award loot items or an ability in "player_progression".
+3. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]").
+
+--- OUTPUT FORMAT ---
+Respond strictly in valid JSON matching this schema:
 {
-  "speaker": string, // The name of the companion or NPC speaking/acting in narrative_text
-  "player_execution": string | null, // The player's expanded action if isCustom is false, otherwise null
-  "narrative_text": string, // The dialogue and sensory scene narrative responding to the player
+  "speaker": string,
+  "player_execution": string | null,
+  "narrative_text": string,
   "state_updates": {
-    "current_location": string, // One of: "Imperial Capital Imperium", "Bloodrose Duchy", "Gray Zone", "Mage Tower", "Port City Fortus", "Archon Spire Vault", "Silvanes"
+    "current_location": string,
     "mood": string,
-    "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt",
+    "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
     "affected_companion": string,
-    "affection_delta": number, // Favor increase or decrease (-10 to +10)
+    "affection_delta": number,
     "present_companions": string[]
   },
   "player_progression": {
@@ -78,12 +117,10 @@ You MUST respond with valid, parseable JSON only (no markdown code blocks, no ba
     ] | null
   },
   "new_memory_unlocked": string | null,
-  "suggested_choices": [string, string, string, string] // Exactly 4 interactive prompt options for the next turn
+  "suggested_choices": [string, string, string, string]
 }`;
 
-    const messages: any[] = [
-      { role: "system", content: systemPrompt },
-    ];
+    const messages: any[] = [{ role: "system", content: systemPrompt }];
 
     if (recentHistory && Array.isArray(recentHistory)) {
       recentHistory.forEach((turn: { speaker: string; text: string }) => {
@@ -94,14 +131,13 @@ You MUST respond with valid, parseable JSON only (no markdown code blocks, no ba
       });
     }
 
-    // Attach user prompt with portrait image payload if available
     if (playerAvatarBase64) {
       messages.push({
         role: "user",
         content: [
           { type: "text", text: `Player Action: ${action}` },
-          { type: "image_url", image_url: { url: playerAvatarBase64 } }
-        ]
+          { type: "image_url", image_url: { url: playerAvatarBase64 } },
+        ],
       });
     } else {
       messages.push({
@@ -110,36 +146,51 @@ You MUST respond with valid, parseable JSON only (no markdown code blocks, no ba
       });
     }
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://astra-chronicles.local",
-        "X-Title": "Astra Chronicles",
-      },
-      body: JSON.stringify({
-        model: "anthropic/claude-3.5-sonnet", // Or your preferred OpenRouter model
-        messages,
-        temperature: 0.8,
-        response_format: { type: "json_object" },
-      }),
-    });
+    let responseData = null;
+    let lastError = null;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      return NextResponse.json({ error: `OpenRouter error: ${errorText}` }, { status: response.status });
+    for (const model of FALLBACK_MODELS) {
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://astra-chronicles.local",
+            "X-Title": "Astra Chronicles",
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.8,
+            response_format: { type: "json_object" },
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.warn(`Model ${model} failed (${response.status}): ${errText}`);
+          lastError = new Error(`Model ${model} returned HTTP ${response.status}`);
+          continue;
+        }
+
+        const data = await response.json();
+        let content = data.choices?.[0]?.message?.content || "";
+        content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
+
+        responseData = JSON.parse(content);
+        break;
+      } catch (err: any) {
+        console.warn(`Error using model ${model}:`, err.message);
+        lastError = err;
+      }
     }
 
-    const rawData = await response.json();
-    let content = rawData.choices?.[0]?.message?.content || "{}";
+    if (!responseData) {
+      throw lastError || new Error("All fallback models failed to complete the turn.");
+    }
 
-    // Clean potential markdown fencing from response
-    content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
-
-    const parsed = JSON.parse(content);
-    return NextResponse.json(parsed);
-
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error("API /api/turn Error:", error);
     return NextResponse.json({ error: error.message || "Failed to process turn." }, { status: 500 });
