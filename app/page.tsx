@@ -233,9 +233,6 @@ export default function VisualNovelGame() {
     inventory: [],
   });
 
-  // ------------------------------------------------------------------
-  // MULTI-COMPANION PARTY STATE (HEROINE 4 & 5 REPLACED)
-  // ------------------------------------------------------------------
   const [party, setParty] = useState<Companion[]>([
     {
       name: "Evelyn Abbandonato",
@@ -310,9 +307,6 @@ export default function VisualNovelGame() {
   const [choices, setChoices] = useState<string[]>([]);
   const dialogueFeedRef = useRef<HTMLDivElement | null>(null);
 
-  // ------------------------------------------------------------------
-  // PROLOGUES FOR ALL 5 HEROINES
-  // ------------------------------------------------------------------
   const prologues = [
     {
       speaker: "Evelyn Abbandonato",
@@ -575,7 +569,8 @@ export default function VisualNovelGame() {
     return () => clearInterval(interval);
   }, [gameState.dialogue]);
 
-  const sendAction = async (rawAction: string) => {
+  // Updated to receive isCustom flag (default false for choice clicks)
+  const sendAction = async (rawAction: string, isCustom: boolean = false) => {
     if (!rawAction.trim() || isLoading) return;
 
     const formattedPayload = isOOCMode ? `[OOC: ${rawAction.trim()}]` : rawAction.trim();
@@ -590,6 +585,7 @@ export default function VisualNovelGame() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: formattedPayload,
+          isCustom,
           gameState,
           partyMembers: party,
           playerProfile: player,
@@ -611,7 +607,10 @@ export default function VisualNovelGame() {
       const data = await res.json();
       const speakerName = data.speaker || gameState.speaker;
       const narrative = data.narrative_text || gameState.dialogue;
-      const playerText = data.player_execution || formattedPayload;
+      
+      // If user typed custom input, strictly use their exact words
+      const playerText = isCustom ? formattedPayload : (data.player_execution || formattedPayload);
+      
       const nextExpression = data.state_updates?.expression_key || "neutral";
       const nextLocation = data.state_updates?.current_location || gameState.location;
       const nextBg = LOCATION_BACKGROUNDS[nextLocation] || gameState.bgImage;
@@ -764,7 +763,7 @@ export default function VisualNovelGame() {
     if (!inputAction.trim() || isLoading) return;
     const text = inputAction;
     setInputAction("");
-    sendAction(text);
+    sendAction(text, true); // Marks input as custom user input
   };
 
   const activeSpeakerComp = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase())) || party[0];
@@ -1116,35 +1115,34 @@ export default function VisualNovelGame() {
 
           <div className="flex flex-row h-72 sm:h-80 md:h-[23rem]">
             {/* DYNAMIC MULTI-COMPANION SPRITE STAGE */}
- {/* DYNAMIC MULTI-COMPANION SPRITE STAGE */}
-<div className="hidden sm:flex relative w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0">
-  <div className="relative w-full h-full flex items-end justify-center px-2">
-    {presentComps.map((comp) => {
-      const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
-      const spriteSrc = getSpriteSrc(comp.name, comp.expressionKey);
+            <div className="hidden sm:flex relative w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0">
+              <div className="relative w-full h-full flex items-end justify-center px-2">
+                {presentComps.map((comp) => {
+                  const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
+                  const spriteSrc = getSpriteSrc(comp.name, comp.expressionKey);
 
-      return (
-        <div 
-          key={comp.name}
-          className={`relative h-full flex items-end justify-center transition-all duration-300 ${
-            presentComps.length > 1 ? "w-1/2" : "w-full"
-          } ${isSpeaking ? "opacity-100 scale-100 z-10 brightness-100" : "opacity-45 scale-95 z-0 brightness-75"}`}
-        >
-          <img
-            src={spriteSrc}
-            alt={comp.name}
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
-            }}
-            className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] pointer-events-none"
-          />
-        </div>
-      );
-    })}
-  </div>
-  <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
-</div>
+                  return (
+                    <div 
+                      key={comp.name}
+                      className={`relative h-full flex items-end justify-center transition-all duration-300 ${
+                        presentComps.length > 1 ? "w-1/2" : "w-full"
+                      } ${isSpeaking ? "opacity-100 scale-100 z-10 brightness-100" : "opacity-45 scale-95 z-0 brightness-75"}`}
+                    >
+                      <img
+                        src={spriteSrc}
+                        alt={comp.name}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
+                        }}
+                        className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] pointer-events-none"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
+            </div>
 
             <div 
               ref={dialogueFeedRef}
@@ -1222,7 +1220,7 @@ export default function VisualNovelGame() {
               <button
                 key={idx}
                 type="button"
-                onClick={() => sendAction(choice)}
+                onClick={() => sendAction(choice, false)} // isCustom = false
                 disabled={isLoading}
                 className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-4 py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
               >
@@ -1356,7 +1354,7 @@ export default function VisualNovelGame() {
                     key={idx}
                     onClick={() => {
                       setShowMap(false);
-                      sendAction(`[Move to ${region.name}]`);
+                      sendAction(`[Move to ${region.name}]`, false);
                     }}
                     className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                       isCurrent
