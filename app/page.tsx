@@ -21,7 +21,10 @@ import {
   FolderOpen,
   Award,
   Package,
-  Users
+  Users,
+  RotateCcw,
+  Edit3,
+  Check
 } from "lucide-react";
 
 export interface InventoryItem {
@@ -307,6 +310,10 @@ export default function VisualNovelGame() {
   const [choices, setChoices] = useState<string[]>([]);
   const dialogueFeedRef = useRef<HTMLDivElement | null>(null);
 
+  // Editing and response regeneration state
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+
   const prologues = [
     {
       speaker: "Evelyn Abbandonato",
@@ -569,7 +576,41 @@ export default function VisualNovelGame() {
     return () => clearInterval(interval);
   }, [gameState.dialogue]);
 
-  // Updated to receive isCustom flag (default false for choice clicks)
+  const handleStartEdit = (msg: ChatMessage) => {
+    setEditingMessageId(msg.id);
+    setEditingText(msg.text);
+  };
+
+  const handleSaveEdit = (id: string) => {
+    setChatLog((prev) =>
+      prev.map((msg) => (msg.id === id ? { ...msg, text: editingText } : msg))
+    );
+
+    const lastMsg = chatLog[chatLog.length - 1];
+    if (lastMsg && lastMsg.id === id && lastMsg.sender === "character") {
+      setGameState((prev) => ({ ...prev, dialogue: editingText }));
+      setDisplayedText(editingText);
+    }
+
+    setEditingMessageId(null);
+    setEditingText("");
+  };
+
+  const handleRegenerateTurn = async () => {
+    if (isLoading || chatLog.length < 2) return;
+
+    const lastCharacterMsg = chatLog[chatLog.length - 1];
+    const lastUserMsg = chatLog[chatLog.length - 2];
+
+    if (lastCharacterMsg.sender !== "character" || lastUserMsg.sender !== "user") return;
+
+    // Prune the latest character turn and replay action
+    const previousHistory = chatLog.slice(0, -2);
+    setChatLog(previousHistory);
+
+    await sendAction(lastUserMsg.text, true);
+  };
+
   const sendAction = async (rawAction: string, isCustom: boolean = false) => {
     if (!rawAction.trim() || isLoading) return;
 
@@ -608,7 +649,6 @@ export default function VisualNovelGame() {
       const speakerName = data.speaker || gameState.speaker;
       const narrative = data.narrative_text || gameState.dialogue;
       
-      // If user typed custom input, strictly use their exact words
       const playerText = isCustom ? formattedPayload : (data.player_execution || formattedPayload);
       
       const nextExpression = data.state_updates?.expression_key || "neutral";
@@ -763,7 +803,7 @@ export default function VisualNovelGame() {
     if (!inputAction.trim() || isLoading) return;
     const text = inputAction;
     setInputAction("");
-    sendAction(text, true); // Marks input as custom user input
+    sendAction(text, true);
   };
 
   const activeSpeakerComp = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase())) || party[0];
@@ -982,17 +1022,17 @@ export default function VisualNovelGame() {
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-zinc-950 font-sans select-none">
+    <div className="relative h-screen w-screen overflow-hidden bg-zinc-950 font-sans">
       
       <div 
         key={gameState.bgImage}
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out brightness-75 contrast-105"
+        className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out brightness-75 contrast-105 pointer-events-none select-none"
         style={{ backgroundImage: `url("${gameState.bgImage}")` }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 pointer-events-none" />
 
       {levelUpAlert && (
-        <div className="absolute top-16 inset-x-0 z-50 flex justify-center pointer-events-none animate-bounce">
+        <div className="absolute top-16 inset-x-0 z-50 flex justify-center pointer-events-none animate-bounce select-none">
           <div className="bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold px-6 py-2 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-2">
             <Award className="w-5 h-5" /> {levelUpAlert}
           </div>
@@ -1000,7 +1040,7 @@ export default function VisualNovelGame() {
       )}
 
       {/* TOP HUD */}
-      <header className="absolute top-4 inset-x-4 md:inset-x-8 z-20 flex items-center justify-between pointer-events-auto">
+      <header className="absolute top-4 inset-x-4 md:inset-x-8 z-20 flex items-center justify-between pointer-events-auto select-none">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowPlayerSheet(true)}
@@ -1097,7 +1137,7 @@ export default function VisualNovelGame() {
         <div className="relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
-          <div className="px-5 py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60">
+          <div className="px-5 py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
             <div className="inline-flex items-center gap-2 bg-rose-600/25 border border-rose-500/40 px-3 py-1 rounded-xl">
               <Sparkles className="w-3.5 h-3.5 text-rose-400" />
               <span className="text-xs md:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono">
@@ -1115,7 +1155,7 @@ export default function VisualNovelGame() {
 
           <div className="flex flex-row h-72 sm:h-80 md:h-[23rem]">
             {/* DYNAMIC MULTI-COMPANION SPRITE STAGE */}
-            <div className="hidden sm:flex relative w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0">
+            <div className="hidden sm:flex relative w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
               <div className="relative w-full h-full flex items-end justify-center px-2">
                 {presentComps.map((comp) => {
                   const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
@@ -1144,25 +1184,36 @@ export default function VisualNovelGame() {
               <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
             </div>
 
+            {/* MESSAGE FEED (SELECTABLE AND EDITABLE) */}
             <div 
               ref={dialogueFeedRef}
-              className="flex-1 p-4 md:p-5 overflow-y-auto space-y-4 scroll-smooth"
+              className="flex-1 p-4 md:p-5 overflow-y-auto space-y-4 scroll-smooth select-text"
             >
               {chatLog.map((msg, idx) => {
                 const isLast = idx === chatLog.length - 1;
                 const isLatestCharacterTurn = isLast && msg.sender === "character";
+                const isEditing = editingMessageId === msg.id;
 
                 return (
                   <div 
                     key={msg.id} 
-                    className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
+                    className={`flex flex-col group ${msg.sender === "user" ? "items-end" : "items-start"}`}
                   >
                     <div className="flex items-center gap-2 mb-1 px-1">
                       {msg.sender === "user" ? (
                         <>
-                          <span className="text-[11px] text-zinc-500 font-mono">{msg.timestamp}</span>
-                          <span className="text-xs font-semibold text-zinc-200">{msg.speakerName}</span>
-                          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0">
+                          {!isEditing && (
+                            <button
+                              onClick={() => handleStartEdit(msg)}
+                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-zinc-500 hover:text-zinc-200 cursor-pointer"
+                              title="Edit action"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <span className="text-[11px] text-zinc-500 font-mono select-none">{msg.timestamp}</span>
+                          <span className="text-xs font-semibold text-zinc-200 select-none">{msg.speakerName}</span>
+                          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0 select-none">
                             {msg.avatarSrc ? (
                               <img src={msg.avatarSrc} alt="User" className="w-full h-full object-cover" />
                             ) : (
@@ -1172,7 +1223,7 @@ export default function VisualNovelGame() {
                         </>
                       ) : (
                         <>
-                          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none">
                             <img 
                               src={msg.avatarSrc || getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey)} 
                               alt={msg.speakerName} 
@@ -1183,20 +1234,65 @@ export default function VisualNovelGame() {
                               className="w-full h-full object-cover object-top" 
                             />
                           </div>
-                          <span className="text-xs font-semibold text-rose-300">{msg.speakerName}</span>
-                          <span className="text-[11px] text-zinc-500 font-mono">{msg.timestamp}</span>
+                          <span className="text-xs font-semibold text-rose-300 select-none">{msg.speakerName}</span>
+                          <span className="text-[11px] text-zinc-500 font-mono select-none">{msg.timestamp}</span>
+
+                          {!isEditing && (
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ml-1 select-none">
+                              <button
+                                onClick={() => handleStartEdit(msg)}
+                                className="p-1 text-zinc-500 hover:text-zinc-200 cursor-pointer"
+                                title="Edit response"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              {isLatestCharacterTurn && !isLoading && (
+                                <button
+                                  onClick={handleRegenerateTurn}
+                                  className="p-1 text-zinc-500 hover:text-rose-400 cursor-pointer"
+                                  title="Regenerate response"
+                                >
+                                  <RotateCcw className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
 
                     <div 
-                      className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm whitespace-pre-line ${
+                      className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm whitespace-pre-line select-text ${
                         msg.sender === "user"
                           ? "bg-gradient-to-br from-rose-600 to-pink-600 text-white rounded-tr-none"
                           : "bg-zinc-900/95 border border-white/10 text-zinc-200 rounded-tl-none font-normal"
                       }`}
                     >
-                      {isLatestCharacterTurn ? (
+                      {isEditing ? (
+                        <div className="flex flex-col gap-2 min-w-[260px] sm:min-w-[340px]">
+                          <textarea
+                            value={editingText}
+                            onChange={(e) => setEditingText(e.target.value)}
+                            className="w-full bg-black/60 border border-white/20 rounded-xl p-2.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-400 font-sans resize-y min-h-[90px]"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingMessageId(null)}
+                              className="px-2.5 py-1 text-xs text-zinc-400 hover:text-white rounded-lg border border-white/10 bg-zinc-800 cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEdit(msg.id)}
+                              className="px-2.5 py-1 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg flex items-center gap-1 cursor-pointer"
+                            >
+                              <Check className="w-3 h-3" /> Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : isLatestCharacterTurn ? (
                         <>
                           {displayedText}
                           {displayedText.length < gameState.dialogue.length && (
@@ -1215,12 +1311,12 @@ export default function VisualNovelGame() {
         </div>
 
         {choices.length > 0 && !isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 select-none">
             {choices.map((choice, idx) => (
               <button
                 key={idx}
                 type="button"
-                onClick={() => sendAction(choice, false)} // isCustom = false
+                onClick={() => sendAction(choice, false)}
                 disabled={isLoading}
                 className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-4 py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
               >
@@ -1235,7 +1331,7 @@ export default function VisualNovelGame() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit} className="flex gap-2 select-none">
           <button
             type="button"
             onClick={() => setIsOOCMode(!isOOCMode)}
@@ -1255,7 +1351,7 @@ export default function VisualNovelGame() {
             onChange={(e) => setInputAction(e.target.value)}
             placeholder={isOOCMode ? "OOC Directive..." : `What will ${player.name} do or say?`}
             disabled={isLoading}
-            className={`flex-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-all ${
+            className={`flex-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-all select-text ${
               isOOCMode
                 ? "border-amber-500/40 focus:border-amber-400 ring-1 ring-amber-500/20"
                 : "border-white/15 focus:border-rose-500/60 ring-1 ring-rose-500/20"
@@ -1280,7 +1376,7 @@ export default function VisualNovelGame() {
 
       {/* PARTY ROSTER DRAWER */}
       {showPartyDrawer && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none">
           <div className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
@@ -1332,7 +1428,7 @@ export default function VisualNovelGame() {
 
       {/* REGION MAP MODAL */}
       {showMap && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
           <div className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
@@ -1391,7 +1487,7 @@ export default function VisualNovelGame() {
 
       {/* PLAYER SHEET & INVENTORY DRAWER */}
       {showPlayerSheet && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-start">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-start select-none">
           <div className="w-full max-w-md bg-zinc-950/95 border-r border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-6">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-3">
@@ -1563,7 +1659,7 @@ export default function VisualNovelGame() {
 
       {/* CHRONICLE LOG DRAWER */}
       {showChronicle && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none">
           <div className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
@@ -1579,8 +1675,8 @@ export default function VisualNovelGame() {
 
             <div className="space-y-3">
               {memories.map((entry, idx) => (
-                <div key={idx} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-xl text-xs text-zinc-200 leading-relaxed flex gap-3">
-                  <span className="font-mono text-sky-400 font-bold">#{idx + 1}</span>
+                <div key={idx} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-xl text-xs text-zinc-200 leading-relaxed flex gap-3 select-text">
+                  <span className="font-mono text-sky-400 font-bold select-none">#{idx + 1}</span>
                   <p>{entry}</p>
                 </div>
               ))}

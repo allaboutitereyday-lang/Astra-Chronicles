@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 
 const FALLBACK_MODELS = [
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
   "dots-studio/dots-3-note-preview:free",
+  "meta-llama/llama-3.2-11b-vision-instruct:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
   "nvidia/nemotron-3.5-lightning:free",
 ];
 
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
       playerAvatarBase64,
       narrationStyle,
       plotMemories,
-      recentHistory,
+      recentHistory = [],
     } = await req.json();
 
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -36,6 +37,18 @@ The user wrote their own action verbatim: "${action}".
 The user selected this prompt vector: "${action}".
 - In "player_execution", author a vivid, immersive execution of this action from ${playerProfile.name}'s perspective matching their role (${playerProfile.role}).
 - Then follow up with the world and companion reaction in "narrative_text".`;
+
+    // Only inspect appearance during the opening / prologue turn
+    const isFirstEncounter = !recentHistory || recentHistory.length <= 1;
+
+    const visualInspectionInstruction = (playerAvatarBase64 && isFirstEncounter)
+      ? `--- FIRST ENCOUNTER APPEARANCE DIRECTIVE ---
+This is the initial meeting with the protagonist (${playerProfile.name}).
+- Inspect the character's visual features (hair, eyes, build, clothing/armor, stance).
+- The active speaker (${gameState.speaker}) MUST naturally observe and comment on the protagonist's initial appearance or impression in their dialogue or narrative prose.
+- Note: This is an introductory first impression only.`
+      : `--- APPEARANCE DIRECTIVE ---
+Do NOT repeatedly comment on or re-describe the player's general physical appearance (hair color, clothing, facial traits) unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
 
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "Astra Chronicles", an interactive high-fantasy visual novel set on the Astra Continent.
 
@@ -79,6 +92,8 @@ ${partyMembers.map((c: any) => `  * ${c.name} [Present: ${c.isPresent}] - Favor:
 ${plotMemories?.slice(-5).map((m: string) => `  * ${m}`).join("\n") || "  * Journey commenced."}
 
 ${inputHandlingInstruction}
+
+${visualInspectionInstruction}
 
 --- MECHANICAL RULES ---
 1. Favor: Assign affection_delta (-10 to +10) based on how the active companion genuinely views the action.
@@ -131,12 +146,19 @@ Respond strictly in valid JSON matching this schema:
       });
     }
 
-    if (playerAvatarBase64) {
+    // Only attach image payload during initial encounter
+    if (playerAvatarBase64 && isFirstEncounter) {
       messages.push({
         role: "user",
         content: [
-          { type: "text", text: `Player Action: ${action}` },
-          { type: "image_url", image_url: { url: playerAvatarBase64 } },
+          { 
+            type: "text", 
+            text: `Player Action: ${action}\n[Note to Game Master: Inspect the attached protagonist image and integrate initial observations about their appearance into the dialogue/narrative.]` 
+          },
+          { 
+            type: "image_url", 
+            image_url: { url: playerAvatarBase64 } 
+          },
         ],
       });
     } else {
