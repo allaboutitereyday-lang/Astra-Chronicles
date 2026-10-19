@@ -24,8 +24,13 @@ import {
   Users,
   RotateCcw,
   Edit3,
-  Check
+  Check,
+  Key,
+  Volume2,
+  VolumeX
 } from "lucide-react";
+import { soundEffects } from "@/lib/audioEngine";
+import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 
 export interface InventoryItem {
   id: string;
@@ -222,6 +227,31 @@ export default function VisualNovelGame() {
   const [narrationStyle, setNarrationStyle] = useState("Grimdark & Atmospheric");
   const [selectedPrologue, setSelectedPrologue] = useState(0);
 
+  // Immersion & Transition States
+  const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState<{
+    location: string;
+    speaker: string;
+    quote: string;
+  } | null>(null);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
+
+  useEffect(() => {
+    setIsAudioMuted(soundEffects.isMuted());
+    const seen = sessionStorage.getItem("astra_welcome_seen");
+    if (seen === "true") {
+      setHasSeenWelcome(true);
+    }
+  }, []);
+
+  const handleToggleAudio = () => {
+    const nextMuted = soundEffects.toggleMute();
+    setIsAudioMuted(nextMuted);
+    if (!nextMuted) {
+      soundEffects.playClick();
+    }
+  };
+
   const [statPoints, setStatPoints] = useState(10);
   const [gearPreference, setGearPreference] = useState<"system" | "none">("system");
 
@@ -313,6 +343,69 @@ export default function VisualNovelGame() {
   // Editing and response regeneration state
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+
+  // User Access & Token Tracking
+  const [accessKey, setAccessKey] = useState<string>("");
+  const [keyInput, setKeyInput] = useState<string>("");
+  const [userAuth, setUserAuth] = useState<{
+    key: string;
+    name: string;
+    role: string;
+    maxTurns: number;
+    turnsUsed: number;
+    remainingTurns: number;
+    totalTokens: number;
+  } | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  const verifyKey = async (keyToTest: string): Promise<boolean> => {
+    if (!keyToTest.trim()) {
+      setAuthError("Please enter an access key.");
+      return false;
+    }
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const res = await fetch("/api/auth/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessKey: keyToTest.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setAuthError(data.error || "Invalid access key or quota reached.");
+        setAuthLoading(false);
+        return false;
+      }
+      setUserAuth(data.user);
+      setAccessKey(keyToTest.trim());
+      localStorage.setItem("astra_access_key", keyToTest.trim());
+      setAuthLoading(false);
+      setShowAuthModal(false);
+      return true;
+    } catch (err: any) {
+      setAuthError(err.message || "Failed to reach verification service.");
+      setAuthLoading(false);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("astra_access_key");
+      if (stored) {
+        setAccessKey(stored);
+        setKeyInput(stored);
+        verifyKey(stored);
+      } else {
+        setShowAuthModal(true);
+      }
+    } catch (e) {
+      console.warn("Could not read stored access key:", e);
+    }
+  }, []);
 
   const prologues = [
     {
@@ -509,6 +602,14 @@ export default function VisualNovelGame() {
 
     const openingPrologueText = `${chosen.sceneSetup}\n\n"${chosen.dialogue}"`;
 
+    soundEffects.playRiftTransition();
+
+    setIsTransitioning({
+      location: chosen.location,
+      speaker: chosen.speaker,
+      quote: chosen.dialogue.split("\n")[0].replace(/"/g, ""),
+    });
+
     setChatLog([
       {
         id: "start",
@@ -520,10 +621,16 @@ export default function VisualNovelGame() {
       },
     ]);
     setChoices(chosen.choices);
-    setIsConfigured(true);
+
+    // Cinematic delay for planar crossing title card
+    setTimeout(() => {
+      setIsConfigured(true);
+      setIsTransitioning(null);
+    }, 2600);
   };
 
   const handleSaveSlot = (slotId: number) => {
+    soundEffects.playClick();
     const payload: SaveSlotData = {
       slotId,
       savedAt: new Date().toLocaleString(),
@@ -542,14 +649,25 @@ export default function VisualNovelGame() {
     const data = savedSlots[slotId];
     if (!data) return;
 
+    soundEffects.playIntroBell();
     setPlayer(data.player);
     setPlayerAvatar(data.playerAvatar);
     setGameState(data.gameState);
     if (data.party) setParty(data.party);
     setMemories(data.memories);
     setChatLog(data.chatLog);
-    setIsConfigured(true);
     setShowSaveModal(false);
+
+    setIsTransitioning({
+      location: data.gameState.location,
+      speaker: data.gameState.speaker,
+      quote: `Resuming chronicle with ${data.player.name} (${data.player.role})...`,
+    });
+
+    setTimeout(() => {
+      setIsConfigured(true);
+      setIsTransitioning(null);
+    }, 1800);
   };
 
   useEffect(() => {
@@ -564,14 +682,19 @@ export default function VisualNovelGame() {
     setDisplayedText("");
     if (!target) return;
 
+    let blipCounter = 0;
     const interval = setInterval(() => {
       index += 2;
       setDisplayedText(target.slice(0, index));
+      blipCounter++;
+      if (blipCounter % 4 === 0) {
+        soundEffects.playDialogueBlip();
+      }
       if (index >= target.length) {
         setDisplayedText(target);
         clearInterval(interval);
       }
-    }, 10);
+    }, 12);
 
     return () => clearInterval(interval);
   }, [gameState.dialogue]);
@@ -614,6 +737,12 @@ export default function VisualNovelGame() {
   const sendAction = async (rawAction: string, isCustom: boolean = false) => {
     if (!rawAction.trim() || isLoading) return;
 
+    if (!accessKey) {
+      setShowAuthModal(true);
+      setAuthError("Please enter a valid access key before taking action.");
+      return;
+    }
+
     const formattedPayload = isOOCMode ? `[OOC: ${rawAction.trim()}]` : rawAction.trim();
     const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
@@ -623,7 +752,10 @@ export default function VisualNovelGame() {
     try {
       const res = await fetch("/api/turn", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "x-user-key": accessKey,
+        },
         body: JSON.stringify({
           action: formattedPayload,
           isCustom,
@@ -633,6 +765,7 @@ export default function VisualNovelGame() {
           playerAvatarBase64: playerAvatar,
           narrationStyle,
           plotMemories: memories,
+          userAccessKey: accessKey,
           recentHistory: chatLog.slice(-4).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
@@ -642,10 +775,17 @@ export default function VisualNovelGame() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        if (res.status === 401 || res.status === 403) {
+          setAuthError(err.error || "Turn quota exceeded or invalid access key.");
+          setShowAuthModal(true);
+        }
         throw new Error(err.error || `Server returned HTTP ${res.status}`);
       }
 
       const data = await res.json();
+      if (data._userStats) {
+        setUserAuth(data._userStats);
+      }
       const speakerName = data.speaker || gameState.speaker;
       const narrative = data.narrative_text || gameState.dialogue;
       
@@ -660,6 +800,7 @@ export default function VisualNovelGame() {
       const delta = data.state_updates?.affection_delta;
 
       if (typeof delta === "number" && delta !== 0) {
+        soundEffects.playFavorSound(delta > 0);
         setLastAffectionDelta({ companion: affectedComp, delta });
         setTimeout(() => setLastAffectionDelta(null), 3500);
       }
@@ -867,20 +1008,325 @@ export default function VisualNovelGame() {
     )
   );
 
-  if (!isConfigured) {
+  const renderAuthModal = () => (
+    showAuthModal && (
+      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+        <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
+              <Key className="w-4 h-4 text-purple-400" /> Guild Gate & Access Control
+            </h2>
+            {userAuth && (
+              <button onClick={() => setShowAuthModal(false)} className="text-zinc-400 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+
+          {userAuth ? (
+            <div className="space-y-4">
+              <div className="bg-zinc-900/80 border border-white/10 p-4 rounded-2xl flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono text-zinc-400 uppercase tracking-wide">Active Key Holder</span>
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold">
+                    {userAuth.role}
+                  </span>
+                </div>
+                <p className="text-sm font-bold text-white font-mono">{userAuth.name}</p>
+                <p className="text-xs font-mono text-zinc-500">Key: {userAuth.key}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-2xl">
+                  <p className="text-[10px] font-mono uppercase text-zinc-400">Remaining Turns</p>
+                  <p className="text-lg font-bold text-rose-300 font-mono mt-1">
+                    {userAuth.remainingTurns === -1 ? "Unlimited" : `${userAuth.remainingTurns} / ${userAuth.maxTurns}`}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">Used: {userAuth.turnsUsed} turns</p>
+                </div>
+                <div className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-2xl">
+                  <p className="text-[10px] font-mono uppercase text-zinc-400">Tokens Tracked</p>
+                  <p className="text-lg font-bold text-sky-300 font-mono mt-1">
+                    {userAuth.totalTokens.toLocaleString()}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">via OpenRouter API</p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserAuth(null);
+                    setAccessKey("");
+                    setKeyInput("");
+                    localStorage.removeItem("astra_access_key");
+                  }}
+                  className="px-3.5 py-1.5 text-xs text-rose-400 hover:text-rose-300 border border-rose-500/30 hover:border-rose-500/60 rounded-xl cursor-pointer"
+                >
+                  Switch Key
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(false)}
+                  className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-white rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Enter an authorized realm access key. Your key connects directly to OpenRouter API quotas and tracks usage per session:
+              </p>
+
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="e.g. ASTRA-DEV-2026"
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      verifyKey(keyInput);
+                    }
+                  }}
+                  className="w-full bg-zinc-900 border border-white/15 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-purple-500/80"
+                />
+
+                {authError && (
+                  <p className="text-xs text-rose-400 font-mono bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-xl">
+                    {authError}
+                  </p>
+                )}
+              </div>
+
+              <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-3 text-[11px] text-zinc-400 space-y-1">
+                <p className="font-semibold text-zinc-300">Quick Test Keys (configured in allowed_users.json):</p>
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {["ASTRA-DEV-2026", "CHRONICLE-VIP-01", "CHRONICLE-GUEST"].map((sample) => (
+                    <button
+                      key={sample}
+                      type="button"
+                      onClick={() => {
+                        setKeyInput(sample);
+                        verifyKey(sample);
+                      }}
+                      className="px-2 py-0.5 font-mono text-[10px] bg-white/5 hover:bg-white/15 border border-white/10 rounded text-purple-300 cursor-pointer"
+                    >
+                      {sample}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={authLoading || !keyInput.trim()}
+                onClick={() => verifyKey(keyInput)}
+                className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white rounded-xl font-bold text-xs font-mono flex items-center justify-center gap-2 cursor-pointer shadow-lg transition-all"
+              >
+                {authLoading ? (
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Key className="w-3.5 h-3.5" /> Validate Key & Enter Realm
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  );
+
+  const renderTransitionOverlay = () => (
+    isTransitioning && (
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col justify-between items-center py-8 px-6 select-none animate-title-reveal pointer-events-auto">
+        <AtmosphericParticles location={isTransitioning.location} intensity="intense" />
+        <div className="absolute inset-0 cinematic-vignette pointer-events-none" />
+
+        {/* Top letterbox banner */}
+        <div className="relative z-10 w-full max-w-4xl flex items-center justify-between text-zinc-500 font-mono text-xs tracking-widest border-b border-white/10 pb-4">
+          <span className="flex items-center gap-2 text-rose-400 font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-rose-400 animate-pulse" /> ASTRA CONTINENT CHRONICLES
+          </span>
+          <span className="text-zinc-400 uppercase">PROLOGUE CONVERGENCE</span>
+        </div>
+
+        {/* Centerpiece title card */}
+        <div className="relative z-10 flex flex-col items-center text-center max-w-xl space-y-6 my-auto">
+          <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-rose-500/20 via-purple-500/25 to-sky-500/20 border border-white/20 flex items-center justify-center shadow-[0_0_60px_rgba(244,63,94,0.4)]">
+            <Sparkles className="w-9 h-9 text-rose-300 animate-spin" style={{ animationDuration: "12s" }} />
+            <div className="absolute inset-0 rounded-full border border-rose-500/40 animate-ping opacity-30" />
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-mono tracking-widest text-zinc-400 uppercase">
+              Crossing the Leyline Barrier
+            </p>
+            <h2 className="text-3xl sm:text-5xl font-extrabold font-mono text-white tracking-wide drop-shadow-[0_4px_20px_rgba(255,255,255,0.3)]">
+              {isTransitioning.location}
+            </h2>
+          </div>
+
+          <div className="bg-zinc-950/85 backdrop-blur-xl border border-white/15 rounded-3xl p-6 shadow-2xl space-y-2 max-w-lg">
+            <div className="flex items-center justify-center gap-2 text-xs font-mono text-rose-300 uppercase tracking-wider">
+              <span>Encountering {isTransitioning.speaker}</span>
+            </div>
+            <p className="text-sm italic text-zinc-200 leading-relaxed font-serif pt-1">
+              "{isTransitioning.quote}"
+            </p>
+          </div>
+
+          <p className="text-xs font-mono text-zinc-400">
+            Protagonist: <span className="text-white font-semibold">{player.name}</span> <span className="text-rose-400 font-mono">({player.role})</span>
+          </p>
+        </div>
+
+        {/* Bottom letterbox bar */}
+        <div className="relative z-10 w-full max-w-4xl flex items-center justify-center text-[11px] font-mono text-zinc-500 border-t border-white/10 pt-4">
+          <span className="flex items-center gap-2 text-zinc-400">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+            Planar resonance aligned • Manifesting reality...
+          </span>
+        </div>
+      </div>
+    )
+  );
+
+  // 1. OPENING / WELCOME SPLASH SCREEN (FIRST LOAD)
+  if (!isConfigured && !hasSeenWelcome) {
     return (
-      <div className="h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto">
-        <div className="w-full max-w-2xl bg-zinc-900/95 backdrop-blur-xl border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-2">
-              <Sparkles className="text-rose-400 w-6 h-6" /> ASTRA CHRONICLES
+      <div className="relative h-screen w-screen overflow-hidden bg-black font-sans flex flex-col items-center justify-center select-none">
+        <div 
+          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 brightness-[0.38] contrast-125 scale-105 pointer-events-none"
+          style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/80 pointer-events-none" />
+        <div className="absolute inset-0 cinematic-vignette pointer-events-none" />
+
+        <AtmosphericParticles location="Imperial Capital Imperium" intensity="intense" />
+
+        <div className="absolute top-5 right-5 z-30 flex items-center gap-2">
+          <button
+            onClick={handleToggleAudio}
+            className="p-2.5 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white transition-all cursor-pointer backdrop-blur-md shadow-lg"
+            title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
+          >
+            {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
+          </button>
+        </div>
+
+        <div className="relative z-20 flex flex-col items-center text-center max-w-2xl px-6 animate-title-reveal space-y-7">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-rose-300 text-xs font-mono tracking-widest uppercase">
+            <Sparkles className="w-3.5 h-3.5 text-rose-400" /> High-Fantasy Visual Novel Engine
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white font-mono drop-shadow-[0_10px_35px_rgba(244,63,94,0.45)]">
+              ASTRA <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-400 via-pink-400 to-amber-300">CHRONICLES</span>
             </h1>
+            <p className="text-sm md:text-base text-zinc-300 font-sans max-w-lg mx-auto leading-relaxed">
+              Planar gyres align across a continent on the brink of war. Forge your destiny alongside five lethal heroines.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full max-w-md pt-4">
             <button
-              onClick={() => setShowSaveModal(true)}
-              className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => {
+                soundEffects.playIntroBell();
+                setHasSeenWelcome(true);
+                sessionStorage.setItem("astra_welcome_seen", "true");
+              }}
+              className="w-full sm:flex-1 py-3.5 px-6 bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 hover:from-rose-500 hover:to-pink-500 text-white rounded-2xl font-bold font-mono text-sm shadow-[0_0_30px_rgba(244,63,94,0.4)] hover:shadow-[0_0_45px_rgba(244,63,94,0.6)] flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98"
+            >
+              <Play className="w-4 h-4 fill-white" /> Begin Chronicle
+            </button>
+
+            <button
+              onClick={() => {
+                soundEffects.playClick();
+                setShowSaveModal(true);
+              }}
+              className="w-full sm:w-auto py-3.5 px-5 bg-black/60 hover:bg-black/90 border border-white/15 hover:border-sky-500/50 text-zinc-300 hover:text-white rounded-2xl font-mono text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
             >
               <FolderOpen className="w-4 h-4 text-sky-400" /> Load Game
             </button>
+
+            <button
+              onClick={() => {
+                soundEffects.playClick();
+                setShowAuthModal(true);
+              }}
+              className="w-full sm:w-auto py-3.5 px-4 bg-black/60 hover:bg-black/90 border border-white/15 hover:border-purple-500/50 text-zinc-300 hover:text-white rounded-2xl font-mono text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              title="Access Key"
+            >
+              <Key className="w-4 h-4 text-purple-400" />
+            </button>
+          </div>
+
+          <div className="pt-6 flex items-center gap-5 text-xs text-zinc-500 font-mono">
+            <span>5 Heroines</span>
+            <span>•</span>
+            <span>AI Dynamic Lore</span>
+            <span>•</span>
+            <span>Astra Continent</span>
+          </div>
+        </div>
+
+        {renderSaveModal()}
+        {renderAuthModal()}
+      </div>
+    );
+  }
+
+  // 2. CHARACTER CREATOR SCREEN
+  if (!isConfigured) {
+    return (
+      <div className="relative h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto">
+        <div 
+          className="absolute inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none"
+          style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
+        />
+        <div className="absolute inset-0 cinematic-vignette pointer-events-none" />
+        <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
+
+        <div className="relative z-10 w-full max-w-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 my-auto">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-2">
+              <Sparkles className="text-rose-400 w-6 h-6 animate-pulse" /> ASTRA CHRONICLES
+            </h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggleAudio}
+                className="px-3 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+                title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
+              >
+                {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
+              </button>
+              <button
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowAuthModal(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Key className="w-3.5 h-3.5 text-purple-400" />
+                <span>{userAuth ? userAuth.name.split(" ")[0] : "Access Key"}</span>
+              </button>
+              <button
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowSaveModal(true);
+                }}
+                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <FolderOpen className="w-4 h-4 text-sky-400" /> Load Game
+              </button>
+            </div>
           </div>
 
           <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 flex items-center gap-4">
@@ -1017,6 +1463,8 @@ export default function VisualNovelGame() {
         </div>
 
         {renderSaveModal()}
+        {renderAuthModal()}
+        {renderTransitionOverlay()}
       </div>
     );
   }
@@ -1030,6 +1478,8 @@ export default function VisualNovelGame() {
         style={{ backgroundImage: `url("${gameState.bgImage}")` }}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 pointer-events-none" />
+      <div className="absolute inset-0 cinematic-vignette pointer-events-none z-10" />
+      <AtmosphericParticles location={gameState.location} />
 
       {levelUpAlert && (
         <div className="absolute top-16 inset-x-0 z-50 flex justify-center pointer-events-none animate-bounce select-none">
@@ -1095,6 +1545,27 @@ export default function VisualNovelGame() {
           >
             <Save className="w-4 h-4 text-amber-400" />
             <span className="hidden sm:inline">Save</span>
+          </button>
+
+          <button
+            onClick={() => setShowAuthModal(true)}
+            className="bg-black/75 hover:bg-black/90 backdrop-blur-md px-3 py-2.5 rounded-2xl border border-white/10 hover:border-purple-500/50 shadow-lg text-xs text-zinc-300 flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Access & Token Quota"
+          >
+            <Key className="w-4 h-4 text-purple-400" />
+            <span className="hidden sm:inline">
+              {userAuth
+                ? `${userAuth.name.split(" ")[0]} (${userAuth.remainingTurns === -1 ? "∞" : `${userAuth.remainingTurns} left`})`
+                : "Access"}
+            </span>
+          </button>
+
+          <button
+            onClick={handleToggleAudio}
+            className="bg-black/75 hover:bg-black/90 backdrop-blur-md px-3 py-2.5 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 flex items-center gap-1.5 transition-all cursor-pointer"
+            title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
+          >
+            {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
           </button>
         </div>
 
@@ -1164,10 +1635,27 @@ export default function VisualNovelGame() {
                   return (
                     <div 
                       key={comp.name}
-                      className={`relative h-full flex items-end justify-center transition-all duration-300 ${
+                      className={`relative h-full flex items-end justify-center transition-all duration-500 ${
                         presentComps.length > 1 ? "w-1/2" : "w-full"
-                      } ${isSpeaking ? "opacity-100 scale-100 z-10 brightness-100" : "opacity-45 scale-95 z-0 brightness-75"}`}
+                      } ${isSpeaking ? "opacity-100 scale-100 z-10 brightness-105 animate-float-sway" : "opacity-45 scale-95 z-0 brightness-75"}`}
                     >
+                      {/* Ambient Heroine Aura */}
+                      {isSpeaking && (
+                        <div 
+                          className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
+                          style={{
+                            background: comp.name.includes("Evelyn") 
+                              ? "radial-gradient(circle, rgba(168,85,247,0.7) 0%, transparent 70%)"
+                              : comp.name.includes("Aria")
+                              ? "radial-gradient(circle, rgba(6,182,212,0.7) 0%, transparent 70%)"
+                              : comp.name.includes("Serena")
+                              ? "radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 70%)"
+                              : comp.name.includes("Morgana")
+                              ? "radial-gradient(circle, rgba(225,29,72,0.7) 0%, transparent 70%)"
+                              : "radial-gradient(circle, rgba(234,179,8,0.7) 0%, transparent 70%)"
+                          }}
+                        />
+                      )}
                       <img
                         src={spriteSrc}
                         alt={comp.name}
@@ -1373,6 +1861,8 @@ export default function VisualNovelGame() {
       </div>
 
       {renderSaveModal()}
+      {renderAuthModal()}
+      {renderTransitionOverlay()}
 
       {/* PARTY ROSTER DRAWER */}
       {showPartyDrawer && (

@@ -24,3 +24,53 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes floatSway {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.006);
+  }
+}
+
+@keyframes runeGlow {
+  0%, 100% {
+    opacity: 0.5;
+    filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.3));
+  }
+  50% {
+    opacity: 0.95;
+    filter: drop-shadow(0 0 16px rgba(244, 63, 94, 0.7));
+  }
+}
+
+@keyframes titleReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-float-sway {
+  animation: floatSway 4.5s ease-in-out infinite;
+}
+
+.animate-rune-glow {
+  animation: runeGlow 3s ease-in-out infinite;
+}
+
+.animate-title-reveal {
+  animation: titleReveal 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.cinematic-vignette {
+  background: radial-gradient(circle at center, transparent 45%, rgba(0, 0, 0, 0.6) 85%, rgba(0, 0, 0, 0.92) 100%);
+}
+

@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
+
+export const runtime = "nodejs";
 
 const FALLBACK_MODELS = [
   "dots-studio/dots-3-note-preview:free",
@@ -9,6 +12,9 @@ const FALLBACK_MODELS = [
 
 export async function POST(req: Request) {
   try {
+    const headerKey = req.headers.get("x-user-key");
+    const body = await req.json();
+
     const {
       action,
       isCustom = false,
@@ -19,7 +25,21 @@ export async function POST(req: Request) {
       narrationStyle,
       plotMemories,
       recentHistory = [],
-    } = await req.json();
+      userAccessKey,
+    } = body;
+
+    const accessKey = headerKey || userAccessKey;
+    const authCheck = validateUserKey(accessKey);
+    if (!authCheck.valid) {
+      return NextResponse.json(
+        { 
+          error: authCheck.error || "Access denied. Valid access key required.",
+          userStats: authCheck.user 
+        },
+        { status: authCheck.user?.remainingTurns === 0 ? 403 : 401 }
+      );
+    }
+    const activeUser = authCheck.user!;
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -184,6 +204,7 @@ Respond strictly in valid JSON matching this schema:
           body: JSON.stringify({
             model,
             messages,
+            user: activeUser.key,
             temperature: 0.8,
             response_format: { type: "json_object" },
           }),
@@ -201,6 +222,8 @@ Respond strictly in valid JSON matching this schema:
         content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
 
         responseData = JSON.parse(content);
+        const userStats = recordUserTurn(activeUser.key, data.usage, model);
+        responseData._userStats = userStats;
         break;
       } catch (err: any) {
         console.warn(`Error using model ${model}:`, err.message);

@@ -1,0 +1,22 @@
+{
+  "ASTRA-DEV-2026": {
+    "name": "Realm Architect (Admin)",
+    "maxTurns": 1000,
+    "role": "admin"
+  },
+  "CHRONICLE-VIP-01": {
+    "name": "Alpha Adventurer 1",
+    "maxTurns": 50,
+    "role": "tester"
+  },
+  "CHRONICLE-VIP-02": {
+    "name": "Alpha Adventurer 2",
+    "maxTurns": 50,
+    "role": "tester"
+  },
+  "CHRONICLE-GUEST": {
+    "name": "Traveling Nomad",
+    "maxTurns": 20,
+    "role": "guest"
+  }
+}
