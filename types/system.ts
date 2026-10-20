@@ -45,3 +45,4 @@ export interface SystemToastNotification {
   difficulty?: QuestDifficulty;
   timestamp: string;
 }
+

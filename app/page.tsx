@@ -28,7 +28,8 @@ import {
   Key,
   Volume2,
   VolumeX,
-  Terminal
+  Terminal,
+  Trash2
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -754,6 +755,15 @@ export default function VisualNovelGame() {
     }
   };
 
+  const [confirmDeleteSlot, setConfirmDeleteSlot] = useState<number | null>(null);
+
+  const handleDeleteSlot = (slotId: number) => {
+    soundEffects.playClick();
+    localStorage.removeItem(`astra_save_slot_${slotId}`);
+    setSavedSlots((prev) => ({ ...prev, [slotId]: null }));
+    setConfirmDeleteSlot(null);
+  };
+
   const handleSaveSlot = (slotId: number) => {
     soundEffects.playClick();
     const payload: SaveSlotData = {
@@ -1100,7 +1110,7 @@ export default function VisualNovelGame() {
             <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
               <FolderOpen className="w-4 h-4 text-sky-400" /> Character Save Slots
             </h2>
-            <button onClick={() => setShowSaveModal(false)} className="text-zinc-400 hover:text-white cursor-pointer">
+            <button onClick={() => { setShowSaveModal(false); setConfirmDeleteSlot(null); }} className="text-zinc-400 hover:text-white cursor-pointer">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -1118,6 +1128,9 @@ export default function VisualNovelGame() {
                       <div className="mt-0.5">
                         <p className="text-sm font-bold text-white">{s.player.name} <span className="text-xs text-zinc-400 font-normal">(Lv.{s.player.level} {s.player.role})</span></p>
                         <p className="text-[11px] text-zinc-500 font-mono">{s.gameState.speaker} • {s.gameState.location}</p>
+                        {s.savedAt && (
+                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Saved: {s.savedAt}</p>
+                        )}
                       </div>
                     ) : (
                       <p className="text-xs text-zinc-500 mt-1 italic">Empty Save Slot</p>
@@ -1127,18 +1140,53 @@ export default function VisualNovelGame() {
                     {isConfigured && (
                       <button
                         onClick={() => handleSaveSlot(slot)}
-                        className="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 rounded-xl text-xs font-semibold text-amber-200 cursor-pointer"
+                        className="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 rounded-xl text-xs font-semibold text-amber-200 cursor-pointer transition-all"
                       >
                         Save
                       </button>
                     )}
                     {s && (
-                      <button
-                        onClick={() => handleLoadSlot(slot)}
-                        className="px-3 py-1.5 bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 rounded-xl text-xs font-semibold text-sky-200 cursor-pointer"
-                      >
-                        Load
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleLoadSlot(slot)}
+                          className="px-3 py-1.5 bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 rounded-xl text-xs font-semibold text-sky-200 cursor-pointer transition-all"
+                        >
+                          Load
+                        </button>
+
+                        {confirmDeleteSlot === slot ? (
+                          <div className="flex items-center gap-1 animate-in fade-in duration-150">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSlot(slot)}
+                              className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
+                              title="Confirm Permanent Deletion"
+                            >
+                              Delete?
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteSlot(null)}
+                              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition-all cursor-pointer"
+                              title="Cancel"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundEffects.playClick();
+                              setConfirmDeleteSlot(slot);
+                            }}
+                            className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
+                            title="Delete Save Slot"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
