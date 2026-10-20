@@ -220,7 +220,7 @@ export default function StoryCataloguePage() {
               className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-purple-500/50 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer shadow-lg"
             >
               <Key className="w-3.5 h-3.5 text-purple-400" />
-              <span>{userAuth ? `${userAuth.name.split(" ")[0]} (${userAuth.remainingTurns === -1 ? "âˆž" : `${userAuth.remainingTurns} turns`})` : "Access Key"}</span>
+              <span>{userAuth ? `${userAuth.name.split(" ")[0]} (${userAuth.remainingTurns === -1 ? "Unlimited" : `${userAuth.remainingTurns} turns`})` : "Access Key"}</span>
             </button>
 
             {/* Multiverse Codex Navigation Link */}
@@ -326,14 +326,18 @@ export default function StoryCataloguePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p
-                        className={`text-xs font-bold truncate transition-colors ${
+                        className={`text-xs font-bold truncate transition-colors flex items-center gap-1.5 ${
                           isAuto ? "text-emerald-200 group-hover:text-emerald-300" : "text-white group-hover:text-sky-300"
                         }`}
                       >
-                        {save.player?.name} â€¢ Lv.{save.player?.level} {save.player?.role}
+                        <span>{save.player?.name}</span>
+                        <span className="text-zinc-500 font-normal">•</span>
+                        <span>Lv.{save.player?.level} {save.player?.role}</span>
                       </p>
-                      <p className="text-[10px] text-zinc-400 font-mono truncate">
-                        {save.storyTitle || "Astra Chronicles"} â€¢ {save.gameState?.location || "En Route"}
+                      <p className="text-[10px] text-zinc-400 font-mono truncate flex items-center gap-1.5">
+                        <span>{save.storyTitle || "Astra Chronicles"}</span>
+                        <span className="text-zinc-600 font-normal">•</span>
+                        <span>{save.gameState?.location || "En Route"}</span>
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white shrink-0" />
@@ -519,7 +523,7 @@ export default function StoryCataloguePage() {
                   </p>
                 </div>
                 <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-white/5 border border-white/10 text-rose-300 group-hover:bg-rose-600 group-hover:text-white transition-all">
-                  Launch World Creator â†’
+                  Launch World Creator →
                 </span>
               </Link>
             </div>
