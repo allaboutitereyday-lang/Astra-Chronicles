@@ -216,3 +216,4 @@ export async function loadAllGameSlots(): Promise<Record<number, SaveSlotPayload
   }
   return result;
 }
+

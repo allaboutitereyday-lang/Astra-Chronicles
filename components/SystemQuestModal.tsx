@@ -87,20 +87,26 @@ const TIER_COLORS: Record<PlausibilityTier, { badge: string; text: string; bg: s
 
 export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestModalProps) {
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "directives">("active");
+  const activeQuests = Array.isArray(systemState?.activeQuests) ? systemState.activeQuests : [];
+  const completedQuests = Array.isArray(systemState?.completedQuests) ? systemState.completedQuests : [];
+  const systemDirectives = Array.isArray(systemState?.systemDirectives) ? systemState.systemDirectives : [];
+
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(
-    systemState.activeQuests[0]?.id || systemState.completedQuests[0]?.id || null
+    activeQuests[0]?.id || completedQuests[0]?.id || null
   );
   const [showPlausibilityInfo, setShowPlausibilityInfo] = useState(false);
 
   if (!isOpen) return null;
 
-  const currentQuests = activeTab === "active" ? systemState.activeQuests : systemState.completedQuests;
+  const currentQuests = activeTab === "active" ? activeQuests : completedQuests;
   const selectedQuest =
-    systemState.activeQuests.find((q) => q.id === selectedQuestId) ||
-    systemState.completedQuests.find((q) => q.id === selectedQuestId) ||
+    activeQuests.find((q) => q.id === selectedQuestId) ||
+    completedQuests.find((q) => q.id === selectedQuestId) ||
     currentQuests[0];
 
-  const tierInfo = TIER_COLORS[systemState.plausibilityTier] || TIER_COLORS.Stable;
+  const plausibility = typeof systemState?.plausibility === "number" ? systemState.plausibility : 80;
+  const tier = systemState?.plausibilityTier || "Stable";
+  const tierInfo = TIER_COLORS[tier] || TIER_COLORS.Stable;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
@@ -156,12 +162,12 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
               <div>
                 <div className="flex items-center justify-between gap-2 text-[10px] font-mono">
                   <span className="text-zinc-400">PROBABILITY</span>
-                  <span className={`font-bold ${tierInfo.text}`}>{systemState.plausibility}% [{systemState.plausibilityTier.toUpperCase()}]</span>
+                  <span className={`font-bold ${tierInfo.text}`}>{plausibility}% [{tier.toUpperCase()}]</span>
                 </div>
                 <div className="w-28 sm:w-36 h-1.5 bg-black/60 rounded-full overflow-hidden border border-white/10 mt-1">
                   <div 
                     className={`h-full bg-gradient-to-r ${tierInfo.bg} transition-all duration-700`}
-                    style={{ width: `${Math.min(100, Math.max(0, systemState.plausibility))}%` }}
+                    style={{ width: `${Math.min(100, Math.max(0, plausibility))}%` }}
                   />
                 </div>
               </div>
@@ -204,7 +210,7 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
             <Zap className="w-3.5 h-3.5" />
             <span>ACTIVE SCENARIOS</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-cyan-900/60 text-cyan-300 border border-cyan-500/30">
-              {systemState.activeQuests.length}
+              {activeQuests.length}
             </span>
           </button>
 
@@ -220,7 +226,7 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>COMPLETED ARCHIVE</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400">
-              {systemState.completedQuests.length}
+              {completedQuests.length}
             </span>
           </button>
 
@@ -246,15 +252,15 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
               <div className="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-2xl text-cyan-300 text-[11px] mb-4">
                 &gt; SYSTEM CORE STATUS: MONITORING ASTRA CONTINENT TEMPORAL STRAND...
               </div>
-              {systemState.systemDirectives.length === 0 ? (
+              {systemDirectives.length === 0 ? (
                 <div className="text-zinc-500 italic p-6 text-center">No administrative logs recorded yet.</div>
               ) : (
-                systemState.systemDirectives.map((directive, idx) => (
+                systemDirectives.map((directive, idx) => (
                   <div
                     key={idx}
                     className="p-3 rounded-xl bg-zinc-900/80 border border-cyan-500/20 text-zinc-300 leading-relaxed flex items-start gap-3"
                   >
-                    <span className="text-cyan-400 font-bold shrink-0">#{systemState.systemDirectives.length - idx}</span>
+                    <span className="text-cyan-400 font-bold shrink-0">#{systemDirectives.length - idx}</span>
                     <span className="flex-1">{directive}</span>
                   </div>
                 ))
@@ -275,7 +281,8 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
                 {currentQuests.map((quest) => {
                   const diffStyle = DIFFICULTY_STYLES[quest.difficulty] || DIFFICULTY_STYLES.E;
                   const isSelected = selectedQuest?.id === quest.id;
-                  const completedObjectives = quest.objectives.filter((o) => o.completed).length;
+                  const questObjs = Array.isArray(quest.objectives) ? quest.objectives : [];
+                  const completedObjectives = questObjs.filter((o) => o && o.completed).length;
 
                   return (
                     <div
@@ -302,8 +309,8 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
 
                       <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 pt-1 border-t border-white/5">
                         <span>Progress</span>
-                        <span className={completedObjectives === quest.objectives.length ? "text-emerald-400" : "text-cyan-300"}>
-                          {completedObjectives} / {quest.objectives.length} Objectives
+                        <span className={completedObjectives === questObjs.length ? "text-emerald-400" : "text-cyan-300"}>
+                          {completedObjectives} / {questObjs.length} Objectives
                         </span>
                       </div>
                     </div>
@@ -359,21 +366,21 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
                     <div>
                       <p className="text-xs font-mono text-zinc-400 block mb-2">OBJECTIVES</p>
                       <div className="space-y-2">
-                        {selectedQuest.objectives.map((obj, i) => (
+                        {(selectedQuest.objectives || []).map((obj, i) => (
                           <div
                             key={i}
                             className={`p-2.5 rounded-xl border flex items-center gap-3 text-xs ${
-                              obj.completed
+                              obj?.completed
                                 ? "bg-emerald-950/30 border-emerald-500/40 text-emerald-200 line-through opacity-80"
                                 : "bg-black/50 border-cyan-500/20 text-zinc-200"
                             }`}
                           >
-                            {obj.completed ? (
+                            {obj?.completed ? (
                               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                             ) : (
                               <Circle className="w-4 h-4 text-cyan-400 shrink-0" />
                             )}
-                            <span className="flex-1">{obj.text}</span>
+                            <span className="flex-1">{obj?.text || "Investigate objective"}</span>
                           </div>
                         ))}
                       </div>
@@ -392,27 +399,27 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
                       SYSTEM CLEAR REWARDS
                     </p>
                     <div className="flex flex-wrap gap-2 text-xs">
-                      {selectedQuest.rewards.exp > 0 && (
+                      {Boolean(selectedQuest.rewards?.exp && selectedQuest.rewards.exp > 0) && (
                         <span className="px-2.5 py-1 rounded-lg bg-cyan-950/60 border border-cyan-400/40 text-cyan-300 font-mono flex items-center gap-1.5">
-                          <Zap className="w-3.5 h-3.5" /> +{selectedQuest.rewards.exp} EXP
+                          <Zap className="w-3.5 h-3.5" /> +{selectedQuest.rewards?.exp} EXP
                         </span>
                       )}
-                      {selectedQuest.rewards.gold && selectedQuest.rewards.gold > 0 && (
+                      {Boolean(selectedQuest.rewards?.gold && selectedQuest.rewards.gold > 0) && (
                         <span className="px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-400/40 text-amber-300 font-mono flex items-center gap-1.5">
-                          <Coins className="w-3.5 h-3.5" /> +{selectedQuest.rewards.gold} Gold
+                          <Coins className="w-3.5 h-3.5" /> +{selectedQuest.rewards?.gold} Gold
                         </span>
                       )}
-                      {selectedQuest.rewards.statPoints && selectedQuest.rewards.statPoints > 0 && (
+                      {Boolean(selectedQuest.rewards?.statPoints && selectedQuest.rewards.statPoints > 0) && (
                         <span className="px-2.5 py-1 rounded-lg bg-purple-950/60 border border-purple-400/40 text-purple-300 font-mono flex items-center gap-1.5">
-                          <Award className="w-3.5 h-3.5" /> +{selectedQuest.rewards.statPoints} Stat Points
+                          <Award className="w-3.5 h-3.5" /> +{selectedQuest.rewards?.statPoints} Stat Points
                         </span>
                       )}
-                      {selectedQuest.rewards.title && (
+                      {Boolean(selectedQuest.rewards?.title) && (
                         <span className="px-2.5 py-1 rounded-lg bg-rose-950/60 border border-rose-400/40 text-rose-300 font-mono flex items-center gap-1.5">
-                          <Sparkles className="w-3.5 h-3.5" /> Title: {selectedQuest.rewards.title}
+                          <Sparkles className="w-3.5 h-3.5" /> Title: {selectedQuest.rewards?.title}
                         </span>
                       )}
-                      {selectedQuest.rewards.items &&
+                      {Array.isArray(selectedQuest.rewards?.items) &&
                         selectedQuest.rewards.items.map((item, idx) => (
                           <span
                             key={idx}

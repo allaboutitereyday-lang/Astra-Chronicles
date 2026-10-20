@@ -2108,6 +2108,21 @@ export default function VisualNovelGame() {
       {renderAuthModal()}
       {renderTransitionOverlay()}
 
+      <SystemNotificationToast
+        notification={systemToast}
+        onClose={() => setSystemToast(null)}
+        onOpenSystemWindow={() => {
+          setSystemToast(null);
+          setShowSystemModal(true);
+        }}
+      />
+
+      <SystemQuestModal
+        isOpen={showSystemModal}
+        onClose={() => setShowSystemModal(false)}
+        systemState={systemState}
+      />
+
       {/* PARTY ROSTER DRAWER */}
       {showPartyDrawer && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none">
