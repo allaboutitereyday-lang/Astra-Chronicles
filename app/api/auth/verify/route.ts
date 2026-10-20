@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateUserKey } from "@/lib/userAccess";
 
+export const dynamic = "force-static";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {

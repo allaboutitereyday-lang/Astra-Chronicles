@@ -1,12 +1,49 @@
 {
-  "name": "my-vn-game",
+  "name": "astra-chronicles",
   "version": "0.1.0",
+  "description": "Astra Chronicles - Dynamic LitRPG Visual Novel",
+  "author": "Astra Chronicles",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "electron:dev": "concurrently \"next dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:build": "next build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.astrachronicles.app",
+    "productName": "Astra Chronicles",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "out/**/*",
+      "package.json",
+      "!.env*",
+      "!**/*.env*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Astra Chronicles"
+    }
   },
   "dependencies": {
     "@google/genai": "^2.23.0",
@@ -28,10 +65,14 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.6",
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.5.1"
   },
   "allowScripts": {
     "@google/genai@2.23.0": true
