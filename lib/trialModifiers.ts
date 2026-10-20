@@ -207,3 +207,4 @@ export function getDiscoveredCompanions(
     return false;
   });
 }
+

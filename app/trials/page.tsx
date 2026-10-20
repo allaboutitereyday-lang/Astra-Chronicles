@@ -169,6 +169,16 @@ function LitRPGTrialsContent() {
   const [activeShield, setActiveShield] = useState(0);
   const [trialTurnCount, setTrialTurnCount] = useState(0);
 
+  // Monster Visual Art & Dynamic Skills Drawer States (Phase 2 UI Overhaul)
+  const [monsterImages, setMonsterImages] = useState<Record<string, string>>({});
+  const [isGeneratingMonsterImage, setIsGeneratingMonsterImage] = useState<boolean>(false);
+  const [showSkillsDrawer, setShowSkillsDrawer] = useState<boolean>(false);
+  const [pageLoaded, setPageLoaded] = useState<boolean>(false);
+
+  useEffect(() => {
+    setPageLoaded(true);
+  }, []);
+
   // Daily Seed calculation
   const todayDateString = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -327,6 +337,59 @@ function LitRPGTrialsContent() {
       setCombatFeed((prev) => [protocolEntry, ...prev]);
     }
   }, [currentSectorIdx, activeSector]);
+
+  // Check sessionStorage for cached monster art on sector transition
+  useEffect(() => {
+    const enemyName = activeSector.enemyName;
+    if (monsterImages[enemyName]) return;
+    try {
+      const cached = sessionStorage.getItem(`astra_trial_monster_${enemyName}`);
+      if (cached) {
+        setMonsterImages((prev) => ({ ...prev, [enemyName]: cached }));
+      }
+    } catch {}
+  }, [activeSector.enemyName, monsterImages]);
+
+  // Contextual Monster Art Generation for Active Sector (Pillars 1 & 3)
+  const handleGenerateMonsterVisuals = async () => {
+    const enemyName = activeSector.enemyName;
+    if (monsterImages[enemyName] || isGeneratingMonsterImage) return;
+
+    setIsGeneratingMonsterImage(true);
+    soundEffects.playSystemNotification();
+
+    const monsterPrompt = `Sci-fi dark fantasy boss monster in visual novel: ${activeSector.enemyName}. ${activeSector.enemyDesc}. Location: ${activeSector.title} [${activeSector.codename}]. Active Anomaly Modifier: ${activeSector.causalModifier.name} (${activeSector.causalModifier.description}). Menacing stance, ethereal glow, cinematic volumetric lighting, 8k resolution digital concept art.`;
+
+    try {
+      const userKey = typeof window !== "undefined" ? sessionStorage.getItem("astra_user_access_key") || "" : "";
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-key": userKey,
+        },
+        body: JSON.stringify({
+          mode: "monster",
+          prompt: monsterPrompt,
+          location: activeSector.title,
+          modifier: activeSector.causalModifier.name,
+          enemyName: activeSector.enemyName,
+          userAccessKey: userKey,
+        }),
+      });
+      const data = await res.json();
+      if (data.imageUrl) {
+        setMonsterImages((prev) => ({ ...prev, [enemyName]: data.imageUrl }));
+        try {
+          sessionStorage.setItem(`astra_trial_monster_${enemyName}`, data.imageUrl);
+        } catch {}
+      }
+    } catch (err) {
+      console.warn("Could not generate monster art:", err);
+    } finally {
+      setIsGeneratingMonsterImage(false);
+    }
+  };
 
   // Procedural Immediate Fallback Blurb
   const getProceduralBlurb = (
@@ -838,7 +901,9 @@ function LitRPGTrialsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col relative overflow-hidden select-none">
+    <div className={`min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col relative overflow-hidden select-none transition-all duration-300 ease-out ${
+      pageLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+    }`}>
       {/* Background Ambience */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/20 via-zinc-950 to-black pointer-events-none" />
       <div className="absolute -top-40 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -970,9 +1035,79 @@ function LitRPGTrialsContent() {
               </div>
             </div>
 
-            {/* Enemy Display & Health Bar */}
-            <div className="mb-6 p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3">
-              <div className="flex items-center justify-between">
+            {/* Enemy Display, Monster Illustration & Health Bar */}
+            <div className="mb-6 p-4 rounded-3xl bg-black/50 border border-white/10 space-y-3.5 shadow-xl relative overflow-hidden">
+              {/* Monster Visual Art Container */}
+              <div className="relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden bg-zinc-950 border border-white/10 shadow-inner group">
+                {isGeneratingMonsterImage ? (
+                  /* Lightweight Skeleton Loader */
+                  <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden bg-zinc-950">
+                    <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 animate-pulse" />
+                    <div className="relative z-10 flex flex-col items-center text-center space-y-2">
+                      <Skull className="w-8 h-8 text-rose-500/70 animate-bounce" />
+                      <div className="space-y-1">
+                        <span className="text-xs font-mono font-bold text-zinc-200 block">
+                          Synthesizing Anomaly Entity Visuals...
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-500 block">
+                          Ingesting {activeSector.codename} • {activeSector.causalModifier.name}
+                        </span>
+                      </div>
+                      <div className="w-36 h-1.5 bg-zinc-800 rounded-full overflow-hidden mt-1">
+                        <div className="w-full h-full bg-gradient-to-r from-rose-500 to-amber-500 animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                ) : monsterImages[activeSector.enemyName] ? (
+                  /* Rendered Monster Artwork */
+                  <>
+                    <img
+                      src={monsterImages[activeSector.enemyName]}
+                      alt={activeSector.enemyName}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-3.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-400">
+                          {activeSector.codename} Anomaly
+                        </span>
+                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-zinc-300 backdrop-blur-sm">
+                          ✦ {activeSector.causalModifier.name}
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-bold text-white font-serif tracking-wide drop-shadow-md">
+                        {activeSector.enemyName}
+                      </h3>
+                      <p className="text-[11px] text-zinc-300 line-clamp-1 italic drop-shadow">
+                        {activeSector.enemyDesc}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  /* Procedural Fallback Placeholder with Synthesize Trigger */
+                  <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-950 relative">
+                    <div className="p-3 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-400 mb-2">
+                      <Skull className="w-7 h-7" />
+                    </div>
+                    <span className="text-xs font-mono font-bold text-rose-200">
+                      {activeSector.enemyName}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-500 mt-0.5">
+                      Threat Rank: {activeSector.difficulty} • {activeSector.codename}
+                    </span>
+                    <button
+                      onClick={handleGenerateMonsterVisuals}
+                      disabled={isGeneratingMonsterImage}
+                      className="mt-3 px-3 py-1.5 rounded-xl bg-rose-950/80 hover:bg-rose-900 border border-rose-500/40 text-rose-300 hover:text-white text-[10px] font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95"
+                    >
+                      <Sparkles className="w-3 h-3 text-rose-400" /> Synthesize Anomaly Visuals
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Enemy Info Header & HP Status */}
+              <div className="flex items-center justify-between pt-1">
                 <div>
                   <h3 className="text-sm sm:text-base font-bold text-rose-200 font-serif">
                     {activeSector.enemyName}
@@ -985,10 +1120,10 @@ function LitRPGTrialsContent() {
               </div>
 
               {/* Enemy Health Bar */}
-              <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-white/10">
+              <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-white/10 shadow-inner">
                 <div
-                  className="h-full bg-gradient-to-r from-rose-600 to-pink-500 transition-all duration-300"
-                  style={{ width: `${(currentEnemyHp / activeSector.enemyMaxHp) * 100}%` }}
+                  className="h-full bg-gradient-to-r from-rose-600 via-rose-500 to-pink-500 transition-all duration-300"
+                  style={{ width: `${Math.max(0, Math.min(100, (currentEnemyHp / activeSector.enemyMaxHp) * 100))}%` }}
                 />
               </div>
             </div>
@@ -1157,132 +1292,228 @@ function LitRPGTrialsContent() {
                   </span>
                 </div>
 
-                {/* Awakened Duo Ultimate (Pillar 1 - Beloved Tier 75%+) */}
-                {activeCompanion && ["Beloved", "Sworn Partner"].includes(activeCompanion.tier) && (
+                {/* 4-Button Tactical Command Dock (Phase 2 UI Upgrade) */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {/* 1. ATTACK (0 MP Basic Strike) */}
                   <button
-                    onClick={() => handleTacticalAction("duo_ultimate")}
-                    disabled={isResolvingTurn || playerMp < (activeCompanion.resonance?.belovedUltimate?.mpCost || 28)}
-                    className="w-full p-3 rounded-2xl bg-gradient-to-r from-amber-600/30 via-purple-600/40 to-pink-600/30 hover:from-amber-600/50 hover:via-purple-600/60 hover:to-pink-600/50 border-2 border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.35)] text-left transition-all cursor-pointer flex items-center justify-between gap-3 group active:scale-95 disabled:opacity-50 animate-pulse"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-300">
-                        <Sparkles className="w-4 h-4 animate-spin" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-amber-200">
-                            {activeCompanion.resonance?.belovedUltimate?.name || "Awakened Duo Ultimate"}
-                          </span>
-                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/20 border border-amber-400 text-amber-300">
-                            DUO ULTIMATE
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono text-amber-300/80 block mt-0.5">
-                          {activeCompanion.resonance?.belovedUltimate?.voiceLine || "Together through the ash!"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="text-xs font-mono font-bold text-amber-300 block">
-                        {activeCompanion.resonance?.belovedUltimate?.mpCost || 28} MP
-                      </span>
-                      <span className="text-[9px] font-mono text-cyan-300 block">
-                        Guaranteed Stun • {activeCompanion.resonance?.belovedUltimate?.multiplier || 3.4}x DMG
-                      </span>
-                    </div>
-                  </button>
-                )}
-
-                {/* Class Dynamic Tactical Actions */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {/* 1. Class Basic Strike (0 MP) */}
-                  <button
-                    onClick={() => handleTacticalAction("strike")}
+                    onClick={() => {
+                      setShowSkillsDrawer(false);
+                      handleTacticalAction("strike");
+                    }}
                     disabled={isResolvingTurn}
-                    className="p-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-blue-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
+                    className="p-3.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 border border-blue-500/30 hover:border-blue-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-2 group active:scale-95 disabled:opacity-50 shadow-md"
                   >
-                    {renderActionIcon(classArsenal.actions.strike.iconType, "w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform")}
+                    <div className="flex items-center justify-between w-full">
+                      <div className="p-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 group-hover:scale-110 transition-transform">
+                        <Sword className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-400 font-bold">0 MP</span>
+                    </div>
                     <div>
-                      <span className="text-xs font-bold text-zinc-100 block truncate">
+                      <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                        Attack
+                      </span>
+                      <span className="text-[10px] font-mono text-blue-300 truncate block mt-0.5">
                         {classArsenal.actions.strike.name}
                       </span>
-                      <span className="text-[10px] font-mono text-zinc-400 block truncate">
-                        0 MP • {classArsenal.actions.strike.badgeText}
-                      </span>
                     </div>
                   </button>
 
-                  {/* 2. Class Signature Burst / Overclock (20-25 MP) */}
+                  {/* 2. DEFEND (0 MP Timeline Guard) */}
                   <button
-                    onClick={() => handleTacticalAction("burst")}
-                    disabled={isResolvingTurn || playerMp < classArsenal.actions.burst.costMp}
-                    className="p-3 rounded-2xl bg-amber-950/20 hover:bg-amber-950/40 border border-amber-500/30 hover:border-amber-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
-                  >
-                    {renderActionIcon(classArsenal.actions.burst.iconType, "w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform")}
-                    <div>
-                      <span className="text-xs font-bold text-amber-200 block truncate">
-                        {activeSynergies[0]?.bonusName
-                          ? `[${activeSynergies[0].bonusName}] ${classArsenal.actions.burst.name}`
-                          : classArsenal.actions.burst.name}
-                      </span>
-                      <span className="text-[10px] font-mono text-amber-300/80 block truncate">
-                        {classArsenal.actions.burst.costMp} MP • {classArsenal.actions.burst.badgeText}
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* 3. Class Tactical Synergy / Technique (15-20 MP) */}
-                  <button
-                    onClick={() => handleTacticalAction("synergy")}
-                    disabled={isResolvingTurn || playerMp < classArsenal.actions.synergy.costMp}
-                    className="p-3 rounded-2xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-500/30 hover:border-rose-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
-                  >
-                    {renderActionIcon(classArsenal.actions.synergy.iconType, "w-4 h-4 text-rose-400 group-hover:scale-110 transition-transform")}
-                    <div>
-                      <span className="text-xs font-bold text-rose-200 block truncate">
-                        {classArsenal.actions.synergy.name}
-                      </span>
-                      <span className="text-[10px] font-mono text-rose-300/80 block truncate">
-                        {classArsenal.actions.synergy.costMp} MP • {classArsenal.actions.synergy.badgeText}
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* 4. Class Defensive Stance / Reality Anchor (0 MP) */}
-                  <button
-                    onClick={() => handleTacticalAction("defense")}
+                    onClick={() => {
+                      setShowSkillsDrawer(false);
+                      handleTacticalAction("defense");
+                    }}
                     disabled={isResolvingTurn}
-                    className="p-3 rounded-2xl bg-cyan-950/20 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
+                    className="p-3.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-2 group active:scale-95 disabled:opacity-50 shadow-md"
                   >
-                    {renderActionIcon(classArsenal.actions.defense.iconType, "w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform")}
+                    <div className="flex items-center justify-between w-full">
+                      <div className="p-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 group-hover:scale-110 transition-transform">
+                        <Shield className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-mono text-cyan-300 font-bold">+Guard</span>
+                    </div>
                     <div>
-                      <span className="text-xs font-bold text-cyan-200 block truncate">
+                      <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                        Defend
+                      </span>
+                      <span className="text-[10px] font-mono text-cyan-300 truncate block mt-0.5">
                         {classArsenal.actions.defense.name}
                       </span>
-                      <span className="text-[10px] font-mono text-cyan-300/80 block truncate">
-                        0 MP • {classArsenal.actions.defense.badgeText}
+                    </div>
+                  </button>
+
+                  {/* 3. SKILLS (Opens Expanded Spells & Archetype Abilities Drawer) */}
+                  <button
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setShowSkillsDrawer((prev) => !prev);
+                    }}
+                    disabled={isResolvingTurn}
+                    className={`p-3.5 rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between gap-2 group active:scale-95 disabled:opacity-50 shadow-md border ${
+                      showSkillsDrawer
+                        ? "bg-purple-950/80 border-purple-400 ring-2 ring-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.3)]"
+                        : "bg-zinc-900/90 hover:bg-zinc-800 border-purple-500/30 hover:border-purple-400"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div className="p-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 group-hover:scale-110 transition-transform">
+                        <Flame className="w-4 h-4" />
+                      </div>
+                      <span className="text-[10px] font-mono text-purple-300 font-bold">
+                        {showSkillsDrawer ? "▲ Close" : "▼ Open"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                        Skills
+                      </span>
+                      <span className="text-[10px] font-mono text-purple-300 truncate block mt-0.5">
+                        {showSkillsDrawer ? "Hide Arsenal" : "View Abilities"}
                       </span>
                     </div>
                   </button>
+
+                  {/* 4. DUO SYNERGY (Companion Resonance or Awakened Duo Ultimate) */}
+                  {(() => {
+                    const isBeloved = activeCompanion && ["Beloved", "Sworn Partner"].includes(activeCompanion.tier);
+                    const isConfidant = activeCompanion && (activeCompanion.tier === "Confidant" || isBeloved);
+                    const ultCost = activeCompanion?.resonance?.belovedUltimate?.mpCost || 28;
+                    const canAfford = playerMp >= (isBeloved ? ultCost : 15);
+
+                    return (
+                      <button
+                        onClick={() => {
+                          setShowSkillsDrawer(false);
+                          if (!activeCompanion) {
+                            setShowCompanionModal(true);
+                            return;
+                          }
+                          if (isBeloved) {
+                            handleTacticalAction("duo_ultimate");
+                          } else {
+                            handleTacticalAction("companion");
+                          }
+                        }}
+                        disabled={Boolean(isResolvingTurn || (activeCompanion && !canAfford))}
+                        className={`p-3.5 rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between gap-2 group active:scale-95 disabled:opacity-50 shadow-md border ${
+                          isBeloved
+                            ? "bg-gradient-to-r from-amber-600/25 via-purple-600/30 to-pink-600/25 hover:from-amber-600/40 hover:via-purple-600/45 hover:to-pink-600/40 border-amber-400 shadow-[0_0_18px_rgba(245,158,11,0.3)] animate-pulse"
+                            : isConfidant
+                            ? "bg-purple-950/40 hover:bg-purple-950/60 border-purple-500/40 hover:border-purple-300"
+                            : "bg-zinc-900/60 hover:bg-zinc-900 border-white/10 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <div className={`p-1.5 rounded-xl border group-hover:scale-110 transition-transform ${
+                            isBeloved
+                              ? "bg-amber-500/20 border-amber-400 text-amber-300"
+                              : "bg-rose-500/10 border-rose-500/20 text-rose-400"
+                          }`}>
+                            <Sparkles className="w-4 h-4" />
+                          </div>
+                          <span className={`text-[10px] font-mono font-bold ${
+                            isBeloved ? "text-amber-300" : isConfidant ? "text-purple-300" : "text-zinc-500"
+                          }`}>
+                            {isBeloved ? `${ultCost} MP` : isConfidant ? "15 MP" : "Solo"}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-xs font-bold text-white uppercase tracking-wider block">
+                            Duo Synergy
+                          </span>
+                          <span className={`text-[10px] font-mono truncate block mt-0.5 ${
+                            isBeloved ? "text-amber-200 font-bold" : isConfidant ? "text-purple-300" : "text-zinc-500"
+                          }`}>
+                            {isBeloved
+                              ? (activeCompanion?.resonance?.belovedUltimate?.name || "Awakened Ultimate")
+                              : isConfidant
+                              ? `${activeCompanion?.name || "Resonance"} Assist`
+                              : "Select Heroine"}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })()}
                 </div>
 
-                {/* Rolled Archetype Abilities (if player created custom abilities) */}
-                {availableCustomAbilities.length > 0 && (
-                  <div className="pt-2 border-t border-white/5 space-y-1.5">
-                    <span className="text-[10px] font-mono uppercase text-amber-400 tracking-wider font-bold flex items-center gap-1">
-                      <Flame className="w-3 h-3 text-amber-400" /> Awakened Archetype Abilities
-                    </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* EXPANDED SKILLS DRAWER (Smooth Lightweight CSS Transition) */}
+                {showSkillsDrawer && (
+                  <div className="p-4 rounded-2xl bg-zinc-950/90 border border-purple-500/30 space-y-3 transition-all duration-200 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                      <div className="flex items-center gap-2">
+                        <Wand2 className="w-3.5 h-3.5 text-purple-400" />
+                        <h4 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                          Tactical Spells & Awakened Abilities
+                        </h4>
+                      </div>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Available MP: <strong className="text-cyan-300">{playerMp} / {playerMaxMp}</strong>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {/* Class Signature Burst */}
+                      <button
+                        onClick={() => {
+                          setShowSkillsDrawer(false);
+                          handleTacticalAction("burst");
+                        }}
+                        disabled={isResolvingTurn || playerMp < classArsenal.actions.burst.costMp}
+                        className="p-3 rounded-xl bg-amber-950/20 hover:bg-amber-950/40 border border-amber-500/30 hover:border-amber-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
+                      >
+                        <div>
+                          <span className="text-xs font-bold text-amber-200 block truncate">
+                            {activeSynergies[0]?.bonusName
+                              ? `[${activeSynergies[0].bonusName}] ${classArsenal.actions.burst.name}`
+                              : classArsenal.actions.burst.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-amber-300/80 block mt-0.5">
+                            {classArsenal.actions.burst.badgeText}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 shrink-0">
+                          {classArsenal.actions.burst.costMp} MP
+                        </span>
+                      </button>
+
+                      {/* Class Tactical Synergy */}
+                      <button
+                        onClick={() => {
+                          setShowSkillsDrawer(false);
+                          handleTacticalAction("synergy");
+                        }}
+                        disabled={isResolvingTurn || playerMp < classArsenal.actions.synergy.costMp}
+                        className="p-3 rounded-xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-500/30 hover:border-rose-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
+                      >
+                        <div>
+                          <span className="text-xs font-bold text-rose-200 block truncate">
+                            {classArsenal.actions.synergy.name}
+                          </span>
+                          <span className="text-[10px] font-mono text-rose-300/80 block mt-0.5">
+                            {classArsenal.actions.synergy.badgeText}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 shrink-0">
+                          {classArsenal.actions.synergy.costMp} MP
+                        </span>
+                      </button>
+
+                      {/* Awakened Custom Archetype Abilities */}
                       {availableCustomAbilities.map((ab) => (
                         <button
                           key={ab.name}
-                          onClick={() => handleTacticalAction("ability", ab)}
+                          onClick={() => {
+                            setShowSkillsDrawer(false);
+                            handleTacticalAction("ability", ab);
+                          }}
                           disabled={isResolvingTurn || playerMp < 15}
-                          className="p-2.5 rounded-2xl bg-purple-950/25 hover:bg-purple-950/45 border border-purple-500/30 hover:border-purple-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
+                          className="p-3 rounded-xl bg-purple-950/25 hover:bg-purple-950/45 border border-purple-500/30 hover:border-purple-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
                         >
-                          <div>
-                            <span className="text-xs font-bold text-purple-200 block">{ab.name}</span>
-                            <span className="text-[10px] font-mono text-zinc-400 line-clamp-1">{ab.description}</span>
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-purple-200 block truncate">{ab.name}</span>
+                            <span className="text-[10px] font-mono text-zinc-400 truncate block mt-0.5">{ab.description}</span>
                           </div>
                           <span className="text-[10px] font-mono text-purple-300 font-bold px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 shrink-0">
                             {ab.cost || "15 MP"}
@@ -1464,7 +1695,27 @@ function LitRPGTrialsContent() {
               ref={feedContainerRef}
               className="max-h-[380px] overflow-y-auto space-y-2.5 pr-1 font-mono text-[11px] leading-relaxed scrollbar-thin scrollbar-thumb-zinc-800"
             >
-              {combatFeed.length === 0 ? (
+              {/* Telemetry Calculation Skeleton Loader */}
+              {isResolvingTurn && (
+                <div className="p-3 rounded-2xl bg-zinc-900/90 border border-blue-500/40 space-y-2 relative overflow-hidden backdrop-blur-md animate-pulse">
+                  <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                    <div className="flex items-center gap-1.5 font-mono text-xs text-blue-300">
+                      <Terminal className="w-3.5 h-3.5 text-blue-400 animate-spin" />
+                      <span className="font-bold">ANALYZING ACTION...</span>
+                    </div>
+                    <span className="text-[9px] font-mono text-cyan-400 font-bold flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                      STREAMING
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 pt-1">
+                    <div className="h-2.5 bg-zinc-800 rounded w-full" />
+                    <div className="h-2.5 bg-zinc-800/60 rounded w-4/5" />
+                  </div>
+                </div>
+              )}
+
+              {combatFeed.length === 0 && !isResolvingTurn ? (
                 <div className="p-4 rounded-2xl bg-zinc-900/40 border border-white/5 text-center text-zinc-500 text-xs font-mono">
                   No telemetry recorded. Initiate a tactical action to begin combat analysis.
                 </div>
