@@ -120,3 +120,4 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
 }
 
 export default AcquisitionNotification;
+

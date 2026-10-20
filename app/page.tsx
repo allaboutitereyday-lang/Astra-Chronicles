@@ -1129,6 +1129,8 @@ export default function VisualNovelGame() {
 
   const activeSpeakerComp = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase())) || party[0];
   const presentComps = party.filter((c) => c.isPresent);
+  const isSpeakingHeroine = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase()));
+  const heroineForMeter = isSpeakingHeroine || (presentComps.length > 0 ? presentComps[0] : null);
 
   const renderSaveModal = () => (
     showSaveModal && (
@@ -1816,34 +1818,6 @@ export default function VisualNovelGame() {
             <span className="font-medium text-emerald-300">{gameState.location}</span>
             <Compass className="w-3.5 h-3.5 text-zinc-500 group-hover:text-white transition-colors ml-1" />
           </button>
-
-          <div className="relative flex items-center gap-2 bg-black/75 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 shadow-lg">
-            {lastAffectionDelta !== null && (
-              <div 
-                className={`absolute -top-7 right-4 px-2 py-0.5 rounded-md font-mono text-[11px] font-bold animate-bounce shadow-lg ${
-                  lastAffectionDelta.delta > 0 
-                    ? "bg-rose-600/90 text-white border border-rose-400" 
-                    : "bg-zinc-800 text-zinc-400 border border-zinc-600"
-                }`}
-              >
-                {lastAffectionDelta.delta > 0 ? `+${lastAffectionDelta.delta} Favor` : `${lastAffectionDelta.delta} Favor`}
-              </div>
-            )}
-            <Heart className="w-4 h-4 text-rose-500 fill-rose-500/80" />
-            {activeSpeakerComp.encountered ? (
-              <>
-                <div className="w-16 sm:w-24 bg-zinc-800 rounded-full h-2 overflow-hidden border border-white/5">
-                  <div 
-                    className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500" 
-                    style={{ width: `${activeSpeakerComp.affection}%` }}
-                  />
-                </div>
-                <span className="text-xs font-mono font-bold text-rose-300">{activeSpeakerComp.affection}%</span>
-              </>
-            ) : (
-              <span className="text-xs font-mono text-zinc-500 italic px-1">??? Favor</span>
-            )}
-          </div>
         </div>
       </header>
 
@@ -1853,65 +1827,135 @@ export default function VisualNovelGame() {
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
           <div className="shrink-0 px-4 py-2 sm:px-5 sm:py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
-            <div className="inline-flex items-center gap-2 bg-rose-600/25 border border-rose-500/40 px-3 py-1 rounded-xl">
-              <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-              <span className="text-xs md:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono">
-                {gameState.speaker}
-              </span>
+            <div className="flex items-center gap-2.5">
+              <div className="inline-flex items-center gap-2 bg-rose-600/25 border border-rose-500/40 px-3 py-1 rounded-xl">
+                <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                <span className="text-xs md:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono">
+                  {gameState.speaker}
+                </span>
+              </div>
+
+              {/* Favor Meter placed directly next to the Heroine's Name (Above Sprite) */}
+              {heroineForMeter && (
+                <div className="relative inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1 rounded-xl shadow-inner">
+                  {lastAffectionDelta !== null && (
+                    <div 
+                      className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 ${
+                        lastAffectionDelta.delta > 0 
+                          ? "bg-rose-600/90 text-white border border-rose-400" 
+                          : "bg-zinc-800 text-zinc-400 border border-zinc-600"
+                      }`}
+                    >
+                      {lastAffectionDelta.delta > 0 ? `+${lastAffectionDelta.delta} Favor` : `${lastAffectionDelta.delta} Favor`}
+                    </div>
+                  )}
+                  <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/80" />
+                  {heroineForMeter.encountered ? (
+                    <>
+                      <div className="w-14 sm:w-20 bg-zinc-800 rounded-full h-1.5 overflow-hidden border border-white/5">
+                        <div 
+                          className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500" 
+                          style={{ width: `${heroineForMeter.affection}%` }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-mono font-bold text-rose-300">{heroineForMeter.affection}%</span>
+                    </>
+                  ) : (
+                    <span className="text-[10px] font-mono text-zinc-500 italic px-1">??? Favor</span>
+                  )}
+                </div>
+              )}
             </div>
+
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-md border border-white/5">
-                {activeSpeakerComp.expressionKey}
-              </span>
-              <span className="text-zinc-600">•</span>
+              {heroineForMeter && (
+                <>
+                  <span className="text-xs font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-md border border-white/5">
+                    {heroineForMeter.expressionKey}
+                  </span>
+                  <span className="text-zinc-600">•</span>
+                </>
+              )}
               <span className="text-xs text-amber-400 font-mono">Mood: {gameState.mood}</span>
             </div>
           </div>
 
           <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
-            {/* DYNAMIC MULTI-COMPANION SPRITE STAGE */}
+            {/* DYNAMIC SPRITE STAGE */}
             <div className="hidden sm:flex relative w-56 sm:w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
               <div className="relative w-full h-full flex items-end justify-center px-2">
-                {presentComps.map((comp) => {
-                  const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
-                  const spriteSrc = getSpriteSrc(comp.name, comp.expressionKey);
+                {presentComps.length > 0 ? (
+                  presentComps.map((comp) => {
+                    const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
+                    const spriteSrc = getSpriteSrc(comp.name, comp.expressionKey);
 
-                  return (
-                    <div 
-                      key={comp.name}
-                      className={`relative h-full flex items-end justify-center transition-all duration-500 ${
-                        presentComps.length > 1 ? "w-1/2" : "w-full"
-                      } ${isSpeaking ? "opacity-100 scale-100 z-10 brightness-105 animate-float-sway" : "opacity-45 scale-95 z-0 brightness-75"}`}
-                    >
-                      {/* Ambient Heroine Aura */}
-                      {isSpeaking && (
-                        <div 
-                          className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
-                          style={{
-                            background: comp.name.includes("Evelyn") 
-                              ? "radial-gradient(circle, rgba(168,85,247,0.7) 0%, transparent 70%)"
-                              : comp.name.includes("Aria")
-                              ? "radial-gradient(circle, rgba(6,182,212,0.7) 0%, transparent 70%)"
-                              : comp.name.includes("Serena")
-                              ? "radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 70%)"
-                              : comp.name.includes("Morgana")
-                              ? "radial-gradient(circle, rgba(225,29,72,0.7) 0%, transparent 70%)"
-                              : "radial-gradient(circle, rgba(234,179,8,0.7) 0%, transparent 70%)"
+                    return (
+                      <div 
+                        key={comp.name}
+                        className={`relative h-full flex items-end justify-center transition-all duration-500 ${
+                          presentComps.length > 1 ? "w-1/2" : "w-full"
+                        } ${isSpeaking ? "opacity-100 scale-100 z-10 brightness-105 animate-float-sway" : "opacity-45 scale-95 z-0 brightness-75"}`}
+                      >
+                        {/* Ambient Heroine Aura */}
+                        {isSpeaking && (
+                          <div 
+                            className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
+                            style={{
+                              background: comp.name.includes("Evelyn") 
+                                ? "radial-gradient(circle, rgba(168,85,247,0.7) 0%, transparent 70%)"
+                                : comp.name.includes("Aria")
+                                ? "radial-gradient(circle, rgba(6,182,212,0.7) 0%, transparent 70%)"
+                                : comp.name.includes("Serena")
+                                ? "radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 70%)"
+                                : comp.name.includes("Morgana")
+                                ? "radial-gradient(circle, rgba(225,29,72,0.7) 0%, transparent 70%)"
+                                : "radial-gradient(circle, rgba(234,179,8,0.7) 0%, transparent 70%)"
+                            }}
+                          />
+                        )}
+                        <img
+                          src={spriteSrc}
+                          alt={comp.name}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
                           }}
+                          className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] pointer-events-none"
                         />
-                      )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  /* SOLO / NO HEROINE SCENE: DISPLAY PROTAGONIST SPRITE */
+                  <div className="relative h-full w-full flex items-end justify-center animate-in fade-in duration-500">
+                    <div 
+                      className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-30"
+                      style={{
+                        background: "radial-gradient(circle, rgba(14,165,233,0.5) 0%, transparent 70%)"
+                      }}
+                    />
+                    {playerAvatar ? (
                       <img
-                        src={spriteSrc}
-                        alt={comp.name}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
-                        }}
+                        src={playerAvatar}
+                        alt={player.name}
                         className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] pointer-events-none"
                       />
+                    ) : (
+                      <div className="h-full w-full flex flex-col items-center justify-center text-center p-4">
+                        <div className="w-24 h-24 rounded-full bg-zinc-800/80 border-2 border-white/10 flex items-center justify-center text-zinc-500 mb-2 shadow-inner">
+                          <User className="w-12 h-12 text-zinc-500" />
+                        </div>
+                        <span className="text-xs font-mono text-zinc-300 font-semibold">{player.name}</span>
+                        <span className="text-[10px] font-mono text-zinc-500">{player.role || "Protagonist"}</span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/60 border border-white/10 text-sky-300">
+                        {player.name} ({player.role || "Protagonist"})
+                      </span>
                     </div>
-                  );
-                })}
+                  </div>
+                )}
               </div>
               <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
             </div>
