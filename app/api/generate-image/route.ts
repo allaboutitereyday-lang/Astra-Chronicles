@@ -178,7 +178,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const {
-      mode = "character", // "scene" | "loot" | "character"
+      mode = "character", // "scene" | "loot" | "character" | "monster"
       prompt,
       seed,
       characterName = "Companion",
@@ -188,6 +188,12 @@ export async function POST(req: Request) {
       sceneContext,
       item,
       userAccessKey,
+      enemyName,
+      enemyDesc,
+      location,
+      sectorName,
+      modifier,
+      genre,
     } = body;
 
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -280,6 +286,43 @@ export async function POST(req: Request) {
         model: "offline-fallback",
         prompt: lootPrompt,
         item,
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 3. CONTEXTUAL MONSTER ART GENERATION (LITRPG TRIALS)
+    // -------------------------------------------------------------
+    if (mode === "monster") {
+      const eName = enemyName || "Planar Anomaly";
+      const eDesc = enemyDesc || "A dangerous creature manifested from fractured dimensional boundaries.";
+      const secLocation = location || sectorName || "Fracture Chamber";
+      const modName = modifier || "Entropy Cascade";
+      const storyGenre = genre || "Sci-Fi Grimdark LitRPG";
+
+      const monsterPrompt = prompt || `Epic anime visual novel boss monster portrait: "${eName}". ${eDesc}. Encountered in ${secLocation} under active spacetime anomaly: ${modName}. Menacing stance, dark futuristic glowing runes, fractured aether plasma, volumetric god rays, high concept art for ${storyGenre}, dark atmospheric framing, crisp digital painting, 16:9 cinematic widescreen, masterpiece asset.`;
+
+      if (apiKey) {
+        const result = await queryNanoBanana(apiKey, monsterPrompt);
+        if (result) {
+          return NextResponse.json({
+            success: true,
+            mode: "monster",
+            imageUrl: result.imageUrl,
+            model: result.modelUsed,
+            prompt: monsterPrompt,
+            enemyName: eName,
+          });
+        }
+      }
+
+      // Offline / fallback response
+      return NextResponse.json({
+        success: true,
+        mode: "monster",
+        imageUrl: "/backgrounds/gray_zone.jpg",
+        model: "offline-fallback",
+        prompt: monsterPrompt,
+        enemyName: eName,
       });
     }
 

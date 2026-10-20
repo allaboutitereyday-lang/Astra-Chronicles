@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { loadGameSlot, saveGameSlot, SaveSlotPayload } from "@/lib/saveStorage";
-import { saveCodexLoot } from "@/lib/codexStorage";
+import { saveCodexLoot, saveCodexScene, getAllCodexScenes } from "@/lib/codexStorage";
 import { InventoryItem, PlayerProfile, AbilityDetail, StoryCompanion, TrialModifier } from "@/types/story";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "@/lib/trialsClassArsenals";
@@ -338,7 +338,7 @@ function LitRPGTrialsContent() {
     }
   }, [currentSectorIdx, activeSector]);
 
-  // Check sessionStorage for cached monster art on sector transition
+  // Check sessionStorage and Multiverse Codex for cached monster art on sector transition
   useEffect(() => {
     const enemyName = activeSector.enemyName;
     if (monsterImages[enemyName]) return;
@@ -346,8 +346,24 @@ function LitRPGTrialsContent() {
       const cached = sessionStorage.getItem(`astra_trial_monster_${enemyName}`);
       if (cached) {
         setMonsterImages((prev) => ({ ...prev, [enemyName]: cached }));
+        return;
       }
     } catch {}
+
+    // Check permanent Multiverse Codex IndexedDB
+    getAllCodexScenes()
+      .then((scenes) => {
+        const found = scenes.find(
+          (s) => s.speaker.toLowerCase() === enemyName.toLowerCase() && s.imageUrl
+        );
+        if (found && found.imageUrl) {
+          setMonsterImages((prev) => ({ ...prev, [enemyName]: found.imageUrl }));
+          try {
+            sessionStorage.setItem(`astra_trial_monster_${enemyName}`, found.imageUrl);
+          } catch {}
+        }
+      })
+      .catch(() => {});
   }, [activeSector.enemyName, monsterImages]);
 
   // Contextual Monster Art Generation for Active Sector (Pillars 1 & 3)
@@ -372,8 +388,10 @@ function LitRPGTrialsContent() {
           mode: "monster",
           prompt: monsterPrompt,
           location: activeSector.title,
+          sectorName: activeSector.codename,
           modifier: activeSector.causalModifier.name,
           enemyName: activeSector.enemyName,
+          enemyDesc: activeSector.enemyDesc,
           userAccessKey: userKey,
         }),
       });
@@ -382,6 +400,15 @@ function LitRPGTrialsContent() {
         setMonsterImages((prev) => ({ ...prev, [enemyName]: data.imageUrl }));
         try {
           sessionStorage.setItem(`astra_trial_monster_${enemyName}`, data.imageUrl);
+          await saveCodexScene({
+            storyId: "trials",
+            storyTitle: "LitRPG Daily Roguelite Trials",
+            location: activeSector.title,
+            speaker: activeSector.enemyName,
+            prompt: monsterPrompt,
+            imageUrl: data.imageUrl,
+            model: data.model || "Nano Banana 2.1",
+          });
         } catch {}
       }
     } catch (err) {
@@ -798,10 +825,19 @@ function LitRPGTrialsContent() {
         const finalHp = Math.max(15, Math.min(newMaxHp, playerHp > 0 ? playerHp : Math.floor(newMaxHp * 0.5)));
         const finalMp = Math.max(10, Math.min(newMaxMp, playerMp > 0 ? playerMp : Math.floor(newMaxMp * 0.5)));
 
+        const updatedGearImages = { ...(currentPlayer.gearImages || {}) };
+        mergedInventory.forEach((item) => {
+          if (item.imageUrl) {
+            updatedGearImages[item.id] = item.imageUrl;
+            updatedGearImages[item.name] = item.imageUrl;
+          }
+        });
+
         const updatedPlayer: PlayerProfile = {
           ...currentPlayer,
           level: newLevel,
           inventory: mergedInventory,
+          gearImages: updatedGearImages,
           stats: {
             ...currentStats,
             exp: newExp,

@@ -1434,7 +1434,12 @@ export default function VisualNovelGame() {
                 ? { ...inv, imageUrl: cached.imageUrl }
                 : inv
             );
-            const nextP = { ...prev, inventory: nextInv };
+            const updatedGearImages = {
+              ...(prev.gearImages || {}),
+              [item.id]: cached.imageUrl,
+              [item.name]: cached.imageUrl,
+            };
+            const nextP = { ...prev, inventory: nextInv, gearImages: updatedGearImages };
             playerRef.current = nextP;
             performAutoSave({ player: nextP });
             return nextP;
@@ -1463,7 +1468,14 @@ export default function VisualNovelGame() {
       .then(({ hydrated, updatedCount }) => {
         if (active && updatedCount > 0) {
           setPlayer((prev) => {
-            const nextP = { ...prev, inventory: hydrated };
+            const nextGearImages = { ...(prev.gearImages || {}) };
+            hydrated.forEach((item) => {
+              if (item.imageUrl) {
+                nextGearImages[item.id] = item.imageUrl;
+                nextGearImages[item.name] = item.imageUrl;
+              }
+            });
+            const nextP = { ...prev, inventory: hydrated, gearImages: nextGearImages };
             playerRef.current = nextP;
             performAutoSave({ player: nextP });
             return nextP;
@@ -2816,7 +2828,12 @@ export default function VisualNovelGame() {
                       ? { ...inv, imageUrl: lootData.imageUrl }
                       : inv
                   );
-                  const nextP = { ...prev, inventory: updated };
+                  const updatedGearImages = {
+                    ...(prev.gearImages || {}),
+                    [droppedItem.id]: lootData.imageUrl,
+                    [droppedItem.name]: lootData.imageUrl,
+                  };
+                  const nextP = { ...prev, inventory: updated, gearImages: updatedGearImages };
                   playerRef.current = nextP;
                   performAutoSave({ player: nextP });
                   return nextP;
