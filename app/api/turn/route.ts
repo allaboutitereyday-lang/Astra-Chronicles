@@ -4,7 +4,7 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 export const runtime = "nodejs";
 
 const FALLBACK_MODELS = [
-  "dots-studio/dots-3-note-preview:free",
+  "deepseek/deepseek-v4.1-flash-1017",
   "meta-llama/llama-3.2-11b-vision-instruct:free",
   "nvidia/nemotron-3-ultra-550b-a55b:free",
   "nvidia/nemotron-3.5-lightning:free",
@@ -115,8 +115,16 @@ ${inputHandlingInstruction}
 
 ${visualInspectionInstruction}
 
+--- HEROINE COMPATIBILITY DIRECTIVE ---
+Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded, cynical, and possess distinct codes of behavior. Affection cannot be easily charmed or rushed; it must be won through genuine ideological compatibility.
+- Evelyn Abbandonato: Values intellect, arcane precision, subtle manipulation, composure. Dislikes crude brute force, groveling, or blind obedience.
+- Aria Shadowthorn: Values pragmatism, stealth, tradecraft, quiet competence. Dislikes self-righteous preaching, knightly arrogance, reckless noise.
+- Serena: Values impeccable composure, polite duty, decisive lethality, discipline. Dislikes whining, chaos, disrespect to boundaries, false mercy.
+- Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
+- Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.
+
 --- MECHANICAL RULES ---
-1. Favor: Assign affection_delta (-10 to +10) based on how the active companion genuinely views the action.
+1. Favor: Assign affection_delta (-8 to +6) based on true compatibility with the active heroine's values (see Compatibility Directive). Meaningful alignment = +3 to +6, clashing actions = -2 to -6, neutral = 0 or +1.
 2. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest/archive occurs, award loot items or an ability in "player_progression".
 3. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]").
 
@@ -132,7 +140,8 @@ Respond strictly in valid JSON matching this schema:
     "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
     "affected_companion": string,
     "affection_delta": number,
-    "present_companions": string[]
+    "present_companions": string[],
+    "newly_encountered_heroines": string[]
   },
   "player_progression": {
     "exp_gained": number,

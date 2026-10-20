@@ -47,6 +47,7 @@ export interface Companion {
   affection: number;
   expressionKey: string;
   isPresent: boolean;
+  encountered: boolean;
   color: string;
 }
 
@@ -270,41 +271,46 @@ export default function VisualNovelGame() {
     {
       name: "Evelyn Abbandonato",
       title: "High Arcanist of House Abbandonato",
-      affection: 50,
+      affection: 15,
       expressionKey: "smug",
       isPresent: true,
+      encountered: false,
       color: "rose",
     },
     {
       name: "Aria Shadowthorn",
       title: "Rogue Infiltrator of the Veil Seekers",
-      affection: 50,
+      affection: 12,
       expressionKey: "neutral",
       isPresent: false,
+      encountered: false,
       color: "sky",
     },
     {
       name: "Serena",
       title: "Dutiful Demi-Human Combat Maid",
-      affection: 50,
+      affection: 15,
       expressionKey: "neutral",
       isPresent: false,
+      encountered: false,
       color: "zinc",
     },
     {
       name: "Morgana",
       title: "Demon Realm Noblewoman",
-      affection: 50,
+      affection: 10,
       expressionKey: "neutral",
       isPresent: false,
+      encountered: false,
       color: "purple",
     },
     {
       name: "Perci",
       title: "Timid Kitsune Rogue",
-      affection: 50,
+      affection: 12,
       expressionKey: "neutral",
       isPresent: false,
+      encountered: false,
       color: "amber",
     },
   ]);
@@ -557,26 +563,28 @@ export default function VisualNovelGame() {
     return DEFAULT_FALLBACK_SPRITE;
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
     if (!player.role.trim()) {
       alert("Please define a custom class or archetype.");
       return;
     }
 
+    if (!accessKey) {
+      setShowAuthModal(true);
+      setAuthError("Please validate an access key before starting your journey.");
+      return;
+    }
+
     const chosen = prologues[selectedPrologue];
     const initialBg = LOCATION_BACKGROUNDS[chosen.location] || DEFAULT_BG;
-    const initialSprite = getSpriteSrc(chosen.speaker, chosen.expressionKey);
 
-    setParty((prevParty) =>
-      prevParty.map((comp) => {
-        const isSelected = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
-        return {
-          ...comp,
-          isPresent: isSelected,
-          expressionKey: isSelected ? chosen.expressionKey : "neutral",
-        };
-      })
-    );
+    soundEffects.playRiftTransition();
+
+    setIsTransitioning({
+      location: chosen.location,
+      speaker: chosen.speaker,
+      quote: "Observing mortal arrival & forging bespoke dynamic prologue...",
+    });
 
     const initialGear = gearPreference === "none"
       ? { weapon: "Bare Hands", armor: "Rags", relic: "None" }
@@ -584,49 +592,122 @@ export default function VisualNovelGame() {
 
     setPlayer((prev) => ({ ...prev, gear: initialGear }));
 
-    let moodDescription = "Observant & Composed";
-    if (chosen.speaker.includes("Evelyn")) moodDescription = "Aristocratic & Observant";
-    else if (chosen.speaker.includes("Aria")) moodDescription = "Cautious & Pragmatic";
-    else if (chosen.speaker.includes("Serena")) moodDescription = "Polite & Lethal";
-    else if (chosen.speaker.includes("Morgana")) moodDescription = "Enigmatic & Predatory";
-    else if (chosen.speaker.includes("Perci")) moodDescription = "Timid & Wary";
+    const startTime = Date.now();
 
-    setGameState({
-      speaker: chosen.speaker,
-      location: chosen.location,
-      dialogue: chosen.dialogue,
-      mood: moodDescription,
-      bgImage: initialBg,
-      presentCompanions: [chosen.speaker],
-    });
+    try {
+      const res = await fetch("/api/prologue", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-key": accessKey,
+        },
+        body: JSON.stringify({
+          playerProfile: { ...player, gear: initialGear },
+          playerAvatarBase64: playerAvatar,
+          startingHeroine: chosen.speaker,
+          startingLocation: chosen.location,
+          narrationStyle,
+          userAccessKey: accessKey,
+        }),
+      });
 
-    const openingPrologueText = `${chosen.sceneSetup}\n\n"${chosen.dialogue}"`;
+      if (!res.ok) {
+        throw new Error("Prologue generation request returned error.");
+      }
 
-    soundEffects.playRiftTransition();
+      const data = await res.json();
+      if (data._userStats) {
+        setUserAuth(data._userStats);
+      }
 
-    setIsTransitioning({
-      location: chosen.location,
-      speaker: chosen.speaker,
-      quote: chosen.dialogue.split("\n")[0].replace(/"/g, ""),
-    });
+      const activeSpeaker = data.speaker || chosen.speaker;
+      const initialAffection = typeof data.initial_affection === "number" ? data.initial_affection : 15;
+      const activeExpression = data.expression_key || chosen.expressionKey || "neutral";
+      const initialSprite = getSpriteSrc(activeSpeaker, activeExpression);
+      const openingPrologueText = `${data.scene_setup || chosen.sceneSetup}\n\n"${data.dialogue || chosen.dialogue}"`;
 
-    setChatLog([
-      {
-        id: "start",
-        sender: "character",
-        speakerName: chosen.speaker,
-        text: openingPrologueText,
-        timestamp: "Prologue",
-        avatarSrc: initialSprite,
-      },
-    ]);
-    setChoices(chosen.choices);
+      setParty((prevParty) =>
+        prevParty.map((comp) => {
+          const isSelected = comp.name.toLowerCase().includes(activeSpeaker.toLowerCase());
+          return {
+            ...comp,
+            isPresent: isSelected,
+            encountered: isSelected, // Only the starting heroine is known initially!
+            affection: isSelected ? initialAffection : comp.affection,
+            expressionKey: isSelected ? activeExpression : "neutral",
+          };
+        })
+      );
 
-    // Cinematic delay for planar crossing title card
-    setTimeout(() => {
-      setIsConfigured(true);
-      setIsTransitioning(null);
-    }, 2600);
+      setGameState({
+        speaker: activeSpeaker,
+        location: data.location || chosen.location,
+        dialogue: data.dialogue || chosen.dialogue,
+        mood: data.initial_mood || "Guarded & Observant",
+        bgImage: initialBg,
+        presentCompanions: [activeSpeaker],
+      });
+
+      setChatLog([
+        {
+          id: "start",
+          sender: "character",
+          speakerName: activeSpeaker,
+          text: openingPrologueText,
+          timestamp: "Prologue",
+          avatarSrc: initialSprite,
+        },
+      ]);
+
+      setChoices(data.opening_choices && data.opening_choices.length === 4 ? data.opening_choices : chosen.choices);
+    } catch (err) {
+      console.warn("Prologue AI fallback:", err);
+
+      const initialSprite = getSpriteSrc(chosen.speaker, chosen.expressionKey);
+      const openingPrologueText = `${chosen.sceneSetup}\n\n"${chosen.dialogue}"`;
+
+      setParty((prevParty) =>
+        prevParty.map((comp) => {
+          const isSelected = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
+          return {
+            ...comp,
+            isPresent: isSelected,
+            encountered: isSelected,
+            affection: isSelected ? 15 : comp.affection,
+            expressionKey: isSelected ? chosen.expressionKey : "neutral",
+          };
+        })
+      );
+
+      setGameState({
+        speaker: chosen.speaker,
+        location: chosen.location,
+        dialogue: chosen.dialogue,
+        mood: "Guarded & Observant",
+        bgImage: initialBg,
+        presentCompanions: [chosen.speaker],
+      });
+
+      setChatLog([
+        {
+          id: "start",
+          sender: "character",
+          speakerName: chosen.speaker,
+          text: openingPrologueText,
+          timestamp: "Prologue",
+          avatarSrc: initialSprite,
+        },
+      ]);
+      setChoices(chosen.choices);
+    } finally {
+      const elapsed = Date.now() - startTime;
+      const remainingDelay = Math.max(0, 2200 - elapsed);
+
+      setTimeout(() => {
+        setIsConfigured(true);
+        setIsTransitioning(null);
+      }, remainingDelay);
+    }
   };
 
   const handleSaveSlot = (slotId: number) => {
@@ -653,7 +734,14 @@ export default function VisualNovelGame() {
     setPlayer(data.player);
     setPlayerAvatar(data.playerAvatar);
     setGameState(data.gameState);
-    if (data.party) setParty(data.party);
+    if (data.party) {
+      setParty(
+        data.party.map((c) => ({
+          ...c,
+          encountered: typeof c.encountered === "boolean" ? c.encountered : (c.isPresent || c.affection !== 50),
+        }))
+      );
+    }
     setMemories(data.memories);
     setChatLog(data.chatLog);
     setShowSaveModal(false);
@@ -805,15 +893,21 @@ export default function VisualNovelGame() {
         setTimeout(() => setLastAffectionDelta(null), 3500);
       }
 
+      const newlyMet: string[] = data.state_updates?.newly_encountered_heroines || [];
+
       setParty((prevParty) =>
         prevParty.map((comp) => {
           const isCurrentSpeaker = comp.name.toLowerCase().includes(speakerName.toLowerCase());
           const isAffected = comp.name.toLowerCase().includes(affectedComp.toLowerCase());
           const isPresent = presentList.some((p) => comp.name.toLowerCase().includes(p.toLowerCase()));
+          const isNewlyMet = newlyMet.some((n) => comp.name.toLowerCase().includes(n.toLowerCase()));
+
+          const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
 
           return {
             ...comp,
             isPresent,
+            encountered: nowEncountered,
             expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
             affection: isAffected && typeof delta === "number"
               ? Math.max(0, Math.min(100, comp.affection + delta))
@@ -1592,23 +1686,29 @@ export default function VisualNovelGame() {
               </div>
             )}
             <Heart className="w-4 h-4 text-rose-500 fill-rose-500/80" />
-            <div className="w-16 sm:w-24 bg-zinc-800 rounded-full h-2 overflow-hidden border border-white/5">
-              <div 
-                className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500" 
-                style={{ width: `${activeSpeakerComp.affection}%` }}
-              />
-            </div>
-            <span className="text-xs font-mono font-bold text-rose-300">{activeSpeakerComp.affection}%</span>
+            {activeSpeakerComp.encountered ? (
+              <>
+                <div className="w-16 sm:w-24 bg-zinc-800 rounded-full h-2 overflow-hidden border border-white/5">
+                  <div 
+                    className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${activeSpeakerComp.affection}%` }}
+                  />
+                </div>
+                <span className="text-xs font-mono font-bold text-rose-300">{activeSpeakerComp.affection}%</span>
+              </>
+            ) : (
+              <span className="text-xs font-mono text-zinc-500 italic px-1">??? Favor</span>
+            )}
           </div>
         </div>
       </header>
 
       {/* DIALOGUE & SPRITE TERMINAL */}
-      <div className="absolute bottom-5 inset-x-4 md:inset-x-8 lg:inset-x-16 z-30 flex flex-col gap-2.5">
-        <div className="relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col">
+      <div className="absolute top-20 bottom-3 inset-x-3 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-2 pointer-events-none">
+        <div className="pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[160px] max-h-[46vh] sm:max-h-[50vh] md:max-h-[54vh]">
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
-          <div className="px-5 py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
+          <div className="shrink-0 px-4 py-2 sm:px-5 sm:py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
             <div className="inline-flex items-center gap-2 bg-rose-600/25 border border-rose-500/40 px-3 py-1 rounded-xl">
               <Sparkles className="w-3.5 h-3.5 text-rose-400" />
               <span className="text-xs md:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono">
@@ -1624,9 +1724,9 @@ export default function VisualNovelGame() {
             </div>
           </div>
 
-          <div className="flex flex-row h-72 sm:h-80 md:h-[23rem]">
+          <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
             {/* DYNAMIC MULTI-COMPANION SPRITE STAGE */}
-            <div className="hidden sm:flex relative w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
+            <div className="hidden sm:flex relative w-56 sm:w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
               <div className="relative w-full h-full flex items-end justify-center px-2">
                 {presentComps.map((comp) => {
                   const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
@@ -1799,14 +1899,14 @@ export default function VisualNovelGame() {
         </div>
 
         {choices.length > 0 && !isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 select-none">
+          <div className="pointer-events-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 select-none shrink-0 max-h-32 sm:max-h-36 overflow-y-auto pr-0.5">
             {choices.map((choice, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => sendAction(choice, false)}
                 disabled={isLoading}
-                className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-4 py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
               >
                 <span className="text-xs sm:text-sm text-zinc-200 group-hover:text-white line-clamp-2 pr-2">
                   {choice}
@@ -1819,7 +1919,7 @@ export default function VisualNovelGame() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex gap-2 select-none">
+        <form onSubmit={handleSubmit} className="pointer-events-auto flex gap-2 select-none shrink-0">
           <button
             type="button"
             onClick={() => setIsOOCMode(!isOOCMode)}
@@ -1887,25 +1987,48 @@ export default function VisualNovelGame() {
                 return (
                   <div key={comp.name} className="bg-zinc-900/80 border border-white/10 p-4 rounded-2xl flex items-center gap-3">
                     <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/15 bg-zinc-950 shrink-0">
-                      <img src={sprite} alt={comp.name} className="w-full h-full object-cover object-top" />
+                      <img 
+                        src={sprite} 
+                        alt={comp.name} 
+                        className={`w-full h-full object-cover object-top ${!comp.encountered ? "brightness-30 grayscale contrast-150" : ""}`} 
+                      />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-white">{comp.name}</p>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${comp.isPresent ? "bg-emerald-500/20 text-emerald-300" : "bg-zinc-800 text-zinc-500"}`}>
-                          {comp.isPresent ? "In Scene" : "Absent"}
+                        <p className="text-sm font-bold text-white">
+                          {comp.encountered ? comp.name : "???"}
+                        </p>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                          !comp.encountered 
+                            ? "bg-zinc-800 text-zinc-500" 
+                            : comp.isPresent 
+                            ? "bg-emerald-500/20 text-emerald-300" 
+                            : "bg-zinc-800 text-zinc-400"
+                        }`}>
+                          {!comp.encountered ? "Unmet" : comp.isPresent ? "In Scene" : "Absent"}
                         </span>
                       </div>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">{comp.title}</p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5">
+                        {comp.encountered ? comp.title : "Mystery Heroine • Path yet to cross"}
+                      </p>
                       
                       <div className="mt-2">
-                        <div className="flex justify-between text-[10px] font-mono mb-1 text-rose-300">
-                          <span>Affection / Favor</span>
-                          <span>{comp.affection}%</span>
-                        </div>
-                        <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                          <div className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all" style={{ width: `${comp.affection}%` }} />
-                        </div>
+                        {comp.encountered ? (
+                          <>
+                            <div className="flex justify-between text-[10px] font-mono mb-1 text-rose-300">
+                              <span>Affection / Favor</span>
+                              <span>{comp.affection}%</span>
+                            </div>
+                            <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                              <div className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all" style={{ width: `${comp.affection}%` }} />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex justify-between items-center text-[10px] font-mono text-zinc-500 bg-black/40 px-2.5 py-1.5 rounded-lg border border-white/5">
+                            <span>Affection</span>
+                            <span className="italic text-zinc-500">??? (Not Yet Encountered)</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
