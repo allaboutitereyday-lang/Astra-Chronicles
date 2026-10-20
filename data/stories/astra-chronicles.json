@@ -1,0 +1,364 @@
+{
+  "id": "astra-chronicles",
+  "title": "Astra Chronicles",
+  "tagline": "A high-fantasy grimdark visual novel of political intrigue, forbidden planar conduits, and causal anchors.",
+  "description": "On the fractured Astra Continent, the Baltia Empire teeters on the verge of planar collapse. Navigate ancient mage towers, blood-soaked ducal manors, and shadowy border badlands as an unanchored mortal guided by the cold, transcendent LitRPG System Administrator.",
+  "coverImage": "/backgrounds/imperial_capital_imperium.jpg",
+  "genre": "High Fantasy / Grimdark / LitRPG",
+  "themes": ["Political Intrigue", "Planar Cataclysm", "Heroine Compatibility", "LitRPG System"],
+  "narrationStyle": "Grimdark & Atmospheric",
+  "createdAt": "2026-10-19T00:00:00Z",
+  "author": "Archon Vanguard",
+  "isPreset": true,
+  "worldContext": {
+    "settingName": "Astra Continent",
+    "eraOrPeriod": "Age of Planar Alignment",
+    "loreSummary": "The Baltia Empire dominates the central plains of Astra, anchored by the colossal Mage Tower humming with concentrated celestial conduits. Beyond the capital lie aristocratic bloodline manors, smuggler-choked maritime ports, primeval forest canopies, and the desiccated Gray Zone buffering the Demon Realm.",
+    "factions": [
+      {
+        "name": "Baltia Imperial Guard",
+        "description": "Enforcers of the throne and guardians of the imperial capital ramparts."
+      },
+      {
+        "name": "House Abbandonato",
+        "description": "An ancient, cunning high-arcanist dynasty presiding over the Mage Tower's upper planar conduits."
+      },
+      {
+        "name": "The Veil Seekers",
+        "description": "A covert syndicate of pragmatic scouts, infiltrators, and information brokers operating in the undercroft."
+      },
+      {
+        "name": "Demon Realm Nobility",
+        "description": "Ancient planar entities dwelling beyond the volcanic fissures of the Gray Zone."
+      }
+    ],
+    "locations": [
+      {
+        "name": "Imperial Capital Imperium",
+        "zone": "Baltia Empire",
+        "danger": "Low (Imperial Guard & Mage Tower)",
+        "description": "The fortified seat of the Baltia Empire, centered around the soaring Mage Tower overlooking the central plains.",
+        "bgImage": "/backgrounds/imperial_capital_imperium.jpg"
+      },
+      {
+        "name": "Bloodrose Duchy",
+        "zone": "Western Heartland",
+        "danger": "Moderate (Noble Conspiracies)",
+        "description": "Rolling estate plains carpeted in deep crimson flora and ancient aristocratic bloodline manors.",
+        "bgImage": "/backgrounds/bloodrose_duchy.jpg"
+      },
+      {
+        "name": "Mage Tower",
+        "zone": "Imperial Sanctuaries",
+        "danger": "Guarded (Archon Wards)",
+        "description": "The colossal spire humming with concentrated celestial conduits, holding forbidden archives and teleportation circles.",
+        "bgImage": "/backgrounds/mage_tower.jpg"
+      },
+      {
+        "name": "Port City Fortus",
+        "zone": "Southern Maritime",
+        "danger": "Moderate (Smugglers & Corsairs)",
+        "description": "A bustling stone dock city situated along the southern coast, where maritime trade meets underworld aether contraband.",
+        "bgImage": "/backgrounds/port_city.jpg"
+      },
+      {
+        "name": "Silvanes",
+        "zone": "The Great Canopy",
+        "danger": "High (Primeval Beasts)",
+        "description": "An ancient, colossal canopy forest separating the Baltia Empire from the northern frontiers.",
+        "bgImage": "/backgrounds/imperial_capital_imperium.jpg"
+      },
+      {
+        "name": "Gray Zone",
+        "zone": "Eastern Borderlands",
+        "danger": "Deadly (Desolation & Corruption)",
+        "description": "A cracked, desiccated badlands forming the barren buffer right outside the volcanic Demon Realm.",
+        "bgImage": "/backgrounds/gray_zone.jpg"
+      }
+    ]
+  },
+  "rpgRules": {
+    "systemName": "LitRPG System Administrator",
+    "currencyName": "Gold",
+    "causalAnchorName": "Causal Plausibility",
+    "defaultPlausibility": 80,
+    "statDefinitions": {
+      "str": "Strength (Physical Might, Melee Penetration, Heavy Gear Mastery)",
+      "dex": "Dexterity (Finesse, Reflexes, Stealth & Lethal Timing)",
+      "int": "Intelligence (Arcana, Tactical Deciphering, System Plausibility Resistance)"
+    },
+    "startingLevel": 1,
+    "baseStats": {
+      "hp": 100,
+      "maxHp": 100,
+      "mp": 60,
+      "maxMp": 60,
+      "exp": 0,
+      "maxExp": 100,
+      "str": 10,
+      "dex": 10,
+      "int": 10
+    },
+    "startingGearOptions": [
+      {
+        "id": "system_prologue",
+        "label": "System Manifested (Generated on Arrival)",
+        "gear": {
+          "weapon": "[System Pending]",
+          "armor": "[System Pending]",
+          "relic": "None"
+        }
+      },
+      {
+        "id": "humble_wanderer",
+        "label": "Wanderer Rags & Bare Hands",
+        "gear": {
+          "weapon": "Bare Hands",
+          "armor": "Rags",
+          "relic": "None"
+        }
+      }
+    ]
+  },
+  "startingNodes": [
+    {
+      "id": "prologue_evelyn",
+      "speaker": "Evelyn Abbandonato",
+      "title": "Evelyn: The Imperium Spire Ramparts",
+      "location": "Imperial Capital Imperium",
+      "sceneSetup": "Wind off the great eastern gulf whips through the imperial parapets, carrying the sharp scent of ozone and cooling masonry. Below, the capital city of Imperium glitters in tiered rings of stone and polished copper, eclipsed only by the colossal Mage Tower pulsing with celestial resonance. You slipped past the second watch-ward only to find the high terrace occupied.\n\nLeaning against the carved balustrade, Evelyn Abbandonato swivels deliberately. Her heavy-lidded blue eyes sweep over your stance, lingering on your equipment and evaluating the threat before a smirk forms.",
+      "dialogue": "Lurking along the imperial ramparts while the Mage Tower aligns its planar gyres? How deliciously pedestrian.\n\nState your house, your master, or whatever pitiful guild sent you before I have the gargoyle sentinels toss you into the river gates below.",
+      "expressionKey": "smug",
+      "initialAffection": 15,
+      "bgImage": "/backgrounds/imperial_capital_imperium.jpg",
+      "choices": [
+        "[Subterfuge] Show the forged imperial cipher you lifted from the guard captain at the lower docks.",
+        "[Arcana] Point out that the Mage Tower's secondary focus ring is misaligned by three degrees.",
+        "[Composure] Step forward into the lantern light, meet her gaze evenly, and offer your services in contract.",
+        "[Force] Keep your hand resting close to your weapon and demand passage through the upper corridor."
+      ]
+    },
+    {
+      "id": "prologue_aria",
+      "speaker": "Aria Shadowthorn",
+      "title": "Aria: The Archon Vault Undercroft",
+      "location": "Mage Tower",
+      "sceneSetup": "Damp obsidian masonry echoes with the dull rhythmic thrum of suppressed leyline wards. The floor is lined with shattered containment seals—remnants of an archive break-in that happened mere minutes ago. You drop down through a ventilation conduit into an octagonal vault lit only by floating azure glyphs.\n\nA shadow disengages from the central pedestal. Twin blackened daggers catch the glyph light, held low and reverse-gripped. Aria tilts her head, gaze zeroed in on your footing.",
+      "dialogue": "Don't twitch. You bypassed the third silence ward without setting off the alarm chimes... which means either the Veil Seekers sent a second scout without telling me, or House Abbandonato's hounds are getting unusually quiet.\n\nHands where I can see them. Who signed your contract tonight?",
+      "expressionKey": "combat_ready",
+      "initialAffection": 12,
+      "bgImage": "/backgrounds/mage_tower.jpg",
+      "choices": [
+        "[Subterfuge] Signal the covert Veil Seeker counter-cipher with your left hand.",
+        "[Observation] Note that her daggers are leaking residual ward-discharge—she triggered the inner glyphs herself.",
+        "[Persuade] Propose a split: she takes the astral grimoire on the pedestal, you take the vault ciphers.",
+        "[Combat] Drop your center of gravity and prepare to counter her first lunge."
+      ]
+    },
+    {
+      "id": "prologue_serena",
+      "speaker": "Serena",
+      "title": "Serena: The Ruined Estate",
+      "location": "Bloodrose Duchy",
+      "sceneSetup": "The smoking ruins of a minor noble's manor crumble around you. Mercenaries from the Gray Zone lie scattered across the courtyard, their armor caved in by blunt-force trauma. In the center of the carnage stands a demi-human maid with soft white sheep ears and curling ram horns. She gracefully steps over a shattered halberd, producing a pristine white handkerchief to wipe a single speck of ash from the massive, iron-spiked mace resting effortlessly on her shoulder.\n\nHer ears twitch as you approach. She curtsies, the movement flawless despite the cratered stone beneath her boots.",
+      "dialogue": "Welcome back. I apologize for the unsightly state of the courtyard. The intruders were remarkably persistent, but the perimeter has been thoroughly swept.\n\nShall I prepare tea, or is there another nuisance you require me to crush?",
+      "expressionKey": "neutral",
+      "initialAffection": 15,
+      "bgImage": "/backgrounds/bloodrose_duchy.jpg",
+      "choices": [
+        "[Observation] Note that she isn't even out of breath, and ask how many mercenaries are left in the woods.",
+        "[Composure] Ignore the carnage entirely and request Earl Grey tea, black.",
+        "[Tactics] Draw your weapon and suggest clearing the remaining western wing together.",
+        "[Persuade] Ask her gently to lower the mace before she accidentally collapses the rest of the portico."
+      ]
+    },
+    {
+      "id": "prologue_morgana",
+      "speaker": "Morgana",
+      "title": "Morgana: Fringe of the Demon Realm",
+      "location": "Gray Zone",
+      "sceneSetup": "The soil here is blistered and black, choked by sulfuric vapor seeping from the eastern volcanic chasms. Resting against a cracked basalt monolith stands Morgana. Her curved ram horns curl through her dark hair, and large bat wings are folded gracefully behind her back. She clutches her wine chalice lazily, heavy-lidded amber eyes trailing your footsteps with detached, predatory curiosity.",
+      "dialogue": "A mortal walking the border of the volcanic wastes alone... how exquisitely reckless.\n\nDid you flee the Empire's pious inquisitors, or did you venture this close to the Demon Realm hoping someone would put an end to your tedious existence?",
+      "expressionKey": "neutral",
+      "initialAffection": 10,
+      "bgImage": "/backgrounds/gray_zone.jpg",
+      "choices": [
+        "[Composure] Step to the rim of the fissure, meet her gaze, and say you seek planar power, not death.",
+        "[Arcana] Identify the demonic seal binding her goblet and ask how she crossed the Gray Zone wards.",
+        "[Pragmatism] Offer mutual assistance against the Imperial hunting parties tracking both of you.",
+        "[Defiance] Keep a hand on your weapon and state that the wastes belong to whoever survives them."
+      ]
+    },
+    {
+      "id": "prologue_perci",
+      "speaker": "Perci",
+      "title": "Perci: Port Fortus Shadow Alleys",
+      "location": "Port City Fortus",
+      "sceneSetup": "Mist drifts through the damp cobblestone alleyways of Port City Fortus. Behind a stack of salt-crusted maritime crates, you hear the quiet, metallic clink of a blade being hastily sheathed. Stepping around the corner, you find a golden-blonde kitsune girl. Her sarashi bandage wrap is taut, her red robe hangs loosely off her trembling shoulders, and her fluffy fox ears twitch backward in alarm as her golden eyes widen at your arrival.",
+      "dialogue": "P-Please don't come any closer...! I... I wasn't doing anything forbidden, I promise. I just... needed somewhere quiet where the harbor watch wouldn't see my ears.\n\nA-Are you... here to turn me in?",
+      "expressionKey": "flustered",
+      "initialAffection": 12,
+      "bgImage": "/backgrounds/port_city.jpg",
+      "choices": [
+        "[Gentle] Step back, lower your hands, and reassure her you have no interest in the harbor watch bounties.",
+        "[Observation] Point out the blood on her sleeve and ask if she was the one who cut down the corsairs at the slipway.",
+        "[Survival] Offer to hide her from the upcoming patrol in exchange for a local guide through the lower docks.",
+        "[Rogue] Show your own covert guild sign, proving you are an operative rather than an imperial guard."
+      ]
+    }
+  ],
+  "companions": [
+    {
+      "id": "comp_evelyn",
+      "name": "Evelyn Abbandonato",
+      "title": "High Arcanist of House Abbandonato",
+      "role": "High Arcanist & Spire Diplomat",
+      "gender": "female",
+      "color": "rose",
+      "personality": "Aristocratic, sharp-tongued, supremely confident, analytical, subtle manipulator. Smug yet fascinated by genuine cunning.",
+      "values": ["Intellect", "Cunning", "Noble Etiquette", "Arcane Knowledge", "Composure", "Audacity"],
+      "dislikes": ["Clumsy Brute Force", "Groveling Sycophants", "Mindless Violence"],
+      "highCompatibility": ["Mages", "Spellblades", "Cunning Tacticians", "Scholars", "Aristocrats"],
+      "baseAffection": 15,
+      "affection": 15,
+      "expressionKey": "smug",
+      "isPresent": true,
+      "encountered": false,
+      "seed": 4289104,
+      "baseImageUrl": "/characters/evelyn/evelyn_neutral.png",
+      "visualPrompt": "masterpiece anime portrait, noble high arcanist woman, cascading silver-blue hair, piercing violet-blue eyes, ornate royal sapphire velvet coat with gold embroidery, elegant lace ascot, haughty expression, high fantasy imperial academy background",
+      "expressions": {
+        "neutral": "/characters/evelyn/evelyn_neutral.png",
+        "intrigued": "/characters/evelyn/evelyn_intrigued.png",
+        "flustered": "/characters/evelyn/evelyn_flustered.png",
+        "smug": "/characters/evelyn/evelyn_smug.png",
+        "surprised": "/characters/evelyn/evelyn_shocked.png",
+        "combat_ready": "/characters/evelyn/evelyn_combat.png",
+        "dangerous": "/characters/evelyn/evelyn_combat.png",
+        "hurt": "/characters/evelyn/evelyn_hurt.png"
+      }
+    },
+    {
+      "id": "comp_aria",
+      "name": "Aria Shadowthorn",
+      "title": "Rogue Infiltrator of the Veil Seekers",
+      "role": "Veil Seeker Infiltrator",
+      "gender": "female",
+      "color": "sky",
+      "personality": "Cynical, hyper-vigilant, razor-sharp pragmatic operative. Speaks in clipped, guarded sentences. Respects quiet competence.",
+      "values": ["Pragmatism", "Stealth", "Tradecraft", "Survival Instincts", "Quiet Competence"],
+      "dislikes": ["Self-Righteous Preaching", "Knightly Arrogance", "Reckless Loudness"],
+      "highCompatibility": ["Rogues", "Scouts", "Assassins", "Street-Smart Survivalists"],
+      "baseAffection": 12,
+      "affection": 12,
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 7914022,
+      "baseImageUrl": "/characters/aria/aria_neutral.png",
+      "visualPrompt": "masterpiece anime portrait, shadow rogue operative woman, raven black short cropped hair, sharp emerald green eyes, leather hooded mantle, discreet dual dagger sheaths, cold pragmatic expression, moonlit undercroft vault background",
+      "expressions": {
+        "neutral": "/characters/aria/aria_neutral.png",
+        "intrigued": "/characters/aria/aria_intrigued.png",
+        "flustered": "/characters/aria/aria_flustered.png",
+        "smug": "/characters/aria/aria_smug.png",
+        "surprised": "/characters/aria/aria_shocked.png",
+        "combat_ready": "/characters/aria/aria_combat.png",
+        "dangerous": "/characters/aria/aria_combat.png",
+        "hurt": "/characters/aria/aria_hurt.png"
+      }
+    },
+    {
+      "id": "comp_serena",
+      "name": "Serena",
+      "title": "Dutiful Demi-Human Combat Maid",
+      "role": "Vanguard Combat Maid",
+      "gender": "female",
+      "color": "zinc",
+      "personality": "Impeccably polite, formal, completely unfazed by carnage, lethal deadpan humor, unflinchingly loyal.",
+      "values": ["Duty", "Polite Poise", "Decisive Lethality", "Recognizing Boundaries", "Martial Discipline"],
+      "dislikes": ["Whining", "Sloppiness", "Disloyalty", "Disrespect to Masters or Household"],
+      "highCompatibility": ["Disciplined Warriors", "Knights", "Stoic Weaponmasters", "Polite Leaders"],
+      "baseAffection": 15,
+      "affection": 15,
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 5129841,
+      "baseImageUrl": "/characters/serena/serena_neutral.png",
+      "visualPrompt": "masterpiece anime portrait, demi-human combat maid woman, soft curly white sheep ears, elegant spiral ram horns, pristine monochrome victorian maid attire, massive iron spiked war mace on shoulder, serene deadpan smile, bloodrose manor courtyard background",
+      "expressions": {
+        "neutral": "/characters/serena/serena_neutral.png",
+        "intrigued": "/characters/serena/serena_intrigued.png",
+        "flustered": "/characters/serena/serena_flustered.png",
+        "smug": "/characters/serena/serena_smug.png",
+        "surprised": "/characters/serena/serena_shocked.png",
+        "combat_ready": "/characters/serena/serena_combat.png",
+        "dangerous": "/characters/serena/serena_combat.png",
+        "hurt": "/characters/serena/serena_hurt.png"
+      }
+    },
+    {
+      "id": "comp_morgana",
+      "name": "Morgana",
+      "title": "Demon Realm Noblewoman",
+      "role": "Planar Sorceress",
+      "gender": "female",
+      "color": "purple",
+      "personality": "Hedonistic, detached, predatory curiosity, ancient planar insight. Amused by mortal struggle.",
+      "values": ["Ambition", "Dark Planar Intrigue", "Fearlessness", "Sinister Wit", "Raw Resolve"],
+      "dislikes": ["Cowardice", "Puritanical Moral Superiority", "Boring Compliance"],
+      "highCompatibility": ["Warlocks", "Dark Knights", "Occultists", "Ruthless Adventurers"],
+      "baseAffection": 10,
+      "affection": 10,
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 9821375,
+      "baseImageUrl": "/characters/morgana/morgana_neutral.png",
+      "visualPrompt": "masterpiece anime portrait, demon realm noblewoman, curved obsidian horns, dark purple hair, radiant crimson eyes, bat wings folded gracefully, seductive dark lace evening gown, holding ornate silver wine chalice, volcanic desolation background",
+      "expressions": {
+        "neutral": "/characters/morgana/morgana_neutral.png",
+        "intrigued": "/characters/morgana/morgana_intrigued.png",
+        "flustered": "/characters/morgana/morgana_flustered.png",
+        "smug": "/characters/morgana/morgana_smug.png",
+        "surprised": "/characters/morgana/morgana_intrigued.png",
+        "combat_ready": "/characters/morgana/morgana_combat.png",
+        "dangerous": "/characters/morgana/morgana_combat.png",
+        "hurt": "/characters/morgana/morgana_hurt.png",
+        "beckon": "/characters/morgana/morgana_beckon.png"
+      }
+    },
+    {
+      "id": "comp_perci",
+      "name": "Perci",
+      "title": "Timid Kitsune Rogue",
+      "role": "Furtive Scout & Tracker",
+      "gender": "female",
+      "color": "amber",
+      "personality": "Highly anxious, jumpy, soft-spoken, deeply loyal once safety is assured. Uses stuttering or hesitant phrasing when startled.",
+      "values": ["Gentleness", "Patience", "Protective Reassurance", "Quiet Empathy"],
+      "dislikes": ["Aggression", "Intimidation", "Shouting", "Cruelty"],
+      "highCompatibility": ["Kind Wanderers", "Gentle Protectors", "Rangers", "Empathetic Souls"],
+      "baseAffection": 12,
+      "affection": 12,
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 3317890,
+      "baseImageUrl": "/characters/perci/perci_neutral.png",
+      "visualPrompt": "masterpiece anime portrait, kitsune girl, fluffy golden fox ears, bright amber eyes, white sarashi bandage wrap, loose scarlet traveler robe slipping off shoulders, anxious blush, misty cobblestone harbor alley background",
+      "expressions": {
+        "neutral": "/characters/perci/perci_neutral.png",
+        "intrigued": "/characters/perci/perci_intrigued.png",
+        "flustered": "/characters/perci/perci_flustered.png",
+        "smug": "/characters/perci/perci_smug.png",
+        "surprised": "/characters/perci/perci_shocked.png",
+        "combat_ready": "/characters/perci/perci_combat.png",
+        "dangerous": "/characters/perci/perci_combat.png",
+        "hurt": "/characters/perci/perci_hurt.png"
+      }
+    }
+  ]
+}
+

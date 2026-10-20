@@ -1,0 +1,204 @@
+{
+  "id": "neon-eclipse",
+  "title": "Neon Eclipse: Neo-Veridia",
+  "tagline": "A high-octane cyberpunk visual novel of corporate betrayal, rogue wetware, and neural sync anchors.",
+  "description": "In the rain-drenched subterranean shadows of Neo-Veridia, megacorporations harvest consciousness for the orbital Neural Net. Awakened with an anomalous black-market Neural Coherence anchor, you must navigate street syndicates, synthetic enforcers, and rogue netrunners to unveil the Ghost Protocol.",
+  "coverImage": "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=80",
+  "genre": "Cyberpunk / Tech-Noir / Neural LitRPG",
+  "themes": ["Corporate Espionage", "Transhumanism", "Syndicate Intrigue", "Neural Drift"],
+  "narrationStyle": "Tech-Noir & Visceral Cinematic",
+  "createdAt": "2026-10-19T21:00:00Z",
+  "author": "Cipher Architect",
+  "isPreset": false,
+  "worldContext": {
+    "settingName": "Neo-Veridia Megacity",
+    "eraOrPeriod": "The Silicon Ascendancy (2099)",
+    "loreSummary": "Tiered into three distinct socioeconomic strata, Neo-Veridia is dominated by Omnicorp's orbital spires above, the bustling middle commercial boulevards, and the lawless rain-slicked Sub-Level 04 known as the Rust Gutters. The neural underworld trades in overclocked cyberdecks, forbidden memory shards, and synthetic adrenaline.",
+    "factions": [
+      {
+        "name": "Omnicorp Executive Security",
+        "description": "Armored corporate privateers with sub-dermal combat matrices and orbital kill-sat authorization."
+      },
+      {
+        "name": "The Ghostwire Collective",
+        "description": "Decentralized netrunner syndicate dedicated to jailbreaking corporate consciousness silos."
+      },
+      {
+        "name": "Kuroshio Syndicate",
+        "description": "Sub-city arms dealers and chrome modification specialists ruling the neon red-light docks."
+      }
+    ],
+    "locations": [
+      {
+        "name": "Omnicorp Apex Spire",
+        "zone": "Upper Stratum 01",
+        "danger": "Lethal (Automated EMP Turrets)",
+        "description": "Gleaming obsidian and glass monolith puncturing the smog clouds, home to executive boardrooms and quantum server vaults.",
+        "bgImage": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "name": "Rust Gutters Sub-04",
+        "zone": "The Underbelly",
+        "danger": "High (Syndicate Enforcers & Chrome Junkies)",
+        "description": "Perpetual acid rain trickling through broken catwalks, illuminated by flickering holographic advertisements and noodle stalls.",
+        "bgImage": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "name": "Kuroshio Neon Promenade",
+        "zone": "Mid-Level District",
+        "danger": "Moderate (Pickpockets & Black Clinic Scouts)",
+        "description": "Densely packed pedestrian alleyways smelling of ozone and synthetic street food, draped in magenta neon signs.",
+        "bgImage": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1200&q=80"
+      },
+      {
+        "name": "Ghostwire Server Undercroft",
+        "zone": "Sub-Basement 07",
+        "danger": "Guarded (Neural Ice & Proxy Wards)",
+        "description": "Submerged cooling towers and buzzing holographic arrays where rogue netrunners jack in directly to the dark net.",
+        "bgImage": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80"
+      }
+    ]
+  },
+  "rpgRules": {
+    "systemName": "Neural Sync Administrator",
+    "currencyName": "Credits (¥Cr)",
+    "causalAnchorName": "Neural Coherence",
+    "defaultPlausibility": 85,
+    "statDefinitions": {
+      "str": "Brawn (Sub-dermal Armor, Kinetic Weapon Output, Physical Demolition)",
+      "dex": "Reflexes (Neural Quickness, Monowire Finesse, Evasion Subroutines)",
+      "int": "Processing (ICE-Breaker Decryption, Cyberware Overclocking, System Plausibility Analysis)"
+    },
+    "startingLevel": 1,
+    "baseStats": {
+      "hp": 120,
+      "maxHp": 120,
+      "mp": 80,
+      "maxMp": 80,
+      "exp": 0,
+      "maxExp": 100,
+      "str": 10,
+      "dex": 12,
+      "int": 10
+    },
+    "startingGearOptions": [
+      {
+        "id": "street_deck",
+        "label": "Custom Cyberdeck & Monowire Whip",
+        "gear": {
+          "weapon": "Tungsten Monowire Whip",
+          "armor": "Kevlar Mesh Trenchcoat",
+          "relic": "Jailbroken Neural Tap"
+        }
+      },
+      {
+        "id": "solo_kinetic",
+        "label": "Heavy Kinetic Pistol & Reinforced Plating",
+        "gear": {
+          "weapon": "Kuroshio 9mm Heavy Kinetic Pistol",
+          "armor": "Sub-dermal Carbon Weave",
+          "relic": "Thermal Optic Scanner"
+        }
+      }
+    ]
+  },
+  "startingNodes": [
+    {
+      "id": "prologue_vesper",
+      "speaker": "Vesper Vance",
+      "title": "Vesper: Ghostwire Undercroft Jack-In",
+      "location": "Ghostwire Server Undercroft",
+      "sceneSetup": "The hum of submerged liquid-nitrogen cooling conduits reverberates through your boots. Neon blue data cables snake across the floor like synthetic roots. Perched on an overturned server rack sits Vesper Vance, his cybernetic left optic glowing with cascading hex code.\n\nHe doesn't look up immediately as you step through the EMP insulation gate. His mechanical fingers dance across a floating holographic console before his gaze locks onto you with analytical chill.",
+      "dialogue": "You tripped three quantum tripwires on the way down, rookie. Either Omnicorp's wetware hounds are slipping, or you came here knowing exactly whose ICE you were stepping on.\n\nTalk fast before I fry your optic drivers with a feedback burst.",
+      "expressionKey": "smug",
+      "initialAffection": 18,
+      "bgImage": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80",
+      "choices": [
+        "[Decrypt] Flash the encrypted biometric cipher given to you by the Rust Gutter contact.",
+        "[Hack] Overclock your Neural Anchor and siphon his feedback burst into a dead-end buffer.",
+        "[Composure] Take a seat opposite him and slide a military-grade memory shard across the terminal.",
+        "[Threat] Prime your monowire whip and remind him that dead men don't collect finder's fees."
+      ]
+    },
+    {
+      "id": "prologue_kira",
+      "speaker": "Kira Thorne",
+      "title": "Kira: Acid Rain Alleyway Ambush",
+      "location": "Rust Gutters Sub-04",
+      "sceneSetup": "Acid rain hisses against the rusted corrugated steel overhead. A puddle of stagnant oil reflects the crimson neon signs of a shuttered noodle stall. Stepping from behind the shadow of a colossal exhaust vent, Kira Thorne emerges, her twin thermal katanas humming at 400 degrees Celsius.\n\nHer combat coat flares in the steam exhaust, cybernetic jawline glinting as her crimson optics calibrate directly onto your vitals.",
+      "dialogue": "You're five minutes late and you brought two corporate drone tails behind you. If I wanted to babysit suicide candidates, I would have signed back up with Kuroshio Security.\n\nDraw your weapon, or stay behind me if you want to keep your chrome intact.",
+      "expressionKey": "combat_ready",
+      "initialAffection": 15,
+      "bgImage": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
+      "choices": [
+        "[Reflexes] Counter-strike the incoming corporate tracker drone before it can ping the network.",
+        "[Tactics] Point out the drone was an intentional decoy to flush out the sniper on the rooftop.",
+        "[Defiance] Ignite your own thermal blade and tell her to worry about her own flank.",
+        "[Discipline] Form up in tactical breaching order and report the target perimeter clear."
+      ]
+    }
+  ],
+  "companions": [
+    {
+      "id": "comp_vesper",
+      "name": "Vesper Vance",
+      "title": "Renegade Netrunner & Data Broker",
+      "role": "Master Cyberdeck Specialist",
+      "gender": "male",
+      "color": "sky",
+      "personality": "Sarcastic, hyper-intelligent, calculated risk-taker with a soft spot for anti-corporate underdogs. Hides deep trauma behind dry wit.",
+      "values": ["Information Freedom", "Neural Quickness", "Calculated Audacity", "Black Market Ingenuity"],
+      "dislikes": ["Corporate Puppets", "Blind Obedience", "Sloppy Coding", "Heavy Kinetic Bullies"],
+      "highCompatibility": ["Netrunners", "Cryptographers", "Tacticians", "Tech Scholars"],
+      "baseAffection": 18,
+      "affection": 18,
+      "expressionKey": "smug",
+      "isPresent": true,
+      "encountered": false,
+      "seed": 9182341,
+      "baseImageUrl": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+      "visualPrompt": "masterpiece anime portrait, handsome cyberpunk male netrunner, undercut dark messy hair, glowing cyan cybernetic left eye, tactical techwear coat, high collar, holographic interface glow on face, rain-slicked neon background",
+      "expressions": {
+        "neutral": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+        "intrigued": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+        "flustered": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+        "smug": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+        "surprised": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+        "combat_ready": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+        "dangerous": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
+        "hurt": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80"
+      }
+    },
+    {
+      "id": "comp_kira",
+      "name": "Kira Thorne",
+      "title": "Chrome Ronin & Ex-Omnicorp Enforcer",
+      "role": "Thermal Blade Vanguard",
+      "gender": "female",
+      "color": "rose",
+      "personality": "Stoic, lethal, razor-sharp discipline, uncompromising moral code beneath scarred chrome plating.",
+      "values": ["Martial Honor", "Decisive Lethality", "Loyalty Under Pressure", "Protecting the Weak"],
+      "dislikes": ["Cowardice", "Corporate Deception", "Unprovoked Cruelty", "Whining"],
+      "highCompatibility": ["Vanguards", "Solos", "Disciplined Warriors", "Direct Communicators"],
+      "baseAffection": 15,
+      "affection": 15,
+      "expressionKey": "combat_ready",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 8421093,
+      "baseImageUrl": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+      "visualPrompt": "masterpiece anime portrait, badass female cyberpunk street samurai, sleek jet-black hair with crimson bangs, dual thermal katanas on back, reinforced carbon-fiber chest rig, intense gaze, neon alleyway reflections",
+      "expressions": {
+        "neutral": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+        "intrigued": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+        "flustered": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+        "smug": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+        "surprised": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+        "combat_ready": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+        "dangerous": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
+        "hurt": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80"
+      }
+    }
+  ]
+}
+

@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       recentHistory = [],
       userAccessKey,
       systemState,
+      storyContext,
     } = body;
 
     const accessKey = headerKey || userAccessKey;
@@ -45,6 +46,44 @@ export async function POST(req: Request) {
     if (!apiKey) {
       return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
     }
+
+    const storyTitle = storyContext?.title || "Astra Chronicles";
+    const settingName = storyContext?.worldContext?.settingName || "the Astra Continent";
+    const effectiveTone = narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
+
+    const companionDossiers = storyContext?.companions && storyContext.companions.length > 0
+      ? storyContext.companions.map((c: any, i: number) => `
+${i + 1}. ${c.name}:
+   - Role: ${c.title || c.role}.
+   - Persona: ${c.personality || "Guarded and observant."}
+   - Values: ${Array.isArray(c.values) ? c.values.join(", ") : "Honor, Loyalty"}
+   - Dislikes: ${Array.isArray(c.dislikes) ? c.dislikes.join(", ") : "Deceit, Cowardice"}
+   - Expressions: ${c.expressions ? Object.keys(c.expressions).join(", ") : "neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt"}
+`).join("\n")
+      : `1. Evelyn Abbandonato:
+   - Role: High Arcanist of House Abbandonato.
+   - Persona: Aristocratic, sharp-tongued, supremely confident, analytical, subtle manipulator. Smug yet fascinated by genuine cunning.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+
+2. Aria Shadowthorn:
+   - Role: Rogue Infiltrator of the Veil Seekers.
+   - Persona: Cynical, hyper-vigilant, razor-sharp pragmatic operative. Speaks in clipped, guarded sentences. Respects competence and quiet stealth.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+
+3. Serena:
+   - Role: Dutiful Demi-Human Combat Maid (sheep ears/horns, wields colossal spiked mace).
+   - Persona: Impeccably polite, formal, completely unfazed by carnage, lethal deadpan humor, unflinchingly loyal.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+
+4. Morgana:
+   - Role: Demon Realm Noblewoman (curved horns, bat wings, wine chalice).
+   - Persona: Hedonistic, detached, predatory curiosity, ancient planar insight. Amused by mortal struggle.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt, beckon.
+
+5. Perci:
+   - Role: Timid Kitsune Rogue (sarashi wrap, loose robe, fluffy fox ears).
+   - Persona: Highly anxious, jumpy, soft-spoken, deeply loyal once safety is assured. Uses stuttering or hesitant phrasing when startled.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.`;
 
     // Dynamic player input directive
     const inputHandlingInstruction = isCustom
@@ -70,35 +109,20 @@ This is the initial meeting with the protagonist (${playerProfile.name}).
       : `--- APPEARANCE DIRECTIVE ---
 Do NOT repeatedly comment on or re-describe the player's general physical appearance (hair color, clothing, facial traits) unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
 
-    const systemPrompt = `You are the Game Master, Narrator, and World Engine for "Astra Chronicles", an interactive high-fantasy visual novel set on the Astra Continent.
+    const compatibilityDirective = storyContext?.companions && storyContext.companions.length > 0
+      ? storyContext.companions.map((c: any) => `- ${c.name}: Values ${c.values?.join(", ") || "Honor, Loyalty"}. Dislikes ${c.dislikes?.join(", ") || "Deceit, Cowardice"}.`).join("\n")
+      : `- Evelyn Abbandonato: Values intellect, arcane precision, subtle manipulation, composure. Dislikes crude brute force, groveling, or blind obedience.
+- Aria Shadowthorn: Values pragmatism, stealth, tradecraft, quiet competence. Dislikes self-righteous preaching, knightly arrogance, reckless noise.
+- Serena: Values impeccable composure, polite duty, decisive lethality, discipline. Dislikes whining, chaos, disrespect to boundaries, false mercy.
+- Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
+- Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.`;
 
-Atmosphere Tone: ${narrationStyle || "Grimdark & Atmospheric"} (sensory-rich, visceral, morally gray, high tension).
+    const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
+
+Atmosphere Tone: ${effectiveTone} (sensory-rich, visceral, morally gray, high tension).
 
 --- HEROINE DOSSIERS & VOICE PROFILES ---
-1. Evelyn Abbandonato:
-   - Role: High Arcanist of House Abbandonato.
-   - Persona: Aristocratic, sharp-tongued, supremely confident, analytical, subtle manipulator. Smug yet fascinated by genuine cunning.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
-
-2. Aria Shadowthorn:
-   - Role: Rogue Infiltrator of the Veil Seekers.
-   - Persona: Cynical, hyper-vigilant, razor-sharp pragmatic operative. Speaks in clipped, guarded sentences. Respects competence and quiet stealth.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
-
-3. Serena:
-   - Role: Dutiful Demi-Human Combat Maid (sheep ears/horns, wields colossal spiked mace).
-   - Persona: Impeccably polite, formal, completely unfazed by carnage, lethal deadpan humor, unflinchingly loyal.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
-
-4. Morgana:
-   - Role: Demon Realm Noblewoman (curved horns, bat wings, wine chalice).
-   - Persona: Hedonistic, detached, predatory curiosity, ancient planar insight. Amused by mortal struggle.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt, beckon.
-
-5. Perci:
-   - Role: Timid Kitsune Rogue (sarashi wrap, loose robe, fluffy fox ears).
-   - Persona: Highly anxious, jumpy, soft-spoken, deeply loyal once safety is assured. Uses stuttering or hesitant phrasing when startled.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+${companionDossiers}
 
 --- CURRENT CAMPAIGN STATE ---
 - Protagonist: ${playerProfile.name} (Lv.${playerProfile.level} ${playerProfile.role})
@@ -106,10 +130,20 @@ Atmosphere Tone: ${narrationStyle || "Grimdark & Atmospheric"} (sensory-rich, vi
 - Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
 - Active Location: ${gameState.location}
 - Active Speaker: ${gameState.speaker}
-- Party Roster:
-${partyMembers.map((c: any) => `  * ${c.name} [Present: ${c.isPresent}] - Favor:${c.affection}%`).join("\n")}
-- Canonical Memories:
-${plotMemories?.slice(-5).map((m: string) => `  * ${m}`).join("\n") || "  * Journey commenced."}
+
+--- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
+${partyMembers.map((c: any) => {
+  const encStatus = c.encountered ? "Previously Encountered & Active in Canon" : "Unmet in Current Arc";
+  const favorDesc = c.affection >= 75 ? "Deep Intimacy & Trust" : c.affection >= 50 ? "Solid Mutual Respect" : c.affection >= 25 ? "Cautious Wariness" : "Guarded Distrust";
+  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Favor: ${c.affection}% (${favorDesc}) | Demeanor: ${c.expressionKey || "neutral"}]`;
+}).join("\n")}
+
+--- CHRONOLOGICAL RECORD OF PREVIOUS INTERACTIONS & MEMORIES ---
+${
+  Array.isArray(plotMemories) && plotMemories.length > 0
+    ? plotMemories.map((m: string, idx: number) => `  [Chronicle Beat ${idx + 1}]: ${m}`).join("\n")
+    : "  * Journey commenced. First mutual encounter."
+}
 
 ${inputHandlingInstruction}
 
@@ -117,11 +151,25 @@ ${visualInspectionInstruction}
 
 --- HEROINE COMPATIBILITY DIRECTIVE ---
 Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded, cynical, and possess distinct codes of behavior. Affection cannot be easily charmed or rushed; it must be won through genuine ideological compatibility.
-- Evelyn Abbandonato: Values intellect, arcane precision, subtle manipulation, composure. Dislikes crude brute force, groveling, or blind obedience.
-- Aria Shadowthorn: Values pragmatism, stealth, tradecraft, quiet competence. Dislikes self-righteous preaching, knightly arrogance, reckless noise.
-- Serena: Values impeccable composure, polite duty, decisive lethality, discipline. Dislikes whining, chaos, disrespect to boundaries, false mercy.
-- Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
-- Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.
+${compatibilityDirective}
+
+--- LASTING MEMORY & ENCOUNTER CONTINUITY DIRECTIVE (CRITICAL) ---
+You must maintain total narrative persistence of all past interactions, conversations, promises, conflicts, and companion relationship developments:
+1. CONTINUOUS CONVERSATIONAL MEMORY & ACTIVE CALLBACKS:
+   - Characters MUST NEVER act as if each turn is a clean slate or forget prior interactions.
+   - When ${gameState.speaker} or any companion speaks, they MUST actively callback to, reference, banter about, or emotionally build upon:
+     * Specific remarks, questions, admissions, or promises ${playerProfile.name} made in earlier turns.
+     * Past encounters, shared battles, secrets revealed, and mutual bargains from the Chronological Record above.
+     * How their trust/favor has shifted over time (e.g., lingering wariness from past friction, newfound respect after a clutch decision, or echoing an earlier conversation).
+   - Example natural callbacks:
+     * "You were far more cautious when we first spoke at the archive gates..."
+     * "Don't pretend you've forgotten what you promised regarding the void covenant."
+     * "Ever since you backed my play against the guild operative, I suppose I owe you a straight answer."
+2. NO GENERIC RESETTING:
+   - If the protagonist and a companion have conversed or fought side-by-side in previous turns, the companion's tone, attitude, and dialogue choices must reflect that cumulative history.
+3. RECORDING NEW LASTING MEMORIES:
+   - In "new_memory_unlocked", summarize any key interaction, agreement, confession, tactical maneuver, or emotional revelation that occurred this turn as a permanent memory string (e.g. "Caelen agreed to Evelyn's terms regarding the void archives in exchange for safe passage").
+   - This ensures future turns and future dialogue permanently retain this memory.
 
 
 --- SYSTEM ADMINISTRATOR & QUEST OBJECTIVE TRACKING DIRECTIVE ---

@@ -11,6 +11,9 @@ export interface SaveSlotPayload {
   memories: string[];
   chatLog: any[];
   systemState?: any;
+  storyId?: string;
+  storyTitle?: string;
+  choices?: string[];
 }
 
 const DB_NAME = "AstraChroniclesSaveDB";
@@ -204,12 +207,14 @@ export async function deleteGameSlot(slotId: number): Promise<void> {
   } catch {}
 }
 
+export const AUTOSAVE_SLOT_ID = 0;
+
 /**
- * Loads all slots (1, 2, 3) at startup
+ * Loads all slots (0 = Auto-Save, 1, 2, 3 = Manual Saves) at startup
  */
 export async function loadAllGameSlots(): Promise<Record<number, SaveSlotPayload | null>> {
-  const result: Record<number, SaveSlotPayload | null> = { 1: null, 2: null, 3: null };
-  for (const id of [1, 2, 3]) {
+  const result: Record<number, SaveSlotPayload | null> = { 0: null, 1: null, 2: null, 3: null };
+  for (const id of [0, 1, 2, 3]) {
     try {
       result[id] = await loadGameSlot(id);
     } catch {}

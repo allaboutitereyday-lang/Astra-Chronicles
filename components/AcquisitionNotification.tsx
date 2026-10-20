@@ -8,6 +8,8 @@ export interface AcquisitionAlertData {
   type: "skill" | "level" | "loot";
   title: string;
   subtitle: string;
+  imageUrl?: string;
+  rarity?: "common" | "uncommon" | "rare" | "relic" | "cursed";
 }
 
 interface AcquisitionNotificationProps {
@@ -72,17 +74,25 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
         <span className="absolute bottom-1 left-1.5 text-[9px] font-mono text-rose-400/50 pointer-events-none">└</span>
         <span className="absolute bottom-1 right-1.5 text-[9px] font-mono text-rose-400/50 pointer-events-none">┘</span>
 
-        {/* Leading Glowing Icon Badge */}
+        {/* Leading Glowing Icon Badge or Loot Art */}
         <div
-          className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border relative z-10 ${
-            isSkill
+          className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border relative z-10 overflow-hidden ${
+            alert.imageUrl
+              ? "border-amber-400/80 shadow-[0_0_20px_rgba(245,158,11,0.5)] bg-black/80"
+              : isSkill
               ? "bg-rose-950/80 border-rose-400/60 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.5)]"
               : isLevel
               ? "bg-amber-950/80 border-amber-400/60 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.5)]"
               : "bg-sky-950/80 border-sky-400/60 text-sky-300 shadow-[0_0_15px_rgba(14,165,233,0.5)]"
           }`}
         >
-          {isSkill ? (
+          {alert.imageUrl ? (
+            <img
+              src={alert.imageUrl}
+              alt={alert.title}
+              className="w-full h-full object-cover rounded-lg"
+            />
+          ) : isSkill ? (
             <Sparkles className="w-5 h-5 animate-pulse text-rose-300" />
           ) : isLevel ? (
             <Award className="w-5 h-5 animate-bounce text-amber-300" />

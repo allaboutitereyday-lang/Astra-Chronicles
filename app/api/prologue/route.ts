@@ -23,6 +23,7 @@ export async function POST(req: Request) {
       startingLocation,
       narrationStyle,
       userAccessKey,
+      storyContext,
     } = body;
 
     const accessKey = headerKey || userAccessKey;
@@ -43,13 +44,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
     }
 
-    const systemPrompt = `You are the Game Master and Director for "Astra Chronicles", an interactive high-fantasy visual novel set on the Astra Continent.
-Tone: ${narrationStyle || "Grimdark & Atmospheric"} (visceral, sensory-rich, morally gray, intense).
+    const storyTitle = storyContext?.title || "Astra Chronicles";
+    const settingName = storyContext?.worldContext?.settingName || "the Astra Continent";
+    const effectiveTone = narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
-You are generating the bespoke dynamic prologue and opening encounter.
-
---- HEROINE DOSSIERS & COMPATIBILITY CRITERIA ---
-1. Evelyn Abbandonato (High Arcanist):
+    const companionDossiers = storyContext?.companions && storyContext.companions.length > 0
+      ? storyContext.companions.map((c: any, i: number) => `
+${i + 1}. ${c.name} (${c.title || c.role}):
+   - Values: ${Array.isArray(c.values) ? c.values.join(", ") : "Honor, Loyalty"}
+   - Dislikes: ${Array.isArray(c.dislikes) ? c.dislikes.join(", ") : "Betrayal, Cowardice"}
+   - High compatibility: ${Array.isArray(c.highCompatibility) ? c.highCompatibility.join(", ") : "Adventurers, Tacticians"}
+   - Expressions: ${c.expressions ? Object.keys(c.expressions).join(", ") : "neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt"}
+`).join("\n")
+      : `1. Evelyn Abbandonato (High Arcanist):
    - Values: Intellect, cunning, noble etiquette, arcane knowledge, composure, audacity.
    - Dislikes: Clumsy brute force, groveling sycophants, mindless violence.
    - High compatibility: Mages, spellblades, cunning tacticians, scholars, aristocrats.
@@ -77,7 +84,15 @@ You are generating the bespoke dynamic prologue and opening encounter.
    - Values: Gentleness, patience, protective reassurance, quiet empathy.
    - Dislikes: Aggression, intimidation, shouting, cruelty.
    - High compatibility: Kind wanderers, gentle protectors, rangers, empathetic souls.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
+   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.`;
+
+    const systemPrompt = `You are the Game Master and Director for "${storyTitle}", an interactive visual novel set on ${settingName}.
+Tone: ${effectiveTone} (visceral, sensory-rich, morally gray, intense).
+
+You are generating the bespoke dynamic prologue and opening encounter.
+
+--- HEROINE DOSSIERS & COMPATIBILITY CRITERIA ---
+${companionDossiers}
 
 --- COMPATIBILITY & BASE AFFECTION RULES ---
 - Base affection must start LOW overall (range: 5 to 25). Heroines in this world are guarded and cynical.
