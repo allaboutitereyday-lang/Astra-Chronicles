@@ -20,7 +20,13 @@ export function MarkdownRenderer({
 }: MarkdownRendererProps) {
   if (!content) {
     return isStreaming ? (
-      <span className="inline-block w-1.5 h-3.5 ml-1 bg-rose-400 animate-pulse align-middle shadow-[0_0_8px_rgba(251,113,133,0.8)]" />
+      <span
+        className={`inline-block w-1.5 h-3.5 ml-1 animate-pulse align-middle ${
+          isUser
+            ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]"
+            : "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]"
+        }`}
+      />
     ) : null;
   }
 
@@ -144,7 +150,13 @@ export function MarkdownRenderer({
       </ReactMarkdown>
 
       {isStreaming && (
-        <span className="inline-block w-1.5 h-3.5 ml-1 bg-rose-400 animate-pulse align-middle shadow-[0_0_8px_rgba(251,113,133,0.8)]" />
+        <span
+          className={`inline-block w-1.5 h-3.5 ml-1 animate-pulse align-middle ${
+            isUser
+              ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]"
+              : "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]"
+          }`}
+        />
       )}
     </div>
   );

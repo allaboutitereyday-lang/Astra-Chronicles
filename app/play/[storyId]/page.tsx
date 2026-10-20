@@ -896,6 +896,18 @@ export default function VisualNovelGame() {
   const [isLoading, setIsLoading] = useState(false);
   const [displayedText, setDisplayedText] = useState("");
   
+  // User Message Typewriter State (for chosen options & custom inputs)
+  const [typingUserMsgId, setTypingUserMsgId] = useState<string | null>(null);
+  const [displayedUserText, setDisplayedUserText] = useState("");
+  const userTypewriterIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearUserTypewriter = () => {
+    if (userTypewriterIntervalRef.current) {
+      clearInterval(userTypewriterIntervalRef.current);
+      userTypewriterIntervalRef.current = null;
+    }
+  };
+  
   const [showPlayerSheet, setShowPlayerSheet] = useState(false);
   const [showPartyDrawer, setShowPartyDrawer] = useState(false);
   const [showChronicle, setShowChronicle] = useState(false);
@@ -2220,7 +2232,7 @@ export default function VisualNovelGame() {
     if (dialogueFeedRef.current) {
       dialogueFeedRef.current.scrollTop = dialogueFeedRef.current.scrollHeight;
     }
-  }, [chatLog, displayedText]);
+  }, [chatLog, displayedText, displayedUserText]);
 
   const scrollToTop = () => {
     soundEffects.playClick();
@@ -2331,6 +2343,42 @@ export default function VisualNovelGame() {
 
     setIsLoading(true);
     setChoices([]);
+
+    // Immediately create and append player message to chat feed with typewriter effect
+    const playerMsgId = `player_msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const playerMsg: ChatMessage = {
+      id: playerMsgId,
+      sender: "user",
+      speakerName: player.name,
+      text: formattedPayload,
+      timestamp: timeString,
+      avatarSrc: playerAvatar || undefined,
+    };
+
+    setChatLog((prev) => [...prev, playerMsg]);
+    clearUserTypewriter();
+    setTypingUserMsgId(playerMsgId);
+    setDisplayedUserText("");
+
+    const userTarget = formattedPayload;
+    const userStep = Math.max(1, Math.ceil(userTarget.length / 28));
+    let userIndex = 0;
+    let blipCounter = 0;
+
+    userTypewriterIntervalRef.current = setInterval(() => {
+      userIndex += userStep;
+      if (userIndex >= userTarget.length) {
+        setDisplayedUserText(userTarget);
+        setTypingUserMsgId(null);
+        clearUserTypewriter();
+      } else {
+        setDisplayedUserText(userTarget.slice(0, userIndex));
+        blipCounter++;
+        if (blipCounter % 3 === 0) {
+          soundEffects.playDialogueBlip();
+        }
+      }
+    }, 18);
 
     try {
       const res = await fetch("/api/turn", {
@@ -2495,14 +2543,11 @@ export default function VisualNovelGame() {
         })
       );
 
-      const playerMsg: ChatMessage = {
-        id: crypto.randomUUID(),
-        sender: "user",
-        speakerName: player.name,
-        text: playerText,
-        timestamp: timeString,
-        avatarSrc: playerAvatar || undefined,
-      };
+      // Finalize user typewriter state
+      clearUserTypewriter();
+      setDisplayedUserText(playerText);
+      setTypingUserMsgId(null);
+      playerMsg.text = playerText;
 
       const isAmbientSpeaker = ["narrator", "system", "inner monologue"].some((s) => speakerName.toLowerCase().includes(s));
       const companionMsg: ChatMessage = {
@@ -2514,7 +2559,10 @@ export default function VisualNovelGame() {
         avatarSrc: isAmbientSpeaker ? undefined : getSpriteSrc(speakerName, nextExpression),
       };
 
-      setChatLog((prev) => [...prev, playerMsg, companionMsg]);
+      setChatLog((prev) => {
+        const updatedChat = prev.map((m) => (m.id === playerMsgId ? { ...m, text: playerText } : m));
+        return [...updatedChat, companionMsg];
+      });
 
       if (data.player_progression) {
         const prog = data.player_progression;
@@ -3145,6 +3193,10 @@ export default function VisualNovelGame() {
       });
     } catch (err) {
       console.error(err);
+      clearUserTypewriter();
+      setTypingUserMsgId(null);
+      // Clean up uncommitted player message on error so user can re-try
+      setChatLog((prev) => prev.filter((m) => m.id !== playerMsgId));
     } finally {
       setIsLoading(false);
     }
@@ -4918,6 +4970,11 @@ export default function VisualNovelGame() {
                         if (isLatestCharacterTurn && displayedText.length < gameState.dialogue.length) {
                           setDisplayedText(gameState.dialogue);
                         }
+                        if (msg.id === typingUserMsgId) {
+                          clearUserTypewriter();
+                          setDisplayedUserText(msg.text);
+                          setTypingUserMsgId(null);
+                        }
                       }}
                     >
                       {isEditing ? (
@@ -4954,6 +5011,12 @@ export default function VisualNovelGame() {
                           content={displayedText}
                           isUser={false}
                           isStreaming={displayedText.length < gameState.dialogue.length}
+                        />
+                      ) : msg.id === typingUserMsgId ? (
+                        <MarkdownRenderer
+                          content={displayedUserText}
+                          isUser={true}
+                          isStreaming={displayedUserText.length < msg.text.length}
                         />
                       ) : (
                         <MarkdownRenderer

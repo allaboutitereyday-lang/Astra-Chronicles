@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Sparkles,
   Award,
@@ -13,8 +13,10 @@ import {
   BookOpen,
   RotateCcw,
   Skull,
+  Bell,
 } from "lucide-react";
 import { QuestDifficulty } from "@/types/system";
+import { soundEffects } from "@/lib/audioEngine";
 
 export type NotificationType =
   | "quest_assigned"
@@ -42,11 +44,13 @@ export interface GameNotificationItem {
   metadata?: any;
 }
 
-interface GameNotificationStackProps {
+export interface GameNotificationStackProps {
   notifications: GameNotificationItem[];
   onDismiss: (id: string) => void;
   onOpenSystemWindow?: () => void;
   onInspectItem?: (item: any) => void;
+  maxVisible?: number;
+  staggerDelayMs?: number;
 }
 
 const DIFFICULTY_BADGES: Record<QuestDifficulty, string> = {
@@ -74,28 +78,50 @@ function NotificationCard({
 }: NotificationCardProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [progress, setProgress] = useState(100);
+
+  const duration =
+    item.durationMs ||
+    (item.type === "level" || item.type === "regression_trigger" || item.difficulty === "Calamity"
+      ? 6500
+      : 5000);
 
   useEffect(() => {
-    // Smooth entrance
-    const enterTimer = setTimeout(() => setIsVisible(true), 15);
+    // Smooth lateral entrance
+    const enterTimer = setTimeout(() => setIsVisible(true), 25);
     return () => clearTimeout(enterTimer);
   }, []);
 
+  // Duration countdown timer
   useEffect(() => {
     if (isHovered) return; // Pause timer on hover
 
-    const duration =
-      item.durationMs ||
-      (item.type === "level" || item.type === "regression_trigger" || item.difficulty === "Calamity"
-        ? 6500
-        : 5000);
     const dismissTimer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => onDismiss(item.id), 300);
+      setTimeout(() => onDismiss(item.id), 280);
     }, duration);
 
     return () => clearTimeout(dismissTimer);
-  }, [item.id, item.durationMs, item.type, item.difficulty, isHovered, onDismiss]);
+  }, [item.id, duration, isHovered, onDismiss]);
+
+  // Smooth progress bar calculation
+  useEffect(() => {
+    if (isHovered) return;
+    const intervalTime = 50;
+    const step = (intervalTime / duration) * 100;
+
+    const timer = setInterval(() => {
+      setProgress((prev) => {
+        if (prev <= step) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - step;
+      });
+    }, intervalTime);
+
+    return () => clearInterval(timer);
+  }, [duration, isHovered]);
 
   const handleManualDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -128,55 +154,55 @@ function NotificationCard({
         return {
           card: "bg-zinc-950/95 border-amber-500/70 text-amber-100 shadow-[0_0_35px_rgba(245,158,11,0.35)] ring-1 ring-amber-500/30",
           iconBg: "bg-amber-950/80 border-amber-400 text-amber-300",
-          accentColor: "rgba(245,158,11,0.35)",
+          accentColor: "#f59e0b",
         };
       case "quest_assigned":
         return {
           card: "bg-zinc-950/95 border-sky-500/70 text-sky-100 shadow-[0_0_35px_rgba(14,165,233,0.35)] ring-1 ring-sky-500/30",
           iconBg: "bg-sky-950/80 border-sky-400 text-sky-300",
-          accentColor: "rgba(14,165,233,0.35)",
+          accentColor: "#0ea5e9",
         };
       case "quest_failed":
         return {
           card: "bg-zinc-950/95 border-red-600 text-red-100 shadow-[0_0_40px_rgba(220,38,38,0.45)] ring-1 ring-red-600/40",
           iconBg: "bg-red-950/90 border-red-500 text-red-400",
-          accentColor: "rgba(220,38,38,0.5)",
+          accentColor: "#dc2626",
         };
       case "penalty_quest":
         return {
           card: "bg-purple-950/95 border-purple-500 text-purple-100 shadow-[0_0_45px_rgba(168,85,247,0.5)] ring-1 ring-purple-500/50 animate-pulse",
           iconBg: "bg-purple-900/90 border-purple-400 text-purple-300",
-          accentColor: "rgba(168,85,247,0.5)",
+          accentColor: "#a855f7",
         };
       case "regression_trigger":
         return {
           card: "bg-cyan-950/95 border-cyan-400 text-cyan-100 shadow-[0_0_45px_rgba(34,211,238,0.5)] ring-1 ring-cyan-400/50",
           iconBg: "bg-cyan-900/90 border-cyan-300 text-cyan-200",
-          accentColor: "rgba(34,211,238,0.5)",
+          accentColor: "#22d3ee",
         };
       case "system_alert":
         return {
           card: "bg-rose-950/95 border-rose-500 text-rose-100 shadow-[0_0_40px_rgba(244,63,94,0.45)] ring-1 ring-rose-500/40",
           iconBg: "bg-rose-900/80 border-rose-400 text-rose-300",
-          accentColor: "rgba(244,63,94,0.5)",
+          accentColor: "#f43f5e",
         };
       case "skill":
         return {
           card: "bg-zinc-950/95 border-rose-500/70 text-rose-100 shadow-[0_0_40px_rgba(244,63,94,0.35)] ring-1 ring-rose-500/30",
           iconBg: "bg-rose-950/80 border-rose-400 text-rose-300",
-          accentColor: "rgba(244,63,94,0.4)",
+          accentColor: "#f43f5e",
         };
       case "level":
         return {
           card: "bg-zinc-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_40px_rgba(245,158,11,0.4)] ring-1 ring-amber-400/40",
           iconBg: "bg-amber-950/80 border-amber-400 text-amber-300",
-          accentColor: "rgba(245,158,11,0.5)",
+          accentColor: "#fbbf24",
         };
       case "codex":
         return {
           card: "bg-zinc-950/95 border-purple-500/70 text-purple-100 shadow-[0_0_35px_rgba(168,85,247,0.35)] ring-1 ring-purple-500/30",
           iconBg: "bg-purple-950/80 border-purple-400 text-purple-300",
-          accentColor: "rgba(168,85,247,0.4)",
+          accentColor: "#a855f7",
         };
       case "loot": {
         const rarity = item.rarity || "rare";
@@ -184,35 +210,34 @@ function NotificationCard({
           return {
             card: "bg-zinc-950/95 border-rose-500/70 text-rose-100 shadow-[0_0_35px_rgba(244,63,94,0.4)] ring-1 ring-rose-500/30",
             iconBg: "bg-rose-950/80 border-rose-400 text-rose-300",
-            accentColor: "rgba(244,63,94,0.4)",
+            accentColor: "#e11d48",
           };
         }
         if (rarity === "relic") {
           return {
             card: "bg-zinc-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_40px_rgba(245,158,11,0.4)] ring-1 ring-amber-400/30",
             iconBg: "bg-amber-950/80 border-amber-400 text-amber-300",
-            accentColor: "rgba(245,158,11,0.4)",
+            accentColor: "#f59e0b",
           };
         }
         if (rarity === "uncommon") {
           return {
             card: "bg-zinc-950/95 border-emerald-500/70 text-emerald-100 shadow-[0_0_30px_rgba(52,211,153,0.3)] ring-1 ring-emerald-500/30",
             iconBg: "bg-emerald-950/80 border-emerald-400 text-emerald-300",
-            accentColor: "rgba(52,211,153,0.3)",
+            accentColor: "#10b981",
           };
         }
         return {
           card: "bg-zinc-950/95 border-sky-500/70 text-sky-100 shadow-[0_0_35px_rgba(14,165,233,0.35)] ring-1 ring-sky-500/30",
           iconBg: "bg-sky-950/80 border-sky-400 text-sky-300",
-          accentColor: "rgba(14,165,233,0.35)",
+          accentColor: "#0ea5e9",
         };
       }
       default:
-        // quest_updated
         return {
           card: "bg-zinc-950/95 border-rose-500/60 text-zinc-100 shadow-[0_0_35px_rgba(244,63,94,0.3)] ring-1 ring-rose-500/20",
           iconBg: "bg-rose-950/80 border-rose-500/50 text-rose-300",
-          accentColor: "rgba(244,63,94,0.3)",
+          accentColor: "#f43f5e",
         };
     }
   };
@@ -236,10 +261,12 @@ function NotificationCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
-      className={`pointer-events-auto relative overflow-hidden rounded-2xl p-3.5 sm:p-4 backdrop-blur-2xl border-2 shadow-2xl transition-all duration-300 ease-out transform max-w-sm sm:max-w-md w-full select-none ${
+      className={`pointer-events-auto relative overflow-hidden rounded-2xl p-3.5 sm:p-4 backdrop-blur-2xl border-2 shadow-2xl transition-all duration-400 ease-out transform max-w-sm sm:max-w-md w-full select-none ${
         isInteractive ? "cursor-pointer hover:scale-[1.01]" : ""
       } ${
-        isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-3 scale-95"
+        isVisible
+          ? "opacity-100 translate-x-0 scale-100"
+          : "opacity-0 translate-x-10 scale-95"
       } ${theme.card}`}
     >
       {/* Ambient Radial Backlight */}
@@ -334,6 +361,17 @@ function NotificationCard({
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Progress countdown indicator */}
+      <div className="absolute bottom-0 inset-x-0 h-0.5 bg-black/50 overflow-hidden">
+        <div
+          className="h-full transition-all duration-75 ease-linear opacity-90"
+          style={{
+            width: `${progress}%`,
+            backgroundColor: theme.accentColor,
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -343,26 +381,99 @@ export function GameNotificationStack({
   onDismiss,
   onOpenSystemWindow,
   onInspectItem,
+  maxVisible = 2,
+  staggerDelayMs = 750,
 }: GameNotificationStackProps) {
-  if (!notifications || notifications.length === 0) return null;
+  const [visibleItems, setVisibleItems] = useState<GameNotificationItem[]>([]);
+  const pendingQueueRef = useRef<GameNotificationItem[]>([]);
+  const seenIdsRef = useRef<Set<string>>(new Set<string>());
+  const isStaggeringRef = useRef<boolean>(false);
+  const [queueTick, setQueueTick] = useState<number>(0);
 
-  // Render up to 4 notifications simultaneously in a vertical stack
-  const visibleNotifications = notifications.slice(0, 4);
+  // Synchronize incoming notifications into pending queue
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) {
+      pendingQueueRef.current = [];
+      setVisibleItems([]);
+      return;
+    }
+
+    let addedNew = false;
+    notifications.forEach((notif) => {
+      if (!seenIdsRef.current.has(notif.id)) {
+        seenIdsRef.current.add(notif.id);
+        pendingQueueRef.current.push(notif);
+        addedNew = true;
+      }
+    });
+
+    // Reconcile updates to already visible items (e.g. metadata or image updates)
+    setVisibleItems((prev) =>
+      prev.map((vis) => {
+        const updated = notifications.find((n) => n.id === vis.id);
+        return updated ? { ...vis, ...updated } : vis;
+      })
+    );
+
+    if (addedNew) {
+      setQueueTick((t) => t + 1);
+    }
+  }, [notifications]);
+
+  // Sequential queue processor: slowly releases one notification at a time
+  useEffect(() => {
+    if (isStaggeringRef.current) return;
+    if (pendingQueueRef.current.length === 0) return;
+    if (visibleItems.length >= maxVisible) return;
+
+    const nextItem = pendingQueueRef.current.shift();
+    if (!nextItem) return;
+
+    isStaggeringRef.current = true;
+    soundEffects.playSystemNotification();
+
+    setVisibleItems((prev) => [...prev, nextItem]);
+
+    const timer = setTimeout(() => {
+      isStaggeringRef.current = false;
+      setQueueTick((t) => t + 1);
+    }, staggerDelayMs);
+
+    return () => clearTimeout(timer);
+  }, [visibleItems.length, queueTick, maxVisible, staggerDelayMs]);
+
+  const handleCardDismiss = (id: string) => {
+    setVisibleItems((prev) => prev.filter((item) => item.id !== id));
+    onDismiss(id);
+    setQueueTick((t) => t + 1);
+  };
+
+  if (visibleItems.length === 0 && pendingQueueRef.current.length === 0) return null;
 
   return (
     <div
       aria-live="polite"
-      className="fixed top-16 sm:top-20 right-3 sm:right-6 md:right-8 z-50 pointer-events-none flex flex-col items-end gap-2.5 max-w-sm sm:max-w-md w-full"
+      className="fixed top-16 sm:top-20 right-3 sm:right-6 md:right-8 z-50 pointer-events-none flex flex-col items-end gap-3 max-w-sm sm:max-w-md w-full transition-all"
     >
-      {visibleNotifications.map((item) => (
+      {visibleItems.map((item) => (
         <NotificationCard
           key={item.id}
           item={item}
-          onDismiss={onDismiss}
+          onDismiss={handleCardDismiss}
           onOpenSystemWindow={onOpenSystemWindow}
           onInspectItem={onInspectItem}
         />
       ))}
+
+      {/* Subtle, reassuring indicator when subsequent alerts are waiting in queue */}
+      {pendingQueueRef.current.length > 0 && (
+        <div className="pointer-events-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950/90 border border-white/10 text-[10px] font-mono text-zinc-400 shadow-xl backdrop-blur-md animate-pulse select-none">
+          <Bell className="w-3 h-3 text-rose-400 animate-bounce" />
+          <span>
+            +{pendingQueueRef.current.length} more update{pendingQueueRef.current.length > 1 ? "s" : ""} queued...
+          </span>
+        </div>
+      )}
     </div>
   );
 }
