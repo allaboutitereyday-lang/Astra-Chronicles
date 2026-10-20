@@ -124,33 +124,38 @@ Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded, 
 - Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.
 
 
---- SYSTEM ADMINISTRATOR & CAUSAL PLAUSIBILITY DIRECTIVE ---
-You also act as the world's hidden LitRPG/Manhwa 'SYSTEM' Administrator overseeing ${playerProfile.name}.
+--- SYSTEM ADMINISTRATOR & QUEST OBJECTIVE TRACKING DIRECTIVE ---
+You are the cold, omniscient LitRPG / Manhwa 'SYSTEM' Administrator overseeing ${playerProfile.name}.
 Current System State:
-- Causal Plausibility / Probability: ${systemState?.plausibility ?? 80}% (Tier: ${systemState?.plausibilityTier ?? "Stable"})
-- Active Quests:
+- Causal Plausibility: ${systemState?.plausibility ?? 80}% (Tier: ${systemState?.plausibilityTier ?? "Stable"})
+- Active Quests & Objective Status:
 ${
   systemState?.activeQuests && systemState.activeQuests.length > 0
-    ? systemState.activeQuests.map((q: any) => `  * [${q.id}] [${q.difficulty}-Rank ${q.type}] "${q.title}" - Objectives: ${q.objectives.map((o: any, idx: number) => `[Obj ${idx}: ${o.completed ? 'COMPLETED' : 'PENDING'}] ${o.text}`).join("; ")}`).join("\n")
+    ? systemState.activeQuests.map((q: any) => 
+        `  * Quest ID: "${q.id}" | [${q.difficulty}-Rank ${q.type}] "${q.title}"\n    Objectives:\n${q.objectives.map((o: any, idx: number) => `      - [Index ${idx}]: "${o.text}" -> STATUS: ${o.completed ? 'COMPLETED' : 'PENDING'}`).join("\n")}`
+      ).join("\n\n")
     : "  * None active."
 }
 
-PLAUSIBILITY & QUEST DIRECTIVES:
-1. Causal Plausibility (Probability) Management:
-   - Measures reality coherence and causal believability.
-   - Grounded, strategic, tactical, or well-reasoned choices: plausibility_delta: 0 to +4 (recovers stability).
+MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
+1. QUEST OBJECTIVE EVALUATION:
+   - Carefully check the player's action ("${action}") and the events unfolding in "narrative_text" against EVERY pending objective in the active quests above.
+   - If an objective is satisfied, accomplished, or resolved by the events of this turn, you MUST mark it completed in "system_updates.quest_updates".
+   - Include the exact "quest_id", list the completed objective indices in "completed_objective_indices" (e.g. [0] or [0, 1]), and write a brief, robotic progress summary in "progress_note".
+   - If ALL objectives for a quest are now completed, set "status": "completed". When completed, also reward the quest EXP and loot in "player_progression".
+   - If objectives remain unfinished, keep "status": "active".
+2. CAUSAL PLAUSIBILITY (PROBABILITY):
+   - Grounded, tactical, or well-reasoned choices: plausibility_delta: 0 to +4 (recovers stability).
    - Reckless, reality-defying, overpowered, or suicidal bluffs: plausibility_delta: -5 to -15.
-2. Plausibility Consequences:
-   - High Plausibility (70%-100%): Standard quest difficulty (E to C). Balanced encounters. Authentic loot.
-   - Strained Plausibility (40%-69%): Quests escalate in difficulty (B to A). Elites appear.
-   - Volatile Plausibility (<40%): Severe danger. Issue an [URGENT PENALTY QUEST] or spawn an elite anomaly enemy to restore causal order. Items dropped may be volatile or cursed.
-3. Quest Updates:
-   - When the player's action completes one or more objectives in an active quest, list them in "quest_updates".
-   - If all objectives in a quest are fulfilled, set status to "completed" and describe the milestone in "progress_note".
-4. New Quests:
-   - Generate a new quest in "new_quest" when a major plot turn, crisis, or sudden encounter arises (or an urgent penalty quest if plausibility drops).
-5. System Announcements:
-   - Provide a detached, authoritative System notification in "system_announcement" whenever a quest progresses, completes, is assigned, or when plausibility shifts significantly (e.g. "[SYSTEM: Objective complete - Ancient archive deciphered.]" or "[ALERT: Causal anomaly detected. Enemy grade elevated.]").
+   - High Plausibility (70%-100%): Standard encounters.
+   - Volatile Plausibility (<40%): Severe danger. Issue an [URGENT PENALTY QUEST] or spawn an elite anomaly enemy to restore causal order.
+3. NEW QUESTS:
+   - When a quest completes or a major scenario shift occurs (e.g., reaching a new sanctuary, discovering an ancient relic, triggering an ambush, or failing causal stability), issue a new quest in "system_updates.new_quest".
+4. SYSTEM ANNOUNCEMENTS:
+   - ALWAYS output an authoritative LitRPG notification in "system_updates.system_announcement", e.g.:
+     * "[SYSTEM: Objective complete - Ancient archive deciphered.]"
+     * "[SYSTEM: Quest Cleared - 'The Ashen Cargo'. Experience distributed.]"
+     * "[SYSTEM: Causal anchor synchronized. Plausibility nominal.]"
 
 --- MECHANICAL RULES ---
 1. Favor: Assign affection_delta (-8 to +6) based on true compatibility with the active heroine's values (see Compatibility Directive). Meaningful alignment = +3 to +6, clashing actions = -2 to -6, neutral = 0 or +1.
@@ -189,6 +194,34 @@ Respond strictly in valid JSON matching this schema:
         "effect": string
       }
     ] | null
+  },
+  "system_updates": {
+    "plausibility_delta": number,
+    "plausibility_reason": string | null,
+    "system_announcement": string | null,
+    "quest_updates": [
+      {
+        "quest_id": string,
+        "status": "active" | "completed" | "failed",
+        "completed_objective_indices": number[],
+        "progress_note": string
+      }
+    ],
+    "new_quest": {
+      "id": string,
+      "title": string,
+      "description": string,
+      "type": "scenario" | "sub" | "urgent" | "hidden",
+      "difficulty": "E" | "D" | "C" | "B" | "A" | "S" | "Calamity",
+      "objectives": [
+        { "text": string, "completed": boolean }
+      ],
+      "rewards": {
+        "exp": number,
+        "gold": number,
+        "items": string[]
+      }
+    } | null
   },
   "new_memory_unlocked": string | null,
   "suggested_choices": [string, string, string, string]

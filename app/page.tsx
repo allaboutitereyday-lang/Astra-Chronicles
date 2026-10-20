@@ -34,7 +34,7 @@ import {
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { SystemState, SystemToastNotification, SystemQuest } from "@/types/system";
+import { SystemState, SystemToastNotification, SystemQuest, PlausibilityTier } from "@/types/system";
 import { SystemNotificationToast } from "@/components/SystemNotificationToast";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
 import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
@@ -926,6 +926,7 @@ export default function VisualNovelGame() {
           narrationStyle,
           plotMemories: memories,
           userAccessKey: accessKey,
+          systemState,
           recentHistory: chatLog.slice(-4).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
@@ -1094,6 +1095,204 @@ export default function VisualNovelGame() {
 
       if (data.new_memory_unlocked && data.new_memory_unlocked.trim().length > 0) {
         setMemories((prev) => [...prev, data.new_memory_unlocked]);
+      }
+
+      if (data.system_updates) {
+        const sysUpdates = data.system_updates;
+        let questNotificationShown = false;
+
+        setSystemState((prevSys) => {
+          let updatedActive = [...prevSys.activeQuests];
+          let updatedCompleted = [...prevSys.completedQuests];
+          let updatedDirectives = [...prevSys.systemDirectives];
+
+          // 1. Process quest updates
+          if (Array.isArray(sysUpdates.quest_updates) && sysUpdates.quest_updates.length > 0) {
+            sysUpdates.quest_updates.forEach((update: any) => {
+              if (!update) return;
+              const updateId = (update.quest_id || "").toLowerCase().trim();
+              let qIndex = updatedActive.findIndex(
+                (q) =>
+                  q.id.toLowerCase() === updateId ||
+                  q.title.toLowerCase().includes(updateId) ||
+                  updateId.includes(q.id.toLowerCase()) ||
+                  updateId.includes(q.title.toLowerCase())
+              );
+
+              // If only 1 active quest, fall back to it if not strictly matched
+              if (qIndex === -1 && updatedActive.length === 1) {
+                qIndex = 0;
+              }
+
+              if (qIndex !== -1) {
+                const targetQuest = { ...updatedActive[qIndex] };
+                let anyNewlyCompleted = false;
+
+                // Update objectives
+                if (Array.isArray(update.completed_objective_indices)) {
+                  targetQuest.objectives = targetQuest.objectives.map((obj, idx) => {
+                    const shouldBeCompleted = update.completed_objective_indices.includes(idx) || obj.completed;
+                    if (shouldBeCompleted && !obj.completed) {
+                      anyNewlyCompleted = true;
+                    }
+                    return {
+                      ...obj,
+                      completed: shouldBeCompleted,
+                    };
+                  });
+                }
+
+                if (update.progress_note) {
+                  targetQuest.progressNote = update.progress_note;
+                }
+
+                // Check if all objectives are completed or status is completed
+                const allObjectivesDone =
+                  targetQuest.objectives.length > 0 && targetQuest.objectives.every((o) => o.completed);
+                const isNowCompleted = update.status === "completed" || allObjectivesDone;
+
+                if (isNowCompleted) {
+                  targetQuest.status = "completed";
+                  targetQuest.objectives = targetQuest.objectives.map((o) => ({ ...o, completed: true }));
+
+                  // Move to completed
+                  updatedActive.splice(qIndex, 1);
+                  updatedCompleted.unshift(targetQuest);
+
+                  // Grant quest rewards if any
+                  if (targetQuest.rewards) {
+                    const rExp = targetQuest.rewards.exp || 0;
+                    if (rExp > 0) {
+                      setPlayer((prevP) => ({
+                        ...prevP,
+                        stats: {
+                          ...prevP.stats,
+                          exp: prevP.stats.exp + rExp,
+                        },
+                      }));
+                    }
+                  }
+
+                  soundEffects.playQuestComplete();
+                  setSystemToast({
+                    id: `quest_complete_${Date.now()}`,
+                    type: "quest_completed",
+                    title: `QUEST CLEARED: ${targetQuest.title}`,
+                    subtitle:
+                      targetQuest.progressNote ||
+                      "All objective parameters verified. Clearance rewards archived.",
+                    difficulty: targetQuest.difficulty,
+                    timestamp: "Just now",
+                  });
+                  questNotificationShown = true;
+                  updatedDirectives.unshift(`[SYSTEM: Scenario Cleared - '${targetQuest.title}']`);
+                } else {
+                  updatedActive[qIndex] = targetQuest;
+
+                  if (anyNewlyCompleted) {
+                    soundEffects.playSystemNotification();
+                    const completedCount = targetQuest.objectives.filter((o) => o.completed).length;
+                    const totalCount = targetQuest.objectives.length;
+                    setSystemToast({
+                      id: `quest_update_${Date.now()}`,
+                      type: "quest_updated",
+                      title: `OBJECTIVE UPDATED (${completedCount}/${totalCount})`,
+                      subtitle: `${targetQuest.title}: ${targetQuest.progressNote || "Objective progress confirmed."}`,
+                      difficulty: targetQuest.difficulty,
+                      timestamp: "Just now",
+                    });
+                    questNotificationShown = true;
+                    updatedDirectives.unshift(
+                      `[SYSTEM: Objective Complete - '${targetQuest.title}' (${completedCount}/${totalCount})]`
+                    );
+                  }
+                }
+              }
+            });
+          }
+
+          // 2. Process new quest assignment
+          if (sysUpdates.new_quest && typeof sysUpdates.new_quest === "object" && sysUpdates.new_quest.title) {
+            const rawQ = sysUpdates.new_quest;
+            const newQ: SystemQuest = {
+              id: rawQ.id || `quest_${Date.now()}`,
+              title: rawQ.title || "Unforeseen Scenario",
+              description: rawQ.description || "System protocol initiated.",
+              type: rawQ.type || "scenario",
+              difficulty: rawQ.difficulty || "C",
+              objectives: Array.isArray(rawQ.objectives)
+                ? rawQ.objectives.map((o: any) => ({
+                    text: typeof o === "string" ? o : o.text || "Investigate anomalies",
+                    completed: Boolean(o?.completed),
+                  }))
+                : [{ text: "Investigate current surroundings", completed: false }],
+              rewards: rawQ.rewards || { exp: 50 },
+              status: "active",
+            };
+
+            const isDuplicate =
+              updatedActive.some((q) => q.id === newQ.id || q.title.toLowerCase() === newQ.title.toLowerCase()) ||
+              updatedCompleted.some((q) => q.id === newQ.id || q.title.toLowerCase() === newQ.title.toLowerCase());
+
+            if (!isDuplicate) {
+              updatedActive.push(newQ);
+              updatedDirectives.unshift(`[SYSTEM: New Scenario Assigned - '${newQ.title}']`);
+
+              if (!questNotificationShown) {
+                soundEffects.playSystemNotification();
+                setSystemToast({
+                  id: `new_quest_${Date.now()}`,
+                  type: "quest_assigned",
+                  title: `NEW SCENARIO: ${newQ.title}`,
+                  subtitle: newQ.description,
+                  difficulty: newQ.difficulty,
+                  timestamp: "Just now",
+                });
+                questNotificationShown = true;
+              }
+            }
+          }
+
+          // 3. Plausibility shift
+          let nextPlausibility = prevSys.plausibility;
+          if (typeof sysUpdates.plausibility_delta === "number" && !isNaN(sysUpdates.plausibility_delta)) {
+            nextPlausibility = Math.max(0, Math.min(100, prevSys.plausibility + sysUpdates.plausibility_delta));
+          }
+          const nextTier: PlausibilityTier =
+            nextPlausibility >= 70
+              ? "Stable"
+              : nextPlausibility >= 40
+              ? "Strained"
+              : nextPlausibility >= 20
+              ? "Volatile"
+              : "Critical";
+
+          // 4. System announcement
+          if (sysUpdates.system_announcement && typeof sysUpdates.system_announcement === "string") {
+            const announcement = sysUpdates.system_announcement.trim();
+            if (announcement.length > 0) {
+              updatedDirectives.unshift(announcement);
+              if (!questNotificationShown) {
+                soundEffects.playSystemNotification();
+                setSystemToast({
+                  id: `sys_alert_${Date.now()}`,
+                  type: "system_alert",
+                  title: "SYSTEM DIRECTIVE",
+                  subtitle: announcement,
+                  timestamp: "Just now",
+                });
+              }
+            }
+          }
+
+          return {
+            plausibility: nextPlausibility,
+            plausibilityTier: nextTier,
+            activeQuests: updatedActive,
+            completedQuests: updatedCompleted,
+            systemDirectives: updatedDirectives.slice(0, 30),
+          };
+        });
       }
 
       setGameState((prev) => ({
