@@ -90,6 +90,11 @@ If a character avatar image is provided, ${startingHeroine} MUST explicitly and 
 - Take note of their physical features (hair, eyes, build, stance), armor/clothing, visible weapons, and overall aura.
 - Weave these direct observations naturally into her dialogue or internal impression.
 
+--- SYSTEM ADMINISTRATOR DIRECTIVE ---
+You also operate the transcendent LitRPG/Manhwa 'SYSTEM' that tracks and guides the protagonist.
+Initialize the starting scenario quest and starting causal plausibility (default 80%).
+Voice: Detached, cold, authoritative administrator ([SYSTEM: ...]).
+
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
 {
@@ -100,7 +105,24 @@ Respond strictly in valid JSON matching this schema:
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
   "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
-  "opening_choices": [string, string, string, string] // 4 tailored, distinct dialogue or action responses tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Composure]", "[Force]")
+  "opening_choices": [string, string, string, string], // 4 tailored, distinct dialogue or action responses tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Composure]", "[Force]")
+  "initial_quest": {
+    "id": "scenario_01",
+    "title": string,
+    "description": string,
+    "type": "scenario",
+    "difficulty": "E" | "D",
+    "objectives": [
+      { "text": string, "completed": false },
+      { "text": string, "completed": false }
+    ],
+    "rewards": {
+      "exp": 100,
+      "gold": 50,
+      "title": string | null
+    }
+  },
+  "system_announcement": string
 }`;
 
     const promptText = `Protagonist: ${playerProfile.name}
@@ -180,6 +202,34 @@ Generate the dynamic opening prologue according to the instructions.`;
     if (!responseData) {
       throw lastError || new Error("Failed to generate prologue from models.");
     }
+
+    const defaultQuest = {
+      id: "scenario_01",
+      title: `Scenario 1: Awakening at ${startingLocation || "the Imperial Realm"}`,
+      description: `The Administrator has initialized in the presence of ${startingHeroine}. Establish your standing without compromising causal probability.`,
+      type: "scenario" as const,
+      difficulty: "E" as const,
+      objectives: [
+        { text: `Engage in dialogue with ${startingHeroine}`, completed: false },
+        { text: `Demonstrate your capability as a ${playerProfile.role || "Wanderer"}`, completed: false },
+      ],
+      rewards: {
+        exp: 120,
+        gold: 50,
+        title: "Planar Pioneer",
+      },
+      status: "active" as const,
+    };
+
+    responseData.initial_quest = responseData.initial_quest || defaultQuest;
+    if (!responseData.initial_quest.status) {
+      responseData.initial_quest.status = "active";
+    }
+    responseData.system_announcement =
+      responseData.system_announcement ||
+      `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`;
+    responseData.plausibility = typeof responseData.plausibility === "number" ? responseData.plausibility : 80;
+    responseData.plausibility_tier = responseData.plausibility >= 70 ? "Stable" : "Strained";
 
     return NextResponse.json(responseData);
   } catch (error: any) {

@@ -234,6 +234,94 @@ class AudioEngine {
       osc.stop(ctx.currentTime + 0.03);
     } catch {}
   }
+
+  /**
+   * Futuristic holographic System Administrator chime (Isekai / Manhwa quest ping)
+   */
+  public playSystemNotification() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      const pitches = [880, 1318.5, 1760]; // A5 -> E6 -> A6
+      pitches.forEach((p, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(p, now + i * 0.06);
+
+        gain.gain.setValueAtTime(0.001, now + i * 0.06);
+        gain.gain.linearRampToValueAtTime(0.12, now + i * 0.06 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.06 + 0.55);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+
+        osc.start(now + i * 0.06);
+        osc.stop(now + i * 0.06 + 0.6);
+      });
+    } catch {}
+  }
+
+  /**
+   * System Alert / Causal Plausibility Warning pulse
+   */
+  public playSystemAlert() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      [330, 440, 220].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+
+        gain.gain.setValueAtTime(0.08, now + idx * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.1 + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+
+        osc.start(now + idx * 0.1);
+        osc.stop(now + idx * 0.1 + 0.4);
+      });
+    } catch {}
+  }
+
+  /**
+   * Triumphant Quest Completion fanfare
+   */
+  public playQuestComplete() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      const notes = [587.33, 739.99, 880, 1174.66]; // D5, F#5, A5, D6
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+        gain.gain.setValueAtTime(0.001, now + idx * 0.09);
+        gain.gain.linearRampToValueAtTime(0.14, now + idx * 0.09 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.09 + 1.2);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+
+        osc.start(now + idx * 0.09);
+        osc.stop(now + idx * 0.09 + 1.3);
+      });
+    } catch {}
+  }
 }
 
 export const soundEffects = new AudioEngine();

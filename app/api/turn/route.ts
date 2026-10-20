@@ -25,6 +25,7 @@ export async function POST(req: Request) {
       plotMemories,
       recentHistory = [],
       userAccessKey,
+      systemState,
     } = body;
 
     const accessKey = headerKey || userAccessKey;
@@ -121,6 +122,35 @@ Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded, 
 - Serena: Values impeccable composure, polite duty, decisive lethality, discipline. Dislikes whining, chaos, disrespect to boundaries, false mercy.
 - Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
 - Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.
+
+
+--- SYSTEM ADMINISTRATOR & CAUSAL PLAUSIBILITY DIRECTIVE ---
+You also act as the world's hidden LitRPG/Manhwa 'SYSTEM' Administrator overseeing ${playerProfile.name}.
+Current System State:
+- Causal Plausibility / Probability: ${systemState?.plausibility ?? 80}% (Tier: ${systemState?.plausibilityTier ?? "Stable"})
+- Active Quests:
+${
+  systemState?.activeQuests && systemState.activeQuests.length > 0
+    ? systemState.activeQuests.map((q: any) => `  * [${q.id}] [${q.difficulty}-Rank ${q.type}] "${q.title}" - Objectives: ${q.objectives.map((o: any, idx: number) => `[Obj ${idx}: ${o.completed ? 'COMPLETED' : 'PENDING'}] ${o.text}`).join("; ")}`).join("\n")
+    : "  * None active."
+}
+
+PLAUSIBILITY & QUEST DIRECTIVES:
+1. Causal Plausibility (Probability) Management:
+   - Measures reality coherence and causal believability.
+   - Grounded, strategic, tactical, or well-reasoned choices: plausibility_delta: 0 to +4 (recovers stability).
+   - Reckless, reality-defying, overpowered, or suicidal bluffs: plausibility_delta: -5 to -15.
+2. Plausibility Consequences:
+   - High Plausibility (70%-100%): Standard quest difficulty (E to C). Balanced encounters. Authentic loot.
+   - Strained Plausibility (40%-69%): Quests escalate in difficulty (B to A). Elites appear.
+   - Volatile Plausibility (<40%): Severe danger. Issue an [URGENT PENALTY QUEST] or spawn an elite anomaly enemy to restore causal order. Items dropped may be volatile or cursed.
+3. Quest Updates:
+   - When the player's action completes one or more objectives in an active quest, list them in "quest_updates".
+   - If all objectives in a quest are fulfilled, set status to "completed" and describe the milestone in "progress_note".
+4. New Quests:
+   - Generate a new quest in "new_quest" when a major plot turn, crisis, or sudden encounter arises (or an urgent penalty quest if plausibility drops).
+5. System Announcements:
+   - Provide a detached, authoritative System notification in "system_announcement" whenever a quest progresses, completes, is assigned, or when plausibility shifts significantly (e.g. "[SYSTEM: Objective complete - Ancient archive deciphered.]" or "[ALERT: Causal anomaly detected. Enemy grade elevated.]").
 
 --- MECHANICAL RULES ---
 1. Favor: Assign affection_delta (-8 to +6) based on true compatibility with the active heroine's values (see Compatibility Directive). Meaningful alignment = +3 to +6, clashing actions = -2 to -6, neutral = 0 or +1.

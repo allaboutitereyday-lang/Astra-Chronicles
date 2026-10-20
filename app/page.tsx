@@ -27,11 +27,15 @@ import {
   Check,
   Key,
   Volume2,
-  VolumeX
+  VolumeX,
+  Terminal
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { SystemState, SystemToastNotification, SystemQuest } from "@/types/system";
+import { SystemNotificationToast } from "@/components/SystemNotificationToast";
+import { SystemQuestModal } from "@/components/SystemQuestModal";
 
 export interface InventoryItem {
   id: string;
@@ -101,6 +105,7 @@ interface SaveSlotData {
   party: Companion[];
   memories: string[];
   chatLog: ChatMessage[];
+  systemState?: SystemState;
 }
 
 // ------------------------------------------------------------------
@@ -350,6 +355,17 @@ export default function VisualNovelGame() {
   // Editing and response regeneration state
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+
+  // System Administrator & Quests State
+  const [systemState, setSystemState] = useState<SystemState>({
+    plausibility: 80,
+    plausibilityTier: "Stable",
+    activeQuests: [],
+    completedQuests: [],
+    systemDirectives: ["Administrator protocol engaged. Causal anchor established at 80%."],
+  });
+  const [showSystemModal, setShowSystemModal] = useState(false);
+  const [systemToast, setSystemToast] = useState<SystemToastNotification | null>(null);
 
   // User Access & Token Tracking
   const [accessKey, setAccessKey] = useState<string>("");
@@ -661,6 +677,33 @@ export default function VisualNovelGame() {
       ]);
 
       setChoices(data.opening_choices && data.opening_choices.length === 4 ? data.opening_choices : chosen.choices);
+
+      if (data.initial_quest) {
+        const initQ: SystemQuest = data.initial_quest;
+        const initPlausibility = typeof data.plausibility === "number" ? data.plausibility : 80;
+        const initTier = initPlausibility >= 70 ? "Stable" : "Strained";
+        const initDir = data.system_announcement || `[SYSTEM: Scenario 1 assigned to ${player.name}.]`;
+
+        setSystemState({
+          plausibility: initPlausibility,
+          plausibilityTier: initTier,
+          activeQuests: [initQ],
+          completedQuests: [],
+          systemDirectives: [initDir],
+        });
+
+        setTimeout(() => {
+          soundEffects.playSystemNotification();
+          setSystemToast({
+            id: "init_quest",
+            type: "quest_assigned",
+            title: initQ.title,
+            subtitle: initQ.description,
+            difficulty: initQ.difficulty,
+            timestamp: "Now",
+          });
+        }, 2200);
+      }
     } catch (err) {
       console.warn("Prologue AI fallback:", err);
 
@@ -722,6 +765,7 @@ export default function VisualNovelGame() {
       party,
       memories,
       chatLog,
+      systemState,
     };
     localStorage.setItem(`astra_save_slot_${slotId}`, JSON.stringify(payload));
     setSavedSlots((prev) => ({ ...prev, [slotId]: payload }));
@@ -745,6 +789,9 @@ export default function VisualNovelGame() {
     }
     setMemories(data.memories);
     setChatLog(data.chatLog);
+    if (data.systemState) {
+      setSystemState(data.systemState);
+    }
     setShowSaveModal(false);
 
     setIsTransitioning({
@@ -1613,6 +1660,29 @@ export default function VisualNovelGame() {
                 <Award className="w-2.5 h-2.5" /> {player.stats.exp}/{player.stats.maxExp} XP
               </div>
             </div>
+          </button>
+
+          {/* SYSTEM ADMINISTRATOR & QUESTS BUTTON */}
+          <button
+            type="button"
+            onClick={() => {
+              soundEffects.playClick();
+              setShowSystemModal(true);
+            }}
+            className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-2.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-2 relative shadow-lg ${
+              systemState.activeQuests.length > 0
+                ? "border-cyan-400 text-cyan-300 shadow-[0_0_18px_rgba(6,182,212,0.35)]"
+                : "border-white/10 text-zinc-300 hover:border-cyan-500/50 hover:text-cyan-200"
+            }`}
+            title="Open System Administrator Interface & Quests"
+          >
+            <Terminal className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <span className="text-xs font-mono font-bold tracking-wider">SYSTEM</span>
+            {systemState.activeQuests.length > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold rounded-full bg-cyan-400 text-black shadow-[0_0_8px_rgba(6,182,212,0.8)]">
+                {systemState.activeQuests.length}
+              </span>
+            )}
           </button>
 
           <button
