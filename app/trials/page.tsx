@@ -117,6 +117,9 @@ export interface CombatTelemetry {
   enemyDamage?: number;
   enemyRemainingHp?: number;
   enemyMaxHp?: number;
+  isCrit?: boolean;
+  lifestealHealed?: number;
+  isStunned?: boolean;
 }
 
 export interface CombatFeedEntry {
@@ -252,10 +255,13 @@ function LitRPGTrialsContent() {
     return null;
   };
 
-  // Predefined Trial Modifiers for the active run (Pillar 1 Upgrade)
+  // Predefined Trial Modifiers & Dynamic Run Seed (Pillar 1 Upgrade)
+  const [trialRunSeed, setTrialRunSeed] = useState<string>(todayDateString);
+  const [customSectorModifiers, setCustomSectorModifiers] = useState<Record<number, TrialModifier>>({});
+
   const runModifiers = useMemo(() => {
-    return getSectorModifiersForRun(5, todayDateString);
-  }, [todayDateString]);
+    return getSectorModifiersForRun(5, trialRunSeed);
+  }, [trialRunSeed]);
 
   // 5 Consecutive Roguelite Sectors with Predefined Modifiers
   const sectors: SectorDefinition[] = useMemo(
@@ -269,7 +275,7 @@ function LitRPGTrialsContent() {
         enemyHp: 60,
         enemyMaxHp: 60,
         enemyDesc: "A twitching arachnid construct composed of fractured spacetime shards.",
-        causalModifier: runModifiers[0] || PREDEFINED_TRIAL_MODIFIERS[0],
+        causalModifier: customSectorModifiers[0] || runModifiers[0] || PREDEFINED_TRIAL_MODIFIERS[0],
       },
       {
         sectorNumber: 2,
@@ -280,7 +286,7 @@ function LitRPGTrialsContent() {
         enemyHp: 95,
         enemyMaxHp: 95,
         enemyDesc: "A predatory quad-ped beast phasing between the physical realm and the void vacuum.",
-        causalModifier: runModifiers[1] || PREDEFINED_TRIAL_MODIFIERS[1],
+        causalModifier: customSectorModifiers[1] || runModifiers[1] || PREDEFINED_TRIAL_MODIFIERS[1],
       },
       {
         sectorNumber: 3,
@@ -291,7 +297,7 @@ function LitRPGTrialsContent() {
         enemyHp: 140,
         enemyMaxHp: 140,
         enemyDesc: "Ancient gilded guardian animated by compressed timeline conduits.",
-        causalModifier: runModifiers[2] || PREDEFINED_TRIAL_MODIFIERS[2],
+        causalModifier: customSectorModifiers[2] || runModifiers[2] || PREDEFINED_TRIAL_MODIFIERS[2],
       },
       {
         sectorNumber: 4,
@@ -302,7 +308,7 @@ function LitRPGTrialsContent() {
         enemyHp: 200,
         enemyMaxHp: 200,
         enemyDesc: "Colossal imperial war automaton forged from corrupted celestial iron.",
-        causalModifier: runModifiers[3] || PREDEFINED_TRIAL_MODIFIERS[3],
+        causalModifier: customSectorModifiers[3] || runModifiers[3] || PREDEFINED_TRIAL_MODIFIERS[3],
       },
       {
         sectorNumber: 5,
@@ -313,14 +319,42 @@ function LitRPGTrialsContent() {
         enemyHp: 280,
         enemyMaxHp: 280,
         enemyDesc: "The manifestation of the Multiverse Administrator evaluating your timeline coherence.",
-        causalModifier: runModifiers[4] || PREDEFINED_TRIAL_MODIFIERS[7],
+        causalModifier: customSectorModifiers[4] || runModifiers[4] || PREDEFINED_TRIAL_MODIFIERS[7],
       },
     ],
-    [runModifiers]
+    [runModifiers, customSectorModifiers]
   );
 
   const activeSector = sectors[currentSectorIdx] || sectors[0];
   const [currentEnemyHp, setCurrentEnemyHp] = useState(activeSector.enemyHp);
+
+  // Helper to compute effective MP cost based on the active sector's causal modifier
+  const getEffectiveMpCost = (baseCost: number): number => {
+    const mult = activeSector.causalModifier?.effects?.mpCostMultiplier ?? 1.0;
+    return Math.max(0, Math.round(baseCost * mult));
+  };
+
+  // Reroll current sector's modifier from predefined modifiers pool
+  const handleRerollSectorModifier = () => {
+    soundEffects.playClick();
+    const currentModId = activeSector.causalModifier.id;
+    const remaining = PREDEFINED_TRIAL_MODIFIERS.filter((m) => m.id !== currentModId);
+    const randomMod = remaining[Math.floor(Math.random() * remaining.length)];
+
+    setCustomSectorModifiers((prev) => ({
+      ...prev,
+      [currentSectorIdx]: randomMod,
+    }));
+
+    const rerollEntry: CombatFeedEntry = {
+      id: `reroll_mod_${Date.now()}`,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      type: "protocol",
+      title: `Anomaly Reconfigured: ${randomMod.name}`,
+      blurb: `Modifier Shifted: ${randomMod.name} — ${randomMod.description} (Effect: ${randomMod.statEffectLabel})`,
+    };
+    setCombatFeed((prev) => [rerollEntry, ...prev]);
+  };
 
   // Sync enemy HP and log protocol ONLY ONCE per sector transition (prevents duplicates)
   useEffect(() => {
@@ -428,11 +462,15 @@ function LitRPGTrialsContent() {
   ) => {
     const pName = syncedPlayer?.name || "You";
     const className = classArsenal.className;
-    if (type === "strike") {
+    if (type === "duo_ultimate") {
+      return `${pName} and ${activeCompanion?.name || "their ally"} unite in flawless resonance, detonating ${actionName} across ${targetName} for ${dmg} catastrophic damage!`;
+    } else if (type === "companion") {
+      return `${pName} coordinates with ${activeCompanion?.name || "their partner"}, launching a synchronized pincer strike with ${actionName} on ${targetName} for ${dmg} damage!`;
+    } else if (type === "strike") {
       return `${pName} (${className}) steps into range, executing ${actionName} on ${targetName} for ${dmg} damage!`;
     } else if (type === "burst" || type === "relic") {
       return `Overclocking their ${className} core, ${pName} detonates ${actionName} across ${targetName} for ${dmg} massive damage!`;
-    } else if (type === "synergy" || type === "companion") {
+    } else if (type === "synergy") {
       return `${pName} invokes ${actionName}, weaving tactical resonance to bombard ${targetName} for ${dmg} damage while infusing vitality!`;
     } else if (type === "defense" || type === "anchor") {
       return `${pName} assumes ${actionName}, stabilizing personal timeline boundaries and knitting vital wounds.`;
@@ -456,19 +494,23 @@ function LitRPGTrialsContent() {
       let hpRegen = 0;
       let plausibilityShift = 0;
       let isStunned = false;
+      let isCriticalHit = false;
+      let lifestealHealed = 0;
       let actionName = classArsenal.actions.strike.name;
 
       const pStr = syncedPlayer?.stats?.str || 10;
       const pDex = syncedPlayer?.stats?.dex || 10;
       const pInt = syncedPlayer?.stats?.int || 10;
       const pLevel = syncedPlayer?.level || 1;
+      const modifierEffects = activeSector.causalModifier?.effects || {};
 
       // 0. Awakened Duo Ultimate (Pillar 1 - Beloved Tier 75%+)
       if (actionType === "duo_ultimate" && activeCompanion) {
         const ult = activeCompanion.resonance.belovedUltimate;
         actionName = `[DUO ULTIMATE] ${ult.name}`;
-        if (playerMp >= ult.mpCost) {
-          mpUsed = ult.mpCost;
+        const effCost = getEffectiveMpCost(ult.mpCost);
+        if (playerMp >= effCost) {
+          mpUsed = effCost;
           const baseUlt = 75 + Math.floor((pStr + pDex + pInt) * 1.5) + pLevel * 4;
           playerDamage = Math.floor(baseUlt * ult.multiplier);
           plausibilityShift = 6;
@@ -480,7 +522,24 @@ function LitRPGTrialsContent() {
           plausibilityShift = -2;
         }
 
-      // 1. Basic Class Strike (0 MP)
+      // 1. Companion Assist (Pillar 1 - Confidant Tier 25%+)
+      } else if (actionType === "companion" && activeCompanion) {
+        actionName = `[CO-OP ASSIST] ${activeCompanion.name}'s Cover`;
+        const effCost = getEffectiveMpCost(15);
+        if (playerMp >= effCost) {
+          mpUsed = effCost;
+          const baseAssist = 36 + Math.floor((pStr + pDex + pInt) * 0.8) + pLevel * 3;
+          playerDamage = Math.floor(baseAssist + Math.random() * 16);
+          hpRegen = 20 + Math.floor(pLevel * 2);
+          plausibilityShift = 4;
+          soundEffects.playFavorSound(true);
+        } else {
+          actionName = `${activeCompanion.name} (Exhausted)`;
+          playerDamage = 16;
+          plausibilityShift = -2;
+        }
+
+      // 2. Basic Class Strike (0 MP)
       } else if (actionType === "strike") {
         const actionCfg = classArsenal.actions.strike;
         actionName = actionCfg.name;
@@ -495,15 +554,16 @@ function LitRPGTrialsContent() {
         hpRegen = actionCfg.baseHeal || 0;
         plausibilityShift = actionCfg.coherenceDelta || 2;
 
-      // 2. Class Signature Burst / Overclock (20-25 MP)
+      // 3. Class Signature Burst / Overclock (MP scaled by modifier)
       } else if (actionType === "burst" || actionType === "relic") {
         const actionCfg = classArsenal.actions.burst;
         actionName = activeSynergies[0]?.bonusName
           ? `[${activeSynergies[0].bonusName}] ${actionCfg.name}`
           : actionCfg.name;
 
-        if (playerMp >= actionCfg.costMp) {
-          mpUsed = actionCfg.costMp;
+        const effCost = getEffectiveMpCost(actionCfg.costMp);
+        if (playerMp >= effCost) {
+          mpUsed = effCost;
           let statBonus = 0;
           if (actionCfg.scalingStat === "str") statBonus = Math.floor(pStr * 2.2);
           else if (actionCfg.scalingStat === "dex") statBonus = Math.floor(pDex * 2.4);
@@ -521,12 +581,13 @@ function LitRPGTrialsContent() {
           plausibilityShift = -3;
         }
 
-      // 3. Class Tactical Synergy / Technique (15-20 MP)
-      } else if (actionType === "synergy" || actionType === "companion") {
+      // 4. Class Tactical Synergy / Technique (MP scaled by modifier)
+      } else if (actionType === "synergy") {
         const actionCfg = classArsenal.actions.synergy;
         actionName = actionCfg.name;
-        if (playerMp >= actionCfg.costMp) {
-          mpUsed = actionCfg.costMp;
+        const effCost = getEffectiveMpCost(actionCfg.costMp);
+        if (playerMp >= effCost) {
+          mpUsed = effCost;
           let statBonus = 0;
           if (actionCfg.scalingStat === "dex") statBonus = Math.floor(pDex * 1.5);
           else if (actionCfg.scalingStat === "str") statBonus = Math.floor(pStr * 1.5);
@@ -542,20 +603,23 @@ function LitRPGTrialsContent() {
           hpRegen = 10;
         }
 
-      // 4. Class Defensive Stance / Reality Anchor (0 MP)
+      // 5. Class Defensive Stance / Reality Anchor (0 MP)
       } else if (actionType === "defense" || actionType === "anchor") {
         const actionCfg = classArsenal.actions.defense;
         actionName = actionCfg.name;
         hpRegen = (actionCfg.baseHeal || 35) + Math.floor(pLevel * 3);
         plausibilityShift = actionCfg.coherenceDelta || 6;
+        // Reinforce active temporal shield against incoming attacks
+        setActiveShield((prev) => Math.min(80, prev + 25 + Math.floor(pLevel * 2.5)));
 
-      // 5. Awakened Custom Archetype Ability (from Character Creation)
+      // 6. Awakened Custom Archetype Ability (from Character Creation)
       } else if (actionType === "ability" && customAbility) {
         actionName = customAbility.name;
         const costMatch = (customAbility.cost || "").match(/\d+/);
-        const costNum = costMatch ? parseInt(costMatch[0], 10) : 15;
-        if (playerMp >= costNum) {
-          mpUsed = costNum;
+        const baseCostNum = costMatch ? parseInt(costMatch[0], 10) : 15;
+        const effCost = getEffectiveMpCost(baseCostNum);
+        if (playerMp >= effCost) {
+          mpUsed = effCost;
           const base = 42 + Math.floor((pStr + pInt + pDex) * 0.9) + pLevel * 3;
           playerDamage = Math.floor(base + Math.random() * 22);
           plausibilityShift = 4;
@@ -565,9 +629,50 @@ function LitRPGTrialsContent() {
         }
       }
 
-      // Apply Combat Stance Multiplier (Pillar 2)
+      // Apply Combat Stance Multiplier & Modifier Player Damage Multiplier
       const currentStanceConfig = COMBAT_STANCES[activeStance as CombatStanceType] || COMBAT_STANCES.neutral;
-      playerDamage = Math.floor(playerDamage * currentStanceConfig.damageMultiplier);
+      const stanceDmgMult = currentStanceConfig.damageMultiplier;
+      const modifierDmgMult = modifierEffects.playerDamageMultiplier ?? 1.0;
+      playerDamage = Math.floor(playerDamage * stanceDmgMult * modifierDmgMult);
+
+      // Critical Strike Check (Applied to damaging actions)
+      if (playerDamage > 0) {
+        const baseCritRate = 0.10;
+        const critBonus = modifierEffects.critRateBonus ?? 0;
+        const critChance = Math.min(0.85, baseCritRate + critBonus);
+        if (Math.random() < critChance) {
+          isCriticalHit = true;
+          const critMultiplier = modifierEffects.critDamageMultiplier ?? 1.5;
+          playerDamage = Math.floor(playerDamage * critMultiplier);
+          actionName = `[CRIT] ${actionName}`;
+          soundEffects.playQuestComplete();
+        }
+      }
+
+      // Stagger Multiplier (amplifies coherence shift & poise breaks)
+      const staggerMult = modifierEffects.staggerMultiplier ?? 1.0;
+      if (staggerMult > 1.0) {
+        if (plausibilityShift > 0) {
+          plausibilityShift = Math.round(plausibilityShift * staggerMult);
+        }
+        const staggerBreakChance = Math.min(0.40, (staggerMult - 1.0) * 0.65);
+        if (!isStunned && playerDamage > 0 && Math.random() < staggerBreakChance) {
+          isStunned = true;
+          actionName = `${actionName} [STAGGER]`;
+        }
+      }
+
+      // Physical Lifesteal Modifier (e.g. Sanguine Moon)
+      const lifestealPct = modifierEffects.lifestealPercent ?? 0;
+      if (lifestealPct > 0 && playerDamage > 0) {
+        lifestealHealed = Math.floor(playerDamage * lifestealPct);
+        hpRegen += lifestealHealed;
+      }
+
+      // Plausibility Drain Multiplier on negative shifts
+      if (plausibilityShift < 0 && modifierEffects.plausibilityDrainMultiplier) {
+        plausibilityShift = Math.floor(plausibilityShift * modifierEffects.plausibilityDrainMultiplier);
+      }
 
       // Trigger Confidant Passive Co-Op (Pillar 1)
       if (activeCompanion && ["Confidant", "Beloved", "Sworn Partner"].includes(activeCompanion.tier)) {
@@ -576,7 +681,7 @@ function LitRPGTrialsContent() {
         const isInterval = (trialTurnCount + 1) % 3 === 0;
         if (isCrisis || isInterval) {
           if (passive.type === "shield") {
-            setActiveShield((prev) => Math.min(65, prev + passive.value));
+            setActiveShield((prev) => Math.min(80, prev + passive.value));
           } else if (passive.type === "heal") {
             hpRegen += passive.value;
           }
@@ -594,9 +699,17 @@ function LitRPGTrialsContent() {
       let enemyDamage = 0;
       if (nextEnemyHp > 0) {
         if (isStunned) {
-          enemyDamage = 0; // Stunned!
+          enemyDamage = 0; // Stunned or Staggered!
         } else {
-          let rawEnemyDamage = Math.floor(14 + Math.random() * 14 + currentSectorIdx * 6);
+          let baseEnemyDamage = 14 + Math.random() * 14 + currentSectorIdx * 6;
+          // Defensive stance reduces incoming enemy strike by 55%
+          if (actionType === "defense" || actionType === "anchor") {
+            baseEnemyDamage = Math.floor(baseEnemyDamage * 0.45);
+          }
+
+          const enemyLethality = modifierEffects.enemyLethalityMultiplier ?? 1.0;
+          let rawEnemyDamage = Math.floor(baseEnemyDamage * enemyLethality);
+
           // Absorb with shield
           if (activeShield > 0) {
             if (activeShield >= rawEnemyDamage) {
@@ -643,13 +756,16 @@ function LitRPGTrialsContent() {
           enemyDamage,
           enemyRemainingHp: nextEnemyHp,
           enemyMaxHp: activeSector.enemyMaxHp,
+          isCrit: isCriticalHit,
+          lifestealHealed,
+          isStunned,
         },
       };
 
       // Add to feed immediately
       setCombatFeed((prev) => [combatEntry, ...prev]);
 
-      // Trigger AI narrative synthesis with Co-Op companion and active stance
+      // Trigger AI narrative synthesis with Co-Op companion, active stance, and causal modifier
       fetch("/api/generate-combat-blurb", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -662,7 +778,7 @@ function LitRPGTrialsContent() {
           damageDealt: playerDamage,
           enemyDamage,
           sectorName: activeSector.title,
-          causalModifier: activeSector.causalModifier.name,
+          causalModifier: `${activeSector.causalModifier.name} (${activeSector.causalModifier.statEffectLabel})`,
           activeCompanion: activeCompanion
             ? {
                 name: activeCompanion.name,
@@ -674,6 +790,7 @@ function LitRPGTrialsContent() {
             : null,
           activeStance,
           isDuoUltimate: actionType === "duo_ultimate",
+          isCriticalHit,
         }),
       })
         .then((res) => res.json())
@@ -733,6 +850,8 @@ function LitRPGTrialsContent() {
   const handleRestartTrial = () => {
     soundEffects.playClick();
     loggedSectorsRef.current.clear();
+    setCustomSectorModifiers({});
+    setTrialRunSeed(`run_${Date.now()}`);
     setCurrentSectorIdx(0);
     setCurrentEnemyHp(sectors[0].enemyHp);
     setTrialCompleted(false);
@@ -742,13 +861,14 @@ function LitRPGTrialsContent() {
     setCausalPlausibility(85);
     setTrialExpGained(0);
     setTrialLootEarned([]);
+    setActiveShield(0);
     setCombatFeed([
       {
         id: `feed_reset_${Date.now()}`,
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         type: "protocol",
         title: "Administrator Matrix Re-Initialized",
-        blurb: "Timeline anomaly parameters reset to Sector 01. Combat telemetry active.",
+        blurb: "Timeline anomaly parameters reset to Sector 01. Fresh causal modifiers synthesized.",
       },
     ]);
   };
@@ -1038,7 +1158,7 @@ function LitRPGTrialsContent() {
             </div>
 
             {/* Causal Modifier Banner (Predefined Modifiers) */}
-            <div className={`mb-5 p-3 rounded-2xl bg-black/60 border flex items-start gap-3 ${
+            <div className={`mb-5 p-3 rounded-2xl bg-black/60 border flex items-start justify-between gap-3 ${
               activeSector.causalModifier.colorTheme === "rose"
                 ? "border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.15)]"
                 : activeSector.causalModifier.colorTheme === "purple"
@@ -1047,28 +1167,41 @@ function LitRPGTrialsContent() {
                 ? "border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
                 : "border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
             }`}>
-              <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${
-                activeSector.causalModifier.colorTheme === "rose"
-                  ? "text-rose-400"
-                  : activeSector.causalModifier.colorTheme === "purple"
-                  ? "text-purple-400"
-                  : activeSector.causalModifier.colorTheme === "amber"
-                  ? "text-amber-400"
-                  : "text-cyan-400"
-              }`} />
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white font-mono">
-                    Active Modifier: <span className="text-amber-300">{activeSector.causalModifier.name}</span>
-                  </span>
-                </div>
-                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                  {activeSector.causalModifier.description}
-                </p>
-                <div className="text-[10px] font-mono text-cyan-300 font-bold mt-1">
-                  ✦ Effect: {activeSector.causalModifier.statEffectLabel}
+              <div className="flex items-start gap-3 min-w-0">
+                <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${
+                  activeSector.causalModifier.colorTheme === "rose"
+                    ? "text-rose-400"
+                    : activeSector.causalModifier.colorTheme === "purple"
+                    ? "text-purple-400"
+                    : activeSector.causalModifier.colorTheme === "amber"
+                    ? "text-amber-400"
+                    : "text-cyan-400"
+                }`} />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white font-mono">
+                      Active Modifier: <span className="text-amber-300">{activeSector.causalModifier.name}</span>
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                    {activeSector.causalModifier.description}
+                  </p>
+                  <div className="text-[10px] font-mono text-cyan-300 font-bold mt-1">
+                    ✦ Effect: {activeSector.causalModifier.statEffectLabel}
+                  </div>
                 </div>
               </div>
+
+              {/* Reroll Sector Anomaly Modifier Button */}
+              <button
+                onClick={handleRerollSectorModifier}
+                disabled={isResolvingTurn}
+                title="Reroll this sector's causal modifier"
+                className="shrink-0 p-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1 text-[10px] font-mono disabled:opacity-50"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Reroll</span>
+              </button>
             </div>
 
             {/* Enemy Display, Monster Illustration & Health Bar */}
@@ -1415,8 +1548,11 @@ function LitRPGTrialsContent() {
                   {(() => {
                     const isBeloved = activeCompanion && ["Beloved", "Sworn Partner"].includes(activeCompanion.tier);
                     const isConfidant = activeCompanion && (activeCompanion.tier === "Confidant" || isBeloved);
-                    const ultCost = activeCompanion?.resonance?.belovedUltimate?.mpCost || 28;
-                    const canAfford = playerMp >= (isBeloved ? ultCost : 15);
+                    const rawUltCost = activeCompanion?.resonance?.belovedUltimate?.mpCost || 28;
+                    const effUltCost = getEffectiveMpCost(rawUltCost);
+                    const effAssistCost = getEffectiveMpCost(15);
+                    const effCost = isBeloved ? effUltCost : effAssistCost;
+                    const canAfford = playerMp >= effCost;
 
                     return (
                       <button
@@ -1452,7 +1588,7 @@ function LitRPGTrialsContent() {
                           <span className={`text-[10px] font-mono font-bold ${
                             isBeloved ? "text-amber-300" : isConfidant ? "text-purple-300" : "text-zinc-500"
                           }`}>
-                            {isBeloved ? `${ultCost} MP` : isConfidant ? "15 MP" : "Solo"}
+                            {isBeloved ? `${effUltCost} MP` : isConfidant ? `${effAssistCost} MP` : "Solo"}
                           </span>
                         </div>
                         <div>
@@ -1491,71 +1627,86 @@ function LitRPGTrialsContent() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {/* Class Signature Burst */}
-                      <button
-                        onClick={() => {
-                          setShowSkillsDrawer(false);
-                          handleTacticalAction("burst");
-                        }}
-                        disabled={isResolvingTurn || playerMp < classArsenal.actions.burst.costMp}
-                        className="p-3 rounded-xl bg-amber-950/20 hover:bg-amber-950/40 border border-amber-500/30 hover:border-amber-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
-                      >
-                        <div>
-                          <span className="text-xs font-bold text-amber-200 block truncate">
-                            {activeSynergies[0]?.bonusName
-                              ? `[${activeSynergies[0].bonusName}] ${classArsenal.actions.burst.name}`
-                              : classArsenal.actions.burst.name}
-                          </span>
-                          <span className="text-[10px] font-mono text-amber-300/80 block mt-0.5">
-                            {classArsenal.actions.burst.badgeText}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 shrink-0">
-                          {classArsenal.actions.burst.costMp} MP
-                        </span>
-                      </button>
+                      {(() => {
+                        const effCost = getEffectiveMpCost(classArsenal.actions.burst.costMp);
+                        return (
+                          <button
+                            onClick={() => {
+                              setShowSkillsDrawer(false);
+                              handleTacticalAction("burst");
+                            }}
+                            disabled={isResolvingTurn || playerMp < effCost}
+                            className="p-3 rounded-xl bg-amber-950/20 hover:bg-amber-950/40 border border-amber-500/30 hover:border-amber-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
+                          >
+                            <div>
+                              <span className="text-xs font-bold text-amber-200 block truncate">
+                                {activeSynergies[0]?.bonusName
+                                  ? `[${activeSynergies[0].bonusName}] ${classArsenal.actions.burst.name}`
+                                  : classArsenal.actions.burst.name}
+                              </span>
+                              <span className="text-[10px] font-mono text-amber-300/80 block mt-0.5">
+                                {classArsenal.actions.burst.badgeText}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 shrink-0">
+                              {effCost} MP
+                            </span>
+                          </button>
+                        );
+                      })()}
 
                       {/* Class Tactical Synergy */}
-                      <button
-                        onClick={() => {
-                          setShowSkillsDrawer(false);
-                          handleTacticalAction("synergy");
-                        }}
-                        disabled={isResolvingTurn || playerMp < classArsenal.actions.synergy.costMp}
-                        className="p-3 rounded-xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-500/30 hover:border-rose-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
-                      >
-                        <div>
-                          <span className="text-xs font-bold text-rose-200 block truncate">
-                            {classArsenal.actions.synergy.name}
-                          </span>
-                          <span className="text-[10px] font-mono text-rose-300/80 block mt-0.5">
-                            {classArsenal.actions.synergy.badgeText}
-                          </span>
-                        </div>
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 shrink-0">
-                          {classArsenal.actions.synergy.costMp} MP
-                        </span>
-                      </button>
+                      {(() => {
+                        const effCost = getEffectiveMpCost(classArsenal.actions.synergy.costMp);
+                        return (
+                          <button
+                            onClick={() => {
+                              setShowSkillsDrawer(false);
+                              handleTacticalAction("synergy");
+                            }}
+                            disabled={isResolvingTurn || playerMp < effCost}
+                            className="p-3 rounded-xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-500/30 hover:border-rose-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
+                          >
+                            <div>
+                              <span className="text-xs font-bold text-rose-200 block truncate">
+                                {classArsenal.actions.synergy.name}
+                              </span>
+                              <span className="text-[10px] font-mono text-rose-300/80 block mt-0.5">
+                                {classArsenal.actions.synergy.badgeText}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-300 shrink-0">
+                              {effCost} MP
+                            </span>
+                          </button>
+                        );
+                      })()}
 
                       {/* Awakened Custom Archetype Abilities */}
-                      {availableCustomAbilities.map((ab) => (
-                        <button
-                          key={ab.name}
-                          onClick={() => {
-                            setShowSkillsDrawer(false);
-                            handleTacticalAction("ability", ab);
-                          }}
-                          disabled={isResolvingTurn || playerMp < 15}
-                          className="p-3 rounded-xl bg-purple-950/25 hover:bg-purple-950/45 border border-purple-500/30 hover:border-purple-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
-                        >
-                          <div className="min-w-0">
-                            <span className="text-xs font-bold text-purple-200 block truncate">{ab.name}</span>
-                            <span className="text-[10px] font-mono text-zinc-400 truncate block mt-0.5">{ab.description}</span>
-                          </div>
-                          <span className="text-[10px] font-mono text-purple-300 font-bold px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 shrink-0">
-                            {ab.cost || "15 MP"}
-                          </span>
-                        </button>
-                      ))}
+                      {availableCustomAbilities.map((ab) => {
+                        const costMatch = (ab.cost || "").match(/\d+/);
+                        const baseCostNum = costMatch ? parseInt(costMatch[0], 10) : 15;
+                        const effCost = getEffectiveMpCost(baseCostNum);
+                        return (
+                          <button
+                            key={ab.name}
+                            onClick={() => {
+                              setShowSkillsDrawer(false);
+                              handleTacticalAction("ability", ab);
+                            }}
+                            disabled={isResolvingTurn || playerMp < effCost}
+                            className="p-3 rounded-xl bg-purple-950/25 hover:bg-purple-950/45 border border-purple-500/30 hover:border-purple-400 text-left transition-all cursor-pointer flex items-center justify-between gap-2 group disabled:opacity-50"
+                          >
+                            <div className="min-w-0">
+                              <span className="text-xs font-bold text-purple-200 block truncate">{ab.name}</span>
+                              <span className="text-[10px] font-mono text-zinc-400 truncate block mt-0.5">{ab.description}</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-purple-300 font-bold px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 shrink-0">
+                              {effCost} MP
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -1821,9 +1972,24 @@ function LitRPGTrialsContent() {
                       {/* Telemetry Chips */}
                       {telem && (
                         <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                          {telem.isCrit && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold flex items-center gap-1 animate-pulse">
+                              <Sparkles className="w-3 h-3 text-amber-400" /> CRIT
+                            </span>
+                          )}
                           {telem.damageDealt !== undefined && telem.damageDealt > 0 && (
                             <span className="px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-500/40 text-rose-300 font-bold flex items-center gap-1">
                               <Zap className="w-3 h-3 text-rose-400" /> {telem.damageDealt} DMG
+                            </span>
+                          )}
+                          {telem.lifestealHealed !== undefined && telem.lifestealHealed > 0 && (
+                            <span className="px-2 py-0.5 rounded-md bg-pink-500/20 border border-pink-500/40 text-pink-300 font-bold flex items-center gap-1">
+                              🩸 +{telem.lifestealHealed} Lifesteal
+                            </span>
+                          )}
+                          {telem.isStunned && (
+                            <span className="px-2 py-0.5 rounded-md bg-purple-500/20 border border-purple-500/40 text-purple-300 font-bold flex items-center gap-1">
+                              💫 STUNNED
                             </span>
                           )}
                           {telem.mpCost !== undefined && telem.mpCost > 0 && (
