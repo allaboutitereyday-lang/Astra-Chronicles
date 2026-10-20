@@ -20,6 +20,7 @@ interface SystemQuestModalProps {
   isOpen: boolean;
   onClose: () => void;
   systemState: SystemState;
+  onCompleteQuest?: (questId: string) => void;
 }
 
 const DIFFICULTY_STYLES: Record<QuestDifficulty, { label: string; badge: string }> = {
@@ -76,7 +77,7 @@ const TIER_COLORS: Record<PlausibilityTier, { badge: string; text: string; bg: s
   },
 };
 
-export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestModalProps) {
+export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest }: SystemQuestModalProps) {
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "directives">("active");
   const activeQuests = Array.isArray(systemState?.activeQuests) ? systemState.activeQuests : [];
   const completedQuests = Array.isArray(systemState?.completedQuests) ? systemState.completedQuests : [];
@@ -123,7 +124,7 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
         <span className="absolute bottom-2 right-2 text-xs font-mono text-rose-400/60 pointer-events-none">└ ADMIN ┘</span>
 
         {/* SYSTEM HEADER BAR */}
-        <div className="p-4 sm:p-5 border-b border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10 bg-rose-950/25">
+        <div className="p-4 sm:p-5 border-b border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-30 bg-rose-950/25">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-500/50 flex items-center justify-center text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.35)]">
               <Terminal className="w-5 h-5 animate-pulse" />
@@ -166,15 +167,27 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
 
               {/* Tooltip info */}
               {showPlausibilityInfo && (
-                <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 p-3.5 bg-zinc-950 border border-rose-500/60 rounded-2xl shadow-2xl z-30 text-xs text-zinc-300 leading-relaxed font-sans">
-                  <div className="flex items-center gap-1.5 text-rose-400 font-mono font-bold mb-1 text-[11px]">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>CAUSAL PLAUSIBILITY / PROBABILITY</span>
+                <>
+                  <div 
+                    className="fixed inset-0 z-40 cursor-default" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPlausibilityInfo(false);
+                    }}
+                  />
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full mt-2 w-72 sm:w-80 p-3.5 bg-zinc-950/98 backdrop-blur-xl border border-rose-500/70 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.9),_0_0_20px_rgba(244,63,94,0.2)] z-50 text-xs text-zinc-300 leading-relaxed font-sans"
+                  >
+                    <div className="flex items-center gap-1.5 text-rose-400 font-mono font-bold mb-1 text-[11px]">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>CAUSAL PLAUSIBILITY / PROBABILITY</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300">
+                      Governs cosmic balance. Grounded actions maintain stability. Extreme, reality-defying, or suicidal bluffs drain probability, triggering high-rank enemy anomalies, severe difficulty escalation, and penalty quests.
+                    </p>
                   </div>
-                  <p className="text-[11px] text-zinc-400">
-                    Governs cosmic balance. Grounded actions maintain stability. Extreme, reality-defying, or suicidal bluffs drain probability, triggering high-rank enemy anomalies, severe difficulty escalation, and penalty quests.
-                  </p>
-                </div>
+                </>
               )}
             </div>
 
@@ -421,6 +434,23 @@ export function SystemQuestModal({ isOpen, onClose, systemState }: SystemQuestMo
                         ))}
                     </div>
                   </div>
+
+                  {/* Interactive Claim Clearance Action for Completed Objectives */}
+                  {activeTab === "active" && 
+                   selectedQuest.objectives && 
+                   selectedQuest.objectives.length > 0 && 
+                   selectedQuest.objectives.every((o) => o.completed) && 
+                   onCompleteQuest && (
+                    <div className="pt-3 border-t border-rose-500/20">
+                      <button
+                        onClick={() => onCompleteQuest(selectedQuest.id)}
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-mono text-xs font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.45)] flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                      >
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                        <span>Claim Clearance & Unlock Resonance Cap</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </>

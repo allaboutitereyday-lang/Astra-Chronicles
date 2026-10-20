@@ -22,13 +22,17 @@ import {
   Package,
   Layers,
   Activity,
-  Bot
+  Bot,
+  Wand2,
+  Skull,
+  Target
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { loadGameSlot, saveGameSlot, SaveSlotPayload } from "@/lib/saveStorage";
 import { saveCodexLoot } from "@/lib/codexStorage";
 import { InventoryItem, PlayerProfile, AbilityDetail } from "@/types/story";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
+import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "@/lib/trialsClassArsenals";
 
 interface SectorDefinition {
   sectorNumber: number;
@@ -201,6 +205,11 @@ function LitRPGTrialsContent() {
     return evaluateRelicSynergies(syncedPlayer.inventory || [], syncedPlayer.gear);
   }, [syncedPlayer]);
 
+  // Dynamically resolved Class Tactical Arsenal based on Protagonist's class role
+  const classArsenal: ClassArsenal = useMemo(() => {
+    return getClassArsenal(syncedPlayer?.role);
+  }, [syncedPlayer?.role]);
+
   // 5 Consecutive Roguelite Sectors
   const sectors: SectorDefinition[] = useMemo(
     () => [
@@ -291,21 +300,22 @@ function LitRPGTrialsContent() {
     counterDmg: number
   ) => {
     const pName = syncedPlayer?.name || "You";
+    const className = classArsenal.className;
     if (type === "strike") {
-      return `${pName} steps in with calculated footwork, driving a kinetic strike deep into ${targetName}'s stance for ${dmg} damage!`;
-    } else if (type === "relic") {
-      return `Planar rifts fracture open as ${pName} phase-steps behind ${targetName}, detonating an overclocked void burst for ${dmg} critical damage!`;
-    } else if (type === "companion") {
-      return `Allied firing lines coordinate in overlapping crossfire, bombarding ${targetName} for ${dmg} damage while infusing vitality!`;
-    } else if (type === "anchor") {
-      return `${pName} grounds their causal anchor into the chamber floor, solidifying spatial boundaries and restoring vital equilibrium.`;
+      return `${pName} (${className}) steps into range, executing ${actionName} on ${targetName} for ${dmg} damage!`;
+    } else if (type === "burst" || type === "relic") {
+      return `Overclocking their ${className} core, ${pName} detonates ${actionName} across ${targetName} for ${dmg} massive damage!`;
+    } else if (type === "synergy" || type === "companion") {
+      return `${pName} invokes ${actionName}, weaving tactical resonance to bombard ${targetName} for ${dmg} damage while infusing vitality!`;
+    } else if (type === "defense" || type === "anchor") {
+      return `${pName} assumes ${actionName}, stabilizing personal timeline boundaries and knitting vital wounds.`;
     }
     return `${pName} unleashes ${actionName}, striking ${targetName} with decisive precision for ${dmg} damage!`;
   };
 
-  // Turn Action Execution with Protagonist Stat Scaling & Dynamic AI Blurb Generation
+  // Turn Action Execution with Protagonist Class & Stat Scaling
   const handleTacticalAction = (
-    actionType: "strike" | "relic" | "companion" | "anchor" | "ability",
+    actionType: "strike" | "burst" | "synergy" | "defense" | "ability" | "relic" | "companion" | "anchor",
     customAbility?: AbilityDetail
   ) => {
     if (isResolvingTurn || trialCompleted || trialFailed || isSyncingBack) return;
@@ -317,53 +327,90 @@ function LitRPGTrialsContent() {
       let mpUsed = 0;
       let hpRegen = 0;
       let plausibilityShift = 0;
-      let actionName = "Kinetic Strike";
+      let actionName = classArsenal.actions.strike.name;
 
       const pStr = syncedPlayer?.stats?.str || 10;
+      const pDex = syncedPlayer?.stats?.dex || 10;
       const pInt = syncedPlayer?.stats?.int || 10;
       const pLevel = syncedPlayer?.level || 1;
 
+      // 1. Basic Class Strike (0 MP)
       if (actionType === "strike") {
-        actionName = "Kinetic Strike";
-        const base = 26 + Math.floor(pStr * 1.4) + pLevel * 2;
-        playerDamage = Math.floor(base + Math.random() * 16);
-        plausibilityShift = 2;
-      } else if (actionType === "relic") {
-        actionName = activeSynergies[0]?.bonusName || "Voidstrider Phase Burst";
-        if (playerMp >= 25) {
-          mpUsed = 25;
+        const actionCfg = classArsenal.actions.strike;
+        actionName = actionCfg.name;
+        let statBonus = 0;
+        if (actionCfg.scalingStat === "str") statBonus = Math.floor(pStr * 1.6);
+        else if (actionCfg.scalingStat === "dex") statBonus = Math.floor(pDex * 1.65);
+        else if (actionCfg.scalingStat === "int") statBonus = Math.floor(pInt * 1.6);
+        else statBonus = Math.floor((pStr + pDex) * 0.9);
+
+        const base = (actionCfg.baseDamage || 26) + statBonus + pLevel * 2;
+        playerDamage = Math.floor(base + Math.random() * 14);
+        hpRegen = actionCfg.baseHeal || 0;
+        plausibilityShift = actionCfg.coherenceDelta || 2;
+
+      // 2. Class Signature Burst / Overclock (20-25 MP)
+      } else if (actionType === "burst" || actionType === "relic") {
+        const actionCfg = classArsenal.actions.burst;
+        actionName = activeSynergies[0]?.bonusName
+          ? `[${activeSynergies[0].bonusName}] ${actionCfg.name}`
+          : actionCfg.name;
+
+        if (playerMp >= actionCfg.costMp) {
+          mpUsed = actionCfg.costMp;
+          let statBonus = 0;
+          if (actionCfg.scalingStat === "str") statBonus = Math.floor(pStr * 2.2);
+          else if (actionCfg.scalingStat === "dex") statBonus = Math.floor(pDex * 2.4);
+          else if (actionCfg.scalingStat === "int") statBonus = Math.floor(pInt * 2.3);
+          else statBonus = Math.floor((pStr + pInt) * 1.2);
+
           const hasVoidstrider = activeSynergies.some((s) => s.setName.toLowerCase().includes("voidstrider") && s.isActive);
           const bonus = hasVoidstrider ? 20 : 0;
-          const base = 48 + Math.floor(pInt * 1.8) + pLevel * 3 + bonus;
+          const base = (actionCfg.baseDamage || 62) + statBonus + pLevel * 3 + bonus;
           playerDamage = Math.floor(base + Math.random() * 24);
           plausibilityShift = 4;
         } else {
+          actionName = `${actionCfg.name} (Exhausted)`;
           playerDamage = 18;
           plausibilityShift = -3;
         }
-      } else if (actionType === "companion") {
-        actionName = "Duo Synergy Barrage";
-        if (playerMp >= 20) {
-          mpUsed = 20;
-          const base = 34 + pLevel * 3;
-          playerDamage = Math.floor(base + Math.random() * 18);
-          hpRegen = 25 + Math.floor(pLevel * 2);
-          plausibilityShift = 3;
+
+      // 3. Class Tactical Synergy / Technique (15-20 MP)
+      } else if (actionType === "synergy" || actionType === "companion") {
+        const actionCfg = classArsenal.actions.synergy;
+        actionName = actionCfg.name;
+        if (playerMp >= actionCfg.costMp) {
+          mpUsed = actionCfg.costMp;
+          let statBonus = 0;
+          if (actionCfg.scalingStat === "dex") statBonus = Math.floor(pDex * 1.5);
+          else if (actionCfg.scalingStat === "str") statBonus = Math.floor(pStr * 1.5);
+          else statBonus = Math.floor(pInt * 1.5);
+
+          const base = (actionCfg.baseDamage || 32) + statBonus + pLevel * 2;
+          playerDamage = Math.floor(base + Math.random() * 16);
+          hpRegen = (actionCfg.baseHeal || 25) + Math.floor(pLevel * 2);
+          plausibilityShift = actionCfg.coherenceDelta || 3;
         } else {
-          playerDamage = 20;
+          actionName = `${actionCfg.name} (Low MP)`;
+          playerDamage = 18;
+          hpRegen = 10;
         }
-      } else if (actionType === "anchor") {
-        actionName = "Causal Anchor Stabilization";
-        hpRegen = 35 + Math.floor(pLevel * 3);
-        plausibilityShift = 8;
+
+      // 4. Class Defensive Stance / Reality Anchor (0 MP)
+      } else if (actionType === "defense" || actionType === "anchor") {
+        const actionCfg = classArsenal.actions.defense;
+        actionName = actionCfg.name;
+        hpRegen = (actionCfg.baseHeal || 35) + Math.floor(pLevel * 3);
+        plausibilityShift = actionCfg.coherenceDelta || 6;
+
+      // 5. Awakened Custom Archetype Ability (from Character Creation)
       } else if (actionType === "ability" && customAbility) {
         actionName = customAbility.name;
-        // Parse MP cost (e.g. "15 MP" -> 15)
         const costMatch = (customAbility.cost || "").match(/\d+/);
         const costNum = costMatch ? parseInt(costMatch[0], 10) : 15;
         if (playerMp >= costNum) {
           mpUsed = costNum;
-          const base = 42 + Math.floor((pStr + pInt) * 1.1) + pLevel * 3;
+          const base = 42 + Math.floor((pStr + pInt + pDex) * 0.9) + pLevel * 3;
           playerDamage = Math.floor(base + Math.random() * 22);
           plausibilityShift = 4;
         } else {
@@ -419,7 +466,7 @@ function LitRPGTrialsContent() {
       // Add to feed immediately
       setCombatFeed((prev) => [combatEntry, ...prev]);
 
-      // Trigger AI narrative synthesis in background
+      // Trigger AI narrative synthesis in background with class role & ability name
       fetch("/api/generate-combat-blurb", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -427,7 +474,7 @@ function LitRPGTrialsContent() {
           actionType,
           actionName,
           protagonistName: syncedPlayer?.name || "Protagonist",
-          protagonistRole: syncedPlayer?.role || "Voidstrider",
+          protagonistRole: classArsenal.className,
           enemyName: activeSector.enemyName,
           damageDealt: playerDamage,
           enemyDamage,
@@ -653,6 +700,31 @@ function LitRPGTrialsContent() {
     });
   }, [syncedPlayer]);
 
+  // Helper to render action icons based on tactical archetype
+  const renderActionIcon = (iconType: string, className = "w-4 h-4") => {
+    switch (iconType) {
+      case "sword":
+        return <Sword className={className} />;
+      case "zap":
+        return <Zap className={className} />;
+      case "sparkles":
+        return <Sparkles className={className} />;
+      case "shield":
+        return <Shield className={className} />;
+      case "flame":
+        return <Flame className={className} />;
+      case "skull":
+        return <Skull className={className} />;
+      case "wand":
+        return <Wand2 className={className} />;
+      case "dagger":
+      case "target":
+        return <Target className={className} />;
+      default:
+        return <Sword className={className} />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col relative overflow-hidden select-none">
       {/* Background Ambience */}
@@ -868,55 +940,91 @@ function LitRPGTrialsContent() {
               </div>
             ) : (
               <div className="space-y-2.5">
-                {/* Standard Tactical Actions */}
+                {/* Class Tactical Arsenal Banner */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-blue-400 flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5" />
+                      {classArsenal.className} Arsenal
+                    </span>
+                    <span className="hidden sm:inline-block text-[10px] font-mono text-zinc-400 truncate max-w-xs">
+                      • {classArsenal.classTagline}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">
+                    Scaling: {classArsenal.primaryStat}
+                  </span>
+                </div>
+
+                {/* Class Dynamic Tactical Actions */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {/* 1. Class Basic Strike (0 MP) */}
                   <button
                     onClick={() => handleTacticalAction("strike")}
                     disabled={isResolvingTurn}
                     className="p-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 hover:border-blue-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
                   >
-                    <Sword className="w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform" />
+                    {renderActionIcon(classArsenal.actions.strike.iconType, "w-4 h-4 text-blue-400 group-hover:scale-110 transition-transform")}
                     <div>
-                      <span className="text-xs font-bold text-zinc-100 block">Kinetic Strike</span>
-                      <span className="text-[10px] font-mono text-zinc-400">0 MP • High Stability</span>
+                      <span className="text-xs font-bold text-zinc-100 block truncate">
+                        {classArsenal.actions.strike.name}
+                      </span>
+                      <span className="text-[10px] font-mono text-zinc-400 block truncate">
+                        0 MP • {classArsenal.actions.strike.badgeText}
+                      </span>
                     </div>
                   </button>
 
+                  {/* 2. Class Signature Burst / Overclock (20-25 MP) */}
                   <button
-                    onClick={() => handleTacticalAction("relic")}
-                    disabled={isResolvingTurn || playerMp < 25}
+                    onClick={() => handleTacticalAction("burst")}
+                    disabled={isResolvingTurn || playerMp < classArsenal.actions.burst.costMp}
                     className="p-3 rounded-2xl bg-amber-950/20 hover:bg-amber-950/40 border border-amber-500/30 hover:border-amber-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
                   >
-                    <Zap className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                    {renderActionIcon(classArsenal.actions.burst.iconType, "w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform")}
                     <div>
                       <span className="text-xs font-bold text-amber-200 block truncate">
-                        {activeSynergies[0]?.bonusName || "[Relic] Burst"}
+                        {activeSynergies[0]?.bonusName
+                          ? `[${activeSynergies[0].bonusName}] ${classArsenal.actions.burst.name}`
+                          : classArsenal.actions.burst.name}
                       </span>
-                      <span className="text-[10px] font-mono text-amber-300/80">25 MP • Massive Burst</span>
+                      <span className="text-[10px] font-mono text-amber-300/80 block truncate">
+                        {classArsenal.actions.burst.costMp} MP • {classArsenal.actions.burst.badgeText}
+                      </span>
                     </div>
                   </button>
 
+                  {/* 3. Class Tactical Synergy / Technique (15-20 MP) */}
                   <button
-                    onClick={() => handleTacticalAction("companion")}
-                    disabled={isResolvingTurn || playerMp < 20}
+                    onClick={() => handleTacticalAction("synergy")}
+                    disabled={isResolvingTurn || playerMp < classArsenal.actions.synergy.costMp}
                     className="p-3 rounded-2xl bg-rose-950/20 hover:bg-rose-950/40 border border-rose-500/30 hover:border-rose-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
                   >
-                    <Sparkles className="w-4 h-4 text-rose-400 group-hover:scale-110 transition-transform" />
+                    {renderActionIcon(classArsenal.actions.synergy.iconType, "w-4 h-4 text-rose-400 group-hover:scale-110 transition-transform")}
                     <div>
-                      <span className="text-xs font-bold text-rose-200 block">Duo Synergy</span>
-                      <span className="text-[10px] font-mono text-rose-300/80">20 MP • Damage & Heal</span>
+                      <span className="text-xs font-bold text-rose-200 block truncate">
+                        {classArsenal.actions.synergy.name}
+                      </span>
+                      <span className="text-[10px] font-mono text-rose-300/80 block truncate">
+                        {classArsenal.actions.synergy.costMp} MP • {classArsenal.actions.synergy.badgeText}
+                      </span>
                     </div>
                   </button>
 
+                  {/* 4. Class Defensive Stance / Reality Anchor (0 MP) */}
                   <button
-                    onClick={() => handleTacticalAction("anchor")}
+                    onClick={() => handleTacticalAction("defense")}
                     disabled={isResolvingTurn}
                     className="p-3 rounded-2xl bg-cyan-950/20 hover:bg-cyan-950/40 border border-cyan-500/30 hover:border-cyan-400 text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group active:scale-95 disabled:opacity-50"
                   >
-                    <Shield className="w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+                    {renderActionIcon(classArsenal.actions.defense.iconType, "w-4 h-4 text-cyan-400 group-hover:scale-110 transition-transform")}
                     <div>
-                      <span className="text-xs font-bold text-cyan-200 block">Anchor Reality</span>
-                      <span className="text-[10px] font-mono text-cyan-300/80">0 MP • Restore +35 HP</span>
+                      <span className="text-xs font-bold text-cyan-200 block truncate">
+                        {classArsenal.actions.defense.name}
+                      </span>
+                      <span className="text-[10px] font-mono text-cyan-300/80 block truncate">
+                        0 MP • {classArsenal.actions.defense.badgeText}
+                      </span>
                     </div>
                   </button>
                 </div>

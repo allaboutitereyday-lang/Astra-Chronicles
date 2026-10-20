@@ -11,6 +11,118 @@ const NANO_BANANA_MODELS = [
   "openai/gpt-5-image-mini",
 ];
 
+const FAST_LLM_MODELS = [
+  "deepseek/deepseek-v4-flash",
+  "z-ai/glm-5.3-flash",
+  "nvidia/nemotron-3.5-lightning:free",
+];
+
+/**
+ * Reads the full multi-turn scene context (dialogue, actions, character traits, romance/tension, atmosphere)
+ * and synthesizes an exhaustive, visually magnificent prompt for the image generation model.
+ */
+async function synthesizeFullScenePrompt(
+  apiKey: string | undefined,
+  sceneContext: any,
+  providedPrompt?: string
+): Promise<{ scenePrompt: string; isAiSynthesized: boolean }> {
+  // If user explicitly passed a custom, pre-crafted prompt with high detail, preserve it
+  if (providedPrompt && providedPrompt.length > 120) {
+    return { scenePrompt: providedPrompt, isAiSynthesized: false };
+  }
+
+  const location = sceneContext?.location || "Uncharted Sector";
+  const speaker = sceneContext?.speaker || "Protagonist";
+  const dialogue = sceneContext?.dialogue || "";
+  const fullNarrative = sceneContext?.fullNarrative || sceneContext?.narrative || sceneContext?.recentSnippet || "";
+  const mood = sceneContext?.mood || "Dramatic & Atmospheric";
+  const genre = sceneContext?.genre || "High Fantasy / Grimdark";
+  const storyTitle = sceneContext?.storyTitle || "Astra Chronicles";
+  const protagonist = sceneContext?.protagonist || { name: "Protagonist", role: "Voidstrider" };
+  const presentCharacters = sceneContext?.presentCharacters || [];
+  const relationshipContext = sceneContext?.relationshipContext || "";
+  const recentHistory = Array.isArray(sceneContext?.recentDialogueHistory)
+    ? sceneContext.recentDialogueHistory.map((d: any) => `${d.speaker || "Unknown"}: "${d.text || ""}"`).join(" \n")
+    : "";
+
+  // 1. Attempt LLM Art Director Synthesis if API key is present
+  if (apiKey) {
+    const artDirectorSystemPrompt = `You are the Lead Visual Novel Art Director & Master CG Concept Artist for "Astra Chronicles".
+Your task is to analyze the FULL scene context provided (the dialogue transcript, emotional stakes, character physical traits, environment, and dramatic action) and write an EXHAUSTIVE, cinematic anime visual novel CG illustration prompt.
+
+Requirements for the output prompt:
+1. Format: A single dense, descriptive prompt paragraph (100 to 160 words).
+2. Composition: 16:9 widescreen anime visual novel event CG, dramatic cinematic framing (e.g. intimate close two-shot, dynamic mid-shot, or epic hero angle).
+3. Characters: Explicitly describe character physical traits (hair color, eye color, attire, expressions, posture, eye contact, and touch/interaction).
+4. Atmosphere & Environment: Describe specific lighting (volumetric god rays, golden hour, neon backlighting, soft starlight), particles (floating embers, cherry blossom petals, rain on glass, glowing arcane wisps), and depth of field.
+5. Aesthetic: High-end anime feature film quality (Makoto Shinkai & Ufotable style, clean line art, rich vibrant color grading).
+6. Return STRICTLY valid JSON: { "prompt": "..." } with no markdown code blocks outside JSON.`;
+
+    const artDirectorUserPrompt = `Story: "${storyTitle}" (${genre})
+Location: ${location}
+Mood & Atmosphere: ${mood}
+Protagonist: ${protagonist.name} (Class: ${protagonist.role})
+Current Speaker / Center Focus: ${speaker}
+Current Spoken Line: "${dialogue}"
+Active Characters in Scene: ${JSON.stringify(presentCharacters)}
+Relationship & Romance Context: ${relationshipContext || "High dramatic and emotional tension"}
+Full Scene Transcript & Recent History:
+${recentHistory || fullNarrative || dialogue}`;
+
+    for (const model of FAST_LLM_MODELS) {
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://astra-chronicles.local",
+            "X-Title": "Astra Chronicles CG Art Director",
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: artDirectorSystemPrompt },
+              { role: "user", content: artDirectorUserPrompt },
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.75,
+            max_tokens: 220,
+          }),
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          const content = json.choices?.[0]?.message?.content;
+          if (content) {
+            const parsed = JSON.parse(content);
+            if (parsed.prompt && parsed.prompt.length > 50) {
+              return { scenePrompt: parsed.prompt, isAiSynthesized: true };
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn(`Art Director model ${model} synthesis error:`, err.message);
+      }
+    }
+  }
+
+  // 2. Procedural Full-Context Fallback (Zero Truncation)
+  const charDetails = Array.isArray(presentCharacters) && presentCharacters.length > 0
+    ? presentCharacters.map((c: any) => `${c.name} (${c.role || "Companion"}, ${c.visualPrompt || "expressive anime eyes and detailed attire"}, expression: ${c.expression || "deep emotional focus"})`).join("; ")
+    : `${speaker} and protagonist ${protagonist.name} (${protagonist.role})`;
+
+  const dialogueSummary = recentHistory
+    ? recentHistory.replace(/[\n\r]+/g, " • ").slice(0, 400)
+    : (dialogue ? `"${dialogue}"` : "");
+
+  const narrativeText = fullNarrative ? fullNarrative.replace(/[\n\r]+/g, " ") : "";
+
+  const scenePrompt = `Masterpiece cinematic anime visual novel event CG illustration, set in "${location}". Mood & Atmosphere: ${mood}. Story: "${storyTitle}" (${genre}). Dramatic narrative context: ${narrativeText || dialogueSummary}. Characters depicted: ${charDetails}. Featuring emotional expressions, dramatic character interaction, cinematic camera composition, volumetric lighting, glowing ambient particles, intricate hair and clothing detail, high-budget anime studio visual novel climax illustration, 16:9 widescreen wallpaper quality.`;
+
+  return { scenePrompt, isAiSynthesized: false };
+}
+
 async function queryNanoBanana(
   apiKey: string,
   prompt: string
@@ -81,20 +193,18 @@ export async function POST(req: Request) {
     const apiKey = process.env.OPENROUTER_API_KEY;
 
     // -------------------------------------------------------------
-    // 1. SCENE CONTEXT GENERATION (NANO BANANA 2.1)
+    // 1. SCENE CONTEXT GENERATION (FULL MULTI-TURN CONTEXT ENGINE)
     // -------------------------------------------------------------
     if (mode === "scene" || mode === "context") {
       const location = sceneContext?.location || "Uncharted Sector";
       const speaker = sceneContext?.speaker || "Protagonist";
-      const dialogue = sceneContext?.dialogue || "";
-      const narrative = sceneContext?.narrative || sceneContext?.recentSnippet || "";
-      const mood = sceneContext?.mood || "Dramatic & Atmospheric";
-      const genre = sceneContext?.genre || "High Fantasy / Grimdark";
-      const storyTitle = sceneContext?.storyTitle || "Astra Chronicles";
 
-      const cleanedNarrative = (narrative || dialogue).replace(/["\n\r]+/g, " ").slice(0, 200);
-
-      const scenePrompt = prompt || `Masterpiece cinematic anime visual novel CG illustration, set in "${location}", ${mood} atmosphere, story "${storyTitle}" (${genre}). Featuring ${speaker} and the protagonist in a pivotal story moment. Scene context: ${cleanedNarrative}. Highly detailed anime art style, dramatic cinematic composition, volumetric lighting, rich color palette, 16:9 widescreen wallpaper quality.`;
+      // Synthesize exhaustive, cinematographic prompt from the full scene context
+      const { scenePrompt, isAiSynthesized } = await synthesizeFullScenePrompt(
+        apiKey,
+        sceneContext,
+        prompt
+      );
 
       if (apiKey) {
         const result = await queryNanoBanana(apiKey, scenePrompt);
@@ -103,7 +213,7 @@ export async function POST(req: Request) {
             success: true,
             mode: "scene",
             imageUrl: result.imageUrl,
-            model: result.modelUsed,
+            model: isAiSynthesized ? `${result.modelUsed} (Art Director Guided)` : result.modelUsed,
             prompt: scenePrompt,
             location,
             speaker,

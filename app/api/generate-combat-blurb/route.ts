@@ -20,38 +20,99 @@ function generateProceduralBlurb(
 ): string {
   const pName = protagonistName || "You";
   const eName = enemyName || "the target";
+  const role = (protagonistRole || "Voidstrider").toLowerCase();
 
-  if (actionType === "strike") {
-    const templates = [
-      `${pName} steps in with calculated footwork, driving a kinetic strike deep into ${eName}'s stance for ${damageDealt} damage!`,
-      `With razor-sharp precision, ${pName} delivers a crushing blow that rattles ${eName}'s physical shell for ${damageDealt} damage!`,
-      `${pName} lunges across the causal boundary, landing a fierce direct impact on ${eName} for ${damageDealt} kinetic damage!`,
-    ];
-    return templates[Math.floor(Math.random() * templates.length)];
-  } else if (actionType === "relic") {
-    const templates = [
-      `Planar rifts fracture open as ${pName} phase-steps behind ${eName}, releasing an overclocked pulse for ${damageDealt} critical damage!`,
-      `Harnessing stabilized relic frequencies, ${pName} shears through ${eName}'s defenses with a blinding burst of void energy for ${damageDealt} damage!`,
-      `${pName} overclocks the active relic matrices, detonating spatial turbulence directly across ${eName} for ${damageDealt} massive damage!`,
-    ];
-    return templates[Math.floor(Math.random() * templates.length)];
-  } else if (actionType === "companion") {
-    const templates = [
-      `A coordinated barrage erupts as allied conduits converge, bombarding ${eName} for ${damageDealt} damage and restoring vital composure!`,
-      `${pName} links tactical rhythm with allied party resonance, punishing ${eName} for ${damageDealt} damage while knitting flesh and mana!`,
-      `Allied firing lines overlap seamlessly, pinning ${eName} under concentrated crossfire for ${damageDealt} synergy damage!`,
-    ];
-    return templates[Math.floor(Math.random() * templates.length)];
-  } else if (actionType === "anchor") {
-    const templates = [
-      `${pName} drives their causal anchor into the chamber floor, realigning personal timeline coherence and stabilizing vital organs.`,
-      `Spatial boundaries freeze around ${pName}, dampening enemy resonance and purifying causal bleed.`,
-      `${pName} fortifies their timeline anchor against dimensional collapse, breathing steadily as life force coalesces.`,
-    ];
-    return templates[Math.floor(Math.random() * templates.length)];
+  // Class-specific procedural styling
+  if (role.includes("void") || role.includes("space") || role.includes("singularity")) {
+    if (actionType === "strike" || actionName.toLowerCase().includes("void")) {
+      return `${pName} cleaves through local spacetime with ${actionName}, collapsing dimensional matter across ${eName} for ${damageDealt} gravitational damage!`;
+    } else if (actionType === "burst" || actionType === "relic") {
+      return `Gravitational rifts tear open as ${pName} triggers ${actionName}, detonating an event horizon directly within ${eName} for ${damageDealt} catastrophic damage!`;
+    } else if (actionType === "synergy" || actionType === "companion") {
+      return `${pName} stabilizes the sector with ${actionName}, trapping ${eName} in planar crossfire for ${damageDealt} damage while mending wounds!`;
+    } else if (actionType === "defense" || actionType === "anchor") {
+      return `${pName} enters ${actionName}, phasing physical mass into sub-dimensional space to purify trauma and realign timeline coherence.`;
+    }
   }
 
-  return `${pName} unleashes ${actionName}, piercing ${eName}'s guard with decisive authority for ${damageDealt} damage!`;
+  if (role.includes("spell") || role.includes("blade") || role.includes("inquisitor")) {
+    if (actionType === "strike" || actionName.toLowerCase().includes("aether")) {
+      return `${pName} channels shimmering aether along their weapon edge, driving ${actionName} into ${eName}'s armor for ${damageDealt} piercing damage!`;
+    } else if (actionType === "burst" || actionType === "relic") {
+      return `Prismatic runes ignite along the blade as ${pName} executes ${actionName}, overwhelming ${eName} in an elemental tempest for ${damageDealt} damage!`;
+    } else if (actionType === "synergy" || actionType === "companion") {
+      return `${pName} links aether conduits with allied resonance, bombarding ${eName} with ${actionName} for ${damageDealt} damage while restoring vital mana!`;
+    } else if (actionType === "defense" || actionType === "anchor") {
+      return `${pName} raises their weapon in ${actionName}, weaving a shimmering runic ward that blunts kinetic shock and soothes vital nerves.`;
+    }
+  }
+
+  if (role.includes("mage") || role.includes("wizard") || role.includes("sorcerer") || role.includes("arcan")) {
+    if (actionType === "strike" || actionName.toLowerCase().includes("mana")) {
+      return `${pName} thrusts a focused beam of pure starlight with ${actionName}, piercing cleanly through ${eName}'s defenses for ${damageDealt} arcane damage!`;
+    } else if (actionType === "burst" || actionType === "relic") {
+      return `A blazing star coalesces at ${pName}'s command before detonating in ${actionName}, vaporizing ${eName}'s outer shell for ${damageDealt} cataclysmic damage!`;
+    } else if (actionType === "synergy" || actionType === "companion") {
+      return `${pName} siphons ambient chamber aether with ${actionName}, blasting ${eName} for ${damageDealt} damage while replenishing health and mana pools!`;
+    } else if (actionType === "defense" || actionType === "anchor") {
+      return `${pName} invokes ${actionName}, spinning the local timeline backward to undo bodily trauma and recover arcane composure.`;
+    }
+  }
+
+  if (role.includes("rogue") || role.includes("assassin") || role.includes("shadow")) {
+    if (actionType === "strike" || actionName.toLowerCase().includes("shadow")) {
+      return `Blurring into ambient gloom, ${pName} drives ${actionName} into ${eName}'s structural flaw for ${damageDealt} critical puncture damage!`;
+    } else if (actionType === "burst" || actionType === "relic") {
+      return `${pName} flickers behind ${eName}'s blind spot to execute ${actionName}, severing energy lines for ${damageDealt} devastating assassination damage!`;
+    } else if (actionType === "synergy" || actionType === "companion") {
+      return `${pName} triggers ${actionName}, delivering a lethal pincer flank on ${eName} for ${damageDealt} damage while completely slipping past retaliation!`;
+    } else if (actionType === "defense" || actionType === "anchor") {
+      return `${pName} vanishes into smoke with ${actionName}, resetting combat tempo, tending wounds, and masking physical presence.`;
+    }
+  }
+
+  if (role.includes("warrior") || role.includes("berserk") || role.includes("juggernaut")) {
+    if (actionType === "strike" || actionName.toLowerCase().includes("cleave")) {
+      return `With terrifying physical momentum, ${pName} crashes down with ${actionName}, splintering ${eName}'s barrier for ${damageDealt} crushing damage!`;
+    } else if (actionType === "burst" || actionType === "relic") {
+      return `${pName} fractures the arena floor with ${actionName}, unleashing a concussive seismic wave that pulverizes ${eName} for ${damageDealt} damage!`;
+    } else if (actionType === "synergy" || actionType === "companion") {
+      return `${pName} lets loose ${actionName}, breaking ${eName}'s poise under joint assault for ${damageDealt} damage while stoking combat fury!`;
+    } else if (actionType === "defense" || actionType === "anchor") {
+      return `${pName} braces in ${actionName}, hardening muscle and armor against planar entropy while life force surges back.`;
+    }
+  }
+
+  if (role.includes("paladin") || role.includes("solar") || role.includes("holy")) {
+    if (actionType === "strike" || actionName.toLowerCase().includes("radiant")) {
+      return `Consecrated starlight erupts from ${pName}'s strike, searing ${eName} with ${actionName} for ${damageDealt} radiant holy damage!`;
+    } else if (actionType === "burst" || actionType === "relic") {
+      return `A blazing pillar of dawn incinerates the sector as ${pName} calls ${actionName}, purging ${eName} for ${damageDealt} thermonuclear solar damage!`;
+    } else if (actionType === "synergy" || actionType === "companion") {
+      return `${pName} manifests ${actionName}, bathing both allies in restorative warmth while punishing ${eName} for ${damageDealt} divine damage!`;
+    } else if (actionType === "defense" || actionType === "anchor") {
+      return `${pName} raises ${actionName}, holding an inviolable golden aegis that purges timeline decay and restores life force.`;
+    }
+  }
+
+  if (role.includes("necro") || role.includes("death") || role.includes("soul")) {
+    if (actionType === "strike" || actionName.toLowerCase().includes("syphon")) {
+      return `Spectral tendrils lash out as ${pName} casts ${actionName}, ripping life essence from ${eName} for ${damageDealt} necrotic damage!`;
+    } else if (actionType === "burst" || actionType === "relic") {
+      return `Planar dead claw through the floor as ${pName} commands ${actionName}, crushing ${eName} under necrotic frost for ${damageDealt} damage!`;
+    } else if (actionType === "synergy" || actionType === "companion") {
+      return `${pName} opens ${actionName}, draining spilled spirit energy to heal party members while bombarding ${eName} for ${damageDealt} damage!`;
+    } else if (actionType === "defense" || actionType === "anchor") {
+      return `${pName} encases their body in ${actionName}, knitting bone and tissue with spectral frost while banishing timeline bleed.`;
+    }
+  }
+
+  // Fallback procedural
+  if (actionType === "defense" || actionType === "anchor") {
+    return `${pName} fortifies their timeline anchor with ${actionName}, breathing steadily as vital life force coalesces and stabilizes.`;
+  }
+
+  return `${pName} executes ${actionName}, striking ${eName} with calculated authority for ${damageDealt} damage!`;
 }
 
 export async function POST(req: Request) {
@@ -102,7 +163,14 @@ Write a concise, visceral, and cinematic 1-2 sentence combat blurb describing th
 Strict Constraints:
 - Exactly 1 to 2 sentences.
 - Maximum 35 words.
-- Dynamic, sensory, high-stakes LitRPG tone (impact, momentum, sound, void energy, or tactical coordination).
+- Dynamic, sensory, high-stakes LitRPG tone reflecting the protagonist's class combat style (${protagonistRole}):
+  * Voidstriders: warp gravity, tear dimensional rifts, and phase through space.
+  * Spellblades: infuse swordplay with volatile aether and runic elemental energy.
+  * Mages: project concentrated starlight, arcane lances, and cataclysmic flares.
+  * Rogues: vanish into shadow blind spots and execute lethal arterial punctures.
+  * Warriors: shatter shields with seismic kinetic mass and unyielding titan poise.
+  * Paladins: incinerate demonic corruption with blazing solar dawn and consecrated wards.
+  * Necromancers: leech soul essence with spectral frost and calcified bone armor.
 - You MUST mention the protagonist's action or impact (${actionName}) and the enemy's reaction (${enemyName}).
 - Respond strictly with JSON: { "blurb": "..." }.`;
 

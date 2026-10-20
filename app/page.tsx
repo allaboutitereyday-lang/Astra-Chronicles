@@ -20,7 +20,10 @@ import {
   Search,
   ExternalLink,
   ChevronRight,
-  FolderOpen
+  FolderOpen,
+  Lock,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { StoryContext } from "@/types/story";
 import { getAllStories, deleteStory } from "@/lib/storyStorage";
@@ -51,6 +54,7 @@ export default function StoryCataloguePage() {
   } | null>(null);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showKeySecret, setShowKeySecret] = useState<boolean>(false);
 
   useEffect(() => {
     setIsAudioMuted(soundEffects.isMuted());
@@ -190,7 +194,7 @@ export default function StoryCataloguePage() {
               className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-purple-500/50 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer shadow-lg"
             >
               <Key className="w-3.5 h-3.5 text-purple-400" />
-              <span>{userAuth ? `${userAuth.name.split(" ")[0]} (${userAuth.remainingTurns === -1 ? "∞" : `${userAuth.remainingTurns} turns`})` : "Access Key"}</span>
+              <span>{userAuth ? `${userAuth.name.split(" ")[0]} (${userAuth.remainingTurns === -1 ? "âˆž" : `${userAuth.remainingTurns} turns`})` : "Access Key"}</span>
             </button>
 
             {/* Multiverse Codex Navigation Link */}
@@ -300,10 +304,10 @@ export default function StoryCataloguePage() {
                           isAuto ? "text-emerald-200 group-hover:text-emerald-300" : "text-white group-hover:text-sky-300"
                         }`}
                       >
-                        {save.player?.name} • Lv.{save.player?.level} {save.player?.role}
+                        {save.player?.name} â€¢ Lv.{save.player?.level} {save.player?.role}
                       </p>
                       <p className="text-[10px] text-zinc-400 font-mono truncate">
-                        {save.storyTitle || "Astra Chronicles"} • {save.gameState?.location || "En Route"}
+                        {save.storyTitle || "Astra Chronicles"} â€¢ {save.gameState?.location || "En Route"}
                       </p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-zinc-500 group-hover:text-white shrink-0" />
@@ -489,7 +493,7 @@ export default function StoryCataloguePage() {
                   </p>
                 </div>
                 <span className="text-[11px] font-mono px-3 py-1 rounded-full bg-white/5 border border-white/10 text-rose-300 group-hover:bg-rose-600 group-hover:text-white transition-all">
-                  Launch World Creator →
+                  Launch World Creator â†’
                 </span>
               </Link>
             </div>
@@ -510,7 +514,7 @@ export default function StoryCataloguePage() {
                 onClick={() => setShowAuthModal(false)}
                 className="text-zinc-400 hover:text-white cursor-pointer"
               >
-                ✕
+                âœ•
               </button>
             </div>
 
@@ -519,14 +523,29 @@ export default function StoryCataloguePage() {
             </p>
 
             <div className="space-y-2">
-              <input
-                type="text"
-                value={keyInput}
-                onChange={(e) => setKeyInput(e.target.value)}
-                placeholder="e.g. ASTRA-DEV-2026 or CHRONICLE-GUEST"
-                className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-purple-500"
-              />
+              <div className="relative flex items-center">
+                <input
+                  type={showKeySecret ? "text" : "password"}
+                  value={keyInput}
+                  onChange={(e) => setKeyInput(e.target.value)}
+                  placeholder="Enter realm access key..."
+                  className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-zinc-900 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-purple-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowKeySecret(!showKeySecret)}
+                  className="absolute right-3 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                  title={showKeySecret ? "Mask key" : "Show key"}
+                >
+                  {showKeySecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
               {authError && <p className="text-xs text-rose-400 font-mono">{authError}</p>}
+            </div>
+
+            <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-zinc-900/60 border border-white/5 text-[11px] text-zinc-400">
+              <Lock className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>Encrypted locally in browser storage. Your credentials remain private and are verified via secure proxy.</span>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-white/10">

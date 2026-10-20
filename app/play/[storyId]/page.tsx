@@ -43,7 +43,11 @@ import {
   GitBranch,
   Share2,
   Swords,
-  Dices
+  Dices,
+  Lock,
+  Eye,
+  EyeOff,
+  ShieldCheck
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -82,13 +86,31 @@ export interface InventoryItem {
 }
 
 export interface Companion {
+  id?: string;
   name: string;
   title: string;
+  role?: string;
+  gender?: "female" | "male" | "non-binary";
+  color: string;
+  personality?: string;
+  values?: string[];
+  dislikes?: string[];
+  highCompatibility?: string[];
+  baseAffection?: number;
   affection: number;
+  affectionLevel?: number;
+  romancePath?: string;
   expressionKey: string;
   isPresent: boolean;
   encountered: boolean;
-  color: string;
+  relationshipStage?: "stranger" | "acquaintance" | "confidant" | "beloved" | "sworn_partner" | string;
+  intimacyUnlocked?: boolean;
+  milestonesReached?: number[];
+  bespokeRomanceCgUrl?: string;
+  seed?: number;
+  baseImageUrl?: string;
+  visualPrompt?: string;
+  expressions?: Record<string, string>;
 }
 
 interface PlayerStats {
@@ -433,15 +455,54 @@ export default function VisualNovelGame() {
     });
   };
 
-  // Synthesize Bespoke Romance CG (Task 3)
+  // Synthesize Bespoke Romance CG (Full-Context Climax)
   const handleSynthesizeMilestoneCG = async (companionName: string, threshold: number) => {
     if (isGeneratingMilestoneCG) return;
     setIsGeneratingMilestoneCG(true);
     soundEffects.playIntroBell();
 
-    const comp = party.find((c) => c.name.toLowerCase().includes(companionName.toLowerCase()));
-    const compSeed = currentStory.companions.find((c) => c.name.toLowerCase().includes(companionName.toLowerCase()))?.seed || 4892019;
-    const prompt = `Climactic romance bespoke CG illustration of ${companionName}. Intimate atmosphere, tender gaze, dramatic cinematic lighting, emotional vulnerability, golden hour and ethereal magic particles, masterpiece anime visual novel climax. Character features: ${comp?.title || "Heroine"}.`;
+    const comp = party.find((c) => c.name.toLowerCase().includes(companionName.toLowerCase())) ||
+      currentStory.companions.find((c) => c.name.toLowerCase().includes(companionName.toLowerCase()));
+    const compSeed = comp?.seed || 4892019;
+
+    // Extract recent story narrative leading to this romantic climax
+    const sceneTurns = chatLog.slice(-10);
+    const recentDialogueHistory = sceneTurns.map((m) => ({
+      speaker: m.speakerName || "Unknown",
+      text: m.text,
+    }));
+    const fullNarrative = sceneTurns
+      .map((m) => `${m.speakerName}: "${m.text}"`)
+      .join("\n");
+
+    const richContext = {
+      location: gameState.location,
+      speaker: companionName,
+      dialogue: gameState.dialogue,
+      fullNarrative,
+      recentDialogueHistory,
+      presentCharacters: [
+        {
+          name: companionName,
+          title: comp?.title || "Heroine",
+          role: comp?.role || "Companion",
+          expression: "tender gaze, emotional vulnerability, soft blush",
+          visualPrompt: comp?.visualPrompt || "expressive anime eyes, intricate hair and attire",
+          seed: compSeed,
+          affection: threshold,
+          relationshipStage: threshold >= 100 ? "sworn_partner" : threshold >= 75 ? "beloved" : "confidant",
+        },
+      ],
+      protagonist: {
+        name: player.name || "Protagonist",
+        role: player.role || "Voidstrider",
+      },
+      relationshipContext: `Climactic Romance Milestone (${threshold}% Affection Threshold). An unforgettable intimate breakthrough between ${companionName} and ${player.name || "the protagonist"}.`,
+      mood: "Intimate, Heart-Fluttering & Cinematically Breathtaking",
+      genre: currentStory.genre,
+      storyTitle: currentStory.title,
+      currentBg: gameState.bgImage,
+    };
 
     try {
       const res = await fetch("/api/generate-image", {
@@ -452,10 +513,9 @@ export default function VisualNovelGame() {
         },
         body: JSON.stringify({
           mode: "scene",
-          prompt,
           characterSeed: compSeed,
           userAccessKey: accessKey,
-          sceneContext: `Romance Milestone ${threshold}% Climax for ${companionName}`,
+          sceneContext: richContext,
         }),
       });
       const data = await res.json();
@@ -465,7 +525,7 @@ export default function VisualNovelGame() {
           storyTitle: currentStory.title,
           location: gameState.location,
           speaker: companionName,
-          prompt: `${companionName} looked upon you with unflinching sincerity, the boundary between mortal ambition and devotion fading away.`,
+          prompt: data.prompt || `${companionName} looked upon you with unflinching sincerity, the boundary between mortal ambition and devotion fading away.`,
           imageUrl: data.imageUrl,
           model: data.model || "Google: Nano Banana 2.1",
         });
@@ -629,7 +689,12 @@ export default function VisualNovelGame() {
     presentCompanions: ["Evelyn Abbandonato"],
   });
 
-  const [lastAffectionDelta, setLastAffectionDelta] = useState<{ companion: string; delta: number } | null>(null);
+  const [lastAffectionDelta, setLastAffectionDelta] = useState<{
+    companion: string;
+    delta: number;
+    isCapped?: boolean;
+    cap?: number;
+  } | null>(null);
   const [notifications, setNotifications] = useState<GameNotificationItem[]>([]);
 
   const pushNotification = (notif: Omit<GameNotificationItem, "id"> & { id?: string }) => {
@@ -712,6 +777,47 @@ export default function VisualNovelGame() {
   const [visitedStoryNodes, setVisitedStoryNodes] = useState<VisitedStoryNode[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [companionMilestones, setCompanionMilestones] = useState<Record<string, number[]>>({});
+  const [companionCompletedMilestones, setCompanionCompletedMilestones] = useState<Record<string, number[]>>({});
+
+  // Helper to determine active threshold cap for any companion
+  const getCompanionCap = (compName?: string | null): number => {
+    if (!compName) return 25;
+    const norm = compName.toLowerCase().trim();
+    const completedQuests = systemState?.completedQuests || [];
+    const completedList = companionCompletedMilestones[norm] || [];
+
+    const is25Done =
+      completedList.includes(25) ||
+      completedQuests.some(
+        (q) =>
+          q.status === "completed" &&
+          (q.id.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_25`) ||
+            (q.title.toLowerCase().includes(norm) && q.title.includes("25%")))
+      );
+    if (!is25Done) return 25;
+
+    const is50Done =
+      completedList.includes(50) ||
+      completedQuests.some(
+        (q) =>
+          q.status === "completed" &&
+          (q.id.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_50`) ||
+            (q.title.toLowerCase().includes(norm) && q.title.includes("50%")))
+      );
+    if (!is50Done) return 50;
+
+    const is75Done =
+      completedList.includes(75) ||
+      completedQuests.some(
+        (q) =>
+          q.status === "completed" &&
+          (q.id.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_75`) ||
+            (q.title.toLowerCase().includes(norm) && q.title.includes("75%")))
+      );
+    if (!is75Done) return 75;
+
+    return 100;
+  };
   const [isGeneratingMilestoneCG, setIsGeneratingMilestoneCG] = useState(false);
   const [activeBespokeCG, setActiveBespokeCG] = useState<{
     companionName: string;
@@ -805,6 +911,8 @@ export default function VisualNovelGame() {
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showKeySecret, setShowKeySecret] = useState<boolean>(false);
+  const [revealActiveKey, setRevealActiveKey] = useState<boolean>(false);
 
   const verifyKey = async (keyToTest: string): Promise<boolean> => {
     if (!keyToTest.trim()) {
@@ -1093,7 +1201,43 @@ export default function VisualNovelGame() {
     setIsCachedScene(false);
 
     try {
-      const recentSnippet = chatLog.slice(-2).map((m) => `${m.speakerName}: "${m.text}"`).join(" ");
+      // 1. Full Multi-Turn Narrative & Dialogue History
+      const sceneTurns = chatLog.slice(-10);
+      const recentDialogueHistory = sceneTurns.map((m) => ({
+        speaker: m.speakerName || "Unknown",
+        text: m.text,
+      }));
+      const fullNarrative = sceneTurns
+        .map((m) => `${m.speakerName}: "${m.text}"`)
+        .join("\n");
+
+      // 2. Identify characters present in the scene
+      const presentCompanions = party.filter((c) => c.isPresent || c.encountered);
+      const presentCharacters = presentCompanions.map((c) => ({
+        name: c.name,
+        title: c.title,
+        role: c.role,
+        expression: c.expressionKey || "neutral",
+        visualPrompt: c.visualPrompt || "",
+        seed: c.seed,
+        affection: c.affectionLevel ?? c.affection ?? 0,
+        romancePath: c.romancePath || "mono",
+        relationshipStage: c.relationshipStage || "confidant",
+      }));
+
+      // 3. Protagonist details
+      const protagonistData = {
+        name: player.name || "Protagonist",
+        role: player.role || "Voidstrider",
+        weapon: player.gear?.weapon || "Blade",
+      };
+
+      // 4. Romance & Emotional Stakes
+      const activeCompanion = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase())) || presentCompanions[0];
+      const relationshipContext = activeCompanion
+        ? `Active Companion: ${activeCompanion.name} (Affection: ${activeCompanion.affectionLevel ?? activeCompanion.affection ?? 0}%, Stage: ${activeCompanion.relationshipStage || "confidant"}, Romance: ${activeCompanion.romancePath || "mono"}).`
+        : "Solo scene or introspective moment.";
+
       const res = await fetch("/api/generate-image", {
         method: "POST",
         headers: {
@@ -1106,7 +1250,11 @@ export default function VisualNovelGame() {
             location: gameState.location,
             speaker: gameState.speaker,
             dialogue: gameState.dialogue,
-            narrative: recentSnippet,
+            fullNarrative,
+            recentDialogueHistory,
+            presentCharacters,
+            protagonist: protagonistData,
+            relationshipContext,
             mood: gameState.mood,
             genre: currentStory.genre,
             storyTitle: currentStory.title,
@@ -2103,9 +2251,51 @@ export default function VisualNovelGame() {
         : false;
 
       const rawDelta = data.state_updates?.affection_delta;
-      const delta = (isCompPhysicallyPresent && typeof rawDelta === "number") ? rawDelta : 0;
+      let effectiveDelta = 0;
+      let hitCapNotice = false;
+      let currentCap = 25;
 
-      if (typeof delta === "number" && delta !== 0 && affectedComp) {
+      if (isCompPhysicallyPresent && typeof rawDelta === "number" && affectedComp) {
+        currentCap = getCompanionCap(affectedComp);
+        const compTarget = party.find((c) => c.name.toLowerCase().includes(affectedComp.toLowerCase()));
+        const currentAff = compTarget ? compTarget.affection : 15;
+
+        if (rawDelta > 0) {
+          // Paced gradual gain: damp positive turn delta to maximum +2
+          const pacedDelta = Math.min(2, rawDelta);
+
+          if (currentAff >= currentCap && currentCap < 100) {
+            // Already at or exceeding cap: locked by companion quest!
+            effectiveDelta = 0;
+            hitCapNotice = true;
+          } else {
+            const nextPossible = currentAff + pacedDelta;
+            const finalCapped = Math.min(currentCap, nextPossible);
+            effectiveDelta = Math.max(0, finalCapped - currentAff);
+            if (nextPossible >= currentCap && currentCap < 100) {
+              hitCapNotice = true;
+            }
+          }
+        } else if (rawDelta < 0) {
+          // Decreases allowed (capped at -4 to avoid instant collapse)
+          effectiveDelta = Math.max(-4, rawDelta);
+        }
+      }
+
+      const delta = effectiveDelta;
+
+      if (hitCapNotice && affectedComp) {
+        soundEffects.playSystemAlert();
+        setLastAffectionDelta({ companion: affectedComp, delta: 0, isCapped: true, cap: currentCap });
+        setTimeout(() => setLastAffectionDelta(null), 4000);
+        pushNotification({
+          id: `cap_notice_${Date.now()}`,
+          type: "quest_assigned",
+          title: "HEART RESONANCE LOCKED",
+          subtitle: `${affectedComp} favor is locked at ${currentCap}%. Complete her Companion Quest to break through this emotional barrier!`,
+          difficulty: "B",
+        });
+      } else if (typeof delta === "number" && delta !== 0 && affectedComp) {
         soundEffects.playFavorSound(delta > 0);
         setLastAffectionDelta({ companion: affectedComp, delta });
         setTimeout(() => setLastAffectionDelta(null), 3500);
@@ -2123,15 +2313,23 @@ export default function VisualNovelGame() {
           const isNewlyMet = newlyMet.some((n) => comp.name.toLowerCase().includes(n.toLowerCase()));
 
           const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
+          const targetCap = getCompanionCap(comp.name);
+
+          let updatedAffection = comp.affection;
+          if (isAffected && isCompPhysicallyPresent && typeof delta === "number") {
+            if (delta > 0) {
+              updatedAffection = Math.min(targetCap, comp.affection + delta);
+            } else if (delta < 0) {
+              updatedAffection = Math.max(0, comp.affection + delta);
+            }
+          }
 
           return {
             ...comp,
             isPresent,
             encountered: nowEncountered,
             expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
-            affection: isAffected && typeof delta === "number" && isCompPhysicallyPresent
-              ? Math.max(0, Math.min(100, comp.affection + delta))
-              : comp.affection,
+            affection: updatedAffection,
           };
         })
       );
@@ -2401,6 +2599,43 @@ export default function VisualNovelGame() {
                   updatedActive.splice(qIndex, 1);
                   updatedCompleted.unshift(targetQuest);
 
+                  // Check if targetQuest is a companion milestone quest
+                  const milestoneMatch = targetQuest.id.match(/^milestone_([a-z0-9_]+)_(\d+)$/i);
+                  let compKey = milestoneMatch && milestoneMatch[1] ? milestoneMatch[1] : null;
+                  let thresholdNum = milestoneMatch && milestoneMatch[2] ? parseInt(milestoneMatch[2], 10) : null;
+
+                  if (!compKey && targetQuest.title.includes("[COMPANION QUEST]")) {
+                    const thresholdFound = [25, 50, 75, 100].find((t) => targetQuest.title.includes(`${t}%`));
+                    thresholdNum = thresholdFound || 25;
+                    const compFound = party.find((c) => targetQuest.title.toLowerCase().includes(c.name.toLowerCase()));
+                    compKey = compFound ? compFound.name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "companion";
+                  }
+
+                  if (compKey && thresholdNum) {
+                    const matchedComp = party.find(
+                      (c) =>
+                        c.name.toLowerCase().replace(/[^a-z0-9]/g, "_") === compKey ||
+                        c.name.toLowerCase().includes(compKey)
+                    );
+                    const canonicalName = matchedComp?.name || compKey;
+                    const nextCap = thresholdNum === 25 ? 50 : thresholdNum === 50 ? 75 : 100;
+
+                    setCompanionCompletedMilestones((prev) => ({
+                      ...prev,
+                      [canonicalName.toLowerCase()]: [...(prev[canonicalName.toLowerCase()] || []), thresholdNum!],
+                    }));
+
+                    soundEffects.playQuestComplete();
+                    pushNotification({
+                      id: `breakthrough_${Date.now()}`,
+                      type: "quest_completed",
+                      title: "HEART RESONANCE BREAKTHROUGH",
+                      subtitle: `${canonicalName}'s emotional barrier shattered! Affection cap raised from ${thresholdNum}% to ${nextCap}%.`,
+                      difficulty: targetQuest.difficulty,
+                    });
+                    updatedDirectives.unshift(`[SYSTEM: Heart Resonance Breakthrough - ${canonicalName} Cap Raised to ${nextCap}%]`);
+                  }
+
                   // Grant quest rewards if any
                   if (targetQuest.rewards) {
                     const rExp = targetQuest.rewards.exp || 0;
@@ -2608,7 +2843,7 @@ export default function VisualNovelGame() {
 
               const questDifficulty = threshold >= 100 ? "Calamity" : threshold >= 75 ? "S" : threshold >= 50 ? "A" : "B";
               const questTitle = `[COMPANION QUEST] ${affectedComp}: ${threshold}% Heart Resonance`;
-              const questDesc = `${affectedComp} has reached ${threshold}% affection! Interpersonal tension rises; resolve this scenario to synthesize a bespoke CG illustration.`;
+              const questDesc = `${affectedComp} has reached the ${threshold}% emotional barrier! Her favor is locked at ${threshold}% until this crisis is resolved. Complete this scenario to shatter her defenses and synthesize a bespoke CG illustration.`;
 
               setSystemState((prevSys) => ({
                 ...prevSys,
@@ -2621,22 +2856,22 @@ export default function VisualNovelGame() {
                     difficulty: questDifficulty as any,
                     objectives: [
                       { text: `Complete private audience with ${affectedComp}`, completed: false },
-                      { text: "Overcome emotional vulnerability or planar crisis", completed: false },
+                      { text: `Overcome emotional vulnerability or planar crisis with ${affectedComp}`, completed: false },
                     ],
                     rewards: { exp: threshold * 5, gold: threshold * 10, items: [`${affectedComp}'s Keepsake`] },
                     status: "active",
                   },
                   ...prevSys.activeQuests,
                 ],
-                systemDirectives: [`[SYSTEM: Companion Arc Unlocked - '${questTitle}']`, ...prevSys.systemDirectives],
+                systemDirectives: [`[SYSTEM: Companion Arc Locked - '${questTitle}' (Favor Capped at ${threshold}%)]`, ...prevSys.systemDirectives],
               }));
 
               soundEffects.playQuestComplete();
               pushNotification({
                 id: `milestone_${Date.now()}`,
                 type: "quest_assigned",
-                title: "ROMANCE MILESTONE UNLOCKED",
-                subtitle: `${affectedComp} favor exceeded ${threshold}%! Companion scenario awakened.`,
+                title: "ROMANCE MILESTONE QUEST UNLOCKED",
+                subtitle: `${affectedComp} favor reached ${threshold}%! Complete her Companion Quest to unlock further affection.`,
                 difficulty: questDifficulty,
               });
             }
@@ -2672,6 +2907,71 @@ export default function VisualNovelGame() {
     const text = inputAction;
     setInputAction("");
     sendAction(text, true);
+  };
+
+  const handleCompleteQuest = (questId: string) => {
+    setSystemState((prevSys) => {
+      const activeIdx = prevSys.activeQuests.findIndex((q) => q.id === questId);
+      if (activeIdx === -1) return prevSys;
+
+      const targetQuest = { ...prevSys.activeQuests[activeIdx], status: "completed" as const };
+      targetQuest.objectives = targetQuest.objectives.map((o) => ({ ...o, completed: true }));
+
+      const nextActive = [...prevSys.activeQuests];
+      nextActive.splice(activeIdx, 1);
+      const nextCompleted = [targetQuest, ...prevSys.completedQuests];
+
+      // Grant rewards if any
+      if (targetQuest.rewards?.exp) {
+        setPlayer((prevP) => ({
+          ...prevP,
+          stats: { ...prevP.stats, exp: prevP.stats.exp + targetQuest.rewards!.exp },
+        }));
+      }
+
+      // Check if targetQuest is a companion milestone quest
+      const milestoneMatch = targetQuest.id.match(/^milestone_([a-z0-9_]+)_(\d+)$/i);
+      let compKey = milestoneMatch && milestoneMatch[1] ? milestoneMatch[1] : null;
+      let thresholdNum = milestoneMatch && milestoneMatch[2] ? parseInt(milestoneMatch[2], 10) : null;
+
+      if (!compKey && targetQuest.title.includes("[COMPANION QUEST]")) {
+        const thresholdFound = [25, 50, 75, 100].find((t) => targetQuest.title.includes(`${t}%`));
+        thresholdNum = thresholdFound || 25;
+        const compFound = party.find((c) => targetQuest.title.toLowerCase().includes(c.name.toLowerCase()));
+        compKey = compFound ? compFound.name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "companion";
+      }
+
+      if (compKey && thresholdNum) {
+        const matchedComp = party.find(
+          (c) =>
+            c.name.toLowerCase().replace(/[^a-z0-9]/g, "_") === compKey ||
+            c.name.toLowerCase().includes(compKey)
+        );
+        const canonicalName = matchedComp?.name || compKey;
+        const nextCap = thresholdNum === 25 ? 50 : thresholdNum === 50 ? 75 : 100;
+
+        setCompanionCompletedMilestones((prev) => ({
+          ...prev,
+          [canonicalName.toLowerCase()]: [...(prev[canonicalName.toLowerCase()] || []), thresholdNum!],
+        }));
+
+        soundEffects.playQuestComplete();
+        pushNotification({
+          id: `manual_breakthrough_${Date.now()}`,
+          type: "quest_completed",
+          title: "HEART RESONANCE BREAKTHROUGH",
+          subtitle: `${canonicalName}'s emotional barrier shattered! Affection cap raised to ${nextCap}%.`,
+          difficulty: targetQuest.difficulty,
+        });
+      }
+
+      return {
+        ...prevSys,
+        activeQuests: nextActive,
+        completedQuests: nextCompleted,
+        systemDirectives: [`[SYSTEM: Scenario Cleared - '${targetQuest.title}']`, ...prevSys.systemDirectives],
+      };
+    });
   };
 
   const presentComps = party.filter((c) => c.isPresent);
@@ -2923,7 +3223,26 @@ export default function VisualNovelGame() {
                   </span>
                 </div>
                 <p className="text-sm font-bold text-white font-mono">{userAuth.name}</p>
-                <p className="text-xs font-mono text-zinc-500">Key: {userAuth.key}</p>
+                <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                  <p className="text-xs font-mono text-zinc-400">
+                    Key:{" "}
+                    <span className="text-zinc-200">
+                      {revealActiveKey
+                        ? userAuth.key
+                        : userAuth.key.length > 8
+                        ? `${userAuth.key.slice(0, 4)}••••••••${userAuth.key.slice(-3)}`
+                        : "••••••••••••"}
+                    </span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setRevealActiveKey(!revealActiveKey)}
+                    className="text-[11px] font-mono text-zinc-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    {revealActiveKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    <span>{revealActiveKey ? "Hide" : "Reveal"}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -2972,18 +3291,28 @@ export default function VisualNovelGame() {
               </p>
 
               <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="e.g. ASTRA-DEV-2026"
-                  value={keyInput}
-                  onChange={(e) => setKeyInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      verifyKey(keyInput);
-                    }
-                  }}
-                  className="w-full bg-zinc-900 border border-white/15 rounded-xl px-4 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-purple-500/80"
-                />
+                <div className="relative flex items-center">
+                  <input
+                    type={showKeySecret ? "text" : "password"}
+                    placeholder="Enter realm access key..."
+                    value={keyInput}
+                    onChange={(e) => setKeyInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        verifyKey(keyInput);
+                      }
+                    }}
+                    className="w-full bg-zinc-900 border border-white/15 rounded-xl pl-4 pr-11 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-purple-500/80"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeySecret(!showKeySecret)}
+                    className="absolute right-3 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+                    title={showKeySecret ? "Mask key" : "Show key"}
+                  >
+                    {showKeySecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
 
                 {authError && (
                   <p className="text-xs text-rose-400 font-mono bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-xl">
@@ -2992,23 +3321,9 @@ export default function VisualNovelGame() {
                 )}
               </div>
 
-              <div className="bg-zinc-900/50 border border-white/5 rounded-2xl p-3 text-[11px] text-zinc-400 space-y-1">
-                <p className="font-semibold text-zinc-300">Quick Test Keys (configured in allowed_users.json):</p>
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {["ASTRA-DEV-2026", "CHRONICLE-VIP-01", "CHRONICLE-GUEST"].map((sample) => (
-                    <button
-                      key={sample}
-                      type="button"
-                      onClick={() => {
-                        setKeyInput(sample);
-                        verifyKey(sample);
-                      }}
-                      className="px-2 py-0.5 font-mono text-[10px] bg-white/5 hover:bg-white/15 border border-white/10 rounded text-purple-300 cursor-pointer"
-                    >
-                      {sample}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-zinc-900/60 border border-white/5 text-[11px] text-zinc-400">
+                <Lock className="w-4 h-4 text-purple-400 shrink-0" />
+                <span>Encrypted locally in browser storage. Your credentials remain private and are verified via secure proxy.</span>
               </div>
 
               <button
@@ -4049,13 +4364,24 @@ export default function VisualNovelGame() {
                 <div className="relative inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1 rounded-xl shadow-inner">
                   {lastAffectionDelta !== null && lastAffectionDelta.companion.toLowerCase().includes(isSpeakingHeroine.name.toLowerCase()) && (
                     <div 
-                      className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 ${
-                        lastAffectionDelta.delta > 0 
+                      className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 flex items-center gap-1 whitespace-nowrap ${
+                        lastAffectionDelta.isCapped
+                          ? "bg-amber-950 text-amber-300 border border-amber-500/60"
+                          : lastAffectionDelta.delta > 0 
                           ? "bg-rose-600/90 text-white border border-rose-400" 
                           : "bg-zinc-800 text-zinc-400 border border-zinc-600"
                       }`}
                     >
-                      {lastAffectionDelta.delta > 0 ? `+${lastAffectionDelta.delta} Favor` : `${lastAffectionDelta.delta} Favor`}
+                      {lastAffectionDelta.isCapped ? (
+                        <>
+                          <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                          <span>Locked at {lastAffectionDelta.cap}% [Quest Pending]</span>
+                        </>
+                      ) : lastAffectionDelta.delta > 0 ? (
+                        `+${lastAffectionDelta.delta} Favor`
+                      ) : (
+                        `${lastAffectionDelta.delta} Favor`
+                      )}
                     </div>
                   )}
                   <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/80" />
@@ -4068,7 +4394,17 @@ export default function VisualNovelGame() {
                           style={{ width: `${isSpeakingHeroine.affection}%` }}
                         />
                       </div>
-                      <span className="text-[11px] font-mono font-bold text-rose-300">{isSpeakingHeroine.affection}%</span>
+                      <span className="text-[11px] font-mono font-bold text-rose-300 flex items-center gap-1">
+                        {isSpeakingHeroine.affection}%
+                        {(() => {
+                          const cap = getCompanionCap(isSpeakingHeroine.name);
+                          return isSpeakingHeroine.affection >= cap && cap < 100 ? (
+                            <span title={`Favor locked at ${cap}%. Complete her Companion Quest to break through.`}>
+                              <Lock className="w-3 h-3 text-amber-400 inline" />
+                            </span>
+                          ) : null;
+                        })()}
+                      </span>
                     </>
                   ) : (
                     <span className="text-[10px] font-mono text-zinc-500 italic px-1">??? Favor</span>
@@ -4461,6 +4797,7 @@ export default function VisualNovelGame() {
         isOpen={showSystemModal}
         onClose={() => setShowSystemModal(false)}
         systemState={systemState}
+        onCompleteQuest={handleCompleteQuest}
       />
 
       {/* PARTY ROSTER DRAWER */}
@@ -4514,13 +4851,45 @@ export default function VisualNovelGame() {
                       <div className="mt-2">
                         {comp.encountered ? (
                           <>
-                            <div className="flex justify-between text-[10px] font-mono mb-1 text-rose-300">
-                              <span>Affection / Favor</span>
-                              <span>{comp.affection}%</span>
-                            </div>
-                            <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                              <div className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all" style={{ width: `${comp.affection}%` }} />
-                            </div>
+                            {(() => {
+                              const cap = getCompanionCap(comp.name);
+                              const isLocked = comp.affection >= cap && cap < 100;
+                              return (
+                                <>
+                                  <div className="flex justify-between items-center text-[10px] font-mono mb-1 text-rose-300">
+                                    <span>Affection / Favor</span>
+                                    <span className="flex items-center gap-1.5">
+                                      <span className="font-bold text-white">{comp.affection}%</span>
+                                      {isLocked ? (
+                                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-950/60 text-amber-300 border border-amber-500/40 font-mono flex items-center gap-0.5">
+                                          <Lock className="w-2.5 h-2.5" /> Locked at {cap}%
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] text-zinc-500 font-mono">
+                                          Cap: {cap}%
+                                        </span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full rounded-full transition-all duration-500 ${
+                                        isLocked 
+                                          ? "bg-gradient-to-r from-amber-500 to-rose-500" 
+                                          : "bg-gradient-to-r from-rose-500 to-pink-400"
+                                      }`} 
+                                      style={{ width: `${comp.affection}%` }} 
+                                    />
+                                  </div>
+                                  {isLocked && (
+                                    <div className="mt-1.5 text-[10px] font-mono text-amber-300/90 bg-amber-950/30 border border-amber-500/20 px-2 py-1 rounded-lg flex items-center gap-1.5">
+                                      <Lock className="w-3 h-3 text-amber-400 shrink-0" />
+                                      <span>Locked at {cap}%. Complete her Companion Quest to break through.</span>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                             {(() => {
                               const storyComp = currentStory.companions?.find(
                                 (sc) => sc.name.toLowerCase() === comp.name.toLowerCase()

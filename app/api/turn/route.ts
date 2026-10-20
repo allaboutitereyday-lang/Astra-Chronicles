@@ -135,6 +135,25 @@ Do NOT repeatedly comment on or re-describe the player's general physical appear
 - Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
 - Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.`;
 
+    // Helper to determine active threshold cap for any companion
+    const getCompanionCap = (compName: string) => {
+      const norm = compName.toLowerCase().trim();
+      const completed = (systemState?.completedQuests || []) as any[];
+      const is25Done = completed.some((q: any) => 
+        q.status === "completed" && (q.id?.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_25`) || (q.title?.toLowerCase().includes(norm) && q.title?.includes("25%")))
+      );
+      if (!is25Done) return 25;
+      const is50Done = completed.some((q: any) => 
+        q.status === "completed" && (q.id?.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_50`) || (q.title?.toLowerCase().includes(norm) && q.title?.includes("50%")))
+      );
+      if (!is50Done) return 50;
+      const is75Done = completed.some((q: any) => 
+        q.status === "completed" && (q.id?.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_75`) || (q.title?.toLowerCase().includes(norm) && q.title?.includes("75%")))
+      );
+      if (!is75Done) return 75;
+      return 100;
+    };
+
     const scenePresenceDirective = isProtagonistAlone
       ? `--- SCENE PRESENCE: PROTAGONIST IS PHYSICALLY ALONE (SOLO SCENE) ---
 [CRITICAL SCENE STATE: THE PROTAGONIST (${playerProfile.name}) IS PHYSICALLY ALONE]
@@ -153,7 +172,7 @@ Do NOT repeatedly comment on or re-describe the player's general physical appear
 - "speaker" MUST NEVER BE "${playerProfile.name}". Dialogue spoken by a heroine MUST be attributed directly to her canonical name.
 - "state_updates.present_companions" MUST list all heroines who remain physically present in the scene, e.g. [${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}]. If a companion departs during this turn, omit them from this list.
 - "state_updates.affected_companion" MUST BE one of the physically present heroines (${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}), or null if neutral.
-- "state_updates.affection_delta" applies strictly to the present affected heroine based on ideological compatibility (-8 to +6).`;
+- "state_updates.affection_delta" applies strictly to the present affected heroine based on ideological compatibility (0 by default; +1 to +2 on rare deep alignment; -1 to -4 on friction). If she is locked at an affection threshold, it MUST BE 0.`;
 
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
@@ -176,8 +195,13 @@ ${scenePresenceDirective}
 --- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
 ${partyMembers.map((c: any) => {
   const encStatus = c.encountered ? "Previously Encountered & Active in Canon" : "Unmet in Current Arc";
+  const cap = getCompanionCap(c.name);
+  const isLocked = c.affection >= cap && cap < 100;
+  const lockStatus = isLocked 
+    ? `[LOCKED AT ${cap}% THRESHOLD - COMPANION QUEST PENDING]` 
+    : `Progression Cap: ${cap}%`;
   const favorDesc = c.affection >= 75 ? "Deep Intimacy & Trust" : c.affection >= 50 ? "Solid Mutual Respect" : c.affection >= 25 ? "Cautious Wariness" : "Guarded Distrust";
-  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Favor: ${c.affection}% (${favorDesc}) | Demeanor: ${c.expressionKey || "neutral"}]`;
+  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Favor: ${c.affection}% (${favorDesc}) | ${lockStatus} | Demeanor: ${c.expressionKey || "neutral"}]`;
 }).join("\n")}
 
 --- CHRONOLOGICAL RECORD OF PREVIOUS INTERACTIONS & MEMORIES ---
@@ -190,6 +214,16 @@ ${
 ${inputHandlingInstruction}
 
 ${visualInspectionInstruction}
+
+--- HEROINE AFFECTION & SLOW-PACED PROGRESSION DIRECTIVE (CRITICAL) ---
+1. AFFECTION IS RARE, EARNED, AND DOES NOT UPDATE EVERY TURN:
+   - The default value for "state_updates.affection_delta" MUST BE 0 for ~80% of turns.
+   - Casual conversation, routine combat, standard questions, traveling, exploration, or ordinary small talk MUST yield affection_delta: 0. Do NOT award favor simply because characters converse politely.
+   - Affection gains (+1 or +2, maximum +3 for monumental life-or-death sacrifices) are HARD-WON. They should ONLY be granted when ${playerProfile.name} makes a decisive, ideologically resonant choice that directly validates a heroine's core values, upholds her personal dignity against societal pressure, or shares an earned moment of vulnerability that directly builds on past chronicle memories.
+   - If the player acts arrogantly, callously, breaks a promise, or violates a heroine's dislikes/taboos, assign an immediate negative delta (-1 to -4).
+2. THRESHOLD LOCKING & EMOTIONAL GATES:
+   - Heroine affection is strictly locked at major thresholds (25%, 50%, 75%).
+   - If a heroine is [LOCKED AT THRESHOLD - COMPANION QUEST PENDING], her inner emotional barriers are firmly up. Her favor CANNOT increase further until the ongoing companion quest scenario is resolved. In this state, affection_delta MUST BE 0 even if she speaks warmly.
 
 --- HEROINE COMPATIBILITY DIRECTIVE ---
 Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded, cynical, and possess distinct codes of behavior. Affection cannot be easily charmed or rushed; it must be won through genuine ideological compatibility.
@@ -251,7 +285,7 @@ ${synergyDirective}
 
 --- MECHANICAL RULES ---
 1. Speaker Attribution: The field "speaker" indicates who is delivering dialogue or scene narration. "speaker" MUST NEVER BE "${playerProfile.name}". When accompanied, set "speaker" to the exact canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). When alone, set "speaker" to "Narrator", "Inner Monologue", or "System".
-2. Favor: Assign affection_delta (-8 to +6) based on true compatibility with the active heroine's values (see Compatibility Directive). If the protagonist is physically alone, affection_delta MUST BE 0 and affected_companion MUST BE null.
+2. Favor & Emotional Pacing: Set affection_delta to 0 by default. Only assign +1 or +2 (or -1 to -4 on friction) when actions decisively test core ideological values. When physically alone or when a companion is locked at an affection threshold, affection_delta MUST BE 0 and affected_companion MUST BE null.
 3. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest/archive occurs, award loot items or an ability in "player_progression".
 4. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"). When alone, choices must reflect solo exploration, environmental inspection, or System actions; do not offer choices to converse with absent heroines.
 5. Markdown Formatting: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, atmospheric details, and sensory cues (e.g. *She narrows her amber eyes, fingertips resting along the iron hilt.*); use **bold** for loud vocal emphasis, sudden impacts, or spell invocations; use > quotes for mental echoes or ancient runes. Put spoken dialogue in quotation marks "...".
@@ -267,7 +301,7 @@ Respond strictly in valid JSON matching this schema:
     "mood": string,
     "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
     "affected_companion": string | null, // Canonical name of present heroine whose favor changes, or null if alone.
-    "affection_delta": number, // Favor delta (-8 to +6). Must be 0 if alone.
+    "affection_delta": number, // Favor delta (0 by default; +1 to +2 on rare deep resonance; -1 to -4 on friction). Must be 0 if alone or capped at threshold.
     "present_companions": string[], // Array of canonical names of companions physically present in the scene. Must be [] if alone.
     "newly_encountered_heroines": string[]
   },
