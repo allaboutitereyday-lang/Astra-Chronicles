@@ -37,6 +37,7 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { SystemState, SystemToastNotification, SystemQuest } from "@/types/system";
 import { SystemNotificationToast } from "@/components/SystemNotificationToast";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
+import { saveGameSlot, loadAllGameSlots, deleteGameSlot, compressAvatarImage } from "@/lib/saveStorage";
 
 export interface InventoryItem {
   id: string;
@@ -515,18 +516,13 @@ export default function VisualNovelGame() {
   ];
 
   useEffect(() => {
-    try {
-      const s1 = localStorage.getItem("astra_save_slot_1");
-      const s2 = localStorage.getItem("astra_save_slot_2");
-      const s3 = localStorage.getItem("astra_save_slot_3");
-      setSavedSlots({
-        1: s1 ? JSON.parse(s1) : null,
-        2: s2 ? JSON.parse(s2) : null,
-        3: s3 ? JSON.parse(s3) : null,
+    loadAllGameSlots()
+      .then((slots) => {
+        setSavedSlots(slots as Record<number, SaveSlotData | null>);
+      })
+      .catch((e) => {
+        console.error("Failed to read save slots", e);
       });
-    } catch (e) {
-      console.error("Failed to read save slots", e);
-    }
   }, [showSaveModal]);
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -534,8 +530,10 @@ export default function VisualNovelGame() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onloadend = () => {
-      setPlayerAvatar(reader.result as string);
+    reader.onloadend = async () => {
+      const raw = reader.result as string;
+      const optimized = await compressAvatarImage(raw, 384);
+      setPlayerAvatar(optimized);
     };
     reader.readAsDataURL(file);
   };
@@ -757,28 +755,43 @@ export default function VisualNovelGame() {
 
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState<number | null>(null);
 
-  const handleDeleteSlot = (slotId: number) => {
+  const handleDeleteSlot = async (slotId: number) => {
     soundEffects.playClick();
-    localStorage.removeItem(`astra_save_slot_${slotId}`);
-    setSavedSlots((prev) => ({ ...prev, [slotId]: null }));
+    try {
+      await deleteGameSlot(slotId);
+      setSavedSlots((prev) => ({ ...prev, [slotId]: null }));
+    } catch (err) {
+      console.error("Delete failed:", err);
+    }
     setConfirmDeleteSlot(null);
   };
 
-  const handleSaveSlot = (slotId: number) => {
+  const handleSaveSlot = async (slotId: number) => {
     soundEffects.playClick();
+    let currentAvatar = playerAvatar;
+    if (currentAvatar && currentAvatar.length > 80000) {
+      currentAvatar = await compressAvatarImage(currentAvatar, 384);
+      setPlayerAvatar(currentAvatar);
+    }
+
     const payload: SaveSlotData = {
       slotId,
       savedAt: new Date().toLocaleString(),
       player,
-      playerAvatar,
+      playerAvatar: currentAvatar,
       gameState,
       party,
       memories,
       chatLog,
       systemState,
     };
-    localStorage.setItem(`astra_save_slot_${slotId}`, JSON.stringify(payload));
-    setSavedSlots((prev) => ({ ...prev, [slotId]: payload }));
+
+    try {
+      await saveGameSlot(slotId, payload);
+      setSavedSlots((prev) => ({ ...prev, [slotId]: payload }));
+    } catch (err) {
+      console.error("Save slot error:", err);
+    }
   };
 
   const handleLoadSlot = (slotId: number) => {
@@ -1921,8 +1934,8 @@ export default function VisualNovelGame() {
                           <span className="text-[11px] text-zinc-500 font-mono select-none">{msg.timestamp}</span>
                           <span className="text-xs font-semibold text-zinc-200 select-none">{msg.speakerName}</span>
                           <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0 select-none">
-                            {msg.avatarSrc ? (
-                              <img src={msg.avatarSrc} alt="User" className="w-full h-full object-cover" />
+                            {msg.avatarSrc || playerAvatar ? (
+                              <img src={msg.avatarSrc || playerAvatar || undefined} alt="User" className="w-full h-full object-cover" />
                             ) : (
                               <User className="w-4 h-4 text-sky-300" />
                             )}
