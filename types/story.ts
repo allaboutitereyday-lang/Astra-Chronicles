@@ -11,6 +11,8 @@ export type CompanionExpressionKey =
   | "hurt"
   | "beckon";
 
+export type RomancePath = "harem" | "mono" | "platonic" | "rival" | "uncommitted";
+
 export interface StoryCompanion {
   id: string;
   name: string;
@@ -24,15 +26,113 @@ export interface StoryCompanion {
   highCompatibility: string[];
   baseAffection: number;
   affection: number;
+  affectionLevel: number; // 0-100 numerical affection level (core romance metric)
+  romancePath: RomancePath; // "harem" | "mono" | "platonic" | "rival" | "uncommitted"
   expressionKey: CompanionExpressionKey;
   isPresent: boolean;
   encountered: boolean;
+  
+  // Romance & Milestone Progression
+  relationshipStage?: "stranger" | "acquaintance" | "confidant" | "beloved" | "sworn_partner";
+  intimacyUnlocked?: boolean;
+  milestonesReached?: number[]; // [25, 50, 75, 100]
+  bespokeRomanceCgUrl?: string; // High-stakes milestone CG from Nano Banana 2.1
   
   // Visual AI & Consistency Pipeline Fields (ControlNet & IPAdapter)
   seed: number;
   baseImageUrl: string;
   visualPrompt: string;
   expressions: Record<string, string>;
+}
+
+export interface RelicSynergy {
+  id: string;
+  setName: string; // e.g. "Voidstrider", "Solarion", "Abyssal Weaver"
+  pieceCount: number;
+  requiredCount: number;
+  isActive: boolean;
+  bonusName: string;
+  bonusDescription: string;
+  unlockedExclusiveChoicePrefix: string; // e.g. "[Voidstrider Resonance]"
+}
+
+export interface AbilityDetail {
+  name: string;
+  description: string;
+  type?: "Active" | "Passive" | "Stance" | "Ultimate" | string;
+  cost?: string; // e.g. "12 MP", "Passive", "None"
+  cooldown?: string; // e.g. "Instant", "2 Turns", "1 Battle", "None"
+  tier?: "Novice" | "Adept" | "Master" | "Unique" | string;
+}
+
+export interface StoryRelicItem {
+  id: string;
+  name: string;
+  setName?: string; // set synergy identifier (e.g. "Voidstrider")
+  type: "weapon" | "armor" | "relic" | "consumable" | "material";
+  rarity: "common" | "uncommon" | "rare" | "relic" | "cursed";
+  description: string;
+  effect?: string;
+  imageUrl?: string;
+  isEquipped?: boolean;
+}
+
+export type InventoryItem = StoryRelicItem;
+
+export interface PlayerStats {
+  hp: number;
+  maxHp: number;
+  mp: number;
+  maxMp: number;
+  exp: number;
+  maxExp: number;
+  str: number;
+  dex: number;
+  int: number;
+}
+
+export interface PlayerProfile {
+  name: string;
+  role: string;
+  level: number;
+  stats: PlayerStats;
+  gear: { weapon: string; armor: string; relic: string };
+  abilities: string[];
+  abilityDetails?: Record<string, AbilityDetail>;
+  inventory: InventoryItem[];
+}
+
+export interface VisitedStoryNode {
+  id: string;
+  nodeKey: string;
+  title: string;
+  speaker: string;
+  location: string;
+  visitedAt: string;
+  choiceTaken?: string;
+  affectionSnapshot?: Record<string, number>;
+  gameStateSnapshot?: any;
+  isAnchor?: boolean;
+  anchorLabel?: string;
+  isStartingPoint?: boolean;
+}
+
+export interface StoryFlowNode {
+  id: string;
+  nodeKey: string;
+  title: string;
+  speaker: string;
+  location: string;
+  summary: string;
+  isStartingPoint?: boolean;
+  unlockRequirement?: {
+    companionName?: string;
+    minAffection?: number;
+    requiredRelicSet?: string;
+    previousNodeId?: string;
+    hintSilhouette?: string;
+  };
+  connectedTo: string[]; // next node ids
 }
 
 export interface StoryLocation {
@@ -115,8 +215,15 @@ export interface StoryContext {
   rpgRules: StoryRPGRules;
   startingNodes: StoryStartingNode[];
   companions: StoryCompanion[];
+  
+  // Core Romance & Flowchart & Relic Architecture Expansion
+  romancePath?: RomancePath; // overarching story romance mode: "harem" | "mono" | "uncommitted"
+  relicInventory?: StoryRelicItem[]; // account or story-level relic drops and inventory
+  activeSynergies?: RelicSynergy[]; // active relic set bonuses and exclusive intentions
+  visitedNodes?: VisitedStoryNode[]; // chronological visited anchor nodes for flowchart tracking
+  flowchartTree?: StoryFlowNode[]; // full interactive branching graph definition
+
   createdAt: string;
   author?: string;
   isPreset?: boolean;
 }
-

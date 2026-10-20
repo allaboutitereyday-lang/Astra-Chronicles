@@ -5,10 +5,8 @@ import { StoryContext } from "@/types/story";
 export const runtime = "nodejs";
 
 const GENERATE_MODELS = [
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
-  "deepseek/deepseek-v4.1-flash-1017",
-  "dots-studio/dots-3-note-preview:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "deepseek/deepseek-v4-flash",
+  "z-ai/glm-5.3-flash",
   "nvidia/nemotron-3.5-lightning:free",
 ];
 
@@ -45,8 +43,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const systemPrompt = `You are the Multiverse Architect and Lead Narrative Director for an interactive visual novel and LitRPG system platform.
+    const systemPrompt = `You are the Multiverse Architect and Lead Narrative Director for an interactive visual novel and LitRPG platform with deep relationship mechanics.
 Your objective is to ingest the user's conceptual prompt and genre preferences, and synthesize a complete, richly detailed, and structurally valid StoryContext JSON document.
+
+--- CORE ROMANCE & RELATIONSHIP DIRECTIVE (MANDATORY) ---
+Romance is a core, mechanically tracked genre in this engine. Even in dark, grim, or LitRPG settings, interpersonal chemistry, vulnerability, and romantic progression must drive player agency:
+1. Romantic Tension & Vulnerability: Build palpable emotional stakes into companion personalities, dialogue, and backstories. Characters are not quest-dispensers; they are passionate individuals with private vulnerabilities, distinct love languages, and ideological boundaries.
+2. Affection-Based Branching: The starting nodes and flowchart branches must feature dialogue options with romantic, flirtatious, or emotionally challenging vectors.
+3. Distinct Progression Arcs: Each companion must have a unique romantic trajectory (e.g., Proud Aristocrat captivated by audacity, Guarded Infiltrator seeking authentic trust, Lethal Protector discovering tenderness, or Predatory Noble intrigued by mortal resolve).
 
 --- OUTPUT FORMAT REQUIREMENTS ---
 You MUST respond strictly with valid JSON conforming to the schema below. Do not output markdown commentary or conversational preamble outside of the JSON object.
@@ -56,15 +60,16 @@ JSON Schema:
 {
   "id": string, // lowercase alphanumeric slug with hyphens, e.g. "echoes-of-the-abyss"
   "title": string, // evocative, memorable title
-  "tagline": string, // punchy 1-sentence synopsis detailing stakes and intrigue
+  "tagline": string, // punchy 1-sentence synopsis detailing stakes, romance, and intrigue
   "description": string, // 1-2 paragraphs giving deep setting background and narrative premise
   "coverImage": string, // valid web image URL or path, e.g. "/backgrounds/imperial_capital_imperium.jpg" or Unsplash URL
-  "genre": string, // e.g. "${genre}" or tailored subgenres
-  "themes": string[], // 3-4 thematic motifs, e.g. ["Corporate Espionage", "Forbidden Magic", "Transhumanism"]
-  "narrationStyle": string, // e.g. "Grimdark & Atmospheric", "Tech-Noir & Visceral", "Sensory-Rich Cinematic"
+  "genre": string, // e.g. "${genre} / Romance"
+  "themes": string[], // 3-4 thematic motifs, e.g. ["Romantic Intrigue", "Planar Cataclysm", "Forbidden Bonds"]
+  "narrationStyle": string, // e.g. "Grimdark & Atmospheric", "Sensory-Rich Cinematic", "Intimate High Tension"
+  "romancePath": "harem" | "mono" | "uncommitted", // overarching campaign romance mode
   "worldContext": {
-    "settingName": string, // name of continent, city, or space station
-    "eraOrPeriod": string, // e.g. "Age of Planar Alignment" or "The Silicon Ascendancy (2099)"
+    "settingName": string, // name of continent, city, or realm
+    "eraOrPeriod": string, // e.g. "Age of Planar Alignment"
     "loreSummary": string, // 2-3 immersive paragraphs explaining factions, power structures, magic/tech systems
     "factions": [
       {
@@ -76,7 +81,7 @@ JSON Schema:
       {
         "name": string,
         "zone": string,
-        "danger": string, // e.g. "Low (Guarded)", "High (Hostile Operatives)", "Deadly (Aether Anomalies)"
+        "danger": string, // e.g. "Low (Guarded)", "High (Hostile Operatives)", "Deadly"
         "description": string, // 1-2 sensory-rich sentences detailing ambiance, sounds, and sights
         "bgImage": string // image URL or backdrop path
       }
@@ -88,34 +93,136 @@ JSON Schema:
     "causalAnchorName": string, // e.g. "Causal Plausibility", "Sanity Anchor", "Neural Coherence"
     "defaultPlausibility": number, // typically 80 or 85
     "statDefinitions": {
-      "str": string, // e.g. "Strength / Kinetic Force"
-      "dex": string, // e.g. "Reflexes / Finesse"
-      "int": string // e.g. "Intelligence / Arcana Processing"
+      "str": string,
+      "dex": string,
+      "int": string
     },
     "startingLevel": 1,
     "baseStats": {
-      "hp": number, // 100 - 120
+      "hp": number,
       "maxHp": number,
-      "mp": number, // 50 - 80
+      "mp": number,
       "maxMp": number,
       "exp": 0,
       "maxExp": 100,
-      "str": number, // 10
-      "dex": number, // 10
-      "int": number // 10
+      "str": number,
+      "dex": number,
+      "int": number
     }
   },
+  "relicInventory": [
+    {
+      "id": string,
+      "name": string,
+      "setName": string, // e.g. "Voidstrider", "Solarion", "Covenant"
+      "type": "weapon" | "armor" | "relic",
+      "rarity": "rare" | "relic",
+      "description": string,
+      "effect": string
+    }
+  ],
+  "activeSynergies": [
+    {
+      "id": string,
+      "setName": string,
+      "pieceCount": 1,
+      "requiredCount": 2,
+      "isActive": false,
+      "bonusName": string,
+      "bonusDescription": string,
+      "unlockedExclusiveChoicePrefix": string // e.g. "[Voidstrider Resonance]"
+    }
+  ],
+  "visitedNodes": [
+    {
+      "id": string,
+      "nodeKey": "prologue_root",
+      "title": string,
+      "speaker": string,
+      "location": string,
+      "visitedAt": string,
+      "isAnchor": true,
+      "anchorLabel": "Campaign Prelude"
+    }
+  ],
+  "flowchartTree": [
+    // CRITICAL MULTI-STARTING-POINT MANDATE:
+    // For EVERY opening scenario defined in "startingNodes", you MUST generate a corresponding starting root node in flowchartTree
+    // (with id: "node_" + startingNode.id, nodeKey: startingNode.id, isStartingPoint: true).
+    // Each starting scenario root node must have its own distinct outgoing connections radiating into affinity and romance branches.
+    {
+      "id": "node_prologue_heroine_1",
+      "nodeKey": "prologue_heroine_1",
+      "title": string, // matches starting scenario title
+      "speaker": string,
+      "location": string,
+      "summary": "Initial encounter establishing the primary dynamic.",
+      "isStartingPoint": true,
+      "connectedTo": ["node_branch_heroine_1_affinity", "node_branch_tactical_skirmish"]
+    },
+    {
+      "id": "node_prologue_heroine_2",
+      "nodeKey": "prologue_heroine_2",
+      "title": string, // matches secondary starting scenario title
+      "speaker": string,
+      "location": string,
+      "summary": "Alternative opening scenario establishing rival or confidant dynamic.",
+      "isStartingPoint": true,
+      "connectedTo": ["node_branch_heroine_2_affinity", "node_branch_tactical_skirmish"]
+    },
+    {
+      "id": "node_branch_heroine_1_affinity",
+      "nodeKey": "branch_heroine_1_affinity",
+      "title": "Intimate Interlude",
+      "speaker": string,
+      "location": string,
+      "summary": "Private conversation challenging emotional boundaries.",
+      "unlockRequirement": {
+        "companionName": string,
+        "minAffection": 25,
+        "hintSilhouette": "Locked: Requires 25% Companion Favor"
+      },
+      "connectedTo": ["node_climax_heroine_1"]
+    },
+    {
+      "id": "node_branch_tactical_skirmish",
+      "nodeKey": "branch_tactical_skirmish",
+      "title": "Causal Trial",
+      "speaker": string,
+      "location": string,
+      "summary": "Coordinated skirmish testing combat synergy.",
+      "unlockRequirement": {
+        "requiredRelicSet": string,
+        "hintSilhouette": "Locked: Requires Relic Synergy Set"
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "node_climax_heroine_1",
+      "nodeKey": "climax_heroine_1",
+      "title": "Vow of Eternal Devotion",
+      "speaker": string,
+      "location": string,
+      "summary": "High-stakes emotional confession and bespoke romantic culmination.",
+      "unlockRequirement": {
+        "companionName": string,
+        "minAffection": 75,
+        "hintSilhouette": "Locked: Requires 75% Companion Favor"
+      },
+      "connectedTo": []
+    }
+  ],
   "startingNodes": [
     {
       "id": string,
       "title": string,
       "speaker": string, // must match one of the companions
       "location": string, // must match one of the worldContext locations
-      "sceneSetup": string, // 1-2 visceral, atmospheric paragraphs setting the scene (*italics* for physical actions)
-      "dialogue": string, // the companion's authentic spoken line confronting the protagonist
+      "sceneSetup": string, // 1-2 visceral paragraphs (*italics* for physical gestures, tension)
+      "dialogue": string, // spoken line confronting the protagonist with romantic undertones
       "expressionKey": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt",
-      "initialAffection": number, // 10 - 20
-      "choices": [string, string, string, string] // 4 tailored dialogue/action options with intent tags, e.g. "[Arcana]", "[Composure]", "[Subterfuge]", "[Force]"
+      "initialAffection": number, // 15 - 25
+      "choices": [string, string, string, string] // 4 tailored options tagged with intent, e.g. "[Intimacy]", "[Pragmatism]", "[Tactics]", "[Provocation]"
     }
   ],
   "companions": [
@@ -132,12 +239,14 @@ JSON Schema:
       "highCompatibility": string[],
       "baseAffection": number,
       "affection": number,
+      "affectionLevel": number, // 15-25 starting level
+      "romancePath": "harem" | "mono" | "uncommitted",
       "expressionKey": "neutral",
       "isPresent": boolean,
       "encountered": boolean,
-      "seed": number, // locked numeric seed between 1000000 and 9999999 for ControlNet / IPAdapter consistency
-      "baseImageUrl": string, // URL to portrait
-      "visualPrompt": string, // high-detail anime prompt detailing facial traits, eyes, hair, attire for IPAdapter
+      "seed": number, // locked numeric seed between 1000000 and 9999999
+      "baseImageUrl": string,
+      "visualPrompt": string,
       "expressions": {
         "neutral": string,
         "smug": string,
@@ -148,12 +257,12 @@ JSON Schema:
   ]
 }
 
-Ensure all generated companions have unique seeds (7-digit integers), distinct high compatibility criteria, and voice profiles. Create at least 2 locations and 2 companion profiles.`;
+Ensure all generated companions have unique seeds (7-digit integers), distinct compatibility criteria, romantic progression arcs, and voice profiles. Create at least 2 locations, 2 companion profiles, and a well-connected flowchart tree.`;
 
     const userPrompt = `Genre: ${genre}
 Creation Mode: ${mode}
 User Concept & Preferences:
-"${prompt || `Generate a compelling ${genre} visual novel world.`}"
+"${prompt || `Generate a compelling ${genre} visual novel world with rich romance paths and relic set synergies.`}"
 
 Generate the complete StoryContext JSON now.`;
 
@@ -202,12 +311,13 @@ Generate the complete StoryContext JSON now.`;
         const story: StoryContext = {
           id: (parsed.id || `story-${Date.now()}`).toLowerCase().replace(/[^a-z0-9-]+/g, "-"),
           title: parsed.title || "Untitled Odyssey",
-          tagline: parsed.tagline || "A bespoke interactive chronicle.",
+          tagline: parsed.tagline || "A bespoke interactive chronicle of romance and ambition.",
           description: parsed.description || parsed.worldContext?.loreSummary || "An uncharted realm awaiting your arrival.",
           coverImage: parsed.coverImage || "/backgrounds/imperial_capital_imperium.jpg",
-          genre: parsed.genre || genre,
-          themes: Array.isArray(parsed.themes) ? parsed.themes : [genre],
+          genre: parsed.genre || `${genre} / Romance`,
+          themes: Array.isArray(parsed.themes) ? parsed.themes : [genre, "Romance"],
           narrationStyle: parsed.narrationStyle || "Grimdark & Atmospheric",
+          romancePath: parsed.romancePath || "harem",
           createdAt: new Date().toISOString(),
           author: "OpenRouter LLM",
           isPreset: false,
@@ -257,6 +367,10 @@ Generate the complete StoryContext JSON now.`;
               int: 10,
             },
           },
+          relicInventory: Array.isArray(parsed.relicInventory) ? parsed.relicInventory : [],
+          activeSynergies: Array.isArray(parsed.activeSynergies) ? parsed.activeSynergies : [],
+          visitedNodes: Array.isArray(parsed.visitedNodes) ? parsed.visitedNodes : [],
+          flowchartTree: Array.isArray(parsed.flowchartTree) ? parsed.flowchartTree : [],
           startingNodes: Array.isArray(parsed.startingNodes) && parsed.startingNodes.length > 0
             ? parsed.startingNodes
             : [],
@@ -274,6 +388,8 @@ Generate the complete StoryContext JSON now.`;
                 highCompatibility: Array.isArray(comp.highCompatibility) ? comp.highCompatibility : ["Wanderers"],
                 baseAffection: typeof comp.baseAffection === "number" ? comp.baseAffection : 15,
                 affection: typeof comp.baseAffection === "number" ? comp.baseAffection : 15,
+                affectionLevel: typeof comp.affectionLevel === "number" ? comp.affectionLevel : (typeof comp.baseAffection === "number" ? comp.baseAffection : 15),
+                romancePath: comp.romancePath || parsed.romancePath || "harem",
                 expressionKey: "neutral",
                 isPresent: idx === 0,
                 encountered: idx === 0,
@@ -298,14 +414,14 @@ Generate the complete StoryContext JSON now.`;
               title: `${c.name}: Encounter at ${loc.name}`,
               speaker: c.name,
               location: loc.name,
-              sceneSetup: `Shadows lengthen across ${loc.name}. As you cross the perimeter, ${c.name} (${c.title}) emerges into view, gaze fixed upon your gear.`,
-              dialogue: `You walk uninvited into ${loc.name}. Identify your affiliation before blades are drawn.`,
+              sceneSetup: `Shadows lengthen across ${loc.name}. As you cross the perimeter, ${c.name} (${c.title}) emerges into view, gaze fixed upon you with subtle, guarded curiosity.`,
+              dialogue: `You walk uninvited into ${loc.name}. State your intentions before blades or covenants are drawn.`,
               expressionKey: "neutral",
               initialAffection: c.baseAffection,
               choices: [
-                "[Composure] Meet their gaze calmly and state that you seek alliance, not conflict.",
-                "[Tactics] Note the defensive posture of their stance and point out a tactical blind spot.",
-                "[Subterfuge] Present a covert guild sign indicating you are on contract.",
+                "[Intimacy] Meet her gaze unflinchingly with a warm, disarming smile.",
+                "[Tactics] Note the defensive posture of her stance and propose a mutual truce.",
+                "[Subterfuge] Present a covert sign indicating shared interests.",
                 "[Force] Keep your hand near your weapon and claim right of passage.",
               ],
             };
@@ -334,4 +450,3 @@ Generate the complete StoryContext JSON now.`;
     return NextResponse.json({ error: err.message || "Internal server error" }, { status: 500 });
   }
 }
-

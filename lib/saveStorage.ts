@@ -14,6 +14,8 @@ export interface SaveSlotPayload {
   storyId?: string;
   storyTitle?: string;
   choices?: string[];
+  visitedNodes?: any[];
+  selectedPrologueId?: string;
 }
 
 const DB_NAME = "AstraChroniclesSaveDB";

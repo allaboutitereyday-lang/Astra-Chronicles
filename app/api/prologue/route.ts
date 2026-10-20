@@ -140,10 +140,15 @@ Respond strictly in valid JSON matching this schema:
   "system_announcement": string
 }`;
 
+    const abilitiesDesc = Array.isArray(playerProfile.abilities) && playerProfile.abilities.length > 0
+      ? playerProfile.abilities.join(", ")
+      : "None unlocked yet";
+
     const promptText = `Protagonist: ${playerProfile.name}
 Role / Archetype: ${playerProfile.role}
 Attributes: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
 Gear: ${playerProfile.gear.weapon || "Bare Hands"} / ${playerProfile.gear.armor || "Wanderer Attire"}
+Starting Abilities: ${abilitiesDesc}
 Starting Location: ${startingLocation}
 Starting Heroine: ${startingHeroine}
 

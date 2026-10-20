@@ -5,7 +5,12 @@
   "description": "On the fractured Astra Continent, the Baltia Empire teeters on the verge of planar collapse. Navigate ancient mage towers, blood-soaked ducal manors, and shadowy border badlands as an unanchored mortal guided by the cold, transcendent LitRPG System Administrator.",
   "coverImage": "/backgrounds/imperial_capital_imperium.jpg",
   "genre": "High Fantasy / Grimdark / LitRPG",
-  "themes": ["Political Intrigue", "Planar Cataclysm", "Heroine Compatibility", "LitRPG System"],
+  "themes": [
+    "Political Intrigue",
+    "Planar Cataclysm",
+    "Heroine Compatibility",
+    "LitRPG System"
+  ],
   "narrationStyle": "Grimdark & Atmospheric",
   "createdAt": "2026-10-19T00:00:00Z",
   "author": "Archon Vanguard",
@@ -216,9 +221,26 @@
       "gender": "female",
       "color": "rose",
       "personality": "Aristocratic, sharp-tongued, supremely confident, analytical, subtle manipulator. Smug yet fascinated by genuine cunning.",
-      "values": ["Intellect", "Cunning", "Noble Etiquette", "Arcane Knowledge", "Composure", "Audacity"],
-      "dislikes": ["Clumsy Brute Force", "Groveling Sycophants", "Mindless Violence"],
-      "highCompatibility": ["Mages", "Spellblades", "Cunning Tacticians", "Scholars", "Aristocrats"],
+      "values": [
+        "Intellect",
+        "Cunning",
+        "Noble Etiquette",
+        "Arcane Knowledge",
+        "Composure",
+        "Audacity"
+      ],
+      "dislikes": [
+        "Clumsy Brute Force",
+        "Groveling Sycophants",
+        "Mindless Violence"
+      ],
+      "highCompatibility": [
+        "Mages",
+        "Spellblades",
+        "Cunning Tacticians",
+        "Scholars",
+        "Aristocrats"
+      ],
       "baseAffection": 15,
       "affection": 15,
       "expressionKey": "smug",
@@ -236,7 +258,10 @@
         "combat_ready": "/characters/evelyn/evelyn_combat.png",
         "dangerous": "/characters/evelyn/evelyn_combat.png",
         "hurt": "/characters/evelyn/evelyn_hurt.png"
-      }
+      },
+      "affectionLevel": 15,
+      "romancePath": "harem",
+      "milestonesReached": []
     },
     {
       "id": "comp_aria",
@@ -246,9 +271,24 @@
       "gender": "female",
       "color": "sky",
       "personality": "Cynical, hyper-vigilant, razor-sharp pragmatic operative. Speaks in clipped, guarded sentences. Respects quiet competence.",
-      "values": ["Pragmatism", "Stealth", "Tradecraft", "Survival Instincts", "Quiet Competence"],
-      "dislikes": ["Self-Righteous Preaching", "Knightly Arrogance", "Reckless Loudness"],
-      "highCompatibility": ["Rogues", "Scouts", "Assassins", "Street-Smart Survivalists"],
+      "values": [
+        "Pragmatism",
+        "Stealth",
+        "Tradecraft",
+        "Survival Instincts",
+        "Quiet Competence"
+      ],
+      "dislikes": [
+        "Self-Righteous Preaching",
+        "Knightly Arrogance",
+        "Reckless Loudness"
+      ],
+      "highCompatibility": [
+        "Rogues",
+        "Scouts",
+        "Assassins",
+        "Street-Smart Survivalists"
+      ],
       "baseAffection": 12,
       "affection": 12,
       "expressionKey": "neutral",
@@ -266,7 +306,10 @@
         "combat_ready": "/characters/aria/aria_combat.png",
         "dangerous": "/characters/aria/aria_combat.png",
         "hurt": "/characters/aria/aria_hurt.png"
-      }
+      },
+      "affectionLevel": 12,
+      "romancePath": "harem",
+      "milestonesReached": []
     },
     {
       "id": "comp_serena",
@@ -276,9 +319,25 @@
       "gender": "female",
       "color": "zinc",
       "personality": "Impeccably polite, formal, completely unfazed by carnage, lethal deadpan humor, unflinchingly loyal.",
-      "values": ["Duty", "Polite Poise", "Decisive Lethality", "Recognizing Boundaries", "Martial Discipline"],
-      "dislikes": ["Whining", "Sloppiness", "Disloyalty", "Disrespect to Masters or Household"],
-      "highCompatibility": ["Disciplined Warriors", "Knights", "Stoic Weaponmasters", "Polite Leaders"],
+      "values": [
+        "Duty",
+        "Polite Poise",
+        "Decisive Lethality",
+        "Recognizing Boundaries",
+        "Martial Discipline"
+      ],
+      "dislikes": [
+        "Whining",
+        "Sloppiness",
+        "Disloyalty",
+        "Disrespect to Masters or Household"
+      ],
+      "highCompatibility": [
+        "Disciplined Warriors",
+        "Knights",
+        "Stoic Weaponmasters",
+        "Polite Leaders"
+      ],
       "baseAffection": 15,
       "affection": 15,
       "expressionKey": "neutral",
@@ -296,7 +355,10 @@
         "combat_ready": "/characters/serena/serena_combat.png",
         "dangerous": "/characters/serena/serena_combat.png",
         "hurt": "/characters/serena/serena_hurt.png"
-      }
+      },
+      "affectionLevel": 15,
+      "romancePath": "harem",
+      "milestonesReached": []
     },
     {
       "id": "comp_morgana",
@@ -306,9 +368,24 @@
       "gender": "female",
       "color": "purple",
       "personality": "Hedonistic, detached, predatory curiosity, ancient planar insight. Amused by mortal struggle.",
-      "values": ["Ambition", "Dark Planar Intrigue", "Fearlessness", "Sinister Wit", "Raw Resolve"],
-      "dislikes": ["Cowardice", "Puritanical Moral Superiority", "Boring Compliance"],
-      "highCompatibility": ["Warlocks", "Dark Knights", "Occultists", "Ruthless Adventurers"],
+      "values": [
+        "Ambition",
+        "Dark Planar Intrigue",
+        "Fearlessness",
+        "Sinister Wit",
+        "Raw Resolve"
+      ],
+      "dislikes": [
+        "Cowardice",
+        "Puritanical Moral Superiority",
+        "Boring Compliance"
+      ],
+      "highCompatibility": [
+        "Warlocks",
+        "Dark Knights",
+        "Occultists",
+        "Ruthless Adventurers"
+      ],
       "baseAffection": 10,
       "affection": 10,
       "expressionKey": "neutral",
@@ -327,7 +404,10 @@
         "dangerous": "/characters/morgana/morgana_combat.png",
         "hurt": "/characters/morgana/morgana_hurt.png",
         "beckon": "/characters/morgana/morgana_beckon.png"
-      }
+      },
+      "affectionLevel": 10,
+      "romancePath": "harem",
+      "milestonesReached": []
     },
     {
       "id": "comp_perci",
@@ -337,9 +417,24 @@
       "gender": "female",
       "color": "amber",
       "personality": "Highly anxious, jumpy, soft-spoken, deeply loyal once safety is assured. Uses stuttering or hesitant phrasing when startled.",
-      "values": ["Gentleness", "Patience", "Protective Reassurance", "Quiet Empathy"],
-      "dislikes": ["Aggression", "Intimidation", "Shouting", "Cruelty"],
-      "highCompatibility": ["Kind Wanderers", "Gentle Protectors", "Rangers", "Empathetic Souls"],
+      "values": [
+        "Gentleness",
+        "Patience",
+        "Protective Reassurance",
+        "Quiet Empathy"
+      ],
+      "dislikes": [
+        "Aggression",
+        "Intimidation",
+        "Shouting",
+        "Cruelty"
+      ],
+      "highCompatibility": [
+        "Kind Wanderers",
+        "Gentle Protectors",
+        "Rangers",
+        "Empathetic Souls"
+      ],
       "baseAffection": 12,
       "affection": 12,
       "expressionKey": "neutral",
@@ -357,8 +452,304 @@
         "combat_ready": "/characters/perci/perci_combat.png",
         "dangerous": "/characters/perci/perci_combat.png",
         "hurt": "/characters/perci/perci_hurt.png"
-      }
+      },
+      "affectionLevel": 12,
+      "romancePath": "harem",
+      "milestonesReached": []
+    }
+  ],
+  "romancePath": "harem",
+  "relicInventory": [
+    {
+      "id": "relic_voidstrider_1",
+      "name": "Voidstrider Compass",
+      "setName": "Voidstrider",
+      "type": "relic",
+      "rarity": "rare",
+      "description": "An obsidian needle suspended in liquid aether, vibrating in resonance with dimensional rifts.",
+      "effect": "+5% Causal Stability gain and unlocks [Voidstrider] intuition vectors.",
+      "imageUrl": "/backgrounds/imperial_capital_imperium.jpg"
+    },
+    {
+      "id": "relic_voidstrider_2",
+      "name": "Voidstrider Mantle",
+      "setName": "Voidstrider",
+      "type": "armor",
+      "rarity": "rare",
+      "description": "A weave of dark dimensional fibers that bends visual perception.",
+      "effect": "+25 Max MP and +2 DEX.",
+      "imageUrl": "/backgrounds/bloodrose_duchy.jpg"
+    },
+    {
+      "id": "relic_solarion_1",
+      "name": "Solarion Signet",
+      "setName": "Solarion",
+      "type": "relic",
+      "rarity": "relic",
+      "description": "A golden ring forged under the high noon of the Baltia Mage Tower.",
+      "effect": "+20 Max HP and +2 STR.",
+      "imageUrl": "/backgrounds/imperial_capital_imperium.jpg"
+    }
+  ],
+  "activeSynergies": [
+    {
+      "id": "synergy_voidstrider",
+      "setName": "Voidstrider",
+      "pieceCount": 2,
+      "requiredCount": 2,
+      "isActive": true,
+      "bonusName": "Voidstrider Resonance",
+      "bonusDescription": "Phase through causal turbulence. Unlocks exclusive tactical and spatial dialogue vectors.",
+      "unlockedExclusiveChoicePrefix": "[Voidstrider Resonance]"
+    },
+    {
+      "id": "synergy_solarion",
+      "setName": "Solarion",
+      "pieceCount": 1,
+      "requiredCount": 2,
+      "isActive": false,
+      "bonusName": "Solar Radiance",
+      "bonusDescription": "Purifies planar corruption and bolsters imperial reputation.",
+      "unlockedExclusiveChoicePrefix": "[Solar Radiance]"
+    }
+  ],
+  "visitedNodes": [
+    {
+      "id": "node_prologue_root",
+      "nodeKey": "prologue_root",
+      "title": "The Mage Tower Arrival",
+      "speaker": "Evelyn Abbandonato",
+      "location": "Imperial Capital Imperium",
+      "visitedAt": "2026-10-19T00:00:00Z",
+      "choiceTaken": "Commenced campaign",
+      "isAnchor": true,
+      "anchorLabel": "Prologue Anchor"
+    }
+  ],
+  "flowchartTree": [
+    {
+      "id": "node_prologue_evelyn",
+      "nodeKey": "prologue_evelyn",
+      "title": "Imperium Spire Ramparts",
+      "speaker": "Evelyn Abbandonato",
+      "location": "Imperial Capital Imperium",
+      "summary": "Initial encounter with High Arcanist Evelyn on the high terrace while planar gyres align.",
+      "connectedTo": [
+        "node_evelyn_study",
+        "node_undercroft_covert"
+      ]
+    },
+    {
+      "id": "node_prologue_aria",
+      "nodeKey": "prologue_aria",
+      "title": "The Archon Vault Infiltration",
+      "speaker": "Aria Shadowthorn",
+      "location": "Mage Tower",
+      "summary": "Dropping into shattered ward containment and crossing blades with Veil Seeker rogue Aria.",
+      "connectedTo": [
+        "node_undercroft_covert",
+        "node_perci_sanctuary"
+      ]
+    },
+    {
+      "id": "node_prologue_serena",
+      "nodeKey": "prologue_serena",
+      "title": "Bloodrose Manor Courtyard",
+      "speaker": "Serena",
+      "location": "Bloodrose Duchy",
+      "summary": "Meeting the steadfast demi-human maid Serena calmly cleaning her heavy iron mace after a courtyard skirmish.",
+      "connectedTo": [
+        "node_serena_courtyard",
+        "node_undercroft_covert"
+      ]
+    },
+    {
+      "id": "node_prologue_morgana",
+      "nodeKey": "prologue_morgana",
+      "title": "Border of the Volcanic Wastes",
+      "speaker": "Morgana",
+      "location": "Gray Zone",
+      "summary": "Venturing to the blistered frontier where demon noblewoman Morgana observes you with predatory curiosity.",
+      "connectedTo": [
+        "node_morgana_realm",
+        "node_evelyn_study"
+      ]
+    },
+    {
+      "id": "node_prologue_perci",
+      "nodeKey": "prologue_perci",
+      "title": "Port Fortus Shadow Alley",
+      "speaker": "Perci",
+      "location": "Port City Fortus",
+      "summary": "Discovering anxious kitsune operative Perci hiding her fluffy fox ears from the harbor watch.",
+      "connectedTo": [
+        "node_perci_sanctuary",
+        "node_undercroft_covert"
+      ]
+    },
+    {
+      "id": "node_prologue_root",
+      "nodeKey": "prologue_root",
+      "title": "The Mage Tower Arrival",
+      "speaker": "Evelyn Abbandonato",
+      "location": "Imperial Capital Imperium",
+      "summary": "Legacy central imperial arrival vector.",
+      "connectedTo": [
+        "node_evelyn_study",
+        "node_undercroft_covert"
+      ]
+    },
+    {
+      "id": "node_evelyn_study",
+      "nodeKey": "branch_evelyn_affinity",
+      "title": "Private Arcane Sanctum",
+      "speaker": "Evelyn Abbandonato",
+      "location": "Imperial Capital Imperium",
+      "summary": "A private tête-à-tête evaluating mutual ambitions and forbidden covenants.",
+      "unlockRequirement": {
+        "companionName": "Evelyn Abbandonato",
+        "minAffection": 25,
+        "hintSilhouette": "Locked: Requires Evelyn Favor > 25%"
+      },
+      "connectedTo": [
+        "node_evelyn_romance_climax"
+      ]
+    },
+    {
+      "id": "node_undercroft_covert",
+      "nodeKey": "branch_aria_rendezvous",
+      "title": "Shadow Undercroft Rendezvous",
+      "speaker": "Aria Shadowthorn",
+      "location": "Imperial Capital Undercroft",
+      "summary": "Covert briefing with the Veil Seekers to intercept imperial contraband.",
+      "unlockRequirement": {
+        "companionName": "Aria Shadowthorn",
+        "minAffection": 25,
+        "hintSilhouette": "Locked: Requires Aria Favor > 25%"
+      },
+      "connectedTo": [
+        "node_aria_romance_climax",
+        "node_perci_sanctuary"
+      ]
+    },
+    {
+      "id": "node_serena_courtyard",
+      "nodeKey": "branch_serena_courtyard",
+      "title": "Grand Hall Bastion",
+      "speaker": "Serena",
+      "location": "Imperial Capital Bastion",
+      "summary": "Combat training and disciplined tea service with the steadfast Demi-Human Maid.",
+      "unlockRequirement": {
+        "companionName": "Serena",
+        "minAffection": 40,
+        "hintSilhouette": "Locked: Requires Serena Favor > 40%"
+      },
+      "connectedTo": [
+        "node_serena_unshackled"
+      ]
+    },
+    {
+      "id": "node_morgana_realm",
+      "nodeKey": "branch_morgana_realm",
+      "title": "Demon Realm Volcanic Terrace",
+      "speaker": "Morgana",
+      "location": "Gray Zone / Demon Realm",
+      "summary": "Indulgent nocturnal summit with Demon Noblewoman Morgana overlooking molten rivers.",
+      "unlockRequirement": {
+        "companionName": "Morgana",
+        "minAffection": 35,
+        "hintSilhouette": "Locked: Requires Morgana Favor > 35%"
+      },
+      "connectedTo": [
+        "node_morgana_romance_climax"
+      ]
+    },
+    {
+      "id": "node_perci_sanctuary",
+      "nodeKey": "branch_perci_sanctuary",
+      "title": "Silvermoss Grove Refuge",
+      "speaker": "Perci",
+      "location": "Silvanes Canopy",
+      "summary": "A quiet, gentle clearing where Kitsune operative Perci finally feels safe from imperial hunters.",
+      "unlockRequirement": {
+        "companionName": "Perci",
+        "minAffection": 30,
+        "hintSilhouette": "Locked: Requires Perci Favor > 30%"
+      },
+      "connectedTo": [
+        "node_perci_romance_climax"
+      ]
+    },
+    {
+      "id": "node_serena_unshackled",
+      "nodeKey": "branch_serena_climax",
+      "title": "The Guardian's Unshackled Heart",
+      "speaker": "Serena",
+      "location": "Imperial Capital Bastion",
+      "summary": "Serena drops her unflinching formal facade in an emotional confession beneath the battlements.",
+      "unlockRequirement": {
+        "companionName": "Serena",
+        "minAffection": 75,
+        "hintSilhouette": "Locked: Requires Serena Favor > 75%"
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "node_evelyn_romance_climax",
+      "nodeKey": "branch_evelyn_climax",
+      "title": "The Celestial Conduit Vow",
+      "speaker": "Evelyn Abbandonato",
+      "location": "Upper Mage Tower Spire",
+      "summary": "High-stakes romantic commitment ceremony under the glowing planar aurora.",
+      "unlockRequirement": {
+        "companionName": "Evelyn Abbandonato",
+        "minAffection": 75,
+        "requiredRelicSet": "Voidstrider",
+        "hintSilhouette": "Locked: Requires Evelyn Favor > 75% & Voidstrider Set"
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "node_aria_romance_climax",
+      "nodeKey": "branch_aria_climax",
+      "title": "Shadow Veil Moonlit Confession",
+      "speaker": "Aria Shadowthorn",
+      "location": "Imperial Undercroft Rooftops",
+      "summary": "Aria sheathes her daggers and drops her cynical rogue facade in an earnest romantic promise.",
+      "unlockRequirement": {
+        "companionName": "Aria Shadowthorn",
+        "minAffection": 75,
+        "hintSilhouette": "Locked: Requires Aria Favor > 75%"
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "node_morgana_romance_climax",
+      "nodeKey": "branch_morgana_climax",
+      "title": "Infernal Empress's Surrender",
+      "speaker": "Morgana",
+      "location": "Demon Realm Basalt Throne",
+      "summary": "Morgana yields her predatory detachment, declaring you her chosen sovereign equal in love and power.",
+      "unlockRequirement": {
+        "companionName": "Morgana",
+        "minAffection": 75,
+        "hintSilhouette": "Locked: Requires Morgana Favor > 75%"
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "node_perci_romance_climax",
+      "nodeKey": "branch_perci_climax",
+      "title": "The Kitsune's Haven Sanctuary",
+      "speaker": "Perci",
+      "location": "Silvanes Canopy Moonlight Shrine",
+      "summary": "Perci curls close into your arms, celebrating eternal sanctuary and newfound devotion.",
+      "unlockRequirement": {
+        "companionName": "Perci",
+        "minAffection": 75,
+        "hintSilhouette": "Locked: Requires Perci Favor > 75%"
+      },
+      "connectedTo": []
     }
   ]
 }
-

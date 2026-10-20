@@ -5,7 +5,12 @@
   "description": "In the rain-drenched subterranean shadows of Neo-Veridia, megacorporations harvest consciousness for the orbital Neural Net. Awakened with an anomalous black-market Neural Coherence anchor, you must navigate street syndicates, synthetic enforcers, and rogue netrunners to unveil the Ghost Protocol.",
   "coverImage": "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=80",
   "genre": "Cyberpunk / Tech-Noir / Neural LitRPG",
-  "themes": ["Corporate Espionage", "Transhumanism", "Syndicate Intrigue", "Neural Drift"],
+  "themes": [
+    "Corporate Espionage",
+    "Transhumanism",
+    "Syndicate Intrigue",
+    "Neural Drift"
+  ],
   "narrationStyle": "Tech-Noir & Visceral Cinematic",
   "createdAt": "2026-10-19T21:00:00Z",
   "author": "Cipher Architect",
@@ -147,9 +152,24 @@
       "gender": "male",
       "color": "sky",
       "personality": "Sarcastic, hyper-intelligent, calculated risk-taker with a soft spot for anti-corporate underdogs. Hides deep trauma behind dry wit.",
-      "values": ["Information Freedom", "Neural Quickness", "Calculated Audacity", "Black Market Ingenuity"],
-      "dislikes": ["Corporate Puppets", "Blind Obedience", "Sloppy Coding", "Heavy Kinetic Bullies"],
-      "highCompatibility": ["Netrunners", "Cryptographers", "Tacticians", "Tech Scholars"],
+      "values": [
+        "Information Freedom",
+        "Neural Quickness",
+        "Calculated Audacity",
+        "Black Market Ingenuity"
+      ],
+      "dislikes": [
+        "Corporate Puppets",
+        "Blind Obedience",
+        "Sloppy Coding",
+        "Heavy Kinetic Bullies"
+      ],
+      "highCompatibility": [
+        "Netrunners",
+        "Cryptographers",
+        "Tacticians",
+        "Tech Scholars"
+      ],
       "baseAffection": 18,
       "affection": 18,
       "expressionKey": "smug",
@@ -177,9 +197,24 @@
       "gender": "female",
       "color": "rose",
       "personality": "Stoic, lethal, razor-sharp discipline, uncompromising moral code beneath scarred chrome plating.",
-      "values": ["Martial Honor", "Decisive Lethality", "Loyalty Under Pressure", "Protecting the Weak"],
-      "dislikes": ["Cowardice", "Corporate Deception", "Unprovoked Cruelty", "Whining"],
-      "highCompatibility": ["Vanguards", "Solos", "Disciplined Warriors", "Direct Communicators"],
+      "values": [
+        "Martial Honor",
+        "Decisive Lethality",
+        "Loyalty Under Pressure",
+        "Protecting the Weak"
+      ],
+      "dislikes": [
+        "Cowardice",
+        "Corporate Deception",
+        "Unprovoked Cruelty",
+        "Whining"
+      ],
+      "highCompatibility": [
+        "Vanguards",
+        "Solos",
+        "Disciplined Warriors",
+        "Direct Communicators"
+      ],
       "baseAffection": 15,
       "affection": 15,
       "expressionKey": "combat_ready",
@@ -199,6 +234,72 @@
         "hurt": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80"
       }
     }
+  ],
+  "flowchartTree": [
+    {
+      "id": "node_prologue_vesper",
+      "nodeKey": "prologue_vesper",
+      "title": "Ghostwire Server Undercroft",
+      "speaker": "Vesper Vance",
+      "location": "Ghostwire Server Undercroft",
+      "summary": "Stepping into nitrogen cooling vapor to confront netrunner Vesper amidst cascading holographic hex code.",
+      "connectedTo": [
+        "node_vesper_deep_net",
+        "node_neon_alley_crossover"
+      ]
+    },
+    {
+      "id": "node_prologue_kira",
+      "nodeKey": "prologue_kira",
+      "title": "Acid Rain Alleyway Ambush",
+      "speaker": "Kira Thorne",
+      "location": "Rust Gutters Sub-04",
+      "summary": "Meeting street samurai Kira Thorne as her thermal katanas hum in the acid rain.",
+      "connectedTo": [
+        "node_kira_dojo",
+        "node_neon_alley_crossover"
+      ]
+    },
+    {
+      "id": "node_neon_alley_crossover",
+      "nodeKey": "branch_black_market",
+      "title": "Kuroshio Black Market Depot",
+      "speaker": "Vesper Vance",
+      "location": "Rust Gutters Sub-04",
+      "summary": "Intercepting corporate biometric shipments in a neutral territory bazaar.",
+      "unlockRequirement": {
+        "minAffection": 20,
+        "hintSilhouette": "Locked: Requires 20% Netrunner or Ronin Favor"
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "node_vesper_deep_net",
+      "nodeKey": "branch_vesper_romance",
+      "title": "Neural Synchronization Suite",
+      "speaker": "Vesper Vance",
+      "location": "Ghostwire Server Undercroft",
+      "summary": "Direct neural link session lowering emotional ice walls in an intimate cybernetic bond.",
+      "unlockRequirement": {
+        "companionName": "Vesper Vance",
+        "minAffection": 50,
+        "hintSilhouette": "Locked: Requires Vesper Favor > 50%"
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "node_kira_dojo",
+      "nodeKey": "branch_kira_romance",
+      "title": "Rooftop Rain Dojo",
+      "speaker": "Kira Thorne",
+      "location": "Rust Gutters Sub-04",
+      "summary": "Sparring under neon skyscrapers where Kira confesses her sworn devotion to you.",
+      "unlockRequirement": {
+        "companionName": "Kira Thorne",
+        "minAffection": 50,
+        "hintSilhouette": "Locked: Requires Kira Favor > 50%"
+      },
+      "connectedTo": []
+    }
   ]
 }
-

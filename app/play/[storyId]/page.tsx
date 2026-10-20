@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -39,7 +39,11 @@ import {
   RefreshCw,
   Upload,
   ChevronsUp,
-  ChevronsDown
+  ChevronsDown,
+  GitBranch,
+  Share2,
+  Swords,
+  Dices
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -49,8 +53,13 @@ import { SystemNotificationToast } from "@/components/SystemNotificationToast";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
 import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
 import { GameNotificationStack, GameNotificationItem } from "@/components/GameNotificationStack";
-import { saveGameSlot, loadAllGameSlots, deleteGameSlot, compressAvatarImage } from "@/lib/saveStorage";
-import { StoryContext } from "@/types/story";
+import { saveGameSlot, loadGameSlot, loadAllGameSlots, deleteGameSlot, compressAvatarImage } from "@/lib/saveStorage";
+import { StoryContext, VisitedStoryNode, AbilityDetail } from "@/types/story";
+import { FlowchartViewer } from "@/components/FlowchartViewer";
+import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
+import { evaluateRelicSynergies } from "@/lib/relicSynergies";
+import { WorldShareModal } from "@/components/WorldShareModal";
+import { decodeMultiverseSeed } from "@/lib/multiverseShare";
 import { getStoryById } from "@/lib/storyStorage";
 import { ASTRA_CHRONICLES_STORY } from "@/lib/defaultStory";
 import {
@@ -101,6 +110,7 @@ interface PlayerProfile {
   stats: PlayerStats;
   gear: { weapon: string; armor: string; relic: string };
   abilities: string[];
+  abilityDetails?: Record<string, AbilityDetail>;
   inventory: InventoryItem[];
 }
 
@@ -135,6 +145,8 @@ interface SaveSlotData {
   storyId?: string;
   storyTitle?: string;
   choices?: string[];
+  visitedNodes?: VisitedStoryNode[];
+  selectedPrologueId?: string;
 }
 
 // ------------------------------------------------------------------
@@ -278,6 +290,201 @@ export default function VisualNovelGame() {
   } | null>(null);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
 
+  const [statPoints, setStatPoints] = useState(10);
+  const [gearPreference, setGearPreference] = useState<"system" | "none">("system");
+
+  const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
+  const [player, setPlayer] = useState<PlayerProfile>({
+    name: "Caelen",
+    role: "",
+    level: 1,
+    stats: { hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: 100, str: 10, dex: 10, int: 10 },
+    gear: { weapon: "Pending...", armor: "Pending...", relic: "None" },
+    abilities: [],
+    abilityDetails: {},
+    inventory: [],
+  });
+  const playerRef = useRef<PlayerProfile>(player);
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
+  const isHydratingInventoryRef = useRef<boolean>(false);
+
+  const [isRollingAbilities, setIsRollingAbilities] = useState(false);
+  const [inspectedAbility, setInspectedAbility] = useState<AbilityDetail | null>(null);
+
+  const handleRollAbilities = async () => {
+    if (isRollingAbilities) return;
+    setIsRollingAbilities(true);
+    soundEffects.playClick();
+
+    try {
+      const res = await fetch("/api/generate-abilities", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-key": accessKey,
+        },
+        body: JSON.stringify({
+          role: player.role || "Adventurer",
+          name: player.name || "Protagonist",
+          genre: currentStory.genre || "Grimdark LitRPG",
+          settingName: currentStory.worldContext?.settingName || "Astra Continent",
+          userAccessKey: accessKey,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && Array.isArray(data.abilities) && data.abilities.length > 0) {
+        soundEffects.playQuestComplete();
+        const newAbilityNames = data.abilities.map((a: AbilityDetail) => a.name);
+        const newDetailsMap: Record<string, AbilityDetail> = {};
+        data.abilities.forEach((a: AbilityDetail) => {
+          newDetailsMap[a.name] = a;
+        });
+
+        const nextPlayer = {
+          ...player,
+          abilities: newAbilityNames,
+          abilityDetails: newDetailsMap,
+        };
+        playerRef.current = nextPlayer;
+        setPlayer(nextPlayer);
+      }
+    } catch (err) {
+      console.warn("Failed to roll abilities:", err);
+    } finally {
+      setIsRollingAbilities(false);
+    }
+  };
+
+  const handleClearAbilities = () => {
+    soundEffects.playClick();
+    const nextPlayer = {
+      ...player,
+      abilities: [],
+      abilityDetails: {},
+    };
+    playerRef.current = nextPlayer;
+    setPlayer(nextPlayer);
+  };
+
+  const handleInspectAbility = (abilityName: string) => {
+    soundEffects.playClick();
+    const found = player.abilityDetails?.[abilityName] || {
+      name: abilityName,
+      description: `A formidable technique honed by ${player.name} (${player.role || "Adventurer"}). It channels the user's tactical focus and attributes in battle.`,
+      type: "Active",
+      cost: "12 MP",
+      cooldown: "2 Turns",
+      tier: "Adept",
+    };
+    setInspectedAbility(found);
+  };
+
+  // Dynamic Relic Set Synergies (Task 4)
+  const activeRelicSynergies = useMemo(() => {
+    return evaluateRelicSynergies(player.inventory, player.gear);
+  }, [player.inventory, player.gear]);
+
+  // Jump to Timeline Anchor (Task 2)
+  const handleJumpToAnchor = (anchor: VisitedStoryNode) => {
+    soundEffects.playClick();
+    if (!anchor.gameStateSnapshot) {
+      pushNotification({
+        id: `anchor_warn_${Date.now()}`,
+        type: "system_alert",
+        title: "TIMELINE ANCHOR MISSING DATA",
+        subtitle: `Cannot restore temporal snapshot for ${anchor.title}.`,
+      });
+      return;
+    }
+
+    soundEffects.playIntroBell();
+    const snap = anchor.gameStateSnapshot;
+    if (snap.gameState) {
+      let sanitizedSpeaker = snap.gameState.speaker;
+      const snapParty = snap.party || party;
+      const snapPresent = snapParty.filter((c: any) => c.isPresent);
+      if (sanitizedSpeaker && snap.player?.name && sanitizedSpeaker.trim().toLowerCase() === snap.player.name.trim().toLowerCase()) {
+        sanitizedSpeaker = snapPresent.length > 0 ? snapPresent[0].name : "Narrator";
+      }
+      setGameState({
+        ...snap.gameState,
+        speaker: sanitizedSpeaker || snap.gameState.speaker || "Narrator",
+      });
+    }
+    if (snap.party) setParty(snap.party);
+    if (snap.player) {
+      setPlayer(snap.player);
+      playerRef.current = snap.player;
+    }
+    if (snap.systemState) setSystemState(snap.systemState);
+    if (snap.memories) setMemories(snap.memories);
+    if (snap.chatLog) setChatLog(snap.chatLog);
+    if (snap.choices) setChoices(snap.choices);
+
+    setShowFlowchartModal(false);
+    pushNotification({
+      id: `anchor_jump_${Date.now()}`,
+      type: "system_alert",
+      title: "TIMELINE ANCHOR SYNCHRONIZED",
+      subtitle: `Restored timeline reality: ${anchor.title || anchor.location}`,
+    });
+  };
+
+  // Synthesize Bespoke Romance CG (Task 3)
+  const handleSynthesizeMilestoneCG = async (companionName: string, threshold: number) => {
+    if (isGeneratingMilestoneCG) return;
+    setIsGeneratingMilestoneCG(true);
+    soundEffects.playIntroBell();
+
+    const comp = party.find((c) => c.name.toLowerCase().includes(companionName.toLowerCase()));
+    const compSeed = currentStory.companions.find((c) => c.name.toLowerCase().includes(companionName.toLowerCase()))?.seed || 4892019;
+    const prompt = `Climactic romance bespoke CG illustration of ${companionName}. Intimate atmosphere, tender gaze, dramatic cinematic lighting, emotional vulnerability, golden hour and ethereal magic particles, masterpiece anime visual novel climax. Character features: ${comp?.title || "Heroine"}.`;
+
+    try {
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-key": accessKey,
+        },
+        body: JSON.stringify({
+          mode: "scene",
+          prompt,
+          characterSeed: compSeed,
+          userAccessKey: accessKey,
+          sceneContext: `Romance Milestone ${threshold}% Climax for ${companionName}`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.imageUrl) {
+        await saveCodexScene({
+          storyId: currentStory.id,
+          storyTitle: currentStory.title,
+          location: gameState.location,
+          speaker: companionName,
+          prompt: `${companionName} looked upon you with unflinching sincerity, the boundary between mortal ambition and devotion fading away.`,
+          imageUrl: data.imageUrl,
+          model: data.model || "Google: Nano Banana 2.1",
+        });
+
+        setActiveBespokeCG({
+          companionName,
+          threshold,
+          imageUrl: data.imageUrl,
+          title: `${companionName}: ${threshold}% Climax`,
+        });
+        soundEffects.playQuestComplete();
+      }
+    } catch (err) {
+      console.warn("Failed to generate bespoke romance CG:", err);
+    } finally {
+      setIsGeneratingMilestoneCG(false);
+    }
+  };
+
   useEffect(() => {
     let active = true;
     getStoryById(storyId).then((story) => {
@@ -327,13 +534,31 @@ export default function VisualNovelGame() {
 
   useEffect(() => {
     setIsAudioMuted(soundEffects.isMuted());
+    // 1-Click Multiverse Seed Import Listener (Task 5)
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const seedParam = urlParams.get("seed") || urlParams.get("multiverseSeed");
+      if (seedParam) {
+        const decoded = decodeMultiverseSeed(seedParam);
+        if (decoded && decoded.story) {
+          setCurrentStory(decoded.story);
+          pushNotification({
+            id: `seed_import_${Date.now()}`,
+            type: "system_alert",
+            title: "MULTIVERSE SEED SYNCHRONIZED",
+            subtitle: `Loaded shared universe: "${decoded.story.title}" with custom seeds!`,
+          });
+        }
+      }
+    }
+
     const seen = sessionStorage.getItem("astra_welcome_seen");
     if (seen === "true") {
       setHasSeenWelcome(true);
     }
   }, []);
 
-  const handleToggleAudio = () => {
+    const handleToggleAudio = () => {
     const nextMuted = soundEffects.toggleMute();
     setIsAudioMuted(nextMuted);
     if (!nextMuted) {
@@ -341,24 +566,7 @@ export default function VisualNovelGame() {
     }
   };
 
-  const [statPoints, setStatPoints] = useState(10);
-  const [gearPreference, setGearPreference] = useState<"system" | "none">("system");
-
-  const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
-  const [player, setPlayer] = useState<PlayerProfile>({
-    name: "Caelen",
-    role: "",
-    level: 1,
-    stats: { hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: 100, str: 10, dex: 10, int: 10 },
-    gear: { weapon: "Pending...", armor: "Pending...", relic: "None" },
-    abilities: [],
-    inventory: [],
-  });
-  const playerRef = useRef<PlayerProfile>(player);
-  useEffect(() => {
-    playerRef.current = player;
-  }, [player]);
-  const isHydratingInventoryRef = useRef<boolean>(false);
+  
 
   const [party, setParty] = useState<Companion[]>([
     {
@@ -500,6 +708,17 @@ export default function VisualNovelGame() {
   const [showPartyDrawer, setShowPartyDrawer] = useState(false);
   const [showChronicle, setShowChronicle] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [showFlowchartModal, setShowFlowchartModal] = useState(false);
+  const [visitedStoryNodes, setVisitedStoryNodes] = useState<VisitedStoryNode[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [companionMilestones, setCompanionMilestones] = useState<Record<string, number[]>>({});
+  const [isGeneratingMilestoneCG, setIsGeneratingMilestoneCG] = useState(false);
+  const [activeBespokeCG, setActiveBespokeCG] = useState<{
+    companionName: string;
+    threshold: number;
+    imageUrl: string;
+    title: string;
+  } | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [savedSlots, setSavedSlots] = useState<Record<number, SaveSlotData | null>>({ 0: null, 1: null, 2: null, 3: null });
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
@@ -528,6 +747,35 @@ export default function VisualNovelGame() {
   // Nano Banana 2.1 Scene Generation & Item Inspection State
   const [showSceneModal, setShowSceneModal] = useState(false);
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
+
+  // Global Escape key listener for drawers and modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (activeBespokeCG) { setActiveBespokeCG(null); return; }
+        if (showShareModal) { setShowShareModal(false); return; }
+        if (showFlowchartModal) { setShowFlowchartModal(false); return; }
+        if (showPlayerSheet) { setShowPlayerSheet(false); return; }
+        if (showPartyDrawer) { setShowPartyDrawer(false); return; }
+        if (showChronicle) { setShowChronicle(false); return; }
+        if (showMap) { setShowMap(false); return; }
+        if (showSaveModal) { setShowSaveModal(false); return; }
+        if (showSystemModal) { setShowSystemModal(false); return; }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    activeBespokeCG,
+    showShareModal,
+    showFlowchartModal,
+    showPlayerSheet,
+    showPartyDrawer,
+    showChronicle,
+    showMap,
+    showSaveModal,
+    showSystemModal,
+  ]);
   const [isCachedScene, setIsCachedScene] = useState(false);
   const [generatedScene, setGeneratedScene] = useState<{
     imageUrl: string;
@@ -632,12 +880,57 @@ export default function VisualNovelGame() {
         if (typeof window !== "undefined") {
           const params = new URLSearchParams(window.location.search);
           const loadSlotParam = params.get("loadSlot");
-          if (loadSlotParam !== null) {
-            const slotNum = parseInt(loadSlotParam, 10);
-            if (!isNaN(slotNum) && slots[slotNum]) {
+          const isReturningFromTrials = params.get("resuming") === "true" || sessionStorage.getItem("astra_trials_returning") === "true";
+
+          if (loadSlotParam !== null || isReturningFromTrials) {
+            const slotNum = loadSlotParam !== null ? parseInt(loadSlotParam, 10) : 0;
+            const targetData = (!isNaN(slotNum) && slots[slotNum]) ? slots[slotNum] : slots[0];
+            if (targetData) {
               window.history.replaceState({}, document.title, window.location.pathname);
-              handleLoadSlot(slotNum);
+              sessionStorage.removeItem("astra_trials_returning");
+              handleLoadSlot(slotNum, targetData as SaveSlotData);
             }
+          }
+
+          // Check if returning from trials with synchronization results
+          try {
+            const trialSyncRaw = localStorage.getItem("astra_trial_sync_result");
+            if (trialSyncRaw) {
+              localStorage.removeItem("astra_trial_sync_result");
+              const syncData = JSON.parse(trialSyncRaw);
+              setTimeout(() => {
+                soundEffects.playQuestComplete();
+                if (syncData.levelsGained > 0) {
+                  setAcquisitionAlert({
+                    id: `trial_sync_level_${Date.now()}`,
+                    type: "level",
+                    title: `TRIAL SYNC: LEVEL ADVANCEMENT (LV.${syncData.newLevel})`,
+                    subtitle: `+${syncData.expGained} EXP Synchronized from Trials • Status Upgraded`,
+                  });
+                } else if (syncData.expGained > 0) {
+                  setAcquisitionAlert({
+                    id: `trial_sync_exp_${Date.now()}`,
+                    type: "level",
+                    title: `TRIAL RESULTS SYNCHRONIZED`,
+                    subtitle: `+${syncData.expGained} EXP Synchronized to Protagonist`,
+                  });
+                }
+
+                if (syncData.itemsEarned && syncData.itemsEarned.length > 0) {
+                  setTimeout(() => {
+                    setAcquisitionAlert({
+                      id: `trial_loot_${Date.now()}`,
+                      type: "loot",
+                      title: `TRIAL LOOT RECOVERED (${syncData.itemsEarned.length} Items)`,
+                      subtitle: syncData.itemsEarned.join(", "),
+                      rarity: "relic",
+                    });
+                  }, 800);
+                }
+              }, 2200);
+            }
+          } catch (e) {
+            console.warn("Failed to process trial sync result:", e);
           }
         }
       })
@@ -1046,7 +1339,12 @@ export default function VisualNovelGame() {
       ? { weapon: "Bare Hands", armor: "Rags", relic: "None" }
       : { weapon: "[System Pending]", armor: "[System Pending]", relic: "None" };
 
-    setPlayer((prev) => ({ ...prev, gear: initialGear }));
+    const finalStartingPlayer: PlayerProfile = {
+      ...player,
+      gear: initialGear,
+    };
+    setPlayer(finalStartingPlayer);
+    playerRef.current = finalStartingPlayer;
 
     const startTime = Date.now();
 
@@ -1058,13 +1356,14 @@ export default function VisualNovelGame() {
           "x-user-key": accessKey,
         },
         body: JSON.stringify({
-          playerProfile: { ...player, gear: initialGear },
+          playerProfile: finalStartingPlayer,
           playerAvatarBase64: playerAvatar,
           startingHeroine: chosen.speaker,
           startingLocation: chosen.location,
           narrationStyle,
           userAccessKey: accessKey,
           storyContext: currentStory,
+          activeSynergies: activeRelicSynergies,
         }),
       });
 
@@ -1116,7 +1415,68 @@ export default function VisualNovelGame() {
         },
       ]);
 
-      setChoices(data.opening_choices && data.opening_choices.length === 4 ? data.opening_choices : chosen.choices);
+      const activeOpeningChoices = data.opening_choices && data.opening_choices.length === 4 ? data.opening_choices : chosen.choices;
+      setChoices(activeOpeningChoices);
+
+      const initPartyState = party.map((comp) => {
+        const isSelected = comp.name.toLowerCase().includes(activeSpeaker.toLowerCase());
+        return {
+          ...comp,
+          isPresent: isSelected,
+          encountered: isSelected,
+          affection: isSelected ? initialAffection : comp.affection,
+          expressionKey: isSelected ? activeExpression : "neutral",
+        };
+      });
+
+      const initialOpeningAnchor: VisitedStoryNode = {
+        id: `node_${chosen.id}`,
+        nodeKey: chosen.id,
+        title: chosen.title,
+        speaker: activeSpeaker,
+        location: data.location || chosen.location,
+        visitedAt: new Date().toISOString(),
+        choiceTaken: "Campaign Commenced",
+        affectionSnapshot: { [activeSpeaker]: initialAffection },
+        gameStateSnapshot: {
+          gameState: {
+            speaker: activeSpeaker,
+            location: data.location || chosen.location,
+            dialogue: data.dialogue || chosen.dialogue,
+            mood: data.initial_mood || "Guarded & Observant",
+            bgImage: initialBg,
+            presentCompanions: [activeSpeaker],
+          },
+          party: initPartyState,
+          player: finalStartingPlayer,
+          systemState: data.initial_quest
+            ? {
+                plausibility: typeof data.plausibility === "number" ? data.plausibility : 80,
+                plausibilityTier: (typeof data.plausibility === "number" ? data.plausibility : 80) >= 70 ? "Stable" : "Strained",
+                activeQuests: [data.initial_quest],
+                completedQuests: [],
+                systemDirectives: [data.system_announcement || `[SYSTEM: Scenario 1 assigned to ${player.name}.]`],
+              }
+            : systemState,
+          memories: [],
+          chatLog: [
+            {
+              id: "start",
+              sender: "character",
+              speakerName: activeSpeaker,
+              text: openingPrologueText,
+              timestamp: "Prologue",
+              avatarSrc: initialSprite,
+            },
+          ],
+          choices: activeOpeningChoices,
+        },
+        isAnchor: true,
+        anchorLabel: `Prologue: ${chosen.title}`,
+        isStartingPoint: true,
+      };
+
+      setVisitedStoryNodes([initialOpeningAnchor]);
 
       if (data.initial_quest) {
         const initQ: SystemQuest = data.initial_quest;
@@ -1183,6 +1543,58 @@ export default function VisualNovelGame() {
         },
       ]);
       setChoices(chosen.choices);
+
+      const fallbackPartyState = party.map((comp) => {
+        const isSelected = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
+        return {
+          ...comp,
+          isPresent: isSelected,
+          encountered: isSelected,
+          affection: isSelected ? 15 : comp.affection,
+          expressionKey: isSelected ? chosen.expressionKey : "neutral",
+        };
+      });
+
+      const fallbackOpeningAnchor: VisitedStoryNode = {
+        id: `node_${chosen.id}`,
+        nodeKey: chosen.id,
+        title: chosen.title,
+        speaker: chosen.speaker,
+        location: chosen.location,
+        visitedAt: new Date().toISOString(),
+        choiceTaken: "Campaign Commenced",
+        affectionSnapshot: { [chosen.speaker]: 15 },
+        gameStateSnapshot: {
+          gameState: {
+            speaker: chosen.speaker,
+            location: chosen.location,
+            dialogue: chosen.dialogue,
+            mood: "Guarded & Observant",
+            bgImage: initialBg,
+            presentCompanions: [chosen.speaker],
+          },
+          party: fallbackPartyState,
+          player: finalStartingPlayer,
+          systemState,
+          memories: [],
+          chatLog: [
+            {
+              id: "start",
+              sender: "character",
+              speakerName: chosen.speaker,
+              text: openingPrologueText,
+              timestamp: "Prologue",
+              avatarSrc: initialSprite,
+            },
+          ],
+          choices: chosen.choices,
+        },
+        isAnchor: true,
+        anchorLabel: `Prologue: ${chosen.title}`,
+        isStartingPoint: true,
+      };
+
+      setVisitedStoryNodes([fallbackOpeningAnchor]);
     } finally {
       const elapsed = Date.now() - startTime;
       const remainingDelay = Math.max(0, 2200 - elapsed);
@@ -1191,7 +1603,9 @@ export default function VisualNovelGame() {
         setIsConfigured(true);
         setIsTransitioning(null);
         performAutoSave({
+          player: finalStartingPlayer,
           choices: chosen.choices,
+          selectedPrologueId: chosen.id,
         });
       }, remainingDelay);
     }
@@ -1231,6 +1645,8 @@ export default function VisualNovelGame() {
       storyId: currentStory.id,
       storyTitle: currentStory.title,
       choices,
+      visitedNodes: visitedStoryNodes,
+      selectedPrologueId: prologues[selectedPrologue]?.id,
     };
 
     try {
@@ -1250,6 +1666,8 @@ export default function VisualNovelGame() {
     chatLog?: any[];
     systemState?: any;
     choices?: string[];
+    visitedNodes?: VisitedStoryNode[];
+    selectedPrologueId?: string;
   }) => {
     if (!autoSaveEnabled) return;
 
@@ -1263,6 +1681,8 @@ export default function VisualNovelGame() {
       const finalChatLog = override?.chatLog || chatLog;
       const finalSystemState = override?.systemState || systemState;
       const finalChoices = override?.choices || choices;
+      const finalVisitedNodes = override?.visitedNodes || visitedStoryNodes;
+      const finalPrologueId = override?.selectedPrologueId || prologues[selectedPrologue]?.id;
 
       const payload: SaveSlotData = {
         slotId: 0,
@@ -1277,6 +1697,8 @@ export default function VisualNovelGame() {
         storyId: currentStory.id,
         storyTitle: currentStory.title,
         choices: finalChoices,
+        visitedNodes: finalVisitedNodes,
+        selectedPrologueId: finalPrologueId,
       };
 
       await saveGameSlot(0, payload);
@@ -1291,8 +1713,47 @@ export default function VisualNovelGame() {
     }
   };
 
-  const handleLoadSlot = async (slotId: number) => {
-    const data = savedSlots[slotId];
+  const handleNavigateToTrials = async () => {
+    soundEffects.playClick();
+
+    // Snapshot the exact current story turn into Slot 0 so returning restores this exact point
+    const currentAvatar = playerAvatar;
+    const finalPlayer = playerRef.current || player;
+    const payload: SaveSlotData = {
+      slotId: 0,
+      savedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      player: finalPlayer,
+      playerAvatar: currentAvatar,
+      gameState,
+      party,
+      memories,
+      chatLog,
+      systemState,
+      storyId: currentStory.id,
+      storyTitle: currentStory.title,
+      choices,
+      visitedNodes: visitedStoryNodes,
+      selectedPrologueId: prologues[selectedPrologue]?.id,
+    };
+
+    try {
+      await saveGameSlot(0, payload);
+      setSavedSlots((prev) => ({ ...prev, [0]: payload }));
+    } catch (err) {
+      console.warn("Could not save pre-trials snapshot:", err);
+    }
+
+    const returnUrl = `/play/${encodeURIComponent(currentStory.id)}`;
+    try {
+      sessionStorage.setItem("astra_trials_story_id", currentStory.id);
+      sessionStorage.setItem("astra_trials_return_url", returnUrl);
+    } catch {}
+
+    router.push(`/trials?storyId=${encodeURIComponent(currentStory.id)}&returnTo=${encodeURIComponent(returnUrl)}`);
+  };
+
+  const handleLoadSlot = async (slotId: number, explicitData?: SaveSlotData) => {
+    const data = explicitData || savedSlots[slotId] || (await loadGameSlot(slotId));
     if (!data) return;
 
     soundEffects.playIntroBell();
@@ -1314,36 +1775,77 @@ export default function VisualNovelGame() {
       }
     }
 
-    playerRef.current = loadedPlayer;
-    setPlayer(loadedPlayer);
-    setPlayerAvatar(data.playerAvatar);
-    setGameState(data.gameState);
-    setDisplayedText(data.gameState?.dialogue || "");
-    if (data.party) {
-      setParty(
-        data.party.map((c) => ({
+    const loadedParty = data.party
+      ? (data.party as any[]).map((c: any) => ({
           ...c,
           encountered: typeof c.encountered === "boolean" ? c.encountered : (c.isPresent || c.affection !== 50),
         }))
-      );
+      : party;
+
+    const loadedPresentComps = loadedParty.filter((c: any) => c.isPresent);
+    const isLoadedAlone = loadedPresentComps.length === 0;
+
+    let sanitizedSpeaker = data.gameState?.speaker;
+    if (sanitizedSpeaker && loadedPlayer?.name && sanitizedSpeaker.trim().toLowerCase() === loadedPlayer.name.trim().toLowerCase()) {
+      sanitizedSpeaker = isLoadedAlone ? "Narrator" : loadedPresentComps[0].name;
     }
+    const sanitizedGameState = {
+      ...data.gameState,
+      speaker: sanitizedSpeaker || data.gameState?.speaker || (isLoadedAlone ? "Narrator" : "Companion"),
+    };
+
+    playerRef.current = loadedPlayer;
+    setPlayer(loadedPlayer);
+    setPlayerAvatar(data.playerAvatar);
+    setGameState(sanitizedGameState);
+    setDisplayedText(sanitizedGameState.dialogue || "");
+    setParty(loadedParty);
     setMemories(data.memories);
     setChatLog(data.chatLog);
     if (data.systemState) {
       setSystemState(data.systemState);
     }
 
+    if (data.visitedNodes && Array.isArray(data.visitedNodes) && data.visitedNodes.length > 0) {
+      setVisitedStoryNodes(data.visitedNodes);
+    } else if (currentStory?.startingNodes) {
+      const matchingPrologue = currentStory.startingNodes.find((sn) =>
+        (data.selectedPrologueId && sn.id === data.selectedPrologueId) ||
+        sn.speaker.toLowerCase() === (data.gameState?.speaker || "").toLowerCase()
+      ) || currentStory.startingNodes[0];
+      setVisitedStoryNodes([
+        {
+          id: `node_${matchingPrologue.id}`,
+          nodeKey: matchingPrologue.id,
+          title: matchingPrologue.title,
+          speaker: matchingPrologue.speaker,
+          location: matchingPrologue.location,
+          visitedAt: data.savedAt || new Date().toISOString(),
+          isAnchor: true,
+          anchorLabel: `Prologue: ${matchingPrologue.title}`,
+          isStartingPoint: true,
+        },
+      ]);
+    }
+
     // 1. Immediately provide scene-relevant presets so the UI is responsive
-    const speaker = data.gameState?.speaker || "Companion";
-    const location = data.gameState?.location || "Area";
+    const speaker = sanitizedGameState.speaker;
+    const location = sanitizedGameState.location || "Area";
     const playerRole = loadedPlayer?.role || "Wanderer";
 
-    const sceneDefaultChoices = [
-      `[Inquire] Press ${speaker} on the deeper implications of what was just disclosed in ${location}.`,
-      `[Pragmatism] Evaluate the tactical stakes and propose a calculated compromise with ${speaker}.`,
-      `[Action] Step forward as a ${playerRole} and assert your intent directly.`,
-      `[Empathy] Read ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
-    ];
+    const sceneDefaultChoices = isLoadedAlone
+      ? [
+          `[Survey] Scrutinize the surroundings in ${location} for hidden runes, traps, or anomalies.`,
+          `[Tactics] Stay low and steady your breathing, securing a quiet defensive perimeter.`,
+          `[System] Check the LitRPG interface to analyze causal stability and active directives.`,
+          `[Action] Draw your weapon and advance cautiously into the quiet expanse.`,
+        ]
+      : [
+          `[Inquire] Press ${speaker} on the deeper implications of what was just disclosed in ${location}.`,
+          `[Pragmatism] Evaluate the tactical stakes and propose a calculated compromise with ${speaker}.`,
+          `[Action] Step forward as a ${playerRole} and assert your intent directly.`,
+          `[Empathy] Read ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
+        ];
 
     if (data.choices && Array.isArray(data.choices) && data.choices.length === 4) {
       setChoices(data.choices);
@@ -1360,9 +1862,9 @@ export default function VisualNovelGame() {
       },
       body: JSON.stringify({
         storyContext: currentStory,
-        gameState: data.gameState,
+        gameState: sanitizedGameState,
         playerProfile: loadedPlayer,
-        partyMembers: data.party || party,
+        partyMembers: loadedParty,
         memories: data.memories || [],
         recentHistory: (data.chatLog || []).slice(-6).map((m: any) => ({
           speaker: m.speakerName,
@@ -1563,7 +2065,25 @@ export default function VisualNovelGame() {
       if (data._userStats) {
         setUserAuth(data._userStats);
       }
-      const speakerName = data.speaker || gameState.speaker;
+
+      // 1. Determine presence
+      const currentPresentComps = party.filter((c) => c.isPresent);
+      const isCurrentlyAlone = currentPresentComps.length === 0;
+
+      // 2. Resolve present companions list from state updates
+      const rawPresentList = data.state_updates?.present_companions;
+      const presentList: string[] = Array.isArray(rawPresentList)
+        ? rawPresentList
+        : (isCurrentlyAlone ? [] : currentPresentComps.map((c) => c.name));
+
+      const isSceneAlone = presentList.length === 0;
+
+      // 3. Sanitize speakerName: PROHIBIT player.name as visual novel speaker
+      let rawSpeaker = (data.speaker || gameState.speaker || (isSceneAlone ? "Narrator" : "Companion")).trim();
+      if (rawSpeaker.toLowerCase() === player.name.toLowerCase()) {
+        rawSpeaker = isSceneAlone ? "Narrator" : (presentList[0] || currentPresentComps[0]?.name || "Narrator");
+      }
+      const speakerName = rawSpeaker;
       const narrative = data.narrative_text || gameState.dialogue;
       
       const playerText = isCustom ? formattedPayload : (data.player_execution || formattedPayload);
@@ -1571,23 +2091,34 @@ export default function VisualNovelGame() {
       const nextExpression = data.state_updates?.expression_key || "neutral";
       const nextLocation = data.state_updates?.current_location || gameState.location;
       const nextBg = getLocationBg(nextLocation);
-      const presentList: string[] = data.state_updates?.present_companions || [speakerName];
 
-      const affectedComp = data.state_updates?.affected_companion || speakerName;
-      const delta = data.state_updates?.affection_delta;
+      // 4. Affected companion and favor delta: absent heroines cannot gain/lose favor
+      let rawAffected = data.state_updates?.affected_companion;
+      if (rawAffected && rawAffected.trim().toLowerCase() === player.name.toLowerCase()) {
+        rawAffected = null;
+      }
+      const affectedComp = rawAffected || (isSceneAlone ? null : speakerName);
+      const isCompPhysicallyPresent = affectedComp
+        ? presentList.some((p) => p.toLowerCase().includes(affectedComp.toLowerCase()))
+        : false;
 
-      if (typeof delta === "number" && delta !== 0) {
+      const rawDelta = data.state_updates?.affection_delta;
+      const delta = (isCompPhysicallyPresent && typeof rawDelta === "number") ? rawDelta : 0;
+
+      if (typeof delta === "number" && delta !== 0 && affectedComp) {
         soundEffects.playFavorSound(delta > 0);
         setLastAffectionDelta({ companion: affectedComp, delta });
         setTimeout(() => setLastAffectionDelta(null), 3500);
       }
 
-      const newlyMet: string[] = data.state_updates?.newly_encountered_heroines || [];
+      const newlyMet: string[] = Array.isArray(data.state_updates?.newly_encountered_heroines)
+        ? data.state_updates.newly_encountered_heroines
+        : [];
 
       setParty((prevParty) =>
         prevParty.map((comp) => {
           const isCurrentSpeaker = comp.name.toLowerCase().includes(speakerName.toLowerCase());
-          const isAffected = comp.name.toLowerCase().includes(affectedComp.toLowerCase());
+          const isAffected = affectedComp ? comp.name.toLowerCase().includes(affectedComp.toLowerCase()) : false;
           const isPresent = presentList.some((p) => comp.name.toLowerCase().includes(p.toLowerCase()));
           const isNewlyMet = newlyMet.some((n) => comp.name.toLowerCase().includes(n.toLowerCase()));
 
@@ -1598,7 +2129,7 @@ export default function VisualNovelGame() {
             isPresent,
             encountered: nowEncountered,
             expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
-            affection: isAffected && typeof delta === "number"
+            affection: isAffected && typeof delta === "number" && isCompPhysicallyPresent
               ? Math.max(0, Math.min(100, comp.affection + delta))
               : comp.affection,
           };
@@ -1614,13 +2145,14 @@ export default function VisualNovelGame() {
         avatarSrc: playerAvatar || undefined,
       };
 
+      const isAmbientSpeaker = ["narrator", "system", "inner monologue"].some((s) => speakerName.toLowerCase().includes(s));
       const companionMsg: ChatMessage = {
         id: crypto.randomUUID(),
         sender: "character",
         speakerName,
         text: narrative,
         timestamp: timeString,
-        avatarSrc: getSpriteSrc(speakerName, nextExpression),
+        avatarSrc: isAmbientSpeaker ? undefined : getSpriteSrc(speakerName, nextExpression),
       };
 
       setChatLog((prev) => [...prev, playerMsg, companionMsg]);
@@ -1725,14 +2257,26 @@ export default function VisualNovelGame() {
         }
 
         let updatedAbilities = [...playerRef.current.abilities];
+        let updatedAbilityDetails = { ...(playerRef.current.abilityDetails || {}) };
         if (prog.new_ability_unlocked) {
-          updatedAbilities = [...updatedAbilities, prog.new_ability_unlocked];
+          const newSkill = prog.new_ability_unlocked.trim();
+          if (!updatedAbilities.includes(newSkill)) {
+            updatedAbilities = [...updatedAbilities, newSkill];
+            updatedAbilityDetails[newSkill] = {
+              name: newSkill,
+              description: `A newly awakened technique forged through trials in ${nextLocation}. Channels the user's growing power.`,
+              type: "Active",
+              cost: "15 MP",
+              cooldown: "2 Turns",
+              tier: "Adept",
+            };
+          }
           soundEffects.playIntroBell();
           setAcquisitionAlert({
             id: `skill_${Date.now()}`,
             type: "skill",
             title: "NEW SKILL AWAKENED",
-            subtitle: prog.new_ability_unlocked,
+            subtitle: newSkill,
           });
         }
 
@@ -1781,6 +2325,7 @@ export default function VisualNovelGame() {
           },
           gear: updatedGear,
           abilities: updatedAbilities,
+          abilityDetails: updatedAbilityDetails,
           inventory: updatedInventory,
         };
 
@@ -2012,6 +2557,93 @@ export default function VisualNovelGame() {
         resolvedChoices = validChoices;
       }
 
+      // Record Visited Timeline Anchor for Flowchart (Task 2)
+      const turnNodeKey = `turn_node_${Date.now()}`;
+      const newTimelineAnchor: VisitedStoryNode = {
+        id: turnNodeKey,
+        nodeKey: turnNodeKey,
+        title: `${nextLocation}: ${speakerName}`,
+        speaker: speakerName,
+        location: nextLocation,
+        visitedAt: new Date().toISOString(),
+        choiceTaken: isCustom ? formattedPayload : (data.player_execution || formattedPayload),
+        affectionSnapshot: party.reduce((acc, c) => ({ ...acc, [c.name]: c.affection }), {}),
+        gameStateSnapshot: {
+          gameState: {
+            speaker: speakerName,
+            dialogue: narrative,
+            location: nextLocation,
+            bgImage: nextBg,
+            mood: data.state_updates?.mood ?? gameState.mood,
+            presentCompanions: presentList,
+          },
+          party: party,
+          player: playerRef.current,
+          systemState: systemState,
+          memories: nextMemories,
+          chatLog: [...chatLog, playerMsg, companionMsg],
+          choices: resolvedChoices,
+        },
+        isAnchor: true,
+        anchorLabel: `Turn Anchor: ${nextLocation}`,
+      };
+      setVisitedStoryNodes((prev) => [...prev, newTimelineAnchor]);
+
+      // Affection Milestones (25%, 50%, 75%, 100%) & Companion Quests (Task 3)
+      if (typeof delta === "number" && delta > 0 && affectedComp) {
+        const compObj = party.find((c) => c.name.toLowerCase().includes(affectedComp.toLowerCase()));
+        if (compObj) {
+          const oldAffection = compObj.affection;
+          const newAffection = Math.min(100, oldAffection + delta);
+          [25, 50, 75, 100].forEach((threshold) => {
+            if (
+              oldAffection < threshold &&
+              newAffection >= threshold &&
+              !(companionMilestones[affectedComp] || []).includes(threshold)
+            ) {
+              setCompanionMilestones((prev) => ({
+                ...prev,
+                [affectedComp]: [...(prev[affectedComp] || []), threshold],
+              }));
+
+              const questDifficulty = threshold >= 100 ? "Calamity" : threshold >= 75 ? "S" : threshold >= 50 ? "A" : "B";
+              const questTitle = `[COMPANION QUEST] ${affectedComp}: ${threshold}% Heart Resonance`;
+              const questDesc = `${affectedComp} has reached ${threshold}% affection! Interpersonal tension rises; resolve this scenario to synthesize a bespoke CG illustration.`;
+
+              setSystemState((prevSys) => ({
+                ...prevSys,
+                activeQuests: [
+                  {
+                    id: `milestone_${affectedComp.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${threshold}`,
+                    title: questTitle,
+                    description: questDesc,
+                    type: "scenario",
+                    difficulty: questDifficulty as any,
+                    objectives: [
+                      { text: `Complete private audience with ${affectedComp}`, completed: false },
+                      { text: "Overcome emotional vulnerability or planar crisis", completed: false },
+                    ],
+                    rewards: { exp: threshold * 5, gold: threshold * 10, items: [`${affectedComp}'s Keepsake`] },
+                    status: "active",
+                  },
+                  ...prevSys.activeQuests,
+                ],
+                systemDirectives: [`[SYSTEM: Companion Arc Unlocked - '${questTitle}']`, ...prevSys.systemDirectives],
+              }));
+
+              soundEffects.playQuestComplete();
+              pushNotification({
+                id: `milestone_${Date.now()}`,
+                type: "quest_assigned",
+                title: "ROMANCE MILESTONE UNLOCKED",
+                subtitle: `${affectedComp} favor exceeded ${threshold}%! Companion scenario awakened.`,
+                difficulty: questDifficulty,
+              });
+            }
+          });
+        }
+      }
+
       // Auto-Save after every successful turn
       performAutoSave({
         player: playerRef.current,
@@ -2042,10 +2674,11 @@ export default function VisualNovelGame() {
     sendAction(text, true);
   };
 
-  const activeSpeakerComp = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase())) || party[0];
   const presentComps = party.filter((c) => c.isPresent);
+  const isProtagonistAlone = presentComps.length === 0;
   const isSpeakingHeroine = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase()));
-  const heroineForMeter = isSpeakingHeroine || (presentComps.length > 0 ? presentComps[0] : null);
+  const activeSpeakerComp = isSpeakingHeroine || (presentComps.length > 0 ? presentComps[0] : party[0]);
+  const heroineForMeter = isProtagonistAlone ? null : (isSpeakingHeroine || (presentComps.length > 0 ? presentComps[0] : null));
 
   const renderSaveModal = () => (
     showSaveModal && (
@@ -2708,6 +3341,91 @@ export default function VisualNovelGame() {
       </div>
     );
 
+  const renderAbilityModal = () =>
+    inspectedAbility && (
+      <div 
+        className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={() => setInspectedAbility(null)}
+      >
+        <div 
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150"
+        >
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/70 to-transparent" />
+          
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <span className="text-xs font-mono uppercase text-amber-400 tracking-wider flex items-center gap-1.5 font-bold">
+              <Zap className="w-3.5 h-3.5 text-amber-400" /> Ability Dossier
+            </span>
+            <button 
+              onClick={() => setInspectedAbility(null)} 
+              className="text-zinc-400 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-bold text-white font-mono flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                {inspectedAbility.name}
+              </h2>
+              <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                Class Archetype: {player.role || "Adventurer"}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-1 shrink-0">
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold">
+                {inspectedAbility.tier || "Novice"} Tier
+              </span>
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">
+                {inspectedAbility.type || "Active"}
+              </span>
+            </div>
+          </div>
+
+          {/* Cost & Cooldown Row */}
+          <div className="grid grid-cols-2 gap-2 bg-zinc-900/60 p-2.5 rounded-2xl border border-white/5">
+            <div className="flex items-center gap-2 px-2 py-1 bg-black/40 rounded-xl border border-white/5">
+              <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <div>
+                <p className="text-[9px] font-mono text-zinc-500 uppercase">Resource Cost</p>
+                <p className="text-xs font-mono font-bold text-sky-300">{inspectedAbility.cost || "None"}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-2 py-1 bg-black/40 rounded-xl border border-white/5">
+              <Navigation className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <div>
+                <p className="text-[9px] font-mono text-zinc-500 uppercase">Cooldown / Cast</p>
+                <p className="text-xs font-mono font-bold text-emerald-300">{inspectedAbility.cooldown || "Instant"}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Description Section */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-mono uppercase text-zinc-500 block">Ability Description & Mechanics</label>
+            <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-white/10 text-xs text-zinc-200 font-sans leading-relaxed shadow-inner">
+              {inspectedAbility.description}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-white/10 text-[11px] font-mono text-zinc-500">
+            <span className="flex items-center gap-1 text-zinc-400">
+              <Shield className="w-3 h-3 text-sky-400" /> System Verified Ability
+            </span>
+            <button
+              onClick={() => setInspectedAbility(null)}
+              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-mono text-xs cursor-pointer transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+
   // 1. OPENING / WELCOME SPLASH SCREEN (FIRST LOAD)
   if (!isConfigured && !hasSeenWelcome) {
     return (
@@ -2940,6 +3658,83 @@ export default function VisualNovelGame() {
                 </button>
               </div>
             </div>
+
+            {/* STARTING ABILITIES (LLM ROLL) */}
+            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                    <Zap className="w-4 h-4 text-amber-400" /> Starting Abilities (System Roll)
+                  </label>
+                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
+                    Awaken 1-2 random starting abilities generated by the LLM for <span className="text-zinc-300 font-mono">{player.role || "your class"}</span>.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {player.abilities.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAbilities}
+                      className="px-2.5 py-1 text-[11px] font-mono text-zinc-400 hover:text-rose-400 border border-white/10 hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
+                      title="Clear starting abilities"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isRollingAbilities}
+                    onClick={handleRollAbilities}
+                    className="px-3.5 py-1.5 bg-gradient-to-r from-amber-600/80 to-rose-600/80 hover:from-amber-500 hover:to-rose-500 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                  >
+                    <Dices className={`w-3.5 h-3.5 ${isRollingAbilities ? "animate-spin" : ""}`} />
+                    <span>{isRollingAbilities ? "Synthesizing..." : player.abilities.length > 0 ? "Reroll Abilities" : "Roll Abilities"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Display Rolled Abilities */}
+              {player.abilities.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {player.abilities.map((abName, i) => {
+                    const detail = player.abilityDetails?.[abName];
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => handleInspectAbility(abName)}
+                        className="bg-zinc-900/90 hover:bg-zinc-800/90 border border-amber-500/30 hover:border-amber-400/60 p-3 rounded-xl transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
+                        title="Click to view full ability description"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="font-bold text-xs text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-amber-400" />
+                              {abName}
+                            </span>
+                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 text-amber-300 border border-amber-500/20">
+                              {detail?.type || "Active"}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                            {detail?.description || "Click to inspect full ability mechanics..."}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-2 mt-2 border-t border-white/5">
+                          <span className="text-sky-400">{detail?.cost || "Cost: 10 MP"}</span>
+                          <span className="text-zinc-400">{detail?.cooldown || "Instant"}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-2.5 px-3 border border-dashed border-white/10 rounded-xl bg-zinc-950/40">
+                  <p className="text-xs text-zinc-500 font-sans italic">
+                    Optional: Click "Roll Abilities" to let the System generate 1-2 random starting techniques based on <span className="text-zinc-300 font-mono">{player.role || "your class"}</span>.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div>
@@ -2995,6 +3790,7 @@ export default function VisualNovelGame() {
         {renderSaveModal()}
         {renderAuthModal()}
         {renderTransitionOverlay()}
+        {renderAbilityModal()}
       </div>
     );
   }
@@ -3108,6 +3904,42 @@ export default function VisualNovelGame() {
           )}
 
           <div className="flex items-center bg-black/80 backdrop-blur-md border border-white/10 p-1 rounded-2xl shadow-lg shrink-0 gap-0.5">
+            {/* Interactive Flowchart Button (Task 2) */}
+            <button
+              onClick={() => {
+                soundEffects.playClick();
+                setShowFlowchartModal(true);
+              }}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer flex items-center gap-1.5"
+              title="Interactive Flowchart & Timeline Anchors"
+            >
+              <GitBranch className="w-4 h-4 text-cyan-400" />
+              <span className="hidden xl:inline text-[10px] font-mono">Flowchart</span>
+            </button>
+
+            {/* LitRPG Trials Link (Task 4) */}
+            <button
+              onClick={handleNavigateToTrials}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1.5"
+              title="LitRPG Daily Roguelite Trials (Auto-saves story progress)"
+            >
+              <Swords className="w-4 h-4 text-blue-400" />
+              <span className="hidden xl:inline text-[10px] font-mono">Trials</span>
+            </button>
+
+            {/* Share World & Seed (Task 5) */}
+            <button
+              onClick={() => {
+                soundEffects.playClick();
+                setShowShareModal(true);
+              }}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-400 hover:text-purple-300 transition-all cursor-pointer flex items-center gap-1.5"
+              title="Share Multiverse Setup & Card"
+            >
+              <Share2 className="w-4 h-4 text-purple-400" />
+              <span className="hidden xl:inline text-[10px] font-mono">Share</span>
+            </button>
+
             {/* Illustrate Scene (Nano Banana 2.1) */}
             <button
               onClick={() => handleGenerateSceneCG(false)}
@@ -3188,17 +4020,34 @@ export default function VisualNovelGame() {
 
           <div className="shrink-0 px-4 py-2 sm:px-5 sm:py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
             <div className="flex items-center gap-2.5">
-              <div className="inline-flex items-center gap-2 bg-rose-600/25 border border-rose-500/40 px-3 py-1 rounded-xl">
-                <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-                <span className="text-xs md:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono">
-                  {gameState.speaker}
-                </span>
-              </div>
+              {/* Speaker Badge */}
+              {isSpeakingHeroine ? (
+                <div className="inline-flex items-center gap-2 bg-rose-600/25 border border-rose-500/40 px-3 py-1 rounded-xl shadow-sm">
+                  <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="text-xs md:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono">
+                    {isSpeakingHeroine.name}
+                  </span>
+                </div>
+              ) : isProtagonistAlone ? (
+                <div className="inline-flex items-center gap-2 bg-sky-950/60 border border-sky-500/40 px-3 py-1 rounded-xl shadow-sm">
+                  <User className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-xs md:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono">
+                    {gameState.speaker || "Narrator"}
+                  </span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 bg-sky-950/60 border border-sky-500/30 px-3 py-1 rounded-xl shadow-sm">
+                  <BookOpen className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-xs md:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono">
+                    {gameState.speaker || "Narrator"}
+                  </span>
+                </div>
+              )}
 
-              {/* Favor Meter placed directly next to the Heroine's Name (Above Sprite) */}
-              {heroineForMeter && (
+              {/* Status / Presence Indicator */}
+              {isSpeakingHeroine ? (
                 <div className="relative inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1 rounded-xl shadow-inner">
-                  {lastAffectionDelta !== null && (
+                  {lastAffectionDelta !== null && lastAffectionDelta.companion.toLowerCase().includes(isSpeakingHeroine.name.toLowerCase()) && (
                     <div 
                       className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 ${
                         lastAffectionDelta.delta > 0 
@@ -3210,28 +4059,53 @@ export default function VisualNovelGame() {
                     </div>
                   )}
                   <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/80" />
-                  {heroineForMeter.encountered ? (
+                  <span className="text-[10px] font-mono font-medium text-rose-300 hidden sm:inline">{isSpeakingHeroine.name}:</span>
+                  {isSpeakingHeroine.encountered ? (
                     <>
                       <div className="w-14 sm:w-20 bg-zinc-800 rounded-full h-1.5 overflow-hidden border border-white/5">
                         <div 
                           className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${heroineForMeter.affection}%` }}
+                          style={{ width: `${isSpeakingHeroine.affection}%` }}
                         />
                       </div>
-                      <span className="text-[11px] font-mono font-bold text-rose-300">{heroineForMeter.affection}%</span>
+                      <span className="text-[11px] font-mono font-bold text-rose-300">{isSpeakingHeroine.affection}%</span>
                     </>
                   ) : (
                     <span className="text-[10px] font-mono text-zinc-500 italic px-1">??? Favor</span>
                   )}
                 </div>
+              ) : isProtagonistAlone ? (
+                <div className="inline-flex items-center gap-1.5 bg-sky-950/40 border border-sky-500/30 px-2.5 py-1 rounded-xl shadow-inner">
+                  <Shield className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-[10px] font-mono font-bold text-sky-300">Solo Exploration</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1 rounded-xl shadow-inner">
+                  <Users className="w-3.5 h-3.5 text-rose-400" />
+                  <span className="text-[10px] font-mono text-zinc-400 hidden sm:inline">With:</span>
+                  <span className="text-[11px] font-mono font-bold text-rose-300">
+                    {presentComps.map((c) => c.name).join(", ")}
+                  </span>
+                  <span className="text-zinc-600 mx-0.5">•</span>
+                  <Heart className="w-3 h-3 text-rose-500 fill-rose-500/80" />
+                  <span className="text-[10px] font-mono text-rose-300 font-bold">{presentComps[0].affection}%</span>
+                </div>
               )}
             </div>
 
             <div className="flex items-center gap-2">
-              {heroineForMeter && (
+              {isSpeakingHeroine && (
                 <>
                   <span className="text-xs font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-md border border-white/5">
-                    {heroineForMeter.expressionKey}
+                    {isSpeakingHeroine.expressionKey}
+                  </span>
+                  <span className="text-zinc-600">•</span>
+                </>
+              )}
+              {isProtagonistAlone && (
+                <>
+                  <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-500/20">
+                    Solitary Arc
                   </span>
                   <span className="text-zinc-600">•</span>
                 </>
@@ -3319,8 +4193,9 @@ export default function VisualNovelGame() {
                       </div>
                     )}
                     <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/60 border border-white/10 text-sky-300">
-                        {player.name} ({player.role || "Protagonist"})
+                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-black/80 border border-sky-500/30 text-sky-300 shadow-md inline-flex items-center justify-center gap-1.5 mx-auto">
+                        <Shield className="w-3 h-3 text-sky-400" />
+                        <span>{player.name} • Solo in {gameState.location}</span>
                       </span>
                     </div>
                   </div>
@@ -3369,18 +4244,36 @@ export default function VisualNovelGame() {
                         </>
                       ) : (
                         <>
-                          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none">
-                            <img 
-                              src={(msg.avatarSrc && msg.avatarSrc.trim()) || getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) || DEFAULT_FALLBACK_SPRITE} 
-                              alt={msg.speakerName} 
-                              onError={(e) => { 
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src = DEFAULT_FALLBACK_SPRITE; 
-                              }}
-                              className="w-full h-full object-cover object-top" 
-                            />
-                          </div>
-                          <span className="text-xs font-semibold text-rose-300 select-none">{msg.speakerName}</span>
+                          {(() => {
+                            const isMsgAmbient = ["narrator", "system", "inner monologue"].some((s) => msg.speakerName.toLowerCase().includes(s));
+                            if (isMsgAmbient) {
+                              return (
+                                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-950 shadow-md flex items-center justify-center shrink-0 select-none">
+                                  {msg.speakerName.toLowerCase().includes("system") ? (
+                                    <Terminal className="w-4 h-4 text-sky-400" />
+                                  ) : (
+                                    <BookOpen className="w-4 h-4 text-sky-400" />
+                                  )}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none">
+                                <img 
+                                  src={(msg.avatarSrc && msg.avatarSrc.trim()) || getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) || DEFAULT_FALLBACK_SPRITE} 
+                                  alt={msg.speakerName} 
+                                  onError={(e) => { 
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = DEFAULT_FALLBACK_SPRITE; 
+                                  }}
+                                  className="w-full h-full object-cover object-top" 
+                                />
+                              </div>
+                            );
+                          })()}
+                          <span className={`text-xs font-semibold select-none ${["narrator", "system", "inner monologue"].some((s) => msg.speakerName.toLowerCase().includes(s)) ? "text-sky-300" : "text-rose-300"}`}>
+                            {msg.speakerName}
+                          </span>
                           <span className="text-[11px] text-zinc-500 font-mono select-none">{msg.timestamp}</span>
 
                           {!isEditing && (
@@ -3560,6 +4453,7 @@ export default function VisualNovelGame() {
       {renderTransitionOverlay()}
       {renderSceneModal()}
       {renderItemModal()}
+      {renderAbilityModal()}
 
 
 
@@ -3815,17 +4709,55 @@ export default function VisualNovelGame() {
             </div>
 
             <div>
-              <h3 className="text-xs font-mono uppercase text-zinc-400 mb-2">Abilities</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-mono uppercase text-zinc-400 flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" /> Abilities & Talents
+                </h3>
+                <span className="text-[10px] font-mono text-zinc-500">{player.abilities.length} Mastered</span>
+              </div>
               {player.abilities.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {player.abilities.map((ab, i) => (
-                    <span key={i} className="text-xs bg-rose-950/40 border border-rose-500/30 text-rose-300 px-3 py-1 rounded-lg">
-                      {ab}
-                    </span>
-                  ))}
+                <div className="space-y-2">
+                  {player.abilities.map((abName, i) => {
+                    const detail = player.abilityDetails?.[abName];
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => handleInspectAbility(abName)}
+                        className="group bg-zinc-900/80 hover:bg-zinc-800/90 border border-white/5 hover:border-amber-500/30 p-2.5 rounded-xl transition-all cursor-pointer shadow-sm flex items-center justify-between gap-2 select-none"
+                        title="Click to view full ability description"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-amber-950/40 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 group-hover:scale-105 transition-transform shadow-inner">
+                            <Zap className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-xs font-bold text-zinc-200 group-hover:text-amber-300 transition-colors truncate">
+                                {abName}
+                              </p>
+                              {detail?.tier && (
+                                <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-black/50 text-amber-300 border border-amber-500/20">
+                                  {detail.tier}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-400 font-sans line-clamp-1 mt-0.5">
+                              {detail?.description || "Click to inspect full ability mechanics..."}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end shrink-0 text-[10px] font-mono text-zinc-500">
+                          <span className="text-sky-400 font-semibold">{detail?.cost || "10 MP"}</span>
+                          <span className="text-zinc-400">{detail?.type || "Active"}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-xs text-zinc-500 italic">No abilities unlocked yet.</p>
+                <p className="text-xs text-zinc-500 italic bg-zinc-900/40 p-3 rounded-xl border border-white/5">
+                  No abilities unlocked yet.
+                </p>
               )}
             </div>
 
@@ -3933,6 +4865,71 @@ export default function VisualNovelGame() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* INTERACTIVE BRANCHING FLOWCHART (Task 2) */}
+      <FlowchartViewer
+        isOpen={showFlowchartModal}
+        onClose={() => setShowFlowchartModal(false)}
+        flowchartTree={currentStory?.flowchartTree}
+        visitedNodes={visitedStoryNodes}
+        currentNodeKey={gameState.location}
+        onJumpToAnchor={handleJumpToAnchor}
+      />
+
+      {/* MULTIVERSE SEED SHARE MODAL (Task 5) */}
+      <WorldShareModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        story={currentStory}
+      />
+
+      {/* BESPOKE ROMANCE CG REVELATION MODAL (Task 3) */}
+      {activeBespokeCG && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-300"
+          onClick={() => setActiveBespokeCG(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/50 rounded-3xl shadow-2xl p-6 text-center space-y-4 overflow-hidden"
+          >
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono text-rose-400 uppercase tracking-wider font-bold">
+                ✦ Bespoke Romance Milestone Climax ✦
+              </span>
+              <button
+                onClick={() => setActiveBespokeCG(null)}
+                className="p-1 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden border border-white/15 aspect-square max-h-[55vh] mx-auto bg-black shadow-2xl">
+              <img
+                src={activeBespokeCG.imageUrl}
+                alt={activeBespokeCG.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-white font-serif">{activeBespokeCG.title}</h3>
+              <p className="text-xs text-rose-300 font-mono mt-1">
+                Synthesized dynamically via Nano Banana 2.1 • Archived permanently in Multiverse Codex
+              </p>
+            </div>
+
+            <button
+              onClick={() => setActiveBespokeCG(null)}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 text-white font-mono text-xs font-bold shadow-lg"
+            >
+              Continue Chronicle
+            </button>
           </div>
         </div>
       )}

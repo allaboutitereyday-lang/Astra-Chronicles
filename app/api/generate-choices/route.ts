@@ -38,16 +38,33 @@ export async function POST(req: Request) {
     }
     const activeUser = authCheck.user!;
 
+    // Track physical presence of companions in the active scene
+    const physicallyPresentCompanions = (partyMembers || []).filter((c: any) => Boolean(c.isPresent));
+    const isProtagonistAlone = physicallyPresentCompanions.length === 0;
+    const presentHeroineNames = physicallyPresentCompanions.map((c: any) => c.name);
+
+    let sanitizedSpeaker = gameState?.speaker || "Narrator";
+    if (playerProfile?.name && sanitizedSpeaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
+      sanitizedSpeaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
+    }
+
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       // Graceful fallback if API key is unconfigured
       return NextResponse.json({
-        choices: [
-          `[Inquire] Press ${gameState?.speaker || "companion"} on the matters at hand in ${gameState?.location || "this area"}.`,
-          `[Pragmatism] Evaluate the tactical stakes before making your commitment.`,
-          `[Action] Step forward as a ${playerProfile?.role || "wanderer"} and assert your intent.`,
-          `[Observe] Gauge the reaction of ${gameState?.speaker || "your companion"} carefully.`,
-        ]
+        choices: isProtagonistAlone
+          ? [
+              `[Survey] Scrutinize the surroundings in ${gameState?.location || "this area"} for hidden runes, traps, or anomalies.`,
+              `[Tactics] Stay low and steady your breathing, securing a quiet defensive perimeter.`,
+              `[System] Check the LitRPG interface to analyze causal stability and active directives.`,
+              `[Action] Draw your weapon and advance cautiously into the quiet expanse.`,
+            ]
+          : [
+              `[Inquire] Press ${sanitizedSpeaker} on the deeper implications of what was just disclosed in ${gameState?.location || "this area"}.`,
+              `[Pragmatism] Evaluate the tactical stakes and propose a calculated compromise with ${sanitizedSpeaker}.`,
+              `[Action] Step forward as a ${playerProfile?.role || "wanderer"} and assert your intent directly.`,
+              `[Empathy] Read ${sanitizedSpeaker}'s expression and look for unspoken motives behind their demeanor.`,
+            ],
       });
     }
 
@@ -55,10 +72,11 @@ export async function POST(req: Request) {
     const settingName = storyContext?.worldContext?.settingName || "the world";
     const effectiveTone = storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
-    const presentCompanions = partyMembers
-      .filter((c: any) => c.isPresent)
-      .map((c: any) => `${c.name} (${c.title || c.role || "Companion"}, Favor: ${c.affection}%)`)
-      .join(", ") || "None present";
+    const presentCompanions = physicallyPresentCompanions.length > 0
+      ? physicallyPresentCompanions
+          .map((c: any) => `${c.name} (${c.title || c.role || "Companion"}, Favor: ${c.affection}%)`)
+          .join(", ")
+      : "None present (Protagonist is PHYSICALLY ALONE)";
 
     const activeQuests = systemState?.activeQuests && systemState.activeQuests.length > 0
       ? systemState.activeQuests.map((q: any) => `- [${q.difficulty}-Rank] "${q.title}": ${q.description}`).join("\n")
@@ -70,7 +88,24 @@ export async function POST(req: Request) {
 
     const recentExchanges = Array.isArray(recentHistory) && recentHistory.length > 0
       ? recentHistory.slice(-6).map((h: any) => `${h.speaker}: "${h.text}"`).join("\n")
-      : `Scene: ${gameState?.speaker}: "${gameState?.dialogue || "..."}"`;
+      : `Scene: ${sanitizedSpeaker}: "${gameState?.dialogue || "..."}"`;
+
+    const choiceDirective = isProtagonistAlone
+      ? `--- CHOICE AUTHORING DIRECTIVE (PROTAGONIST IS PHYSICALLY ALONE) ---
+The protagonist (${playerProfile?.name || "Protagonist"}) is navigating ${gameState?.location || "this sector"} COMPLETELY ALONE.
+- Absolutely DO NOT author options that address, speak to, inquire of, or converse with absent heroines (e.g. Serena, Aria, Evelyn, etc.).
+- Generate exactly 4 distinct, immersive options tailored to solitary exploration, environmental examination, stealth/traps, LitRPG System analysis, or personal contemplation:
+  1. [Survey / Lore]: Examining ancient architecture, inscriptions, strange footprints, or planar resonance.
+  2. [Tactics / Stealth]: Checking vantage points, securing a perimeter, or moving silently through the shadows.
+  3. [LitRPG / System]: Probing the System interface, evaluating causal plausibility, or priming an ability.
+  4. [Action / Resolve]: Advancing decisively with weapon at the ready, determined to press onward alone.`
+      : `--- CHOICE AUTHORING DIRECTIVE (ACCOMPANIED BY ${presentHeroineNames.join(", ")}) ---
+Generate exactly 4 distinct, context-aware options that directly and compellingly respond to what ${sanitizedSpeaker} just said and the immediate situation in ${gameState?.location}.
+Prefix each choice with a tactical/roleplay bracket tag indicating the vector of action:
+1. [Inquire / Lore]: Probing, questioning, or pressing ${sanitizedSpeaker} about secrets, terms, or ancient lore.
+2. [Pragmatism / Tactics]: Proposing a grounded compromise, tradecraft, preparation, or conditional alliance.
+3. [Bold / Action]: Taking decisive physical action, asserting authority, casting a spell, or demonstrating resolve.
+4. [Empathy / Intuition]: Reading ${sanitizedSpeaker}'s emotional state, appealing to shared survival, or forming an emotional bond.`;
 
     const systemPrompt = `You are the Interactive Decision Architect and Game Master for "${storyTitle}", set in ${settingName}.
 Atmospheric Tone: ${effectiveTone}.
@@ -79,7 +114,7 @@ The player is loading into a saved game state. Your sole task is to dynamically 
 
 --- CURRENT SCENE SNAPSHOT ---
 - Location: ${gameState?.location || "Starting Point"}
-- Active Speaker: ${gameState?.speaker || "Companion"}
+- Active Speaker: ${sanitizedSpeaker}
 - Latest Spoken Dialogue / Narrative Event:
 "${gameState?.dialogue || "..."}"
 - Mood / Atmosphere: ${gameState?.mood || "Tense"}
@@ -95,13 +130,7 @@ ${recentExchanges}
 Chronological Memories & Past Interactions:
 ${canonicalMemories}
 
---- CHOICE AUTHORING DIRECTIVE ---
-Generate exactly 4 distinct, context-aware options that directly and compellingly respond to what ${gameState?.speaker} just said and the immediate situation in ${gameState?.location}.
-Prefix each choice with a tactical/roleplay bracket tag indicating the vector of action:
-1. [Inquire / Lore]: Probing, questioning, or pressing the speaker about secrets, terms, or ancient lore.
-2. [Pragmatism / Tactics]: Proposing a grounded compromise, tradecraft, preparation, or conditional alliance.
-3. [Bold / Action]: Taking decisive physical action, asserting authority, casting a spell, or demonstrating resolve.
-4. [Empathy / Intuition]: Reading the speaker's emotional state, appealing to shared survival, or forming an emotional/philosophical bond.
+${choiceDirective}
 
 Requirements:
 - Each choice must be 1-2 vivid, natural sentences written from ${playerProfile?.name}'s perspective.
@@ -115,7 +144,9 @@ Requirements:
       { role: "system", content: systemPrompt },
       { 
         role: "user", 
-        content: `Generate the 4 dynamic contextual choices for ${playerProfile?.name} reacting to ${gameState?.speaker}'s dialogue in ${gameState?.location}.` 
+        content: isProtagonistAlone
+          ? `Generate 4 dynamic contextual choices for ${playerProfile?.name} exploring ${gameState?.location} alone.`
+          : `Generate the 4 dynamic contextual choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}.`
       }
     ];
 

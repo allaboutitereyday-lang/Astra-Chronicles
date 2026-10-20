@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
+import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,13 @@ export async function POST(req: Request) {
       userAccessKey,
       systemState,
       storyContext,
+      activeSynergies,
     } = body;
+
+    const computedSynergies = activeSynergies && activeSynergies.length > 0
+      ? activeSynergies
+      : evaluateRelicSynergies(playerProfile?.inventory || [], playerProfile?.gear);
+    const synergyDirective = buildSynergyPromptDirective(computedSynergies);
 
     const accessKey = headerKey || userAccessKey;
     const authCheck = validateUserKey(accessKey);
@@ -50,6 +57,17 @@ export async function POST(req: Request) {
     const storyTitle = storyContext?.title || "Astra Chronicles";
     const settingName = storyContext?.worldContext?.settingName || "the Astra Continent";
     const effectiveTone = narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
+
+    // Track physical presence of companions in the active scene
+    const physicallyPresentCompanions = (partyMembers || []).filter((c: any) => Boolean(c.isPresent));
+    const isProtagonistAlone = physicallyPresentCompanions.length === 0;
+    const presentHeroineNames = physicallyPresentCompanions.map((c: any) => c.name);
+
+    // Sanitize active speaker context to ensure protagonist is never passed as active speaker
+    let sanitizedContextSpeaker = gameState?.speaker;
+    if (!sanitizedContextSpeaker || sanitizedContextSpeaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
+      sanitizedContextSpeaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
+    }
 
     const companionDossiers = storyContext?.companions && storyContext.companions.length > 0
       ? storyContext.companions.map((c: any, i: number) => `
@@ -104,7 +122,7 @@ The user selected this prompt vector: "${action}".
       ? `--- FIRST ENCOUNTER APPEARANCE DIRECTIVE ---
 This is the initial meeting with the protagonist (${playerProfile.name}).
 - Inspect the character's visual features (hair, eyes, build, clothing/armor, stance).
-- The active speaker (${gameState.speaker}) MUST naturally observe and comment on the protagonist's initial appearance or impression in their dialogue or narrative prose.
+- The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on the protagonist's initial appearance or impression in their dialogue or narrative prose.
 - Note: This is an introductory first impression only.`
       : `--- APPEARANCE DIRECTIVE ---
 Do NOT repeatedly comment on or re-describe the player's general physical appearance (hair color, clothing, facial traits) unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
@@ -117,6 +135,26 @@ Do NOT repeatedly comment on or re-describe the player's general physical appear
 - Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
 - Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.`;
 
+    const scenePresenceDirective = isProtagonistAlone
+      ? `--- SCENE PRESENCE: PROTAGONIST IS PHYSICALLY ALONE (SOLO SCENE) ---
+[CRITICAL SCENE STATE: THE PROTAGONIST (${playerProfile.name}) IS PHYSICALLY ALONE]
+- There are NO heroines or companions physically present at ${gameState.location}.
+- ABSOLUTELY NO absent heroines (such as Serena, Aria, Evelyn, Morgana, or Perci) may speak, appear, or react. Do NOT fabricate dialogue or reactions for characters who are not physically present in this room/area.
+- "speaker" MUST BE "Narrator", "Inner Monologue", or "System". It MUST NEVER BE "${playerProfile.name}".
+- "state_updates.present_companions" MUST BE [] (an empty array).
+- "state_updates.affected_companion" MUST BE null.
+- "state_updates.affection_delta" MUST BE 0 (favor cannot change while alone).
+- "state_updates.expression_key" MUST BE "neutral".
+- Focus the narrative and prose entirely on ${playerProfile.name}'s solitary exploration, tactical assessment, internal resolve, environmental hazards, LitRPG System evaluations, or discovering ancient lore.`
+      : `--- SCENE PRESENCE: HEROINE(S) PRESENT IN SCENE ---
+[CRITICAL SCENE STATE: THE FOLLOWING HEROINE(S) ARE PHYSICALLY PRESENT: ${presentHeroineNames.join(", ")}]
+- The protagonist (${playerProfile.name}) is in the physical presence of: ${presentHeroineNames.join(", ")}.
+- "speaker" MUST BE the exact canonical name of the active companion speaking (${presentHeroineNames.join(" or ")}).
+- "speaker" MUST NEVER BE "${playerProfile.name}". Dialogue spoken by a heroine MUST be attributed directly to her canonical name.
+- "state_updates.present_companions" MUST list all heroines who remain physically present in the scene, e.g. [${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}]. If a companion departs during this turn, omit them from this list.
+- "state_updates.affected_companion" MUST BE one of the physically present heroines (${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}), or null if neutral.
+- "state_updates.affection_delta" applies strictly to the present affected heroine based on ideological compatibility (-8 to +6).`;
+
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
 Atmosphere Tone: ${effectiveTone} (sensory-rich, visceral, morally gray, high tension).
@@ -128,8 +166,12 @@ ${companionDossiers}
 - Protagonist: ${playerProfile.name} (Lv.${playerProfile.level} ${playerProfile.role})
 - Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
 - Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
+- Abilities: ${Array.isArray(playerProfile.abilities) && playerProfile.abilities.length > 0 ? playerProfile.abilities.join(", ") : "None unlocked"}
 - Active Location: ${gameState.location}
-- Active Speaker: ${gameState.speaker}
+- Active Speaker Context: ${sanitizedContextSpeaker}
+- Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE (No companions present)" : `Accompanied by: ${presentHeroineNames.join(", ")}`}
+
+${scenePresenceDirective}
 
 --- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
 ${partyMembers.map((c: any) => {
@@ -205,25 +247,28 @@ MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
      * "[SYSTEM: Quest Cleared - 'The Ashen Cargo'. Experience distributed.]"
      * "[SYSTEM: Causal anchor synchronized. Plausibility nominal.]"
 
+${synergyDirective}
+
 --- MECHANICAL RULES ---
-1. Favor: Assign affection_delta (-8 to +6) based on true compatibility with the active heroine's values (see Compatibility Directive). Meaningful alignment = +3 to +6, clashing actions = -2 to -6, neutral = 0 or +1.
-2. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest/archive occurs, award loot items or an ability in "player_progression".
-3. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]").
-4. Markdown Formatting: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, atmospheric details, and sensory cues (e.g. *She narrows her violet eyes, fingertips tracing the crystal rim.*); use **bold** for loud vocal emphasis, sudden impacts, or spell invocations; use > quotes for mental echoes or ancient runes. Put spoken dialogue in quotation marks "...".
+1. Speaker Attribution: The field "speaker" indicates who is delivering dialogue or scene narration. "speaker" MUST NEVER BE "${playerProfile.name}". When accompanied, set "speaker" to the exact canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). When alone, set "speaker" to "Narrator", "Inner Monologue", or "System".
+2. Favor: Assign affection_delta (-8 to +6) based on true compatibility with the active heroine's values (see Compatibility Directive). If the protagonist is physically alone, affection_delta MUST BE 0 and affected_companion MUST BE null.
+3. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest/archive occurs, award loot items or an ability in "player_progression".
+4. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"). When alone, choices must reflect solo exploration, environmental inspection, or System actions; do not offer choices to converse with absent heroines.
+5. Markdown Formatting: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, atmospheric details, and sensory cues (e.g. *She narrows her amber eyes, fingertips resting along the iron hilt.*); use **bold** for loud vocal emphasis, sudden impacts, or spell invocations; use > quotes for mental echoes or ancient runes. Put spoken dialogue in quotation marks "...".
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
 {
-  "speaker": string,
+  "speaker": string, // Active speaker. MUST NEVER BE "${playerProfile.name}". If accompanied, must be ${presentHeroineNames.length > 0 ? presentHeroineNames.map((n: string) => `"${n}"`).join(" or ") : '"Heroine"'}. If alone, must be "Narrator", "Inner Monologue", or "System".
   "player_execution": string | null,
   "narrative_text": string,
   "state_updates": {
     "current_location": string,
     "mood": string,
     "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
-    "affected_companion": string,
-    "affection_delta": number,
-    "present_companions": string[],
+    "affected_companion": string | null, // Canonical name of present heroine whose favor changes, or null if alone.
+    "affection_delta": number, // Favor delta (-8 to +6). Must be 0 if alone.
+    "present_companions": string[], // Array of canonical names of companions physically present in the scene. Must be [] if alone.
     "newly_encountered_heroines": string[]
   },
   "player_progression": {
@@ -342,6 +387,21 @@ Respond strictly in valid JSON matching this schema:
         content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
 
         responseData = JSON.parse(content);
+
+        // Fail-safe post-processing: enforce speaker attribution and solitude rules
+        if (responseData.speaker && responseData.speaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
+          responseData.speaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
+        }
+        if (isProtagonistAlone) {
+          if (!responseData.state_updates) responseData.state_updates = {};
+          responseData.state_updates.present_companions = [];
+          responseData.state_updates.affected_companion = null;
+          responseData.state_updates.affection_delta = 0;
+          if (!responseData.speaker || responseData.speaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
+            responseData.speaker = "Narrator";
+          }
+        }
+
         const userStats = recordUserTurn(activeUser.key, data.usage, model);
         responseData._userStats = userStats;
         break;
