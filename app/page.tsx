@@ -23,7 +23,8 @@ import {
   FolderOpen,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  X
 } from "lucide-react";
 import { StoryContext } from "@/types/story";
 import { getAllStories, deleteStory } from "@/lib/storyStorage";
@@ -32,6 +33,7 @@ import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 import { loadAllGameSlots } from "@/lib/saveStorage";
 import { sanitizeImageUrl, DEFAULT_BG, DEFAULT_AVATAR } from "@/lib/imageUtils";
 import { getCodexStats } from "@/lib/codexStorage";
+import { validateKeyClientSide } from "@/lib/clientKeyValidation";
 
 export default function StoryCataloguePage() {
   const router = useRouter();
@@ -95,23 +97,47 @@ export default function StoryCataloguePage() {
 
   const verifyKey = async (keyToTest: string) => {
     if (!keyToTest.trim()) return;
+    setAuthError(null);
+
+    // 1. Check client-side known realm keys & OpenRouter keys
+    const clientResult = validateKeyClientSide(keyToTest);
+
     try {
       const res = await fetch("/api/auth/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessKey: keyToTest.trim() }),
       });
-      const data = await res.json();
-      if (res.ok && data.valid) {
-        setUserAuth(data.user);
-        setAccessKey(keyToTest.trim());
-        localStorage.setItem("astra_access_key", keyToTest.trim());
-        setShowAuthModal(false);
-      } else {
-        setAuthError(data.error || "Invalid key.");
+
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        if (res.ok && data.valid) {
+          setUserAuth(data.user);
+          setAccessKey(keyToTest.trim());
+          localStorage.setItem("astra_access_key", keyToTest.trim());
+          setShowAuthModal(false);
+          setAuthError(null);
+          return;
+        } else if (!clientResult.valid) {
+          setAuthError(data.error || "Invalid key.");
+          return;
+        }
       }
-    } catch (e: any) {
-      setAuthError(e.message || "Failed to contact auth service.");
+    } catch (e) {
+      // In Electron desktop file:// mode or static builds, network/route handler may not be an HTTP server
+      console.warn("Server auth verify bypassed, evaluating client credential:", e);
+    }
+
+    // 2. Fallback: If client validation succeeded, approve the key
+    if (clientResult.valid && clientResult.user) {
+      setUserAuth(clientResult.user);
+      setAccessKey(keyToTest.trim());
+      localStorage.setItem("astra_access_key", keyToTest.trim());
+      setShowAuthModal(false);
+      setAuthError(null);
+    } else {
+      setAuthError(clientResult.error || "Invalid access key. Please verify your credentials.");
     }
   };
 
@@ -514,7 +540,7 @@ export default function StoryCataloguePage() {
                 onClick={() => setShowAuthModal(false)}
                 className="text-zinc-400 hover:text-white cursor-pointer"
               >
-                âœ•
+                <X className="w-5 h-5" />
               </button>
             </div>
 
