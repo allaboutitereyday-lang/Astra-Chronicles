@@ -1,6 +1,9 @@
 // Robust Save Storage & Image Compression Engine for Astra Chronicles
 // Handles IndexedDB storage (unlimited quota) with localStorage fallback & auto-compression
 
+import { TimelineEcho } from "@/types/story";
+import { DeathRegressionRecord, PenaltyScenarioState } from "@/types/system";
+
 export interface SaveSlotPayload {
   slotId: number;
   savedAt: string;
@@ -16,6 +19,16 @@ export interface SaveSlotPayload {
   choices?: string[];
   visitedNodes?: any[];
   selectedPrologueId?: string;
+
+  // Major Feature Expansion Fields
+  timelineEchoes?: TimelineEcho[];
+  activeTrialCompanionId?: string;
+  activeStance?: string;
+  giftHistory?: Record<string, string[]>;
+  deathCount?: number;
+  regressionCount?: number;
+  regressionHistory?: DeathRegressionRecord[];
+  penaltyScenarioState?: PenaltyScenarioState | null;
 }
 
 const DB_NAME = "AstraChroniclesSaveDB";
@@ -224,3 +237,66 @@ export async function loadAllGameSlots(): Promise<Record<number, SaveSlotPayload
   return result;
 }
 
+// ============================================================================
+// PERSISTENT CROSS-LOOP REGRESSION & TIMELINE ECHO STORAGE
+// (Survives flowchart rewinds and anchor jumps)
+// ============================================================================
+
+const ECHO_STORAGE_PREFIX = "astra_timeline_echoes_";
+const REGRESSION_STORAGE_PREFIX = "astra_death_regressions_";
+
+export function loadPersistentTimelineEchoes(storyId: string): TimelineEcho[] {
+  if (typeof window === "undefined" || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(`${ECHO_STORAGE_PREFIX}${storyId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn("Failed to load persistent timeline echoes:", err);
+  }
+  return [];
+}
+
+export function appendPersistentTimelineEcho(storyId: string, echo: TimelineEcho): TimelineEcho[] {
+  if (typeof window === "undefined" || !window.localStorage) return [echo];
+  try {
+    const existing = loadPersistentTimelineEchoes(storyId);
+    // Avoid exact duplicate IDs
+    const filtered = existing.filter((e) => e.id !== echo.id);
+    const updated = [echo, ...filtered].slice(0, 50); // Keep last 50 key echoes
+    localStorage.setItem(`${ECHO_STORAGE_PREFIX}${storyId}`, JSON.stringify(updated));
+    return updated;
+  } catch (err) {
+    console.warn("Failed to append persistent timeline echo:", err);
+    return [echo];
+  }
+}
+
+export function loadPersistentRegressionHistory(storyId: string): DeathRegressionRecord[] {
+  if (typeof window === "undefined" || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(`${REGRESSION_STORAGE_PREFIX}${storyId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (err) {
+    console.warn("Failed to load regression history:", err);
+  }
+  return [];
+}
+
+export function appendPersistentDeathRegression(storyId: string, record: DeathRegressionRecord): DeathRegressionRecord[] {
+  if (typeof window === "undefined" || !window.localStorage) return [record];
+  try {
+    const existing = loadPersistentRegressionHistory(storyId);
+    const updated = [record, ...existing].slice(0, 20); // Keep last 20 deaths
+    localStorage.setItem(`${REGRESSION_STORAGE_PREFIX}${storyId}`, JSON.stringify(updated));
+    return updated;
+  } catch (err) {
+    console.warn("Failed to append regression history:", err);
+    return [record];
+  }
+}

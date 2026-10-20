@@ -25,14 +25,24 @@ import {
   Bot,
   Wand2,
   Skull,
-  Target
+  Target,
+  X
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { loadGameSlot, saveGameSlot, SaveSlotPayload } from "@/lib/saveStorage";
 import { saveCodexLoot } from "@/lib/codexStorage";
-import { InventoryItem, PlayerProfile, AbilityDetail } from "@/types/story";
+import { InventoryItem, PlayerProfile, AbilityDetail, StoryCompanion } from "@/types/story";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "@/lib/trialsClassArsenals";
+import {
+  buildActiveTrialCompanion,
+  ActiveTrialCompanion,
+  getCompanionAffectionTier,
+  COMBAT_STANCES,
+  CombatStanceType,
+  getAvailableStancesForRole,
+  resolveEvolvedAbilityName,
+} from "@/lib/progressionMechanics";
 
 interface SectorDefinition {
   sectorNumber: number;
@@ -175,6 +185,13 @@ function LitRPGTrialsContent() {
   const [trialExpGained, setTrialExpGained] = useState(0);
   const [trialLootEarned, setTrialLootEarned] = useState<InventoryItem[]>([]);
 
+  // Pillar 1 & 2 State: Co-Op Companion & Tactical Stance
+  const [activeCompanion, setActiveCompanion] = useState<ActiveTrialCompanion | null>(null);
+  const [showCompanionModal, setShowCompanionModal] = useState(false);
+  const [activeStance, setActiveStance] = useState<CombatStanceType>("neutral");
+  const [activeShield, setActiveShield] = useState(0);
+  const [trialTurnCount, setTrialTurnCount] = useState(0);
+
   // Daily Seed calculation
   const todayDateString = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -192,12 +209,31 @@ function LitRPGTrialsContent() {
           setPlayerHp(p.stats?.hp ? Math.min(p.stats.hp, maxHp) : maxHp);
           setPlayerMaxMp(maxMp);
           setPlayerMp(p.stats?.mp ? Math.min(p.stats.mp, maxMp) : maxMp);
+
+          // Hydrate active companion from slot party
+          if (slot.party && Array.isArray(slot.party) && slot.party.length > 0) {
+            const savedCompId = slot.activeTrialCompanionId;
+            const comp = slot.party.find((c: any) => c.id === savedCompId || c.name === savedCompId) || slot.party[0];
+            if (comp) {
+              setActiveCompanion(buildActiveTrialCompanion(comp));
+            }
+          }
+
+          // Hydrate active stance
+          if (slot.activeStance) {
+            setActiveStance(slot.activeStance as CombatStanceType);
+          }
         }
       })
       .catch((err) => {
         console.warn("Could not load slot 0 in trials:", err);
       });
   }, []);
+
+  // Compute available stances for protagonist role (Pillar 2)
+  const availableStances = useMemo(() => {
+    return getAvailableStancesForRole(syncedPlayer?.role);
+  }, [syncedPlayer?.role]);
 
   // Compute active synergies from synced gear & inventory
   const activeSynergies = useMemo(() => {
@@ -313,13 +349,14 @@ function LitRPGTrialsContent() {
     return `${pName} unleashes ${actionName}, striking ${targetName} with decisive precision for ${dmg} damage!`;
   };
 
-  // Turn Action Execution with Protagonist Class & Stat Scaling
+  // Turn Action Execution with Protagonist Class, Stances, and Co-Op Resonance
   const handleTacticalAction = (
-    actionType: "strike" | "burst" | "synergy" | "defense" | "ability" | "relic" | "companion" | "anchor",
+    actionType: "strike" | "burst" | "synergy" | "defense" | "ability" | "relic" | "companion" | "anchor" | "duo_ultimate",
     customAbility?: AbilityDetail
   ) => {
     if (isResolvingTurn || trialCompleted || trialFailed || isSyncingBack) return;
     setIsResolvingTurn(true);
+    setTrialTurnCount((prev) => prev + 1);
     soundEffects.playClick();
 
     setTimeout(() => {
@@ -327,6 +364,7 @@ function LitRPGTrialsContent() {
       let mpUsed = 0;
       let hpRegen = 0;
       let plausibilityShift = 0;
+      let isStunned = false;
       let actionName = classArsenal.actions.strike.name;
 
       const pStr = syncedPlayer?.stats?.str || 10;
@@ -334,8 +372,25 @@ function LitRPGTrialsContent() {
       const pInt = syncedPlayer?.stats?.int || 10;
       const pLevel = syncedPlayer?.level || 1;
 
+      // 0. Awakened Duo Ultimate (Pillar 1 - Beloved Tier 75%+)
+      if (actionType === "duo_ultimate" && activeCompanion) {
+        const ult = activeCompanion.resonance.belovedUltimate;
+        actionName = `[DUO ULTIMATE] ${ult.name}`;
+        if (playerMp >= ult.mpCost) {
+          mpUsed = ult.mpCost;
+          const baseUlt = 75 + Math.floor((pStr + pDex + pInt) * 1.5) + pLevel * 4;
+          playerDamage = Math.floor(baseUlt * ult.multiplier);
+          plausibilityShift = 6;
+          isStunned = ult.inflictsStun;
+          soundEffects.playQuestComplete();
+        } else {
+          actionName = `${ult.name} (Insufficient MP)`;
+          playerDamage = 20;
+          plausibilityShift = -2;
+        }
+
       // 1. Basic Class Strike (0 MP)
-      if (actionType === "strike") {
+      } else if (actionType === "strike") {
         const actionCfg = classArsenal.actions.strike;
         actionName = actionCfg.name;
         let statBonus = 0;
@@ -419,6 +474,24 @@ function LitRPGTrialsContent() {
         }
       }
 
+      // Apply Combat Stance Multiplier (Pillar 2)
+      const currentStanceConfig = COMBAT_STANCES[activeStance as CombatStanceType] || COMBAT_STANCES.neutral;
+      playerDamage = Math.floor(playerDamage * currentStanceConfig.damageMultiplier);
+
+      // Trigger Confidant Passive Co-Op (Pillar 1)
+      if (activeCompanion && ["Confidant", "Beloved", "Sworn Partner"].includes(activeCompanion.tier)) {
+        const passive = activeCompanion.resonance.confidantPassive;
+        const isCrisis = playerHp < playerMaxHp * 0.45;
+        const isInterval = (trialTurnCount + 1) % 3 === 0;
+        if (isCrisis || isInterval) {
+          if (passive.type === "shield") {
+            setActiveShield((prev) => Math.min(65, prev + passive.value));
+          } else if (passive.type === "heal") {
+            hpRegen += passive.value;
+          }
+        }
+      }
+
       // Apply to enemy
       const nextEnemyHp = Math.max(0, currentEnemyHp - playerDamage);
       setCurrentEnemyHp(nextEnemyHp);
@@ -426,18 +499,37 @@ function LitRPGTrialsContent() {
       setPlayerHp((prev) => Math.min(playerMaxHp, prev + hpRegen));
       setCausalPlausibility((prev) => Math.max(10, Math.min(100, prev + plausibilityShift)));
 
-      // Enemy Counter-attack if alive
+      // Enemy Counter-attack if alive and not stunned
       let enemyDamage = 0;
       if (nextEnemyHp > 0) {
-        enemyDamage = Math.floor(14 + Math.random() * 14 + currentSectorIdx * 6);
-        setPlayerHp((prev) => {
-          const nextHp = prev - enemyDamage;
-          if (nextHp <= 0) {
-            setTrialFailed(true);
-            soundEffects.playSystemAlert();
+        if (isStunned) {
+          enemyDamage = 0; // Stunned!
+        } else {
+          let rawEnemyDamage = Math.floor(14 + Math.random() * 14 + currentSectorIdx * 6);
+          // Absorb with shield
+          if (activeShield > 0) {
+            if (activeShield >= rawEnemyDamage) {
+              setActiveShield((prev) => prev - rawEnemyDamage);
+              enemyDamage = 0;
+            } else {
+              enemyDamage = rawEnemyDamage - activeShield;
+              setActiveShield(0);
+            }
+          } else {
+            enemyDamage = rawEnemyDamage;
           }
-          return Math.max(0, nextHp);
-        });
+
+          if (enemyDamage > 0) {
+            setPlayerHp((prev) => {
+              const nextHp = prev - enemyDamage;
+              if (nextHp <= 0) {
+                setTrialFailed(true);
+                soundEffects.playSystemAlert();
+              }
+              return Math.max(0, nextHp);
+            });
+          }
+        }
       }
 
       // Generate turn entry ID & Initial Procedural Blurb
@@ -466,7 +558,7 @@ function LitRPGTrialsContent() {
       // Add to feed immediately
       setCombatFeed((prev) => [combatEntry, ...prev]);
 
-      // Trigger AI narrative synthesis in background with class role & ability name
+      // Trigger AI narrative synthesis with Co-Op companion and active stance
       fetch("/api/generate-combat-blurb", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -480,6 +572,17 @@ function LitRPGTrialsContent() {
           enemyDamage,
           sectorName: activeSector.title,
           causalModifier: activeSector.causalModifier.name,
+          activeCompanion: activeCompanion
+            ? {
+                name: activeCompanion.name,
+                role: activeCompanion.role,
+                affection: activeCompanion.affection,
+                tier: activeCompanion.tier,
+                ultimateName: activeCompanion.resonance?.belovedUltimate?.name,
+              }
+            : null,
+          activeStance,
+          isDuoUltimate: actionType === "duo_ultimate",
         }),
       })
         .then((res) => res.json())
@@ -649,11 +752,13 @@ function LitRPGTrialsContent() {
           },
         };
 
-        // Save back into Slot 0
+        // Save back into Slot 0 with Co-Op companion and stance
         const updatedSlot0: SaveSlotPayload = {
           ...slot0,
           savedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
           player: updatedPlayer,
+          activeTrialCompanionId: activeCompanion?.id,
+          activeStance,
         };
 
         await saveGameSlot(0, updatedSlot0);
@@ -683,20 +788,26 @@ function LitRPGTrialsContent() {
     router.push(`${baseReturn}${connector}loadSlot=0&resuming=true`);
   };
 
-  // Custom abilities rolled in Character Creator
+  // Custom abilities rolled in Character Creator with Skill Evolution (Pillar 2)
   const availableCustomAbilities: AbilityDetail[] = useMemo(() => {
     if (!syncedPlayer?.abilities || syncedPlayer.abilities.length === 0) return [];
     const details = syncedPlayer.abilityDetails || {};
+    const pLevel = syncedPlayer.level || 1;
     return syncedPlayer.abilities.map((name) => {
-      return (
-        details[name] || {
-          name,
-          type: "Active",
-          cost: "15 MP",
-          description: `Custom technique awakened by ${syncedPlayer.name || "Protagonist"}.`,
-          tier: "Novice",
-        }
-      );
+      const evo = resolveEvolvedAbilityName(name, pLevel, syncedPlayer.role);
+      const base = details[name] || {
+        name,
+        type: "Active",
+        cost: "15 MP",
+        description: `Custom technique awakened by ${syncedPlayer.name || "Protagonist"}.`,
+        tier: "Novice",
+      };
+      return {
+        ...base,
+        name: evo.name,
+        tier: evo.tier,
+        description: evo.description || base.description,
+      };
     });
   }, [syncedPlayer]);
 
@@ -939,7 +1050,80 @@ function LitRPGTrialsContent() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-3">
+                {/* Pillar 1: Companion Co-Op Resonance Banner */}
+                <div className="p-3 rounded-2xl bg-black/60 border border-purple-500/30 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-purple-950/80 border border-purple-500/40 shrink-0 flex items-center justify-center">
+                      {activeCompanion?.avatarUrl ? (
+                        <img src={activeCompanion.avatarUrl} alt={activeCompanion.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Heart className="w-5 h-5 text-purple-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-xs font-bold text-white truncate">
+                          {activeCompanion ? activeCompanion.name : "Solo Deploy"}
+                        </span>
+                        {activeCompanion && (
+                          <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                            ["Beloved", "Sworn Partner"].includes(activeCompanion.tier)
+                              ? "bg-amber-500/10 text-amber-300 border-amber-500/40"
+                              : activeCompanion.tier === "Confidant"
+                              ? "bg-purple-500/10 text-purple-300 border-purple-500/40"
+                              : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                          }`}>
+                            {activeCompanion.tier} ({activeCompanion.affection}%)
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-mono text-zinc-400 truncate mt-0.5">
+                        {activeCompanion
+                          ? `Passive: ${activeCompanion.resonance?.confidantPassive?.name || "Guardian Oath"}`
+                          : "No companion selected. Deploy a companion for resonance passives."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setShowCompanionModal(true)}
+                    className="px-2.5 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-300 hover:text-white font-mono text-[10px] font-bold shrink-0 transition-all cursor-pointer"
+                  >
+                    Switch Companion
+                  </button>
+                </div>
+
+                {/* Pillar 2: Combat Stance / Mode Toggles */}
+                {availableStances.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                    <span className="text-[10px] font-mono text-zinc-400 shrink-0 font-bold flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-cyan-400" /> Tactical Stance:
+                    </span>
+                    {availableStances.map((stId) => {
+                      const cfg = COMBAT_STANCES[stId];
+                      const isActive = activeStance === stId;
+                      return (
+                        <button
+                          key={stId}
+                          onClick={() => {
+                            setActiveStance(stId);
+                            soundEffects.playClick();
+                          }}
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-mono transition-all cursor-pointer shrink-0 border ${
+                            isActive
+                              ? "bg-cyan-950/90 border-cyan-400 text-cyan-200 font-bold shadow-[0_0_12px_rgba(34,211,238,0.35)]"
+                              : "bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white"
+                          }`}
+                          title={cfg.modifierLabel}
+                        >
+                          {cfg.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {/* Class Tactical Arsenal Banner */}
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2">
@@ -955,6 +1139,42 @@ function LitRPGTrialsContent() {
                     Scaling: {classArsenal.primaryStat}
                   </span>
                 </div>
+
+                {/* Awakened Duo Ultimate (Pillar 1 - Beloved Tier 75%+) */}
+                {activeCompanion && ["Beloved", "Sworn Partner"].includes(activeCompanion.tier) && (
+                  <button
+                    onClick={() => handleTacticalAction("duo_ultimate")}
+                    disabled={isResolvingTurn || playerMp < (activeCompanion.resonance?.belovedUltimate?.mpCost || 28)}
+                    className="w-full p-3 rounded-2xl bg-gradient-to-r from-amber-600/30 via-purple-600/40 to-pink-600/30 hover:from-amber-600/50 hover:via-purple-600/60 hover:to-pink-600/50 border-2 border-amber-400/80 shadow-[0_0_25px_rgba(245,158,11,0.35)] text-left transition-all cursor-pointer flex items-center justify-between gap-3 group active:scale-95 disabled:opacity-50 animate-pulse"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400 text-amber-300">
+                        <Sparkles className="w-4 h-4 animate-spin" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-amber-200">
+                            {activeCompanion.resonance?.belovedUltimate?.name || "Awakened Duo Ultimate"}
+                          </span>
+                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-amber-500/20 border border-amber-400 text-amber-300">
+                            DUO ULTIMATE
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-amber-300/80 block mt-0.5">
+                          {activeCompanion.resonance?.belovedUltimate?.voiceLine || "Together through the ash!"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className="text-xs font-mono font-bold text-amber-300 block">
+                        {activeCompanion.resonance?.belovedUltimate?.mpCost || 28} MP
+                      </span>
+                      <span className="text-[9px] font-mono text-cyan-300 block">
+                        Guaranteed Stun • {activeCompanion.resonance?.belovedUltimate?.multiplier || 3.4}x DMG
+                      </span>
+                    </div>
+                  </button>
+                )}
 
                 {/* Class Dynamic Tactical Actions */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1081,8 +1301,13 @@ function LitRPGTrialsContent() {
             {/* Health */}
             <div className="space-y-1">
               <div className="flex items-center justify-between text-xs font-mono">
-                <span className="flex items-center gap-1 text-rose-400">
+                <span className="flex items-center gap-1.5 text-rose-400">
                   <Heart className="w-3.5 h-3.5" /> HP
+                  {activeShield > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-md bg-cyan-950/80 border border-cyan-500/50 text-[10px] text-cyan-300 font-bold animate-pulse">
+                      +{activeShield} Shield
+                    </span>
+                  )}
                 </span>
                 <span>
                   {playerHp} / {playerMaxHp}
@@ -1333,6 +1558,120 @@ function LitRPGTrialsContent() {
           </div>
         </div>
       </main>
+
+      {/* COMPANION SELECTION MODAL (Pillar 1) */}
+      {showCompanionModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xl animate-in fade-in duration-200"
+          onClick={() => setShowCompanionModal(false)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-xl bg-zinc-950 border border-purple-500/40 rounded-3xl p-6 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-950 border border-purple-500/40 text-purple-400">
+                  <Heart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white font-serif">Deploy Co-Op Story Companion</h3>
+                  <p className="text-xs text-zinc-400 font-mono">
+                    Select an active companion to fight alongside you in the 5-sector trials.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCompanionModal(false)}
+                className="p-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Companions Roster */}
+            <div className="space-y-2.5">
+              {activeSlot0?.party && activeSlot0.party.length > 0 ? (
+                activeSlot0.party.map((comp: any) => {
+                  const trialComp = buildActiveTrialCompanion(comp);
+                  const isSelected = activeCompanion?.id === trialComp.id;
+                  const isBeloved = ["Beloved", "Sworn Partner"].includes(trialComp.tier);
+                  const isConfidant = trialComp.tier === "Confidant" || isBeloved;
+
+                  return (
+                    <div
+                      key={trialComp.id}
+                      onClick={() => {
+                        setActiveCompanion(trialComp);
+                        setShowCompanionModal(false);
+                        soundEffects.playClick();
+                      }}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? "bg-purple-950/70 border-purple-500 ring-2 ring-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+                          : "bg-zinc-900/60 hover:bg-zinc-900 border-white/10 hover:border-purple-500/50"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden bg-zinc-800 border border-white/10 shrink-0">
+                          {trialComp.avatarUrl ? (
+                            <img src={trialComp.avatarUrl} alt={trialComp.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-500">
+                              <Heart className="w-6 h-6" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-white truncate">{trialComp.name}</span>
+                            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
+                              isBeloved
+                                ? "bg-amber-500/10 text-amber-300 border-amber-500/40"
+                                : isConfidant
+                                ? "bg-purple-500/10 text-purple-300 border-purple-500/40"
+                                : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                            }`}>
+                              {trialComp.tier} ({trialComp.affection}%)
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 font-mono truncate mt-0.5">
+                            {trialComp.role}
+                          </p>
+                          <div className="text-[10px] font-mono text-zinc-400 mt-1 space-y-0.5">
+                            <div>
+                              ✦ <strong className="text-purple-300">{trialComp.resonance.confidantPassive.name}</strong>: {trialComp.resonance.confidantPassive.description}
+                            </div>
+                            {isBeloved && (
+                              <div className="text-amber-300">
+                                ✦ <strong className="text-amber-200">Awakened Duo Ultimate</strong>: {trialComp.resonance.belovedUltimate.name} (Stun & 3.4x DMG)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        className={`px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all shrink-0 ${
+                          isSelected
+                            ? "bg-purple-600 text-white shadow-md"
+                            : "bg-white/5 hover:bg-white/10 text-zinc-300 border border-white/10"
+                        }`}
+                      >
+                        {isSelected ? "Active" : "Select"}
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-6 text-center text-xs font-mono text-zinc-400 bg-black/40 rounded-2xl border border-white/5">
+                  No story companions found in active save slot.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,16 +19,20 @@ export async function POST(req: Request) {
       action,
       isCustom = false,
       gameState,
-      partyMembers,
+      partyMembers = [],
       playerProfile,
       playerAvatarBase64,
       narrationStyle,
-      plotMemories,
+      plotMemories = [],
       recentHistory = [],
       userAccessKey,
       systemState,
       storyContext,
       activeSynergies,
+      // Major Expansion Fields
+      timelineEchoes = [],
+      activeStance = "neutral",
+      giftItemContext = null, // { itemName: string, itemDescription: string, itemRarity: string, recipientCompanionName: string, reactionPrompt: string }
     } = body;
 
     const computedSynergies = activeSynergies && activeSynergies.length > 0
@@ -109,23 +113,21 @@ ${i + 1}. ${c.name}:
 The user wrote their own action verbatim: "${action}".
 - Do NOT rewrite, expand, paraphrase, or narrate what the player does or says.
 - Set "player_execution" to null or "".
-- Accept their action as immediate canon and advance the scene through NPC actions and world reactions in "narrative_text".`
+- Accept their action as immediate canon and advance the scene through world and NPC reactions in "narrative_text".`
       : `[INPUT TYPE: PRESET CHOICE SELECTED]
 The user selected this prompt vector: "${action}".
 - In "player_execution", author a vivid, immersive execution of this action from ${playerProfile.name}'s perspective matching their role (${playerProfile.role}).
 - Then follow up with the world and companion reaction in "narrative_text".`;
 
-    // Only inspect appearance during the opening / prologue turn
     const isFirstEncounter = !recentHistory || recentHistory.length <= 1;
 
     const visualInspectionInstruction = (playerAvatarBase64 && isFirstEncounter)
       ? `--- FIRST ENCOUNTER APPEARANCE DIRECTIVE ---
 This is the initial meeting with the protagonist (${playerProfile.name}).
 - Inspect the character's visual features (hair, eyes, build, clothing/armor, stance).
-- The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on the protagonist's initial appearance or impression in their dialogue or narrative prose.
-- Note: This is an introductory first impression only.`
+- The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on the protagonist's initial appearance in their dialogue or narrative prose.`
       : `--- APPEARANCE DIRECTIVE ---
-Do NOT repeatedly comment on or re-describe the player's general physical appearance (hair color, clothing, facial traits) unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
+Do NOT repeatedly comment on or re-describe the player's general physical appearance unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
 
     const compatibilityDirective = storyContext?.companions && storyContext.companions.length > 0
       ? storyContext.companions.map((c: any) => `- ${c.name}: Values ${c.values?.join(", ") || "Honor, Loyalty"}. Dislikes ${c.dislikes?.join(", ") || "Deceit, Cowardice"}.`).join("\n")
@@ -155,24 +157,54 @@ Do NOT repeatedly comment on or re-describe the player's general physical appear
     };
 
     const scenePresenceDirective = isProtagonistAlone
-      ? `--- SCENE PRESENCE: PROTAGONIST IS PHYSICALLY ALONE (SOLO SCENE) ---
-[CRITICAL SCENE STATE: THE PROTAGONIST (${playerProfile.name}) IS PHYSICALLY ALONE]
-- There are NO heroines or companions physically present at ${gameState.location}.
-- ABSOLUTELY NO absent heroines (such as Serena, Aria, Evelyn, Morgana, or Perci) may speak, appear, or react. Do NOT fabricate dialogue or reactions for characters who are not physically present in this room/area.
-- "speaker" MUST BE "Narrator", "Inner Monologue", or "System". It MUST NEVER BE "${playerProfile.name}".
-- "state_updates.present_companions" MUST BE [] (an empty array).
+      ? `--- SCENE PRESENCE: PROTAGONIST IS PHYSICALLY ALONE ---
+- There are NO heroines or companions physically present in this location.
+- "speaker" MUST BE "Narrator", "Inner Monologue", or "System". It MUST NEVER be any heroine's name.
+- "state_updates.present_companions" MUST BE [].
 - "state_updates.affected_companion" MUST BE null.
 - "state_updates.affection_delta" MUST BE 0 (favor cannot change while alone).
-- "state_updates.expression_key" MUST BE "neutral".
-- Focus the narrative and prose entirely on ${playerProfile.name}'s solitary exploration, tactical assessment, internal resolve, environmental hazards, LitRPG System evaluations, or discovering ancient lore.`
-      : `--- SCENE PRESENCE: HEROINE(S) PRESENT IN SCENE ---
-[CRITICAL SCENE STATE: THE FOLLOWING HEROINE(S) ARE PHYSICALLY PRESENT: ${presentHeroineNames.join(", ")}]
+- "state_updates.expression_key" MUST BE "neutral".`
+      : `--- SCENE PRESENCE: HEROINES PRESENT ---
 - The protagonist (${playerProfile.name}) is in the physical presence of: ${presentHeroineNames.join(", ")}.
 - "speaker" MUST BE the exact canonical name of the active companion speaking (${presentHeroineNames.join(" or ")}).
-- "speaker" MUST NEVER BE "${playerProfile.name}". Dialogue spoken by a heroine MUST be attributed directly to her canonical name.
-- "state_updates.present_companions" MUST list all heroines who remain physically present in the scene, e.g. [${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}]. If a companion departs during this turn, omit them from this list.
+- "speaker" MUST NEVER BE "${playerProfile.name}".
+- "state_updates.present_companions" MUST list all heroines physically present in the scene: [${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}].
 - "state_updates.affected_companion" MUST BE one of the physically present heroines (${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}), or null if neutral.
-- "state_updates.affection_delta" applies strictly to the present affected heroine based on ideological compatibility (0 by default; +1 to +2 on rare deep alignment; -1 to -4 on friction). If she is locked at an affection threshold, it MUST BE 0.`;
+- "state_updates.affection_delta" applies strictly to the present affected heroine based on ideological compatibility (0 by default; +1 to +2 on rare deep alignment; -1 to -4 on friction). If locked at threshold, MUST BE 0.`;
+
+    // Camp Gifting Directive
+    const giftingDirective = giftItemContext
+      ? `--- CAMP GIFTING INTERACTION DIRECTIVE ---
+The protagonist (${playerProfile.name}) is presenting a gift to ${giftItemContext.recipientCompanionName}:
+- Gift Item: ${giftItemContext.itemName} (${giftItemContext.itemRarity.toUpperCase()})
+- Item Lore: ${giftItemContext.itemDescription}
+- Emotional Directive: ${giftItemContext.reactionPrompt}
+${giftItemContext.recipientCompanionName} MUST react directly to receiving this specific gift in dialogue, acknowledging its value, expressing genuine emotional surprise, and adjusting her demeanor.`
+      : "";
+
+    // Multiple Companion Interpersonal Dynamics Directive
+    const multiCompanionDirective = physicallyPresentCompanions.length > 1
+      ? `--- COMPANION INTERPERSONAL DYNAMICS & CAMP BANTER ---
+There are MULTIPLE companions present in this scene (${presentHeroineNames.join(", ")}).
+1. COMPANIONS SPEAK TO AND CHALLENGE EACH OTHER:
+   - Companions do NOT merely speak to the protagonist; they observe each other, trade banter, offer contrasting advice, and argue conflicting viewpoints.
+   - Highlight personality clashes (e.g. Aria's cynical stealth tradecraft vs Serena's unflinching formal duty vs Morgana's dark planar curiosity).
+2. SUBTLE RIVALRY & FAVORITISM:
+   - If ${playerProfile.name} consistently favors, addresses, or shows preference to one heroine over another, the other heroines notice.
+   - Show natural interpersonal tension: skeptical glances, sarcastic commentary, subtle defensiveness, or competitive posturing.`
+      : "";
+
+    // Timeline Echoes & Regression Directive
+    const timelineEchoDirective = Array.isArray(timelineEchoes) && timelineEchoes.length > 0
+      ? `--- TIMELINE ECHOES & REGRESSION FOREKNOWLEDGE DIRECTIVE ---
+${playerProfile.name} is a regressor retaining memories, deja-vu, and instinctual muscle memory from prior iterations and alternate branches:
+${timelineEchoes.slice(0, 6).map((e: any) => `* [Iteration #${e.loopIteration}] ${e.isDeathEcho ? `[FATAL DEMISE: ${e.deathCause || "Perished"}]` : `[Choice: ${e.choiceTaken}]`}: In "${e.sourceNodeTitle}", consequence: ${e.consequenceSummary}`).join("\n")}
+
+NARRATIVE INSTRUCTION:
+- Weave subtle flashes of deja-vu, eerie foreknowledge, or chilling premonitions when encountering familiar threats, deceptive NPCs, or traps from prior loops.
+- Use prose or thoughts with [Timeline Echo] or (Deja Vu) when the protagonist anticipates danger. Companions may notice the protagonist's uncanny, haunted certainty.
+- If this turn reveals a critical future truth or alternate branch divergence, record it in "timeline_echo_unlocked".`
+      : "";
 
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
@@ -185,12 +217,19 @@ ${companionDossiers}
 - Protagonist: ${playerProfile.name} (Lv.${playerProfile.level} ${playerProfile.role})
 - Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
 - Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
+- Active Stance: [${activeStance.toUpperCase()}]
 - Abilities: ${Array.isArray(playerProfile.abilities) && playerProfile.abilities.length > 0 ? playerProfile.abilities.join(", ") : "None unlocked"}
 - Active Location: ${gameState.location}
 - Active Speaker Context: ${sanitizedContextSpeaker}
 - Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE (No companions present)" : `Accompanied by: ${presentHeroineNames.join(", ")}`}
 
 ${scenePresenceDirective}
+
+${multiCompanionDirective}
+
+${giftingDirective}
+
+${timelineEchoDirective}
 
 --- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
 ${partyMembers.map((c: any) => {
@@ -215,38 +254,43 @@ ${inputHandlingInstruction}
 
 ${visualInspectionInstruction}
 
+--- ABSOLUTE SYSTEM DIRECTIVE: NO PLAYER SAFEGUARDING & REAL MORTAL CONSEQUENCES ---
+DO NOT SAFEGUARD THE PROTAGONIST. Remove all artificial plot armor:
+1. ALLOW REAL MISTAKES & SEVERE BLUNDERS:
+   - If the player makes a foolish, reckless, or arrogant choice, DO NOT invent convenient coincidences, miraculous parries, or unearned rescues to save them.
+   - Apply the full, brutal weight of the world's consequences. Enemies retaliate with lethal intent. Traps snap shut. Ancient curses bite deep.
+2. QUEST FAILURES ARE CANON:
+   - If an active quest objective is missed, timed out, or ruined by the player's blunders, you MUST mark the quest as "failed" in "system_updates.quest_updates" (status: "failed").
+   - Describe the narrative fallout of the failed quest (e.g. an informant is executed, an archive burns, an enemy escapes with the relic).
+3. PROTAGONIST DEATH & FATAL COLLAPSE:
+   - If the player's action is suicidal, or if they face an overwhelming entity without proper preparation or tactical advantage, ALLOW THEM TO DIE.
+   - Narrate their physical death or bodily collapse with visceral, cinematic finality in "narrative_text".
+   - When death occurs:
+     * In "death_event", output: { "is_fatal": true, "cause_of_death": "<Brief visceral cause>", "killer_or_hazard": "<Entity or hazard name>" }.
+     * In "narrative_text", conclude the scene with the cold, omniscient LitRPG SYSTEM intervention:
+       "[SYSTEM ALERT: Vital core depleted. Calamity regression initiated... Causal anchor synchronizing...]"
+     * The game client will intercept this death event, award the regression timeline echo, and rewind reality to an anchor point with retained memories and power.
+
 --- HEROINE AFFECTION & SLOW-PACED PROGRESSION DIRECTIVE (CRITICAL) ---
 1. AFFECTION IS RARE, EARNED, AND DOES NOT UPDATE EVERY TURN:
    - The default value for "state_updates.affection_delta" MUST BE 0 for ~80% of turns.
-   - Casual conversation, routine combat, standard questions, traveling, exploration, or ordinary small talk MUST yield affection_delta: 0. Do NOT award favor simply because characters converse politely.
-   - Affection gains (+1 or +2, maximum +3 for monumental life-or-death sacrifices) are HARD-WON. They should ONLY be granted when ${playerProfile.name} makes a decisive, ideologically resonant choice that directly validates a heroine's core values, upholds her personal dignity against societal pressure, or shares an earned moment of vulnerability that directly builds on past chronicle memories.
+   - Casual conversation, routine combat, standard questions, traveling, exploration, or ordinary small talk MUST yield affection_delta: 0.
+   - Affection gains (+1 or +2, maximum +3 for monumental life-or-death sacrifices) are HARD-WON. Only grant when ${playerProfile.name} makes a decisive, ideologically resonant choice validating a heroine's core values.
    - If the player acts arrogantly, callously, breaks a promise, or violates a heroine's dislikes/taboos, assign an immediate negative delta (-1 to -4).
 2. THRESHOLD LOCKING & EMOTIONAL GATES:
    - Heroine affection is strictly locked at major thresholds (25%, 50%, 75%).
-   - If a heroine is [LOCKED AT THRESHOLD - COMPANION QUEST PENDING], her inner emotional barriers are firmly up. Her favor CANNOT increase further until the ongoing companion quest scenario is resolved. In this state, affection_delta MUST BE 0 even if she speaks warmly.
+   - If a heroine is [LOCKED AT THRESHOLD], her inner emotional barriers are firmly up. In this state, affection_delta MUST BE 0 even if she speaks warmly.
 
 --- HEROINE COMPATIBILITY DIRECTIVE ---
-Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded, cynical, and possess distinct codes of behavior. Affection cannot be easily charmed or rushed; it must be won through genuine ideological compatibility.
+Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded and cynical.
 ${compatibilityDirective}
 
 --- LASTING MEMORY & ENCOUNTER CONTINUITY DIRECTIVE (CRITICAL) ---
-You must maintain total narrative persistence of all past interactions, conversations, promises, conflicts, and companion relationship developments:
-1. CONTINUOUS CONVERSATIONAL MEMORY & ACTIVE CALLBACKS:
+1. CONTINUOUS CONVERSATIONAL MEMORY:
    - Characters MUST NEVER act as if each turn is a clean slate or forget prior interactions.
-   - When ${gameState.speaker} or any companion speaks, they MUST actively callback to, reference, banter about, or emotionally build upon:
-     * Specific remarks, questions, admissions, or promises ${playerProfile.name} made in earlier turns.
-     * Past encounters, shared battles, secrets revealed, and mutual bargains from the Chronological Record above.
-     * How their trust/favor has shifted over time (e.g., lingering wariness from past friction, newfound respect after a clutch decision, or echoing an earlier conversation).
-   - Example natural callbacks:
-     * "You were far more cautious when we first spoke at the archive gates..."
-     * "Don't pretend you've forgotten what you promised regarding the void covenant."
-     * "Ever since you backed my play against the guild operative, I suppose I owe you a straight answer."
-2. NO GENERIC RESETTING:
-   - If the protagonist and a companion have conversed or fought side-by-side in previous turns, the companion's tone, attitude, and dialogue choices must reflect that cumulative history.
-3. RECORDING NEW LASTING MEMORIES:
-   - In "new_memory_unlocked", summarize any key interaction, agreement, confession, tactical maneuver, or emotional revelation that occurred this turn as a permanent memory string (e.g. "Caelen agreed to Evelyn's terms regarding the void archives in exchange for safe passage").
-   - This ensures future turns and future dialogue permanently retain this memory.
-
+   - When ${gameState.speaker} or any companion speaks, they MUST actively callback to previous remarks, shared battles, secrets revealed, and mutual bargains.
+2. RECORDING NEW LASTING MEMORIES:
+   - In "new_memory_unlocked", summarize key interactions, agreements, confessions, or tactical maneuvers that occurred this turn.
 
 --- SYSTEM ADMINISTRATOR & QUEST OBJECTIVE TRACKING DIRECTIVE ---
 You are the cold, omniscient LitRPG / Manhwa 'SYSTEM' Administrator overseeing ${playerProfile.name}.
@@ -263,46 +307,48 @@ ${
 
 MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
 1. QUEST OBJECTIVE EVALUATION:
-   - Carefully check the player's action ("${action}") and the events unfolding in "narrative_text" against EVERY pending objective in the active quests above.
-   - If an objective is satisfied, accomplished, or resolved by the events of this turn, you MUST mark it completed in "system_updates.quest_updates".
-   - Include the exact "quest_id", list the completed objective indices in "completed_objective_indices" (e.g. [0] or [0, 1]), and write a brief, robotic progress summary in "progress_note".
-   - If ALL objectives for a quest are now completed, set "status": "completed". When completed, also reward the quest EXP and loot in "player_progression".
-   - If objectives remain unfinished, keep "status": "active".
-2. CAUSAL PLAUSIBILITY (PROBABILITY):
-   - Grounded, tactical, or well-reasoned choices: plausibility_delta: 0 to +4 (recovers stability).
-   - Reckless, reality-defying, overpowered, or suicidal bluffs: plausibility_delta: -5 to -15.
-   - High Plausibility (70%-100%): Standard encounters.
-   - Volatile Plausibility (<40%): Severe danger. Issue an [URGENT PENALTY QUEST] or spawn an elite anomaly enemy to restore causal order.
-3. NEW QUESTS:
-   - When a quest completes or a major scenario shift occurs (e.g., reaching a new sanctuary, discovering an ancient relic, triggering an ambush, or failing causal stability), issue a new quest in "system_updates.new_quest".
-4. SYSTEM ANNOUNCEMENTS:
-   - ALWAYS output an authoritative LitRPG notification in "system_updates.system_announcement", e.g.:
-     * "[SYSTEM: Objective complete - Ancient archive deciphered.]"
-     * "[SYSTEM: Quest Cleared - 'The Ashen Cargo'. Experience distributed.]"
-     * "[SYSTEM: Causal anchor synchronized. Plausibility nominal.]"
+   - Check the player's action against pending objectives in active quests.
+   - If an objective is satisfied, mark completed in "system_updates.quest_updates" (status: "active" or "completed").
+   - If an objective is ruined or irrecoverably failed, set "status": "failed".
+2. CAUSAL PLAUSIBILITY:
+   - Grounded, tactical choices: plausibility_delta: 0 to +4.
+   - Reckless, reality-defying, or suicidal bluffs: plausibility_delta: -5 to -15.
+   - Volatile Plausibility (<40%) or Critical (<25%): Severe danger. Issue an [URGENT PENALTY QUEST] to restore causal order.
+3. SYSTEM ANNOUNCEMENTS:
+   - ALWAYS output an authoritative LitRPG notification in "system_updates.system_announcement".
 
 ${synergyDirective}
 
 --- MECHANICAL RULES ---
-1. Speaker Attribution: The field "speaker" indicates who is delivering dialogue or scene narration. "speaker" MUST NEVER BE "${playerProfile.name}". When accompanied, set "speaker" to the exact canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). When alone, set "speaker" to "Narrator", "Inner Monologue", or "System".
-2. Favor & Emotional Pacing: Set affection_delta to 0 by default. Only assign +1 or +2 (or -1 to -4 on friction) when actions decisively test core ideological values. When physically alone or when a companion is locked at an affection threshold, affection_delta MUST BE 0 and affected_companion MUST BE null.
-3. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest/archive occurs, award loot items or an ability in "player_progression".
-4. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"). When alone, choices must reflect solo exploration, environmental inspection, or System actions; do not offer choices to converse with absent heroines.
-5. Markdown Formatting: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, atmospheric details, and sensory cues (e.g. *She narrows her amber eyes, fingertips resting along the iron hilt.*); use **bold** for loud vocal emphasis, sudden impacts, or spell invocations; use > quotes for mental echoes or ancient runes. Put spoken dialogue in quotation marks "...".
+1. Speaker Attribution: "speaker" MUST NEVER BE "${playerProfile.name}". If accompanied, set "speaker" to the canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). If alone, set to "Narrator", "Inner Monologue", or "System".
+2. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
+3. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
+4. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]").
+5. Markdown Formatting: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures and atmospheric sensory cues; use **bold** for loud vocal emphasis or spell invocations; use > quotes for mental echoes or ancient runes. Spoken dialogue MUST be inside quotation marks "...".
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
 {
-  "speaker": string, // Active speaker. MUST NEVER BE "${playerProfile.name}". If accompanied, must be ${presentHeroineNames.length > 0 ? presentHeroineNames.map((n: string) => `"${n}"`).join(" or ") : '"Heroine"'}. If alone, must be "Narrator", "Inner Monologue", or "System".
+  "speaker": string,
   "player_execution": string | null,
   "narrative_text": string,
+  "death_event": {
+    "is_fatal": boolean,
+    "cause_of_death": string | null,
+    "killer_or_hazard": string | null
+  } | null,
+  "timeline_echo_unlocked": {
+    "title": string,
+    "summary": string,
+    "foreshadow_key": string
+  } | null,
   "state_updates": {
     "current_location": string,
     "mood": string,
     "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
-    "affected_companion": string | null, // Canonical name of present heroine whose favor changes, or null if alone.
-    "affection_delta": number, // Favor delta (0 by default; +1 to +2 on rare deep resonance; -1 to -4 on friction). Must be 0 if alone or capped at threshold.
-    "present_companions": string[], // Array of canonical names of companions physically present in the scene. Must be [] if alone.
+    "affected_companion": string | null,
+    "affection_delta": number,
+    "present_companions": string[],
     "newly_encountered_heroines": string[]
   },
   "player_progression": {
@@ -338,7 +384,7 @@ Respond strictly in valid JSON matching this schema:
       "id": string,
       "title": string,
       "description": string,
-      "type": "scenario" | "sub" | "urgent" | "hidden",
+      "type": "scenario" | "sub" | "urgent" | "hidden" | "penalty",
       "difficulty": "E" | "D" | "C" | "B" | "A" | "S" | "Calamity",
       "objectives": [
         { "text": string, "completed": boolean }
@@ -365,14 +411,13 @@ Respond strictly in valid JSON matching this schema:
       });
     }
 
-    // Only attach image payload during initial encounter
     if (playerAvatarBase64 && isFirstEncounter) {
       messages.push({
         role: "user",
         content: [
           { 
             type: "text", 
-            text: `Player Action: ${action}\n[Note to Game Master: Inspect the attached protagonist image and integrate initial observations about their appearance into the dialogue/narrative.]` 
+            text: `Player Action: ${action}\n[Note to Game Master: Inspect the attached protagonist image and integrate initial observations into dialogue/narrative.]` 
           },
           { 
             type: "image_url", 

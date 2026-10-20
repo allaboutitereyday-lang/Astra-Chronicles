@@ -47,18 +47,31 @@ import {
   Lock,
   Eye,
   EyeOff,
-  ShieldCheck
+  ShieldCheck,
+  Gift,
+  Skull
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { SystemState, SystemToastNotification, SystemQuest, PlausibilityTier } from "@/types/system";
+import { SystemState, SystemToastNotification, SystemQuest, PlausibilityTier, PenaltyScenarioState, DeathRegressionRecord } from "@/types/system";
 import { SystemNotificationToast } from "@/components/SystemNotificationToast";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
 import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
 import { GameNotificationStack, GameNotificationItem } from "@/components/GameNotificationStack";
-import { saveGameSlot, loadGameSlot, loadAllGameSlots, deleteGameSlot, compressAvatarImage } from "@/lib/saveStorage";
-import { StoryContext, VisitedStoryNode, AbilityDetail } from "@/types/story";
+import { 
+  saveGameSlot, 
+  loadGameSlot, 
+  loadAllGameSlots, 
+  deleteGameSlot, 
+  compressAvatarImage,
+  loadPersistentTimelineEchoes,
+  appendPersistentTimelineEcho,
+  loadPersistentRegressionHistory,
+  appendPersistentDeathRegression
+} from "@/lib/saveStorage";
+import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho } from "@/types/story";
+import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType } from "@/lib/progressionMechanics";
 import { FlowchartViewer } from "@/components/FlowchartViewer";
 import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
@@ -84,6 +97,7 @@ export interface InventoryItem {
   description: string;
   effect?: string;
   imageUrl?: string;
+  isGiftable?: boolean;
 }
 
 export interface Companion {
@@ -135,6 +149,8 @@ interface PlayerProfile {
   abilities: string[];
   abilityDetails?: Record<string, AbilityDetail>;
   inventory: InventoryItem[];
+  deathCount?: number;
+  activeStance?: CombatStanceType;
 }
 
 interface RoleplayState {
@@ -447,12 +463,122 @@ export default function VisualNovelGame() {
     if (snap.chatLog) setChatLog(snap.chatLog);
     if (snap.choices) setChoices(snap.choices);
 
+    // Pillar 4: Log persistent timeline rewind echo
+    const jumpEcho: TimelineEcho = {
+      id: `echo_jump_${Date.now()}`,
+      sourceNodeKey: anchor.nodeKey || anchor.id,
+      sourceNodeTitle: anchor.title || "Rewind Point",
+      choiceTaken: `[TIMELINE REWIND] Restored anchor ${anchor.title}`,
+      consequenceSummary: `Protagonist regressed across timeline boundary. Retained memories from future branches.`,
+      loopIteration: (snap.systemState?.regressionCount || 0) + 1,
+      recordedAt: new Date().toISOString(),
+    };
+    appendPersistentTimelineEcho(storyId || "astra-chronicles", jumpEcho);
+    setTimelineEchoes((prev) => [jumpEcho, ...prev]);
+
     setShowFlowchartModal(false);
     pushNotification({
       id: `anchor_jump_${Date.now()}`,
       type: "system_alert",
       title: "TIMELINE ANCHOR SYNCHRONIZED",
       subtitle: `Restored timeline reality: ${anchor.title || anchor.location}`,
+    });
+  };
+
+  // Execute Sanctioned Death Regression Rewind (No Safeguard System)
+  const handleExecuteRegressionRewind = () => {
+    soundEffects.playIntroBell();
+    setShowDeathModal(false);
+
+    // Rewind to latest anchor node
+    const safeAnchors = visitedStoryNodes.filter((n) => n.isAnchor || n.isStartingPoint);
+    const targetAnchor = safeAnchors.length > 0 ? safeAnchors[safeAnchors.length - 1] : visitedStoryNodes[0];
+
+    if (targetAnchor) {
+      handleJumpToAnchor(targetAnchor);
+    }
+
+    // Fully restore HP & MP and restabilize plausibility
+    setPlayer((prev) => ({
+      ...prev,
+      deathCount: (prev.deathCount || 0) + 1,
+      stats: {
+        ...prev.stats,
+        hp: prev.stats.maxHp,
+        mp: prev.stats.maxMp,
+      },
+    }));
+
+    setSystemState((prev) => ({
+      ...prev,
+      plausibility: 80,
+      plausibilityTier: "Stable",
+      regressionCount: (prev.regressionCount || 0) + 1,
+      systemDirectives: [
+        `[SYSTEM: Protagonist core regressed into Loop #${(prev.regressionCount || 0) + 2}. Retained memories intact.]`,
+        ...prev.systemDirectives,
+      ],
+    }));
+
+    pushNotification({
+      id: `reg_complete_${Date.now()}`,
+      type: "regression_trigger",
+      title: "SANCTIONED REGRESSION ENGAGED",
+      subtitle: `Consciousness rewound to stable anchor. Death memory recorded in persistent regression archive.`,
+      difficulty: "A",
+    });
+  };
+
+  // Pillar 5: Execute Camp Gifting
+  const handleExecuteGift = async (item: InventoryItem, recipientName: string) => {
+    if (!item || !recipientName || isLoading) return;
+    soundEffects.playFavorSound(true);
+    setShowGiftingModal(false);
+
+    // Remove item from inventory
+    setPlayer((prev) => ({
+      ...prev,
+      inventory: (prev.inventory || []).filter((inv) => inv.id !== item.id),
+    }));
+
+    // Find recipient companion
+    const comp = party.find((c) => c.name.toLowerCase().includes(recipientName.toLowerCase()));
+    const compCap = getCompanionCap(recipientName);
+
+    // Calculate gift affection gain
+    const catalogItem = CAMP_GIFT_CATALOG.find((g) => g.itemId === item.id || g.name === item.name);
+    const baseGain = catalogItem ? catalogItem.baseAffectionGain : 5;
+    const isPreferred = catalogItem?.preferredCompanionIds.some((id) => recipientName.toLowerCase().includes(id));
+    const finalGain = isPreferred ? baseGain + 2 : baseGain;
+
+    if (catalogItem?.statBonus) {
+      const sb = catalogItem.statBonus;
+      setPlayer((prev) => {
+        const statKey = sb.stat === "hp" ? "maxHp" : sb.stat === "mp" ? "maxMp" : sb.stat;
+        return {
+          ...prev,
+          stats: {
+            ...prev.stats,
+            [statKey]: prev.stats[statKey] + sb.amount,
+          },
+        };
+      });
+    }
+
+    if (comp) {
+      const newAff = Math.min(compCap, comp.affection + finalGain);
+      setParty((prev) =>
+        prev.map((c) => (c.name.toLowerCase() === comp.name.toLowerCase() ? { ...c, affection: newAff } : c))
+      );
+    }
+
+    // Trigger turn with gift context
+    await sendAction(`[GIFT PRESENTED: ${player.name} presents ${item.name} to ${recipientName}]`, true, {
+      itemName: item.name,
+      itemDescription: item.description,
+      itemRarity: item.rarity,
+      recipientCompanionName: recipientName,
+      reactionPrompt: catalogItem?.reactionPrompt || "Be genuinely surprised and emotionally moved by this gift.",
     });
   };
 
@@ -848,8 +974,16 @@ export default function VisualNovelGame() {
     activeQuests: [],
     completedQuests: [],
     systemDirectives: ["Administrator protocol engaged. Causal anchor established at 80%."],
+    penaltyScenario: null,
   });
   const [showSystemModal, setShowSystemModal] = useState(false);
+
+  // Major Feature Expansion State (Pillars 3, 4, 5 & No-Safeguard Deaths)
+  const [timelineEchoes, setTimelineEchoes] = useState<TimelineEcho[]>([]);
+  const [deathRegressionRecord, setDeathRegressionRecord] = useState<DeathRegressionRecord | null>(null);
+  const [showDeathModal, setShowDeathModal] = useState(false);
+  const [showGiftingModal, setShowGiftingModal] = useState(false);
+  const [selectedGiftRecipient, setSelectedGiftRecipient] = useState<string>("");
 
   // Nano Banana 2.1 Scene Generation & Item Inspection State
   const [showSceneModal, setShowSceneModal] = useState(false);
@@ -859,6 +993,7 @@ export default function VisualNovelGame() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (showGiftingModal) { setShowGiftingModal(false); return; }
         if (activeBespokeCG) { setActiveBespokeCG(null); return; }
         if (showShareModal) { setShowShareModal(false); return; }
         if (showFlowchartModal) { setShowFlowchartModal(false); return; }
@@ -873,6 +1008,7 @@ export default function VisualNovelGame() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
+    showGiftingModal,
     activeBespokeCG,
     showShareModal,
     showFlowchartModal,
@@ -2181,7 +2317,7 @@ export default function VisualNovelGame() {
     await sendAction(lastUserMsg.text, true);
   };
 
-  const sendAction = async (rawAction: string, isCustom: boolean = false) => {
+  const sendAction = async (rawAction: string, isCustom: boolean = false, giftContext: any = null) => {
     if (!rawAction.trim() || isLoading) return;
 
     if (!accessKey) {
@@ -2215,6 +2351,9 @@ export default function VisualNovelGame() {
           userAccessKey: accessKey,
           systemState,
           storyContext: currentStory,
+          timelineEchoes,
+          activeStance: player.activeStance || "neutral",
+          giftItemContext: giftContext,
           recentHistory: chatLog.slice(-14).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
@@ -2752,7 +2891,7 @@ export default function VisualNovelGame() {
             }
           }
 
-          // 3. Plausibility shift
+          // 3. Plausibility shift & High-Stakes Penalty Scenario (Pillar 3)
           let nextPlausibility = prevSys.plausibility;
           if (typeof sysUpdates.plausibility_delta === "number" && !isNaN(sysUpdates.plausibility_delta)) {
             nextPlausibility = Math.max(0, Math.min(100, prevSys.plausibility + sysUpdates.plausibility_delta));
@@ -2765,6 +2904,55 @@ export default function VisualNovelGame() {
               : nextPlausibility >= 20
               ? "Volatile"
               : "Critical";
+
+          let activePenalty: PenaltyScenarioState | null = prevSys.penaltyScenario || null;
+          if (nextPlausibility < 25 && (!activePenalty || !activePenalty.isActive)) {
+            soundEffects.playSystemAlert();
+            activePenalty = {
+              isActive: true,
+              scenarioId: `penalty_void_${Date.now()}`,
+              scenarioTitle: "DIMENSIONAL VOID RIFT SURVIVAL",
+              survivalTurnsRequired: 3,
+              currentSurvivalTurn: 0,
+              hazardEffectDescription: "Causal plausibility depleted (<25%). Reality boundary fractured. Survive 3 void turns.",
+              riskPenalty: "Causal oblivion & -25% permanent EXP penalty upon failure.",
+              resolutionRewardRelicId: "relic_cursed_void_heart",
+              beganAtPlausibility: nextPlausibility,
+            };
+            setSystemToast({
+              id: `penalty_alert_${Date.now()}`,
+              type: "penalty_quest",
+              title: "PENALTY SCENARIO INITIATED",
+              subtitle: "Causal plausibility dropped below Critical! Survive 3 turns in the Dimensional Void Rift to avoid obliteration.",
+              difficulty: "Calamity",
+              timestamp: "Just now",
+            });
+          } else if (activePenalty && activePenalty.isActive) {
+            const nextSurv = activePenalty.currentSurvivalTurn + 1;
+            if (nextSurv >= activePenalty.survivalTurnsRequired) {
+              soundEffects.playQuestComplete();
+              nextPlausibility = 80;
+              activePenalty = null;
+              const cursedRelic = CURSED_RELIC_TABLE[0];
+              setPlayer((p) => ({
+                ...p,
+                inventory: [...(p.inventory || []), cursedRelic],
+              }));
+              setSystemToast({
+                id: `penalty_clear_${Date.now()}`,
+                type: "penalty_quest",
+                title: "PENALTY SCENARIO OVERCOME",
+                subtitle: `Surviving the Void Rift restabilized Plausibility to 80% and awarded [CURSED RELIC] ${cursedRelic.name}!`,
+                difficulty: "S",
+                timestamp: "Just now",
+              });
+            } else {
+              activePenalty = {
+                ...activePenalty,
+                currentSurvivalTurn: nextSurv,
+              };
+            }
+          }
 
           // 4. System announcement
           if (sysUpdates.system_announcement && typeof sysUpdates.system_announcement === "string") {
@@ -2791,8 +2979,49 @@ export default function VisualNovelGame() {
             activeQuests: updatedActive,
             completedQuests: updatedCompleted,
             systemDirectives: updatedDirectives.slice(0, 30),
+            penaltyScenario: activePenalty,
           };
         });
+      }
+
+      // NO-SAFEGUARD: Check for death event or fatal HP collapse
+      if (data.death_event?.is_fatal || (player.stats?.hp !== undefined && player.stats.hp <= 0)) {
+        soundEffects.playSystemAlert();
+        const deathCause = data.death_event?.cause_of_death || "Physical core collapsed under fatal trauma.";
+        const killer = data.death_event?.killer_or_hazard || "Overwhelming Hostile Force";
+        const evalResult = evaluateDeathAndRegression({
+          player,
+          causeOfDeath: deathCause,
+          location: nextLocation,
+          killerOrHazard: killer,
+          currentPlausibility: systemState.plausibility,
+          regressionCount: systemState.regressionCount || 0,
+          anchorNodeId: visitedStoryNodes[visitedStoryNodes.length - 1]?.id,
+        });
+        appendPersistentDeathRegression(storyId || "astra-chronicles", evalResult.deathRecord);
+        appendPersistentTimelineEcho(storyId || "astra-chronicles", evalResult.timelineEcho);
+        setTimelineEchoes((prev) => [evalResult.timelineEcho, ...prev]);
+        setDeathRegressionRecord(evalResult.deathRecord);
+        setShowDeathModal(true);
+      }
+
+      // Record Visited Timeline Anchor for Flowchart & Timeline Echoes (Task 2 & Pillar 4)
+      const turnNodeKey = `turn_node_${Date.now()}`;
+
+      if (data.timeline_echo_unlocked) {
+        // Timeline Echo Unlocked
+        const echo: TimelineEcho = {
+          id: `echo_${Date.now()}`,
+          sourceNodeKey: turnNodeKey,
+          sourceNodeTitle: data.timeline_echo_unlocked.title || nextLocation,
+          choiceTaken: isCustom ? formattedPayload : (data.player_execution || formattedPayload),
+          consequenceSummary: data.timeline_echo_unlocked.summary,
+          loopIteration: (systemState.regressionCount || 0) + 1,
+          recordedAt: new Date().toISOString(),
+          foreshadowKey: data.timeline_echo_unlocked.foreshadow_key,
+        };
+        appendPersistentTimelineEcho(storyId || "astra-chronicles", echo);
+        setTimelineEchoes((prev) => [echo, ...prev]);
       }
 
       setGameState((prev) => ({
@@ -2814,8 +3043,6 @@ export default function VisualNovelGame() {
         resolvedChoices = validChoices;
       }
 
-      // Record Visited Timeline Anchor for Flowchart (Task 2)
-      const turnNodeKey = `turn_node_${Date.now()}`;
       const newTimelineAnchor: VisitedStoryNode = {
         id: turnNodeKey,
         nodeKey: turnNodeKey,
@@ -4355,6 +4582,29 @@ export default function VisualNovelGame() {
         <div className="pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[160px] max-h-[46vh] sm:max-h-[50vh] md:max-h-[54vh]">
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
+          {/* Pillar 3: Penalty Scenario Warning Banner */}
+          {systemState.penaltyScenario?.isActive && (
+            <div className="bg-gradient-to-r from-red-950/90 via-rose-950/90 to-purple-950/90 border-b border-red-500/40 px-4 py-2 flex items-center justify-between text-xs animate-pulse select-none">
+              <div className="flex items-center gap-2 text-rose-300">
+                <Skull className="w-4 h-4 text-red-400 shrink-0 animate-bounce" />
+                <span className="font-mono font-bold tracking-wider text-rose-100 uppercase text-[11px] sm:text-xs">
+                  [PENALTY SCENARIO: {systemState.penaltyScenario.scenarioTitle}]
+                </span>
+                <span className="text-zinc-300 text-[11px] hidden md:inline truncate max-w-md">
+                  {systemState.penaltyScenario.hazardEffectDescription}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="font-mono text-amber-300 bg-black/70 px-2 py-0.5 rounded border border-amber-500/40 text-[11px]">
+                  Survival Turn: {systemState.penaltyScenario.currentSurvivalTurn} / {systemState.penaltyScenario.survivalTurnsRequired}
+                </span>
+                <span className="font-mono text-red-300 font-bold bg-red-900/60 px-2 py-0.5 rounded border border-red-500/50 text-[10px]">
+                  CALAMITY
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="shrink-0 px-4 py-2 sm:px-5 sm:py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
             <div className="flex items-center gap-2.5">
               {/* Speaker Badge */}
@@ -4766,6 +5016,24 @@ export default function VisualNovelGame() {
         )}
 
         <form onSubmit={handleSubmit} className="pointer-events-auto flex gap-2 select-none shrink-0">
+          {/* Pillar 5: Camp Gifting Trigger */}
+          {party.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (party.length > 0 && !selectedGiftRecipient) {
+                  setSelectedGiftRecipient(party[0].name);
+                }
+                setShowGiftingModal(true);
+              }}
+              className="px-3.5 py-2.5 rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-rose-400"
+              title="Camp Gifting: Present an item to a companion"
+            >
+              <Gift className="w-4 h-4 text-rose-400" />
+              <span className="hidden sm:inline">Gift</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsOOCMode(!isOOCMode)}
@@ -5260,7 +5528,7 @@ export default function VisualNovelGame() {
         </div>
       )}
 
-      {/* INTERACTIVE BRANCHING FLOWCHART (Task 2) */}
+      {/* INTERACTIVE BRANCHING FLOWCHART (Task 2 & Pillar 4) */}
       <FlowchartViewer
         isOpen={showFlowchartModal}
         onClose={() => setShowFlowchartModal(false)}
@@ -5268,6 +5536,8 @@ export default function VisualNovelGame() {
         visitedNodes={visitedStoryNodes}
         currentNodeKey={gameState.location}
         onJumpToAnchor={handleJumpToAnchor}
+        causalPlausibility={systemState.plausibility}
+        timelineEchoes={timelineEchoes}
       />
 
       {/* MULTIVERSE SEED SHARE MODAL (Task 5) */}
@@ -5350,6 +5620,216 @@ export default function VisualNovelGame() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NO-SAFEGUARD: FATAL DEATH & SANCTIONED REGRESSION MODAL */}
+      {showDeathModal && deathRegressionRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-500">
+          <div className="relative w-full max-w-xl bg-zinc-950 border-2 border-red-600/70 rounded-3xl shadow-[0_0_50px_rgba(220,38,38,0.35)] p-6 md:p-8 text-center space-y-6 overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" />
+
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/80 border border-red-500/50 text-red-300 font-mono text-xs uppercase tracking-widest">
+              <Skull className="w-4 h-4 text-red-400 animate-bounce" />
+              <span>Sanctioned Regression Protocol</span>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl md:text-3xl font-black text-red-500 font-mono tracking-tight">
+                MORTAL FATALITY DETECTED
+              </h2>
+              <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">
+                Loop Iteration #{(systemState.regressionCount || 0) + 1} • Fatal Incident #{deathRegressionRecord.deathNumber}
+              </p>
+            </div>
+
+            <div className="bg-zinc-900/90 border border-red-500/30 rounded-2xl p-4 text-left space-y-3 font-mono text-xs">
+              <div className="flex justify-between items-start border-b border-white/5 pb-2">
+                <span className="text-zinc-500 uppercase">Fatal Incident:</span>
+                <span className="text-red-300 font-bold text-right ml-2">{deathRegressionRecord.causeOfDeath}</span>
+              </div>
+              <div className="flex justify-between items-start border-b border-white/5 pb-2">
+                <span className="text-zinc-500 uppercase">Location:</span>
+                <span className="text-zinc-300 font-semibold">{deathRegressionRecord.location}</span>
+              </div>
+              <div className="flex justify-between items-start border-b border-white/5 pb-2">
+                <span className="text-zinc-500 uppercase">Lethal Threat:</span>
+                <span className="text-red-400 font-semibold">{deathRegressionRecord.killerOrHazard}</span>
+              </div>
+              <div className="flex justify-between items-start border-b border-white/5 pb-2">
+                <span className="text-zinc-500 uppercase">System Protocol:</span>
+                <span className="text-amber-400 font-bold">{deathRegressionRecord.systemVerdict}</span>
+              </div>
+
+              {deathRegressionRecord.retainedKnowledgeSummary && (
+                <div className="bg-red-950/40 border border-red-500/30 rounded-xl p-3">
+                  <div className="text-red-400 font-bold uppercase text-[10px] tracking-wider mb-1 flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-red-400" />
+                    <span>Unlocked Timeline Insight (Causal Echo):</span>
+                  </div>
+                  <p className="text-rose-200 text-xs italic leading-relaxed">
+                    "{deathRegressionRecord.retainedKnowledgeSummary}"
+                  </p>
+                </div>
+              )}
+
+              {deathRegressionRecord.retainedAbilities && deathRegressionRecord.retainedAbilities.length > 0 && (
+                <div className="space-y-1 pt-1">
+                  <span className="text-zinc-500 uppercase text-[10px]">Preserved Class Abilities ({deathRegressionRecord.retainedExpPercent}% Core EXP):</span>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {deathRegressionRecord.retainedAbilities.map((ab, idx) => (
+                      <span key={idx} className="px-2 py-0.5 rounded bg-zinc-800 text-amber-300 border border-amber-500/30 text-[10px]">
+                        {ab}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="text-[11px] text-zinc-400 leading-relaxed font-mono">
+              The SYSTEM has intervened under the Regression Mandate. The mortal frame collapses, but memories and causal insight transcend back to the nearest timeline anchor.
+            </div>
+
+            <button
+              onClick={handleExecuteRegressionRewind}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white font-mono text-sm font-bold shadow-[0_0_25px_rgba(225,29,72,0.4)] flex items-center justify-center gap-2 cursor-pointer transition-all uppercase tracking-wider"
+            >
+              <RotateCcw className="w-4 h-4 animate-spin" />
+              <span>Engage Sanctioned Regression Rewind</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* PILLAR 5: CAMP GIFTING MODAL */}
+      {showGiftingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/40 rounded-3xl shadow-2xl p-6 space-y-5 overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
+
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-rose-400" />
+                <h3 className="text-lg font-bold text-white font-mono">Camp Gift Presentation</h3>
+              </div>
+              <button
+                onClick={() => setShowGiftingModal(false)}
+                className="p-1 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Recipient Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Select Companion Recipient:</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {party.map((comp) => {
+                  const isSelected = (selectedGiftRecipient || party[0]?.name) === comp.name;
+                  return (
+                    <button
+                      key={comp.name}
+                      type="button"
+                      onClick={() => setSelectedGiftRecipient(comp.name)}
+                      className={`p-2.5 rounded-xl border text-left font-mono transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-rose-950/60 border-rose-500 text-white shadow-sm ring-1 ring-rose-500/30"
+                          : "bg-zinc-900/60 border-white/10 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                      }`}
+                    >
+                      <div className="text-xs font-bold truncate">{comp.name}</div>
+                      <div className="text-[10px] text-rose-400 flex items-center gap-1 mt-0.5">
+                        <Heart className="w-3 h-3 fill-rose-500/50" />
+                        <span>{comp.affection ?? 0}%</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Gift Items List */}
+            <div className="space-y-2">
+              <label className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Choose Item from Inventory or Camp Provisions:</label>
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                {/* Inventory items */}
+                {(player.inventory || []).map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 bg-zinc-900/80 border border-white/10 rounded-xl flex items-center justify-between hover:border-rose-500/50 transition-all"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="text-xs font-bold text-zinc-200 flex items-center gap-2">
+                        <span>{item.name}</span>
+                        <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-white/10">
+                          {item.rarity}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 line-clamp-1">{item.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleExecuteGift(item, selectedGiftRecipient || party[0]?.name)}
+                      className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold cursor-pointer shrink-0 ml-3 transition-all"
+                    >
+                      Gift
+                    </button>
+                  </div>
+                ))}
+
+                {/* Camp Catalog provisions if player inventory is empty or sparse */}
+                {CAMP_GIFT_CATALOG.map((gift) => {
+                  const recipient = selectedGiftRecipient || party[0]?.name || "";
+                  const isAffinity = gift.preferredCompanionIds.some((id) => recipient.toLowerCase().includes(id));
+                  const asItem: InventoryItem = {
+                    id: gift.itemId,
+                    name: gift.name,
+                    description: gift.description,
+                    type: "consumable",
+                    rarity: gift.rarity,
+                    isGiftable: true,
+                  };
+                  return (
+                    <div
+                      key={gift.itemId}
+                      className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
+                        isAffinity
+                          ? "bg-rose-950/30 border-rose-500/40"
+                          : "bg-zinc-900/80 border-white/10 hover:border-zinc-700"
+                      }`}
+                    >
+                      <div className="space-y-0.5">
+                        <div className="text-xs font-bold text-zinc-200 flex items-center gap-2">
+                          <span>{gift.name}</span>
+                          {isAffinity && (
+                            <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-rose-900/80 text-rose-300 border border-rose-500/50">
+                              ★ Preferred
+                            </span>
+                          )}
+                          <span className="text-[10px] font-mono text-rose-400">
+                            +{gift.baseAffectionGain + (isAffinity ? 2 : 0)} Favor
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 line-clamp-1">{gift.description}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleExecuteGift(asItem, recipient)}
+                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-mono text-xs font-bold cursor-pointer shrink-0 ml-3 transition-all shadow-sm"
+                      >
+                        Gift
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="text-[11px] text-zinc-400 font-mono italic">
+              Presenting gifts deepens affection, yields stat boosts, and triggers dynamic camp downtime interactions. Other present companions will react to your attentiveness.
             </div>
           </div>
         </div>

@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   X,
   BookOpen,
+  RotateCcw,
+  Skull,
 } from "lucide-react";
 import { QuestDifficulty } from "@/types/system";
 
@@ -18,6 +20,9 @@ export type NotificationType =
   | "quest_assigned"
   | "quest_completed"
   | "quest_updated"
+  | "quest_failed"
+  | "penalty_quest"
+  | "regression_trigger"
   | "system_alert"
   | "loot"
   | "skill"
@@ -79,7 +84,11 @@ function NotificationCard({
   useEffect(() => {
     if (isHovered) return; // Pause timer on hover
 
-    const duration = item.durationMs || (item.type === "level" || item.difficulty === "Calamity" ? 6500 : 5000);
+    const duration =
+      item.durationMs ||
+      (item.type === "level" || item.type === "regression_trigger" || item.difficulty === "Calamity"
+        ? 6500
+        : 5000);
     const dismissTimer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(() => onDismiss(item.id), 300);
@@ -95,7 +104,17 @@ function NotificationCard({
   };
 
   const handleCardClick = () => {
-    if (["quest_assigned", "quest_completed", "quest_updated", "system_alert"].includes(item.type)) {
+    if (
+      [
+        "quest_assigned",
+        "quest_completed",
+        "quest_updated",
+        "quest_failed",
+        "penalty_quest",
+        "regression_trigger",
+        "system_alert",
+      ].includes(item.type)
+    ) {
       onOpenSystemWindow?.();
     } else if (item.type === "loot" && item.metadata) {
       onInspectItem?.(item.metadata);
@@ -116,6 +135,24 @@ function NotificationCard({
           card: "bg-zinc-950/95 border-sky-500/70 text-sky-100 shadow-[0_0_35px_rgba(14,165,233,0.35)] ring-1 ring-sky-500/30",
           iconBg: "bg-sky-950/80 border-sky-400 text-sky-300",
           accentColor: "rgba(14,165,233,0.35)",
+        };
+      case "quest_failed":
+        return {
+          card: "bg-zinc-950/95 border-red-600 text-red-100 shadow-[0_0_40px_rgba(220,38,38,0.45)] ring-1 ring-red-600/40",
+          iconBg: "bg-red-950/90 border-red-500 text-red-400",
+          accentColor: "rgba(220,38,38,0.5)",
+        };
+      case "penalty_quest":
+        return {
+          card: "bg-purple-950/95 border-purple-500 text-purple-100 shadow-[0_0_45px_rgba(168,85,247,0.5)] ring-1 ring-purple-500/50 animate-pulse",
+          iconBg: "bg-purple-900/90 border-purple-400 text-purple-300",
+          accentColor: "rgba(168,85,247,0.5)",
+        };
+      case "regression_trigger":
+        return {
+          card: "bg-cyan-950/95 border-cyan-400 text-cyan-100 shadow-[0_0_45px_rgba(34,211,238,0.5)] ring-1 ring-cyan-400/50",
+          iconBg: "bg-cyan-900/90 border-cyan-300 text-cyan-200",
+          accentColor: "rgba(34,211,238,0.5)",
         };
       case "system_alert":
         return {
@@ -152,7 +189,7 @@ function NotificationCard({
         }
         if (rarity === "relic") {
           return {
-            card: "bg-zinc-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_35px_rgba(245,158,11,0.4)] ring-1 ring-amber-400/30",
+            card: "bg-zinc-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_40px_rgba(245,158,11,0.4)] ring-1 ring-amber-400/30",
             iconBg: "bg-amber-950/80 border-amber-400 text-amber-300",
             accentColor: "rgba(245,158,11,0.4)",
           };
@@ -182,7 +219,15 @@ function NotificationCard({
 
   const theme = getThemeClasses();
   const isInteractive = Boolean(
-    ["quest_assigned", "quest_completed", "quest_updated", "system_alert"].includes(item.type) ||
+    [
+      "quest_assigned",
+      "quest_completed",
+      "quest_updated",
+      "quest_failed",
+      "penalty_quest",
+      "regression_trigger",
+      "system_alert",
+    ].includes(item.type) ||
       (item.type === "loot" && item.metadata)
   );
 
@@ -220,6 +265,12 @@ function NotificationCard({
             <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover rounded-lg" />
           ) : item.type === "system_alert" ? (
             <AlertTriangle className="w-5 h-5 animate-bounce" />
+          ) : item.type === "quest_failed" ? (
+            <Skull className="w-5 h-5 text-red-400 animate-pulse" />
+          ) : item.type === "penalty_quest" ? (
+            <AlertTriangle className="w-5 h-5 text-purple-300 animate-bounce" />
+          ) : item.type === "regression_trigger" ? (
+            <RotateCcw className="w-5 h-5 text-cyan-300 animate-spin" />
           ) : item.type === "quest_completed" ? (
             <CheckCircle2 className="w-5 h-5 animate-pulse" />
           ) : item.type === "skill" ? (
@@ -262,7 +313,7 @@ function NotificationCard({
           </p>
 
           <div className="flex items-center justify-between mt-1 text-[9px] font-mono text-zinc-500">
-            {item.type.startsWith("quest") ? (
+            {item.type.startsWith("quest") || item.type === "penalty_quest" || item.type === "regression_trigger" ? (
               <span className="text-rose-400/80 hover:underline">Click to view in System Interface →</span>
             ) : item.type === "loot" && item.metadata ? (
               <span className="text-amber-400/80 hover:underline">Click to inspect artifact →</span>
@@ -317,4 +368,3 @@ export function GameNotificationStack({
 }
 
 export default GameNotificationStack;
-

@@ -13,6 +13,38 @@ export type CompanionExpressionKey =
 
 export type RomancePath = "harem" | "mono" | "platonic" | "rival" | "uncommitted";
 
+export type CompanionAffectionTier = "Stranger" | "Acquaintance" | "Confidant" | "Beloved" | "Sworn Partner";
+
+export interface CompanionResonanceAbilities {
+  confidantPassive: {
+    name: string;
+    description: string;
+    triggerCondition: "interval" | "crisis_hp" | "turn_start";
+    value: number; // e.g. 25 HP heal or 30 damage shield
+    type: "shield" | "heal" | "mana";
+  };
+  belovedUltimate: {
+    name: string; // e.g. "Umbral Eclipse Stun", "Dawnfire Cataclysm"
+    description: string;
+    mpCost: number;
+    multiplier: number; // e.g. 3.2x damage multiplier
+    inflictsStun: boolean;
+    voiceLine: string;
+    animationKey?: string;
+  };
+}
+
+export interface ActiveTrialCompanion {
+  id: string;
+  name: string;
+  role: string;
+  affection: number;
+  tier: CompanionAffectionTier;
+  color: string;
+  avatarUrl?: string;
+  resonance: CompanionResonanceAbilities;
+}
+
 export interface StoryCompanion {
   id: string;
   name: string;
@@ -34,10 +66,20 @@ export interface StoryCompanion {
   
   // Romance & Milestone Progression
   relationshipStage?: "stranger" | "acquaintance" | "confidant" | "beloved" | "sworn_partner";
+  affectionTier?: CompanionAffectionTier;
   intimacyUnlocked?: boolean;
   milestonesReached?: number[]; // [25, 50, 75, 100]
   bespokeRomanceCgUrl?: string; // High-stakes milestone CG from Nano Banana 2.1
   
+  // Pillar 1 & 5 Additions: Resonance in Trials & Camp Gifting
+  resonanceAbilities?: CompanionResonanceAbilities;
+  giftHistory?: string[]; // IDs of items gifted by protagonist
+  interpersonalDynamics?: {
+    rivalIds?: string[];
+    allyIds?: string[];
+    jealousyThreshold?: number; // affection gap that sparks banter
+  };
+
   // Visual AI & Consistency Pipeline Fields (ControlNet & IPAdapter)
   seed: number;
   baseImageUrl: string;
@@ -65,6 +107,16 @@ export interface AbilityDetail {
   tier?: "Novice" | "Adept" | "Master" | "Unique" | string;
 }
 
+// Cursed Relic Modifiers (High Risk / High Reward for Penalty Scenarios)
+export interface CursedRelicModifier {
+  positiveBuff: string; // e.g. "+50% Critical Strike Damage"
+  cursePenalty: string; // e.g. "Take 15% recoil damage each combat turn"
+  critMultiplierBonus?: number;
+  recoilDamagePercent?: number;
+  mpDrainPerTurn?: number;
+  plausibilityDrainPerTurn?: number;
+}
+
 export interface StoryRelicItem {
   id: string;
   name: string;
@@ -75,9 +127,74 @@ export interface StoryRelicItem {
   effect?: string;
   imageUrl?: string;
   isEquipped?: boolean;
+  cursedEffect?: CursedRelicModifier;
+  isGiftable?: boolean;
 }
 
 export type InventoryItem = StoryRelicItem;
+
+// Combat Stances & Mode Toggles (Pillar 2)
+export type CombatStanceType = "neutral" | "frost" | "flame" | "phase" | "graviton" | "shadow";
+
+export interface CombatStanceConfig {
+  id: CombatStanceType;
+  name: string;
+  element: "Frost" | "Flame" | "Void" | "Physical" | "Starlight" | "Shadow";
+  modifierLabel: string;
+  bonusStaggerRate: number;
+  bonusDotDamage: number;
+  damageMultiplier: number;
+  icon?: string;
+}
+
+// Class Ability Awakening & Skill Evolution (Pillar 2)
+export type AbilityEvolutionTier = "Novice" | "Adept" | "Master" | "Unique";
+
+export interface AbilityEvolutionStage {
+  requiredLevel: number;
+  tier: AbilityEvolutionTier;
+  name: string;
+  description: string;
+  damageMultiplier: number;
+  cost: string;
+  cooldown?: string;
+}
+
+export interface AbilityEvolutionPath {
+  baseAbilityName: string;
+  adept: AbilityEvolutionStage;
+  master: AbilityEvolutionStage;
+}
+
+// Camp Gifting Item Schema (Pillar 5)
+export interface GiftItemRecord {
+  itemId: string;
+  name: string;
+  description: string;
+  rarity: "common" | "uncommon" | "rare" | "relic" | "cursed";
+  preferredCompanionIds: string[]; // Companions who have high affinity for this gift
+  baseAffectionGain: number; // Default +3 to +8
+  reactionPrompt: string; // LLM prompt injection for companion dialogue
+  statBonus?: {
+    stat: "hp" | "mp" | "str" | "dex" | "int";
+    amount: number;
+  };
+}
+
+// Timeline Echoes & Butterfly Paradoxes (Pillar 4 - Cross-Rewind Persistence)
+export interface TimelineEcho {
+  id: string;
+  sourceNodeKey: string;
+  sourceNodeTitle: string;
+  choiceTaken: string;
+  consequenceSummary: string;
+  loopIteration: number;
+  recordedAt: string;
+  foreshadowKey?: string; // Special flag e.g. "knows_traitor_identity", "discovered_void_rune"
+  isGlitchParadox?: boolean;
+  isDeathEcho?: boolean; // If protagonist died in this timeline
+  deathCause?: string;
+}
 
 export interface PlayerStats {
   hp: number;
@@ -100,6 +217,13 @@ export interface PlayerProfile {
   abilities: string[];
   abilityDetails?: Record<string, AbilityDetail>;
   inventory: InventoryItem[];
+
+  // Tactical & Progression Expansions
+  unlockedStances?: CombatStanceType[];
+  activeStance?: CombatStanceType;
+  abilityEvolutions?: Record<string, string>; // Maps base ability name -> current evolved name
+  deathCount?: number;
+  regressionCount?: number;
 }
 
 export interface VisitedStoryNode {
@@ -115,6 +239,7 @@ export interface VisitedStoryNode {
   isAnchor?: boolean;
   anchorLabel?: string;
   isStartingPoint?: boolean;
+  isGlitchNode?: boolean;
 }
 
 export interface StoryFlowNode {
@@ -125,6 +250,11 @@ export interface StoryFlowNode {
   location: string;
   summary: string;
   isStartingPoint?: boolean;
+  isGlitchNode?: boolean; // Rendered only when causal plausibility is critical (<40%)
+  glitchRequirement?: {
+    maxPlausibility: number;
+    paradoxSecret: string;
+  };
   unlockRequirement?: {
     companionName?: string;
     minAffection?: number;
@@ -222,6 +352,7 @@ export interface StoryContext {
   activeSynergies?: RelicSynergy[]; // active relic set bonuses and exclusive intentions
   visitedNodes?: VisitedStoryNode[]; // chronological visited anchor nodes for flowchart tracking
   flowchartTree?: StoryFlowNode[]; // full interactive branching graph definition
+  timelineEchoes?: TimelineEcho[]; // persistent cross-rewind memories
 
   createdAt: string;
   author?: string;

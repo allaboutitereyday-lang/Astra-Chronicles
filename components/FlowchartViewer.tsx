@@ -24,14 +24,17 @@ import {
   Anchor, 
   CheckCircle2, 
   Radio, 
-  Info,
-  Maximize2,
-  Minimize2,
-  Shield,
-  Heart,
-  Compass
+  Maximize2, 
+  Minimize2, 
+  Shield, 
+  Heart, 
+  Compass,
+  AlertTriangle,
+  Zap,
+  Clock,
+  Skull
 } from "lucide-react";
-import { StoryFlowNode, VisitedStoryNode } from "@/types/story";
+import { StoryFlowNode, VisitedStoryNode, TimelineEcho } from "@/types/story";
 
 // ==========================================
 // CUSTOM NODE COMPONENTS FOR REACTFLOW
@@ -221,10 +224,76 @@ const LockedSilhouetteCustomNode = ({ data }: { data: any }) => {
   );
 };
 
+// GLITCH NODE: Rendered when Causal Plausibility drops into Volatile or Critical (<40%)
+const GlitchCustomNode = ({ data }: { data: any }) => {
+  return (
+    <div className="w-72 sm:w-80 rounded-2xl p-4 bg-purple-950/90 border-2 border-purple-500 ring-4 ring-purple-500/30 shadow-[0_0_35px_rgba(168,85,247,0.55)] backdrop-blur-xl transition-all duration-300 animate-pulse">
+      <Handle
+        type="target"
+        position={Position.Top}
+        className="!w-3 !h-3 !bg-purple-400 !border-2 !border-zinc-950"
+      />
+
+      {/* Glitch Header */}
+      <div className="flex items-center justify-between gap-2 pb-2 mb-2 border-b border-purple-500/30 text-[11px]">
+        <span className="flex items-center gap-1.5 text-purple-300 font-mono font-bold px-2 py-0.5 rounded-md bg-purple-900/80 border border-purple-400/50 text-[10px]">
+          <Zap className="w-3 h-3 text-purple-300 animate-bounce" /> [CAUSAL GLITCH // PARADOX]
+        </span>
+        <span className="text-red-400 font-mono text-[10px] font-bold flex items-center gap-1">
+          <Skull className="w-3 h-3" /> Critical Plausibility
+        </span>
+      </div>
+
+      {/* Glitch Title */}
+      <div className="mb-2">
+        <h4 className="text-sm font-bold text-white font-serif leading-snug line-clamp-1">
+          {data.title || "Singularity Glitch Reality"}
+        </h4>
+        <div className="flex items-center gap-1.5 mt-0.5 text-xs text-purple-300 font-mono">
+          <AlertTriangle className="w-3 h-3 text-purple-400" />
+          <span>Dimensional Void Anchor</span>
+        </div>
+      </div>
+
+      {/* Paradox Warning */}
+      <div className="my-2 p-2 rounded-xl bg-purple-900/40 border border-purple-500/40 text-purple-200 flex items-start gap-2">
+        <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-300" />
+        <span className="text-[10px] font-mono leading-tight">
+          {data.glitchRequirement?.paradoxSecret || "Causal boundary shattered (<40% Plausibility). Hidden butterfly paradox unlocked."}
+        </span>
+      </div>
+
+      {/* Summary */}
+      <p className="text-[11px] text-zinc-300 leading-relaxed mb-3 font-sans line-clamp-2">
+        {data.summary || "A tear in the narrative continuum reveals a timeline branch that was never meant to be perceived."}
+      </p>
+
+      {/* Action */}
+      <div className="pt-2 border-t border-purple-500/30 flex items-center justify-between">
+        <button
+          onClick={() => data.onJump && data.onJump(data.visitedSnapshot || data)}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="nodrag w-full py-1.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-purple-900/40 cursor-pointer active:scale-95"
+        >
+          <Zap className="w-3.5 h-3.5" />
+          <span>Enter Glitch Reality</span>
+        </button>
+      </div>
+
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        className="!w-3 !h-3 !bg-purple-400 !border-2 !border-zinc-950"
+      />
+    </div>
+  );
+};
+
 // Node types registry
 const nodeTypes = {
   visitedNode: VisitedCustomNode,
   lockedNode: LockedSilhouetteCustomNode,
+  glitchNode: GlitchCustomNode,
 };
 
 // ==========================================
@@ -238,6 +307,8 @@ export interface FlowchartViewerProps {
   visitedNodes?: VisitedStoryNode[];
   currentNodeKey?: string;
   onJumpToAnchor?: (node: VisitedStoryNode) => void;
+  causalPlausibility?: number;
+  timelineEchoes?: TimelineEcho[];
 }
 
 export function FlowchartViewer({
@@ -247,9 +318,12 @@ export function FlowchartViewer({
   visitedNodes = [],
   currentNodeKey = "prologue_root",
   onJumpToAnchor,
+  causalPlausibility = 80,
+  timelineEchoes = [],
 }: FlowchartViewerProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [filterSpeaker, setFilterSpeaker] = useState<string>("all");
+  const [showEchoesDrawer, setShowEchoesDrawer] = useState(false);
 
   // Close on Escape key
   useEffect(() => {
@@ -262,139 +336,118 @@ export function FlowchartViewer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Handle jump action with sound/feedback
   const handleJump = useCallback(
-    (nodeData: VisitedStoryNode) => {
+    (targetNode: VisitedStoryNode) => {
       if (onJumpToAnchor) {
-        onJumpToAnchor(nodeData);
+        onJumpToAnchor(targetNode);
       }
     },
     [onJumpToAnchor]
   );
 
-  // Compute graph nodes and edges with auto-layout
+  // Compute Layout & Glitch Nodes
   const { initialNodes, initialEdges, startingOrigins, visitedMap } = useMemo(() => {
     if (!isOpen) {
-      return { initialNodes: [], initialEdges: [], startingOrigins: [], visitedMap: new Map<string, VisitedStoryNode>() };
+      return { initialNodes: [], initialEdges: [], startingOrigins: [], visitedMap: new Map() };
     }
 
-    // Default fallback nodes if tree is empty
-    const nodesSource: StoryFlowNode[] =
-      flowchartTree && flowchartTree.length > 0
-        ? flowchartTree
-        : [
-            {
-              id: "node_prologue_root",
-              nodeKey: "prologue_root",
-              title: "The Mage Tower Arrival",
-              speaker: "Evelyn Abbandonato",
-              location: "Imperial Capital Imperium",
-              summary: "Encounter with High Arcanist Evelyn amidst planar fluctuations.",
-              isStartingPoint: true,
-              connectedTo: ["node_evelyn_study", "node_undercroft_covert"],
-            },
-          ];
-
-    // Build visited map
     const vMap = new Map<string, VisitedStoryNode>();
-    (visitedNodes || []).forEach((vn) => {
-      vMap.set(vn.id, vn);
-      vMap.set(vn.nodeKey, vn);
-      if (vn.nodeKey && !vn.nodeKey.startsWith("node_")) {
-        vMap.set(`node_${vn.nodeKey}`, vn);
-      }
-      if (vn.id && vn.id.startsWith("node_")) {
-        vMap.set(vn.id.replace("node_", ""), vn);
-      }
+    visitedNodes.forEach((vn) => {
+      if (vn.nodeKey) vMap.set(vn.nodeKey, vn);
+      if (vn.id) vMap.set(vn.id, vn);
     });
 
-    // In-degree computation for hierarchy
-    const inDegree = new Map<string, number>();
-    nodesSource.forEach((n) => inDegree.set(n.id, 0));
-    nodesSource.forEach((n) => {
-      (n.connectedTo || []).forEach((childId) => {
-        inDegree.set(childId, (inDegree.get(childId) || 0) + 1);
-      });
-    });
+    const isGlitchActive = causalPlausibility < 40;
 
-    // Determine all starting scenario origins (inDegree === 0 or explicit starting point)
-    const roots = nodesSource.filter((n) => {
-      return (
-        n.isStartingPoint ||
-        (inDegree.get(n.id) || 0) === 0 ||
-        n.id.startsWith("node_prologue") ||
-        n.nodeKey.startsWith("prologue_")
-      );
-    });
+    let tree: StoryFlowNode[] = [...flowchartTree];
 
-    // If visitedNodes is completely empty, activate the root matching currentNodeKey
-    if (visitedNodes.length === 0 && nodesSource.length > 0) {
-      const targetStart =
-        nodesSource.find((n) => n.id === currentNodeKey || n.nodeKey === currentNodeKey) ||
-        roots[0] ||
-        nodesSource[0];
-
-      vMap.set(targetStart.id, {
-        id: targetStart.id,
-        nodeKey: targetStart.nodeKey,
-        title: targetStart.title,
-        speaker: targetStart.speaker,
-        location: targetStart.location,
-        visitedAt: new Date().toISOString(),
-        isAnchor: true,
-        isStartingPoint: true,
-      });
-      vMap.set(targetStart.nodeKey, {
-        id: targetStart.id,
-        nodeKey: targetStart.nodeKey,
-        title: targetStart.title,
-        speaker: targetStart.speaker,
-        location: targetStart.location,
-        visitedAt: new Date().toISOString(),
-        isAnchor: true,
-        isStartingPoint: true,
-      });
+    // If flowchartTree is empty, build synthetic tree from visitedNodes
+    if (tree.length === 0) {
+      tree = visitedNodes.map((vn, idx) => ({
+        id: vn.id || `vn_${idx}`,
+        nodeKey: vn.nodeKey || `vn_${idx}`,
+        title: vn.title || `Timeline Beat ${idx + 1}`,
+        speaker: vn.speaker || "Narrator",
+        location: vn.location || "En Route",
+        summary: vn.choiceTaken ? `Choice: "${vn.choiceTaken}"` : "Chronicle timeline reality.",
+        isStartingPoint: idx === 0,
+        connectedTo: idx < visitedNodes.length - 1 ? [visitedNodes[idx + 1].id || `vn_${idx + 1}`] : [],
+      }));
     }
 
-    // Graph hierarchy & depth assignment via BFS from all starting points
-    const queue: { id: string; depth: number }[] = (roots.length > 0 ? roots : [nodesSource[0]]).map((r) => ({
-      id: r.id,
-      depth: 0,
-    }));
+    // Inject Glitch Node if Causal Plausibility is low (<40%)
+    if (isGlitchActive && tree.length > 0) {
+      const activeOrLast = tree[tree.length - 1];
+      const glitchId = "glitch_paradox_node";
+      const hasGlitchAlready = tree.some((n) => n.id === glitchId || n.isGlitchNode);
 
-    const nodeDepths = new Map<string, number>();
-    queue.forEach((q) => nodeDepths.set(q.id, 0));
+      if (!hasGlitchAlready) {
+        tree.push({
+          id: glitchId,
+          nodeKey: glitchId,
+          title: "Paradox Fracture: Singularity Rift",
+          speaker: "System Administrator",
+          location: "Dimensional Void Sub-Strata",
+          summary: "Causal boundary compromised. High-risk alternate loop accessible.",
+          isGlitchNode: true,
+          glitchRequirement: {
+            maxPlausibility: 40,
+            paradoxSecret: "Enter this void reality to confront the Calamity Anomaly or rewrite past causal failures.",
+          },
+          connectedTo: [],
+        });
+        activeOrLast.connectedTo = [...(activeOrLast.connectedTo || []), glitchId];
+      }
+    }
+
+    // Graph Construction
+    const nodes: Node[] = [];
+    const edges: Edge[] = [];
+    const inDegree = new Map<string, number>();
+
+    tree.forEach((node) => {
+      inDegree.set(node.id, 0);
+    });
+    tree.forEach((node) => {
+      (node.connectedTo || []).forEach((targetId) => {
+        inDegree.set(targetId, (inDegree.get(targetId) || 0) + 1);
+      });
+    });
+
+    const roots = tree.filter(
+      (n) => (inDegree.get(n.id) || 0) === 0 || n.isStartingPoint || n.id.startsWith("node_prologue")
+    );
+
+    // Breadth-First Layering
+    const nodeDepth = new Map<string, number>();
+    const queue: { id: string; depth: number }[] = roots.map((r) => ({ id: r.id, depth: 0 }));
+    roots.forEach((r) => nodeDepth.set(r.id, 0));
 
     while (queue.length > 0) {
       const { id, depth } = queue.shift()!;
-      const node = nodesSource.find((n) => n.id === id);
-      if (!node) continue;
-
-      (node.connectedTo || []).forEach((childId) => {
-        const nextDepth = depth + 1;
-        if (!nodeDepths.has(childId) || (nodeDepths.get(childId) || 0) < nextDepth) {
-          nodeDepths.set(childId, nextDepth);
-          queue.push({ id: childId, depth: nextDepth });
-        }
-      });
+      const node = tree.find((n) => n.id === id);
+      if (node && node.connectedTo) {
+        node.connectedTo.forEach((targetId) => {
+          const currentD = nodeDepth.get(targetId);
+          if (currentD === undefined || depth + 1 > currentD) {
+            nodeDepth.set(targetId, depth + 1);
+            queue.push({ id: targetId, depth: depth + 1 });
+          }
+        });
+      }
     }
 
-    // Group nodes by depth level
-    const levelGroups = new Map<number, StoryFlowNode[]>();
-    nodesSource.forEach((n) => {
-      const d = nodeDepths.get(n.id) || 0;
-      if (!levelGroups.has(d)) levelGroups.set(d, []);
-      levelGroups.get(d)!.push(n);
+    const depthGroups = new Map<number, StoryFlowNode[]>();
+    tree.forEach((n) => {
+      const d = nodeDepth.get(n.id) || 0;
+      if (!depthGroups.has(d)) depthGroups.set(d, []);
+      depthGroups.get(d)!.push(n);
     });
 
-    // Generate Layout Positions
-    const nodes: Node[] = [];
-    const edges: Edge[] = [];
-
     const HORIZONTAL_SPACING = 360;
-    const VERTICAL_SPACING = 280;
+    const VERTICAL_SPACING = 270;
 
-    levelGroups.forEach((groupNodes, depth) => {
+    depthGroups.forEach((groupNodes, depth) => {
       const totalWidth = (groupNodes.length - 1) * HORIZONTAL_SPACING;
       const startX = 600 - totalWidth / 2;
 
@@ -421,9 +474,15 @@ export function FlowchartViewer({
         const xPos = startX + idx * HORIZONTAL_SPACING;
         const yPos = 80 + depth * VERTICAL_SPACING;
 
+        const nodeType = node.isGlitchNode
+          ? "glitchNode"
+          : isVisited
+          ? "visitedNode"
+          : "lockedNode";
+
         nodes.push({
           id: node.id,
-          type: isVisited ? "visitedNode" : "lockedNode",
+          type: nodeType,
           position: { x: xPos, y: yPos },
           style: {
             opacity: matchesFilter ? 1 : 0.22,
@@ -443,25 +502,26 @@ export function FlowchartViewer({
           },
         });
 
-        // Add directed edges
+        // Directed edges
         (node.connectedTo || []).forEach((targetId) => {
           const isTargetVisited = vMap.has(targetId);
           const isEdgeActive = isVisited && isTargetVisited;
+          const isGlitchEdge = node.isGlitchNode || targetId.includes("glitch");
 
           edges.push({
             id: `edge_${node.id}_to_${targetId}`,
             source: node.id,
             target: targetId,
-            animated: isEdgeActive,
+            animated: isEdgeActive || isGlitchEdge,
             style: {
-              stroke: isEdgeActive ? "#f43f5e" : "#52525b",
-              strokeWidth: isEdgeActive ? 2.5 : 1.5,
+              stroke: isGlitchEdge ? "#c084fc" : isEdgeActive ? "#f43f5e" : "#52525b",
+              strokeWidth: isGlitchEdge ? 3 : isEdgeActive ? 2.5 : 1.5,
               strokeDasharray: isEdgeActive ? undefined : "6,6",
               opacity: matchesFilter ? 1 : 0.2,
             },
             markerEnd: {
               type: MarkerType.ArrowClosed,
-              color: isEdgeActive ? "#f43f5e" : "#52525b",
+              color: isGlitchEdge ? "#c084fc" : isEdgeActive ? "#f43f5e" : "#52525b",
               width: 16,
               height: 16,
             },
@@ -471,7 +531,7 @@ export function FlowchartViewer({
     });
 
     return { initialNodes: nodes, initialEdges: edges, startingOrigins: roots, visitedMap: vMap };
-  }, [isOpen, flowchartTree, visitedNodes, currentNodeKey, filterSpeaker, handleJump]);
+  }, [isOpen, flowchartTree, visitedNodes, currentNodeKey, filterSpeaker, causalPlausibility, handleJump]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -521,6 +581,11 @@ export function FlowchartViewer({
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
                   Multiverse Tree
                 </span>
+                {causalPlausibility < 40 && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-950 border border-purple-500 text-purple-300 flex items-center gap-1 animate-pulse">
+                    <Zap className="w-3 h-3 text-purple-400" /> Glitch Active
+                  </span>
+                )}
               </div>
               <p className="text-xs text-zinc-400 font-mono mt-0.5">
                 Inspect opening vectors, timeline branches, or Jump to Anchor states instantly.
@@ -530,6 +595,22 @@ export function FlowchartViewer({
 
           {/* RIGHT ACTIONS */}
           <div className="flex items-center gap-2">
+            {/* Timeline Echoes Trigger */}
+            {timelineEchoes.length > 0 && (
+              <button
+                onClick={() => setShowEchoesDrawer(!showEchoesDrawer)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-xs font-bold transition-all border cursor-pointer ${
+                  showEchoesDrawer
+                    ? "bg-purple-900 border-purple-400 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+                    : "bg-black/50 hover:bg-purple-950/40 border-white/10 text-zinc-300 hover:text-white"
+                }`}
+                title="View persistent cross-loop memory echoes"
+              >
+                <Clock className="w-3.5 h-3.5 text-purple-400" />
+                <span>Timeline Echoes ({timelineEchoes.length})</span>
+              </button>
+            )}
+
             {/* Quick Stats Pill */}
             <div className="hidden md:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-black/50 border border-white/10 font-mono text-xs text-zinc-300">
               <span className="flex items-center gap-1.5">
@@ -557,6 +638,44 @@ export function FlowchartViewer({
             </button>
           </div>
         </div>
+
+        {/* TIMELINE ECHOES SLIDE-OUT DRAWER */}
+        {showEchoesDrawer && (
+          <div className="px-6 py-3 bg-purple-950/70 border-b border-purple-500/30 backdrop-blur-md max-h-48 overflow-y-auto animate-in slide-in-from-top duration-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-mono font-bold text-purple-300 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-purple-400" /> Persistent Cross-Loop Memories (Survives Rewinds):
+              </span>
+              <button
+                onClick={() => setShowEchoesDrawer(false)}
+                className="text-zinc-400 hover:text-white text-xs font-mono"
+              >
+                Close
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+              {timelineEchoes.map((echo) => (
+                <div
+                  key={echo.id}
+                  className={`p-2.5 rounded-xl border text-[11px] font-mono ${
+                    echo.isDeathEcho
+                      ? "bg-red-950/50 border-red-500/40 text-red-200"
+                      : "bg-black/60 border-purple-500/20 text-zinc-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400 mb-1">
+                    <span className="font-bold text-purple-400">Loop #{echo.loopIteration}</span>
+                    <span>{echo.sourceNodeTitle}</span>
+                  </div>
+                  <div className="font-bold text-zinc-100">{echo.choiceTaken}</div>
+                  <div className="text-[10px] text-zinc-400 mt-1 line-clamp-2">
+                    {echo.consequenceSummary}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ORIGIN SCENARIOS FILTER BAR */}
         {startingOrigins.length > 1 && (
@@ -617,6 +736,7 @@ export function FlowchartViewer({
             <MiniMap
               className="!bg-zinc-950/90 !border !border-white/10 !rounded-2xl !overflow-hidden !shadow-2xl hidden sm:block"
               nodeColor={(n) => {
+                if (n.data?.isGlitchNode) return "#c084fc";
                 if (n.data?.isCurrent) return "#22d3ee";
                 if (n.data?.isStartingPoint) return "#a855f7";
                 if (n.data?.isVisited) return "#f43f5e";
@@ -642,6 +762,15 @@ export function FlowchartViewer({
               <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
               <span>Visited Reality</span>
             </div>
+            {causalPlausibility < 40 && (
+              <>
+                <div className="w-[1px] h-3 bg-white/10" />
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-[0_0_8px_#c084fc] animate-pulse" />
+                  <span>Glitch Paradox Node</span>
+                </div>
+              </>
+            )}
             <div className="w-[1px] h-3 bg-white/10" />
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-zinc-600 border border-zinc-500" />
