@@ -37,6 +37,7 @@ import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { SystemState, SystemToastNotification, SystemQuest } from "@/types/system";
 import { SystemNotificationToast } from "@/components/SystemNotificationToast";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
+import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
 import { saveGameSlot, loadAllGameSlots, deleteGameSlot, compressAvatarImage } from "@/lib/saveStorage";
 
 export interface InventoryItem {
@@ -337,7 +338,7 @@ export default function VisualNovelGame() {
   });
 
   const [lastAffectionDelta, setLastAffectionDelta] = useState<{ companion: string; delta: number } | null>(null);
-  const [levelUpAlert, setLevelUpAlert] = useState<string | null>(null);
+  const [acquisitionAlert, setAcquisitionAlert] = useState<AcquisitionAlertData | null>(null);
   const [inputAction, setInputAction] = useState("");
   const [isOOCMode, setIsOOCMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -1017,8 +1018,12 @@ export default function VisualNovelGame() {
           }));
 
           const itemNames = prog.items_dropped.map((i: InventoryItem) => i.name).join(", ");
-          setLevelUpAlert(`LOOT ACQUIRED: ${itemNames}`);
-          setTimeout(() => setLevelUpAlert(null), 4000);
+          setAcquisitionAlert({
+            id: `loot_${Date.now()}`,
+            type: "loot",
+            title: "TREASURE ACQUIRED",
+            subtitle: itemNames,
+          });
         }
 
         if (prog.gear_granted && (prog.gear_granted.weapon || prog.gear_granted.armor)) {
@@ -1030,8 +1035,13 @@ export default function VisualNovelGame() {
 
         if (prog.new_ability_unlocked) {
           setPlayer((prev) => ({ ...prev, abilities: [...prev.abilities, prog.new_ability_unlocked] }));
-          setLevelUpAlert(`NEW SKILL UNLOCKED: ${prog.new_ability_unlocked}`);
-          setTimeout(() => setLevelUpAlert(null), 4000);
+          soundEffects.playIntroBell();
+          setAcquisitionAlert({
+            id: `skill_${Date.now()}`,
+            type: "skill",
+            title: "NEW SKILL AWAKENED",
+            subtitle: prog.new_ability_unlocked,
+          });
         }
 
         const expGained = prog.exp_gained || 20;
@@ -1054,8 +1064,13 @@ export default function VisualNovelGame() {
             newStr += 2;
             newDex += 2;
             newInt += 2;
-            setLevelUpAlert(`LEVEL UP! You reached Level ${newLevel}!`);
-            setTimeout(() => setLevelUpAlert(null), 4000);
+            soundEffects.playQuestComplete();
+            setAcquisitionAlert({
+              id: `level_${Date.now()}`,
+              type: "level",
+              title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
+              subtitle: "+20 HP • +10 MP • +2 STR / DEX / INT",
+            });
           }
 
           return {
@@ -1684,13 +1699,10 @@ export default function VisualNovelGame() {
       <div className="absolute inset-0 cinematic-vignette pointer-events-none z-10" />
       <AtmosphericParticles location={gameState.location} />
 
-      {levelUpAlert && (
-        <div className="absolute top-16 inset-x-0 z-50 flex justify-center pointer-events-none animate-bounce select-none">
-          <div className="bg-gradient-to-r from-amber-500 to-rose-500 text-white font-bold px-6 py-2 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-2">
-            <Award className="w-5 h-5" /> {levelUpAlert}
-          </div>
-        </div>
-      )}
+      <AcquisitionNotification
+        alert={acquisitionAlert}
+        onDismiss={() => setAcquisitionAlert(null)}
+      />
 
       {/* TOP HUD */}
       <header className="absolute top-4 inset-x-4 md:inset-x-8 z-20 flex items-center justify-between pointer-events-auto select-none">
@@ -1730,17 +1742,17 @@ export default function VisualNovelGame() {
               soundEffects.playClick();
               setShowSystemModal(true);
             }}
-            className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-2.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-2 relative shadow-lg ${
+            className={`bg-black/75 hover:bg-black/90 backdrop-blur-md px-3 py-2.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-2 relative shadow-lg ${
               systemState.activeQuests.length > 0
-                ? "border-cyan-400 text-cyan-300 shadow-[0_0_18px_rgba(6,182,212,0.35)]"
-                : "border-white/10 text-zinc-300 hover:border-cyan-500/50 hover:text-cyan-200"
+                ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
+                : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
             }`}
             title="Open System Administrator Interface & Quests"
           >
-            <Terminal className="w-4 h-4 text-cyan-400 animate-pulse" />
+            <Terminal className="w-4 h-4 text-rose-400 animate-pulse" />
             <span className="text-xs font-mono font-bold tracking-wider">SYSTEM</span>
             {systemState.activeQuests.length > 0 && (
-              <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold rounded-full bg-cyan-400 text-black shadow-[0_0_8px_rgba(6,182,212,0.8)]">
+              <span className="px-1.5 py-0.2 text-[10px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]">
                 {systemState.activeQuests.length}
               </span>
             )}

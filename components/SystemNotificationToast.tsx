@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { Terminal, CheckCircle2, AlertTriangle, Sparkles, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Terminal, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { SystemToastNotification, QuestDifficulty } from "@/types/system";
 
 interface SystemNotificationToastProps {
@@ -13,10 +13,10 @@ interface SystemNotificationToastProps {
 const DIFFICULTY_COLORS: Record<QuestDifficulty, string> = {
   E: "text-emerald-300 border-emerald-500/50 bg-emerald-950/60",
   D: "text-green-300 border-green-500/50 bg-green-950/60",
-  C: "text-cyan-300 border-cyan-500/50 bg-cyan-950/60",
-  B: "text-blue-300 border-blue-500/50 bg-blue-950/60",
-  A: "text-purple-300 border-purple-500/50 bg-purple-950/60",
-  S: "text-amber-300 border-amber-500/50 bg-amber-950/60 shadow-[0_0_15px_rgba(245,158,11,0.4)]",
+  C: "text-sky-300 border-sky-500/50 bg-sky-950/60",
+  B: "text-purple-300 border-purple-500/50 bg-purple-950/60",
+  A: "text-rose-300 border-rose-500/60 bg-rose-950/60 shadow-[0_0_12px_rgba(244,63,94,0.3)]",
+  S: "text-amber-300 border-amber-500/60 bg-amber-950/60 shadow-[0_0_15px_rgba(245,158,11,0.4)]",
   Calamity: "text-rose-400 border-rose-500/80 bg-rose-950/80 shadow-[0_0_20px_rgba(244,63,94,0.6)] animate-pulse",
 };
 
@@ -25,12 +25,23 @@ export function SystemNotificationToast({
   onClose,
   onOpenSystemWindow,
 }: SystemNotificationToastProps) {
+  const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
-    if (!notification) return;
-    const timer = setTimeout(() => {
-      onClose();
-    }, 6000);
-    return () => clearTimeout(timer);
+    if (notification) {
+      const inTimer = setTimeout(() => setIsVisible(true), 20);
+      const outTimer = setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(onClose, 600);
+      }, 5500);
+
+      return () => {
+        clearTimeout(inTimer);
+        clearTimeout(outTimer);
+      };
+    } else {
+      setIsVisible(false);
+    }
   }, [notification, onClose]);
 
   if (!notification) return null;
@@ -39,31 +50,36 @@ export function SystemNotificationToast({
   const isCompleted = notification.type === "quest_completed";
 
   return (
-    <div className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
+    <div className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none select-none">
       <div
         onClick={onOpenSystemWindow}
-        className={`pointer-events-auto max-w-md w-full relative overflow-hidden rounded-2xl p-4 cursor-pointer select-none transition-all duration-300 shadow-2xl backdrop-blur-xl border-2 transform animate-in slide-in-from-top-6 duration-300 ${
+        className={`pointer-events-auto max-w-md w-full relative overflow-hidden rounded-2xl p-4 cursor-pointer select-none transition-all duration-700 ease-out shadow-2xl backdrop-blur-2xl border-2 transform ${
+          isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-4 scale-95"
+        } ${
           isAlert
-            ? "bg-rose-950/90 border-rose-500 text-rose-100 shadow-[0_0_35px_rgba(244,63,94,0.4)]"
+            ? "bg-rose-950/95 border-rose-500 text-rose-100 shadow-[0_0_35px_rgba(244,63,94,0.45)] ring-1 ring-rose-500/30"
             : isCompleted
-            ? "bg-emerald-950/90 border-emerald-400 text-emerald-100 shadow-[0_0_35px_rgba(52,211,153,0.4)]"
-            : "bg-cyan-950/90 border-cyan-400/80 text-cyan-50 shadow-[0_0_40px_rgba(6,182,212,0.45)]"
+            ? "bg-zinc-950/95 border-amber-500/70 text-amber-100 shadow-[0_0_35px_rgba(245,158,11,0.35)] ring-1 ring-amber-500/30"
+            : "bg-zinc-950/95 border-rose-500/60 text-zinc-100 shadow-[0_0_35px_rgba(244,63,94,0.3)] ring-1 ring-rose-500/20"
         }`}
       >
-        {/* Holographic Scanlines Texture */}
+        {/* Ambient Radial Backlight */}
         <div 
-          className="absolute inset-0 pointer-events-none opacity-20"
+          className="absolute inset-0 pointer-events-none opacity-25"
           style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "100% 4px",
+            background: isAlert
+              ? "radial-gradient(circle at top left, rgba(244,63,94,0.4) 0%, transparent 70%)"
+              : isCompleted
+              ? "radial-gradient(circle at top left, rgba(245,158,11,0.35) 0%, transparent 70%)"
+              : "radial-gradient(circle at top left, rgba(244,63,94,0.3) 0%, transparent 70%)",
           }}
         />
 
-        {/* Geometric Corner Brackets (Manhwa Style) */}
-        <span className="absolute top-1 left-1 text-[10px] font-mono text-cyan-400/70 select-none">┌</span>
-        <span className="absolute top-1 right-1 text-[10px] font-mono text-cyan-400/70 select-none">┐</span>
-        <span className="absolute bottom-1 left-1 text-[10px] font-mono text-cyan-400/70 select-none">└</span>
-        <span className="absolute bottom-1 right-1 text-[10px] font-mono text-cyan-400/70 select-none">┘</span>
+        {/* Geometric Corner Brackets */}
+        <span className="absolute top-1 left-1.5 text-[9px] font-mono text-rose-400/50 pointer-events-none">┌</span>
+        <span className="absolute top-1 right-1.5 text-[9px] font-mono text-rose-400/50 pointer-events-none">┐</span>
+        <span className="absolute bottom-1 left-1.5 text-[9px] font-mono text-rose-400/50 pointer-events-none">└</span>
+        <span className="absolute bottom-1 right-1.5 text-[9px] font-mono text-rose-400/50 pointer-events-none">┘</span>
 
         <div className="flex items-start gap-3 relative z-10">
           <div
@@ -71,8 +87,8 @@ export function SystemNotificationToast({
               isAlert
                 ? "bg-rose-900/60 border-rose-400 text-rose-300"
                 : isCompleted
-                ? "bg-emerald-900/60 border-emerald-400 text-emerald-300"
-                : "bg-cyan-900/60 border-cyan-300 text-cyan-300"
+                ? "bg-amber-950/80 border-amber-400 text-amber-300"
+                : "bg-rose-950/80 border-rose-500/50 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.4)]"
             }`}
           >
             {isAlert ? (
@@ -86,7 +102,15 @@ export function SystemNotificationToast({
 
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-cyan-300 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">
+              <span
+                className={`text-[10px] font-mono tracking-widest uppercase font-bold ${
+                  isAlert
+                    ? "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                    : isCompleted
+                    ? "text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+                    : "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
+                }`}
+              >
                 {isAlert
                   ? "[ SYSTEM ALERT ]"
                   : isCompleted
@@ -107,11 +131,11 @@ export function SystemNotificationToast({
             <h4 className="font-bold text-sm text-white tracking-wide truncate drop-shadow-sm">
               {notification.title}
             </h4>
-            <p className="text-xs text-cyan-200/80 line-clamp-2 mt-0.5 leading-relaxed font-sans">
+            <p className="text-xs text-zinc-300/90 line-clamp-2 mt-0.5 leading-relaxed font-sans">
               {notification.subtitle}
             </p>
 
-            <span className="text-[9px] font-mono text-cyan-400/60 block mt-1 hover:underline">
+            <span className="text-[9px] font-mono text-rose-400/70 block mt-1 hover:text-rose-300">
               Tap to open System Interface →
             </span>
           </div>
@@ -120,9 +144,10 @@ export function SystemNotificationToast({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onClose();
+              setIsVisible(false);
+              setTimeout(onClose, 600);
             }}
-            className="text-cyan-400/60 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+            className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -133,4 +158,3 @@ export function SystemNotificationToast({
 }
 
 export default SystemNotificationToast;
-
