@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 export interface InventoryItem {
   id: string;
@@ -1850,11 +1851,16 @@ export default function VisualNovelGame() {
                     </div>
 
                     <div 
-                      className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm whitespace-pre-line select-text ${
+                      className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm select-text transition-colors ${
                         msg.sender === "user"
                           ? "bg-gradient-to-br from-rose-600 to-pink-600 text-white rounded-tr-none"
                           : "bg-zinc-900/95 border border-white/10 text-zinc-200 rounded-tl-none font-normal"
                       }`}
+                      onClick={() => {
+                        if (isLatestCharacterTurn && displayedText.length < gameState.dialogue.length) {
+                          setDisplayedText(gameState.dialogue);
+                        }
+                      }}
                     >
                       {isEditing ? (
                         <div className="flex flex-col gap-2 min-w-[260px] sm:min-w-[340px]">
@@ -1863,32 +1869,39 @@ export default function VisualNovelGame() {
                             onChange={(e) => setEditingText(e.target.value)}
                             className="w-full bg-black/60 border border-white/20 rounded-xl p-2.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-400 font-sans resize-y min-h-[90px]"
                           />
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditingMessageId(null)}
-                              className="px-2.5 py-1 text-xs text-zinc-400 hover:text-white rounded-lg border border-white/10 bg-zinc-800 cursor-pointer"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleSaveEdit(msg.id)}
-                              className="px-2.5 py-1 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg flex items-center gap-1 cursor-pointer"
-                            >
-                              <Check className="w-3 h-3" /> Save
-                            </button>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[10px] text-zinc-500 font-mono">
+                              Supports markdown (*action*, **bold**, &gt; quote)
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingMessageId(null)}
+                                className="px-2.5 py-1 text-xs text-zinc-400 hover:text-white rounded-lg border border-white/10 bg-zinc-800 cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveEdit(msg.id)}
+                                className="px-2.5 py-1 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg flex items-center gap-1 cursor-pointer"
+                              >
+                                <Check className="w-3 h-3" /> Save
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ) : isLatestCharacterTurn ? (
-                        <>
-                          {displayedText}
-                          {displayedText.length < gameState.dialogue.length && (
-                            <span className="inline-block w-1.5 h-3.5 ml-1 bg-rose-400 animate-pulse" />
-                          )}
-                        </>
+                        <MarkdownRenderer
+                          content={displayedText}
+                          isUser={false}
+                          isStreaming={displayedText.length < gameState.dialogue.length}
+                        />
                       ) : (
-                        msg.text
+                        <MarkdownRenderer
+                          content={msg.text}
+                          isUser={msg.sender === "user"}
+                        />
                       )}
                     </div>
                   </div>
@@ -1937,7 +1950,7 @@ export default function VisualNovelGame() {
             type="text"
             value={inputAction}
             onChange={(e) => setInputAction(e.target.value)}
-            placeholder={isOOCMode ? "OOC Directive..." : `What will ${player.name} do or say?`}
+            placeholder={isOOCMode ? "OOC Directive..." : `What will ${player.name} do or say? (Markdown supported)`}
             disabled={isLoading}
             className={`flex-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-all select-text ${
               isOOCMode
@@ -2290,7 +2303,9 @@ export default function VisualNovelGame() {
               {memories.map((entry, idx) => (
                 <div key={idx} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-xl text-xs text-zinc-200 leading-relaxed flex gap-3 select-text">
                   <span className="font-mono text-sky-400 font-bold select-none">#{idx + 1}</span>
-                  <p>{entry}</p>
+                  <div className="flex-1">
+                    <MarkdownRenderer content={entry} className="text-xs" />
+                  </div>
                 </div>
               ))}
             </div>

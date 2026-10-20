@@ -4,9 +4,8 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 export const runtime = "nodejs";
 
 const FALLBACK_MODELS = [
-  "deepseek/deepseek-v4.1-flash-1017",
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "deepseek/deepseek-v4-flash",
+  "z-ai/glm-5.3-flash",
   "nvidia/nemotron-3.5-lightning:free",
 ];
 
@@ -127,6 +126,7 @@ Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded, 
 1. Favor: Assign affection_delta (-8 to +6) based on true compatibility with the active heroine's values (see Compatibility Directive). Meaningful alignment = +3 to +6, clashing actions = -2 to -6, neutral = 0 or +1.
 2. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest/archive occurs, award loot items or an ability in "player_progression".
 3. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]").
+4. Markdown Formatting: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, atmospheric details, and sensory cues (e.g. *She narrows her violet eyes, fingertips tracing the crystal rim.*); use **bold** for loud vocal emphasis, sudden impacts, or spell invocations; use > quotes for mental echoes or ancient runes. Put spoken dialogue in quotation marks "...".
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:

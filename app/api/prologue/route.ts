@@ -95,7 +95,7 @@ Respond strictly in valid JSON matching this schema:
 {
   "speaker": "${startingHeroine}",
   "location": "${startingLocation}",
-  "scene_setup": string, // 1-2 atmospheric, sensory-rich paragraphs detailing the location, sounds, and how the player arrives/stands before the heroine
+  "scene_setup": string, // 1-2 atmospheric, sensory-rich paragraphs detailing the location, sounds, and how the player arrives/stands before the heroine. Use Markdown (*italics* for sensory actions/ambiance, **bold** for impact)
   "dialogue": string, // The heroine's authentic, voice-accurate opening lines addressing the protagonist (including visual observations if image was attached)
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
