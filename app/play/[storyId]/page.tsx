@@ -147,6 +147,7 @@ interface PlayerProfile {
   level: number;
   stats: PlayerStats;
   gear: { weapon: string; armor: string; relic: string };
+  gearImages?: Record<string, string>;
   abilities: string[];
   abilityDetails?: Record<string, AbilityDetail>;
   inventory: InventoryItem[];
@@ -187,6 +188,7 @@ interface SaveSlotData {
   choices?: string[];
   visitedNodes?: VisitedStoryNode[];
   selectedPrologueId?: string;
+  unlockedCompanions?: string[];
 }
 
 // ------------------------------------------------------------------
@@ -480,6 +482,55 @@ export default function VisualNovelGame() {
               setSystemGearOptions((prev) =>
                 prev.map((g) => (g.id === item.id ? { ...g, imageUrl: imgData.imageUrl } : g))
               );
+
+              // Gear continuity (Point 4): Immediately append image to player.inventory & player.gearImages
+              // and perform autosave before any page refresh or unmount
+              setPlayer((prev) => {
+                const cleanName = item.name.trim().toLowerCase();
+                const itemMatch = (prev.inventory || []).some(
+                  (inv) => (inv.id && inv.id === item.id) || inv.name.trim().toLowerCase() === cleanName
+                );
+                const updatedGearImages = {
+                  ...(prev.gearImages || {}),
+                  [item.id]: imgData.imageUrl,
+                  [item.name]: imgData.imageUrl,
+                };
+
+                if (!itemMatch) {
+                  const nextP = { ...prev, gearImages: updatedGearImages };
+                  playerRef.current = nextP;
+                  return nextP;
+                }
+
+                const updatedInv = prev.inventory.map((inv) =>
+                  (inv.id && inv.id === item.id) || inv.name.trim().toLowerCase() === cleanName
+                    ? { ...inv, imageUrl: imgData.imageUrl }
+                    : inv
+                );
+                const nextP = {
+                  ...prev,
+                  inventory: updatedInv,
+                  gearImages: updatedGearImages,
+                };
+                playerRef.current = nextP;
+                performAutoSave({ player: nextP });
+                return nextP;
+              });
+
+              // Permanently register into Multiverse Codex
+              try {
+                await saveCodexLoot({
+                  storyId: currentStory.id,
+                  storyTitle: currentStory.title,
+                  itemName: item.name,
+                  itemType: item.type,
+                  rarity: item.rarity,
+                  description: item.description,
+                  effect: item.effect,
+                  imageUrl: imgData.imageUrl,
+                  model: imgData.model || "Google: Nano Banana 2.1",
+                });
+              } catch {}
             }
           } catch (e) {
             console.warn("Failed generating image for gear:", item.name, e);
@@ -1771,9 +1822,20 @@ export default function VisualNovelGame() {
       ? { weapon: "Bare Hands", armor: "Rags", relic: "None" }
       : { weapon: "[System Pending]", armor: "[System Pending]", relic: "None" });
 
+    const initialGearImages: Record<string, string> = { ...(player.gearImages || {}) };
+    if (customInventory) {
+      customInventory.forEach((item) => {
+        if (item.imageUrl) {
+          initialGearImages[item.id] = item.imageUrl;
+          initialGearImages[item.name] = item.imageUrl;
+        }
+      });
+    }
+
     const finalStartingPlayer: PlayerProfile = {
       ...player,
       gear: initialGear,
+      gearImages: initialGearImages,
       inventory: customInventory ? [...(player.inventory || []), ...customInventory] : (player.inventory || []),
     };
     setPlayer(finalStartingPlayer);
@@ -2080,6 +2142,7 @@ export default function VisualNovelGame() {
       choices,
       visitedNodes: visitedStoryNodes,
       selectedPrologueId: prologues[selectedPrologue]?.id,
+      unlockedCompanions: (party || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
     };
 
     try {
@@ -2132,6 +2195,7 @@ export default function VisualNovelGame() {
         choices: finalChoices,
         visitedNodes: finalVisitedNodes,
         selectedPrologueId: finalPrologueId,
+        unlockedCompanions: (finalParty || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
       };
 
       await saveGameSlot(0, payload);
@@ -2167,6 +2231,7 @@ export default function VisualNovelGame() {
       choices,
       visitedNodes: visitedStoryNodes,
       selectedPrologueId: prologues[selectedPrologue]?.id,
+      unlockedCompanions: (party || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
     };
 
     try {

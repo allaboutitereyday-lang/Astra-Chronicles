@@ -29,6 +29,7 @@ export interface SaveSlotPayload {
   regressionCount?: number;
   regressionHistory?: DeathRegressionRecord[];
   penaltyScenarioState?: PenaltyScenarioState | null;
+  unlockedCompanions?: string[]; // IDs or names of heroines encountered in story
 }
 
 const DB_NAME = "AstraChroniclesSaveDB";

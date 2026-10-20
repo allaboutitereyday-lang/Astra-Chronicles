@@ -26,12 +26,16 @@ import {
   Wand2,
   Skull,
   Target,
-  X
+  X,
+  Lock,
+  Moon,
+  CloudFog,
+  Compass
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { loadGameSlot, saveGameSlot, SaveSlotPayload } from "@/lib/saveStorage";
 import { saveCodexLoot } from "@/lib/codexStorage";
-import { InventoryItem, PlayerProfile, AbilityDetail, StoryCompanion } from "@/types/story";
+import { InventoryItem, PlayerProfile, AbilityDetail, StoryCompanion, TrialModifier } from "@/types/story";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "@/lib/trialsClassArsenals";
 import {
@@ -42,6 +46,10 @@ import {
   CombatStanceType,
   getAvailableStancesForRole,
   resolveEvolvedAbilityName,
+  PREDEFINED_TRIAL_MODIFIERS,
+  getSectorModifiersForRun,
+  getRandomSectorModifier,
+  getDiscoveredCompanions,
 } from "@/lib/progressionMechanics";
 
 interface SectorDefinition {
@@ -53,40 +61,9 @@ interface SectorDefinition {
   enemyHp: number;
   enemyMaxHp: number;
   enemyDesc: string;
-  causalModifier: {
-    name: string;
-    description: string;
-    statEffect: string;
-  };
+  causalModifier: TrialModifier;
+  enemyImageUrl?: string;
 }
-
-const DAILY_MODIFIERS = [
-  {
-    name: "Entropy Cascade",
-    description: "Causal boundaries fluctuate wildly. Kinetic impacts pierce dimensional barriers.",
-    statEffect: "+30% Critical Damage, +15% Enemy Lethality",
-  },
-  {
-    name: "Temporal Dilation",
-    description: "Planar conduits warp the flow of time within this sector.",
-    statEffect: "-25% Skill MP Costs, Stagger Vulnerability Increased",
-  },
-  {
-    name: "Quantum Bleed",
-    description: "Spatial fissures leak concentrated aether across the battlefield.",
-    statEffect: "+20% Arcane Resonance, -10% Natural Regeneration",
-  },
-  {
-    name: "Voidstrider Interference",
-    description: "The void strata echoes through the chamber, enhancing phase mechanics.",
-    statEffect: "Relic Synergies deal +40% Stagger Damage",
-  },
-  {
-    name: "Singularity Horizon",
-    description: "The Administrator's final trial chamber. Maximum causal pressure.",
-    statEffect: "High Plausibility Drain, S-Rank Loot Protocol Active",
-  },
-];
 
 // Guaranteed sector completion loot drops
 const SECTOR_LOOT_TABLE: InventoryItem[] = [
@@ -210,12 +187,17 @@ function LitRPGTrialsContent() {
           setPlayerMaxMp(maxMp);
           setPlayerMp(p.stats?.mp ? Math.min(p.stats.mp, maxMp) : maxMp);
 
-          // Hydrate active companion from slot party
+          // Hydrate active companion from slot party (state-filtered to discovered characters only)
           if (slot.party && Array.isArray(slot.party) && slot.party.length > 0) {
-            const savedCompId = slot.activeTrialCompanionId;
-            const comp = slot.party.find((c: any) => c.id === savedCompId || c.name === savedCompId) || slot.party[0];
-            if (comp) {
-              setActiveCompanion(buildActiveTrialCompanion(comp));
+            const discovered = getDiscoveredCompanions(slot.party, slot.unlockedCompanions);
+            if (discovered.length > 0) {
+              const savedCompId = slot.activeTrialCompanionId;
+              const comp = discovered.find((c: any) => c.id === savedCompId || c.name === savedCompId) || discovered[0];
+              if (comp) {
+                setActiveCompanion(buildActiveTrialCompanion(comp));
+              }
+            } else {
+              setActiveCompanion(null);
             }
           }
 
@@ -229,6 +211,11 @@ function LitRPGTrialsContent() {
         console.warn("Could not load slot 0 in trials:", err);
       });
   }, []);
+
+  // State-Filtered companions available for trial deployment
+  const discoveredCompanions = useMemo(() => {
+    return getDiscoveredCompanions(activeSlot0?.party, activeSlot0?.unlockedCompanions);
+  }, [activeSlot0?.party, activeSlot0?.unlockedCompanions]);
 
   // Compute available stances for protagonist role (Pillar 2)
   const availableStances = useMemo(() => {
@@ -246,7 +233,21 @@ function LitRPGTrialsContent() {
     return getClassArsenal(syncedPlayer?.role);
   }, [syncedPlayer?.role]);
 
-  // 5 Consecutive Roguelite Sectors
+  // Persistent Gear Image lookup from cache (Story Item or gearImages)
+  const getGearImageUrl = (gearName?: string): string | null => {
+    if (!gearName || gearName === "Bare Hands" || gearName === "Rags" || gearName === "None" || gearName.includes("Pending")) return null;
+    const invMatch = syncedPlayer?.inventory?.find((i) => i.name.toLowerCase() === gearName.toLowerCase());
+    if (invMatch?.imageUrl) return invMatch.imageUrl;
+    if (syncedPlayer?.gearImages?.[gearName]) return syncedPlayer.gearImages[gearName];
+    return null;
+  };
+
+  // Predefined Trial Modifiers for the active run (Pillar 1 Upgrade)
+  const runModifiers = useMemo(() => {
+    return getSectorModifiersForRun(5, todayDateString);
+  }, [todayDateString]);
+
+  // 5 Consecutive Roguelite Sectors with Predefined Modifiers
   const sectors: SectorDefinition[] = useMemo(
     () => [
       {
@@ -258,7 +259,7 @@ function LitRPGTrialsContent() {
         enemyHp: 60,
         enemyMaxHp: 60,
         enemyDesc: "A twitching arachnid construct composed of fractured spacetime shards.",
-        causalModifier: DAILY_MODIFIERS[0],
+        causalModifier: runModifiers[0] || PREDEFINED_TRIAL_MODIFIERS[0],
       },
       {
         sectorNumber: 2,
@@ -269,7 +270,7 @@ function LitRPGTrialsContent() {
         enemyHp: 95,
         enemyMaxHp: 95,
         enemyDesc: "A predatory quad-ped beast phasing between the physical realm and the void vacuum.",
-        causalModifier: DAILY_MODIFIERS[1],
+        causalModifier: runModifiers[1] || PREDEFINED_TRIAL_MODIFIERS[1],
       },
       {
         sectorNumber: 3,
@@ -280,7 +281,7 @@ function LitRPGTrialsContent() {
         enemyHp: 140,
         enemyMaxHp: 140,
         enemyDesc: "Ancient gilded guardian animated by compressed timeline conduits.",
-        causalModifier: DAILY_MODIFIERS[2],
+        causalModifier: runModifiers[2] || PREDEFINED_TRIAL_MODIFIERS[2],
       },
       {
         sectorNumber: 4,
@@ -291,7 +292,7 @@ function LitRPGTrialsContent() {
         enemyHp: 200,
         enemyMaxHp: 200,
         enemyDesc: "Colossal imperial war automaton forged from corrupted celestial iron.",
-        causalModifier: DAILY_MODIFIERS[3],
+        causalModifier: runModifiers[3] || PREDEFINED_TRIAL_MODIFIERS[3],
       },
       {
         sectorNumber: 5,
@@ -302,10 +303,10 @@ function LitRPGTrialsContent() {
         enemyHp: 280,
         enemyMaxHp: 280,
         enemyDesc: "The manifestation of the Multiverse Administrator evaluating your timeline coherence.",
-        causalModifier: DAILY_MODIFIERS[4],
+        causalModifier: runModifiers[4] || PREDEFINED_TRIAL_MODIFIERS[7],
       },
     ],
-    []
+    [runModifiers]
   );
 
   const activeSector = sectors[currentSectorIdx] || sectors[0];
@@ -321,7 +322,7 @@ function LitRPGTrialsContent() {
         time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
         type: "protocol",
         title: `Protocol Initialized: ${activeSector.title} [${activeSector.codename}]`,
-        blurb: `Modifier Detected: ${activeSector.causalModifier.name} — ${activeSector.causalModifier.description} (Effect: ${activeSector.causalModifier.statEffect})`,
+        blurb: `Modifier Detected: ${activeSector.causalModifier.name} — ${activeSector.causalModifier.description} (Effect: ${activeSector.causalModifier.statEffectLabel})`,
       };
       setCombatFeed((prev) => [protocolEntry, ...prev]);
     }
@@ -935,20 +936,36 @@ function LitRPGTrialsContent() {
               </span>
             </div>
 
-            {/* Causal Modifier Banner */}
-            <div className="mb-5 p-3 rounded-2xl bg-black/60 border border-blue-500/30 flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            {/* Causal Modifier Banner (Predefined Modifiers) */}
+            <div className={`mb-5 p-3 rounded-2xl bg-black/60 border flex items-start gap-3 ${
+              activeSector.causalModifier.colorTheme === "rose"
+                ? "border-rose-500/40 shadow-[0_0_15px_rgba(244,63,94,0.15)]"
+                : activeSector.causalModifier.colorTheme === "purple"
+                ? "border-purple-500/40 shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+                : activeSector.causalModifier.colorTheme === "amber"
+                ? "border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
+                : "border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+            }`}>
+              <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${
+                activeSector.causalModifier.colorTheme === "rose"
+                  ? "text-rose-400"
+                  : activeSector.causalModifier.colorTheme === "purple"
+                  ? "text-purple-400"
+                  : activeSector.causalModifier.colorTheme === "amber"
+                  ? "text-amber-400"
+                  : "text-cyan-400"
+              }`} />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-amber-300 font-mono">
-                    Active Modifier: {activeSector.causalModifier.name}
+                  <span className="text-xs font-bold text-white font-mono">
+                    Active Modifier: <span className="text-amber-300">{activeSector.causalModifier.name}</span>
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
                   {activeSector.causalModifier.description}
                 </p>
                 <div className="text-[10px] font-mono text-cyan-300 font-bold mt-1">
-                  ✦ Effect: {activeSector.causalModifier.statEffect}
+                  ✦ Effect: {activeSector.causalModifier.statEffectLabel}
                 </div>
               </div>
             </div>
@@ -1345,16 +1362,53 @@ function LitRPGTrialsContent() {
               <span className="text-emerald-400 font-bold">+{trialExpGained} EXP</span>
             </div>
 
-            {/* Active Gear Summary */}
+            {/* Active Gear Summary (with persistent image continuity) */}
             {syncedPlayer?.gear && (
-              <div className="pt-2 border-t border-white/5 space-y-1 text-[11px] font-mono text-zinc-400">
-                <div className="flex justify-between">
-                  <span>Equipped Weapon:</span>
-                  <span className="text-zinc-200 truncate max-w-[140px]">{syncedPlayer.gear.weapon || "Bare Hands"}</span>
+              <div className="pt-2 border-t border-white/5 space-y-1.5 text-[11px] font-mono text-zinc-400">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-zinc-400">
+                    <Sword className="w-3 h-3 text-cyan-400" /> Weapon:
+                  </span>
+                  <div className="flex items-center gap-1.5 max-w-[170px]">
+                    {getGearImageUrl(syncedPlayer.gear.weapon) && (
+                      <img
+                        src={getGearImageUrl(syncedPlayer.gear.weapon)!}
+                        alt={syncedPlayer.gear.weapon}
+                        className="w-4 h-4 rounded object-cover border border-cyan-500/30 shrink-0"
+                      />
+                    )}
+                    <span className="text-zinc-200 truncate">{syncedPlayer.gear.weapon || "Bare Hands"}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Equipped Relic:</span>
-                  <span className="text-amber-300 truncate max-w-[140px]">{syncedPlayer.gear.relic || "None"}</span>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-zinc-400">
+                    <Shield className="w-3 h-3 text-purple-400" /> Armor:
+                  </span>
+                  <div className="flex items-center gap-1.5 max-w-[170px]">
+                    {getGearImageUrl(syncedPlayer.gear.armor) && (
+                      <img
+                        src={getGearImageUrl(syncedPlayer.gear.armor)!}
+                        alt={syncedPlayer.gear.armor}
+                        className="w-4 h-4 rounded object-cover border border-purple-500/30 shrink-0"
+                      />
+                    )}
+                    <span className="text-zinc-200 truncate">{syncedPlayer.gear.armor || "Rags"}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-zinc-400">
+                    <Sparkles className="w-3 h-3 text-amber-400" /> Relic:
+                  </span>
+                  <div className="flex items-center gap-1.5 max-w-[170px]">
+                    {getGearImageUrl(syncedPlayer.gear.relic) && (
+                      <img
+                        src={getGearImageUrl(syncedPlayer.gear.relic)!}
+                        alt={syncedPlayer.gear.relic}
+                        className="w-4 h-4 rounded object-cover border border-amber-500/30 shrink-0"
+                      />
+                    )}
+                    <span className="text-amber-300 truncate">{syncedPlayer.gear.relic || "None"}</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -1589,10 +1643,10 @@ function LitRPGTrialsContent() {
               </button>
             </div>
 
-            {/* Companions Roster */}
+            {/* Companions Roster (State-Filtered to encountered characters only) */}
             <div className="space-y-2.5">
-              {activeSlot0?.party && activeSlot0.party.length > 0 ? (
-                activeSlot0.party.map((comp: any) => {
+              {discoveredCompanions && discoveredCompanions.length > 0 ? (
+                discoveredCompanions.map((comp: any) => {
                   const trialComp = buildActiveTrialCompanion(comp);
                   const isSelected = activeCompanion?.id === trialComp.id;
                   const isBeloved = ["Beloved", "Sworn Partner"].includes(trialComp.tier);
@@ -1664,8 +1718,16 @@ function LitRPGTrialsContent() {
                   );
                 })
               ) : (
-                <div className="p-6 text-center text-xs font-mono text-zinc-400 bg-black/40 rounded-2xl border border-white/5">
-                  No story companions found in active save slot.
+                <div className="p-8 rounded-2xl bg-zinc-900/60 border border-dashed border-white/10 text-center space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-950/50 border border-purple-500/30 flex items-center justify-center mx-auto text-purple-400">
+                    <Lock className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-white font-serif">NO COMPANIONS UNLOCKED</h4>
+                    <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed">
+                      You have not encountered any story companions yet. Progress through the narrative campaign to meet heroines and deploy their trial resonance passives.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

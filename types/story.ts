@@ -117,6 +117,29 @@ export interface CursedRelicModifier {
   plausibilityDrainPerTurn?: number;
 }
 
+// Predefined LitRPG Trial Active Modifiers (Phase 1)
+export interface TrialModifierEffects {
+  playerDamageMultiplier?: number;       // e.g. 1.20 (+20% damage)
+  critDamageMultiplier?: number;         // e.g. 1.35 (+35% crit damage)
+  critRateBonus?: number;                // e.g. 0.20 (+20% crit chance)
+  enemyLethalityMultiplier?: number;     // e.g. 1.15 (+15% enemy counter damage)
+  mpCostMultiplier?: number;             // e.g. 0.75 (-25% MP cost) or 1.25 (+25% MP cost)
+  staggerMultiplier?: number;            // e.g. 1.40 (+40% stagger buildup)
+  lifestealPercent?: number;             // e.g. 0.15 (15% lifesteal on hit)
+  plausibilityDrainMultiplier?: number;  // e.g. 1.50 (+50% plausibility loss)
+  shieldBonus?: number;
+}
+
+export interface TrialModifier {
+  id: string;
+  name: string;
+  description: string;
+  iconName: "Flame" | "Zap" | "Moon" | "CloudFog" | "Skull" | "Infinity" | "Compass" | "Shield" | "Sparkles";
+  colorTheme: "amber" | "rose" | "purple" | "cyan" | "emerald";
+  effects: TrialModifierEffects;
+  statEffectLabel: string;
+}
+
 export interface StoryRelicItem {
   id: string;
   name: string;
@@ -214,6 +237,7 @@ export interface PlayerProfile {
   level: number;
   stats: PlayerStats;
   gear: { weapon: string; armor: string; relic: string };
+  gearImages?: Record<string, string>; // Cached image URLs or base64 indexed by item name or ID
   abilities: string[];
   abilityDetails?: Record<string, AbilityDetail>;
   inventory: InventoryItem[];

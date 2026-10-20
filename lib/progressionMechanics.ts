@@ -16,6 +16,13 @@ import {
 } from "@/types/story";
 
 export type { ActiveTrialCompanion, CombatStanceType, CombatStanceConfig, GiftItemRecord };
+export { 
+  PREDEFINED_TRIAL_MODIFIERS, 
+  getSectorModifierById, 
+  getRandomSectorModifier, 
+  getSectorModifiersForRun, 
+  getDiscoveredCompanions 
+} from "./trialModifiers";
 import { DeathRegressionRecord, PenaltyScenarioState } from "@/types/system";
 
 // ============================================================================
