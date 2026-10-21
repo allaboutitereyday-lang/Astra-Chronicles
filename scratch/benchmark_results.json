@@ -1,0 +1,368 @@
+[
+  {
+    "model": "DeepSeek Chat (V3)",
+    "modelId": "deepseek/deepseek-chat",
+    "role": "CONTROL VARIABLE",
+    "neutral": {
+      "success": true,
+      "text": "*Perci’s ears twitched nervously, her golden eyes scanning the misty docks as her three fluffy tails coiled tightly around her legs. She shifted her weight from foot to foot, her fingers curling around the hilt of her dagger.* \"Under the fourth pallet? That’s... uncomfortably close to the patrol route.\" *Her voice was a hushed whisper, barely audible over the rhythmic lapping of the waves.* \n\n*She glanced up at Vaughn, her gaze lingering on his broad frame before darting away.* \"If they catch even a glimpse of us, we’re done for. Can’t we... I don’t know, create a distraction? Something subtle, like knocking over a crate or—\" *She paused, her ears flattening as she realized how weak the suggestion sounded.* \"Never mind. I’ll move fast. Just... keep watch?\" *Her tails flicked uneasily, betraying her apprehension.*",
+      "latency": 331,
+      "usage": {
+        "prompt_tokens": 302,
+        "completion_tokens": 198,
+        "total_tokens": 500,
+        "cost": 0.0002701314,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00027286,
+          "upstream_inference_prompt_cost": 0.00009664,
+          "upstream_inference_completions_cost": 0.00017622
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    },
+    "romance": {
+      "success": true,
+      "text": "*Perci's lips part in a shaky exhale, her golden eyes flickering between Vaughn's face and the way his massive frame eclipses the alley's dim light—her dagger-hand quivers near his ribs as if magnetized there, caught between instinct and something far more dangerous.* \"I-I could,\" *she breathes, her ears flattening against her head even as her tails puff up defiantly behind her,* \"b-but you—*you're* the one who's supposed to be scared of *me*.\" *Her pulse flutters visibly at the base of her throat, betraying the lie even as she narrows her eyes in a poor imitation of a glare.* \"Rotten wolf... you're not playing fair.\"",
+      "latency": 1589,
+      "usage": {
+        "prompt_tokens": 376,
+        "completion_tokens": 154,
+        "total_tokens": 530,
+        "cost": 0.000252650178,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0002552022,
+          "upstream_inference_prompt_cost": 0.0000967824,
+          "upstream_inference_completions_cost": 0.0001584198
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    }
+  },
+  {
+    "model": "Sao10K: Euryale 70B (v2.2)",
+    "modelId": "sao10k/l3.1-euryale-70b",
+    "role": "Flagship RP & ERP",
+    "neutral": {
+      "success": true,
+      "text": "*Perci's ears twitch nervously, her tails quivering as the salt mist brushes against her fur.*\n\"We... we need to be quick then,\" she says, her voice barely above a whisper. \"I'll slip underneath, locate the fourth pallet. If I'm not out in ten, we leave without me.\" *She takes a deep, steadying breath, her golden eyes meeting Vaughn's in the fading light.* \"Your strength... it's our best hope. If you can lift the pallet without making too much noise, we might just make it.\"\n\n*Perci's tails coil around her body, bristling slightly as she imagines the task ahead.* \"I'll scout ahead, make sure there's no extra guards. The patrol timing is always tight, but sometimes... sometimes they run early.\" *She reaches into her satchel, withdrawing a small vial of shimmering liquid.* \"This potion should allow me to move through shadows. If something goes wrong, I can... I can try to create a diversion.\"",
+      "latency": 156,
+      "usage": {
+        "prompt_tokens": 314,
+        "completion_tokens": 215,
+        "total_tokens": 529,
+        "cost": 0.0004451535,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00044965,
+          "upstream_inference_prompt_cost": 0.0002669,
+          "upstream_inference_completions_cost": 0.00018275
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    },
+    "romance": {
+      "success": true,
+      "text": "[PERCI'S RESPONSE]\n*Perci's eyes widen, her golden irises dilating as her heart pounds like a frantic drum in her chest. She swallows hard, her slender throat working beneath her shimmering golden coat.* I-I'm not afraid of you, *she stammers, her voice barely above a quivering whisper.* I'll never admit anything!\n*Her tails, four of them, swish and flick with nervous agitation behind her back. The rearmost two curl protectively around her sides while the foremost dart forward in a furious fanning motion.* I'm just... I'm just keeping you at bay, that's all. Don't think you can intimidate me! *Despite her words, Perci finds herself pressing back against the wooden slats, the rough grain digging into her shoulders and hips.*\n*Her dagger trembles in her loose grip, the blade wavering between Vaughn's chest and her own as if unsure which to impale. A bead of sweat traces down her temple, vanishing into the fox-eared hood adorning her brow.* I-I'm a Kitsune... I-I have *power*, *she insists, her voice cracking slightly.* Just because you're big and strong doesn't mean--\n*She bites off her words as Vaughn leans in closer still, his broad shoulders eclipsing her. Perci's back arches, her golden fur standing on end as his warm breath fans over her ear, stirring her loose hair.* A-aah! *she gasps, her dagger clattering to the deck at her feet. In a sudden, desperate movement, she grabs Vaughn's tattered cloak and yanks herself forward, closing the scant distance between them.* I-I'll show you my *power*, *she vows, her golden eyes blazing with a fierce, bewildered defiance. With a sudden, impulsive motion, Perci surges up on tiptoe and presses her lips to Vaughn's",
+      "latency": 179,
+      "usage": {
+        "prompt_tokens": 386,
+        "completion_tokens": 400,
+        "total_tokens": 786,
+        "cost": 0.000661419,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0006681,
+          "upstream_inference_prompt_cost": 0.0003281,
+          "upstream_inference_completions_cost": 0.00034
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    }
+  },
+  {
+    "model": "Nous Hermes 3 (70B)",
+    "modelId": "nousresearch/hermes-3-llama-3.1-70b",
+    "role": "Storytelling & LitRPG",
+    "neutral": {
+      "success": true,
+      "text": "Perci's ears twitch nervously as she scans the shadowy alcoves between the cargo crates, her tails swishing in a restless dance. *\"I understand, Vaughn. I'll locate the lockbox swiftly,\"* she whispers, her voice barely carrying over the gentle lapping of waves against the hulls. *\"But if the patrols arrive early...\"* Her sentence trails off, the unspoken worry hanging in the chill air. She takes a deep breath, trying to calm her racing heart. *\"No, I won't let that happen. I'll be quick and quiet, like a fox in the underbrush.\"* With a final glance at her imposing companion, Perci slips into the narrow gaps between the pallets, her lithe form moving with a graceful, furtive precision as she begins her search. You can't help but admire her determination, despite the odds stacked against you both in this perilous endeavor.",
+      "latency": 326,
+      "usage": {
+        "prompt_tokens": 312,
+        "completion_tokens": 191,
+        "total_tokens": 503,
+        "cost": 0.000348579,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0003521,
+          "upstream_inference_prompt_cost": 0.0002184,
+          "upstream_inference_completions_cost": 0.0001337
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    },
+    "romance": {
+      "success": true,
+      "text": "*Perci's tails quiver erratically, betraying the frantic pounding of her heart as she inhales Vaughn's wild, untamed scent. Her golden eyes flicker between his grey ones and the sharp canines just inches from her face.* \"I... I don't know,\" *she admits, voice trembling as much as her dagger. Her fox ears lower in submission, even as her gaze holds his.* \"You're... you're so close. I feel... trapped. Overwhelmed. But...\" *She takes a shuddering breath, her whisper barely audible.* \"But also... something else. Something warm and fluttering in my chest. Like... like my heart wants to hammer its way free... and find yours.\" *Her tails slowly relax, curling around her legs as if to anchor her trembling form.* \"I'm scared, Vaughn. But... I think I want to be scared... with you.\"",
+      "latency": 208,
+      "usage": {
+        "prompt_tokens": 384,
+        "completion_tokens": 193,
+        "total_tokens": 577,
+        "cost": 0.000399861,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.0004039,
+          "upstream_inference_prompt_cost": 0.0002688,
+          "upstream_inference_completions_cost": 0.0001351
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    }
+  },
+  {
+    "model": "Sao10K: Lunaris 8B",
+    "modelId": "sao10k/l3-lunaris-8b",
+    "role": "Fast RP",
+    "neutral": {
+      "success": true,
+      "text": "*Perci's golden tails quiver slightly, betraying her unease as she crouches low, peering apprehensively down the length of the dock.* \"Twenty minutes... that's tight. What if the patrol arrives early?\" *Her fluffy ears twitch and flatten against her head at the mere thought of confronting the imperial soldiers.*\n\n*She takes a slow, measured breath, her eyes darting back to Vaughn as she tries to focus on his instructions.* \"I'll look for the lockbox, but... we should have a plan for if things go wrong. Like, what if they question us or search us?\" *Perci's voice wavers, her words tumbling out in a rush as her mind races with worst-case scenarios.*",
+      "latency": 233,
+      "usage": {
+        "prompt_tokens": 314,
+        "completion_tokens": 154,
+        "total_tokens": 468,
+        "cost": 0.0000200574,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00002026,
+          "upstream_inference_prompt_cost": 0.00001256,
+          "upstream_inference_completions_cost": 0.0000077
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    },
+    "romance": {
+      "success": true,
+      "text": "Perci's breath hitches, her heart pounding a frantic rhythm against her ribs. She shrinks back, her tails bristling in alarm, but there's nowhere to retreat within the confines of the pallet. The scrutiny of Vaughn's gaze feels like a physical caress, searing her skin and igniting a flutter in her chest. Her voice comes out as a whisper, barely audible over her own ragged breaths. \"I... I'll do whatever's needed to protect myself. You should know that by now.\"\n\nDespite her defiant words, Perci can't suppress the tremble in her hands as she grips the dagger tighter. Her golden eyes, usually sharp as a hawk's, are now dulled with fear and uncertainty. She's acutely aware of every inch of Vaughn's towering frame pressing against her, the warmth of his body seeping into her clothes, and the tantalizing scent of his masculinity mingling with the forest air. The implications of his proximity make her head spin, and she's forced to confront the unsettling truth—that beneath her fear, a tiny spark of curiosity and longing has begun to kindle. \"Don't think for a second I'll back down, beast-kin,\" she adds, trying to inject steel into her tone. \"But... but maybe we can find another way, without resorting to... to violence.\"",
+      "latency": 277,
+      "usage": {
+        "prompt_tokens": 387,
+        "completion_tokens": 280,
+        "total_tokens": 667,
+        "cost": 0.0000291852,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00002948,
+          "upstream_inference_prompt_cost": 0.00001548,
+          "upstream_inference_completions_cost": 0.000014
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    }
+  },
+  {
+    "model": "MythoMax 13B",
+    "modelId": "gryphe/mythomax-l2-13b",
+    "role": "Classic Fiction",
+    "neutral": {
+      "success": true,
+      "text": "Perci nods, her golden eyes darting nervously around the dimly lit docks. \"I understand. We need to be quick and quiet.\" She bites her lip, her fluffy fox ears twitching as she listens for any approaching footsteps. Her multiple tails flick behind her, betraying her anxiety.",
+      "latency": 297,
+      "usage": {
+        "prompt_tokens": 401,
+        "completion_tokens": 76,
+        "total_tokens": 477,
+        "cost": 0.0000400356,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00004044,
+          "upstream_inference_prompt_cost": 0.00003208,
+          "upstream_inference_completions_cost": 0.00000836
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    },
+    "romance": {
+      "success": true,
+      "text": "Perci's heart thunders in her ears, and her tail twitches nervously between them. She swallows hard, trying to find her voice. \"I-I... I wouldn't,\" she stammers, her eyes darting away from his intense gaze. \"I just... I need to be careful.\" She presses herself further into the rough wood behind her, feeling trapped and exposed. Her ears flatten against her head, and she takes a shaky breath. \"Please don't make me choose,\" she whispers, her voice barely above a whisper.",
+      "latency": 618,
+      "usage": {
+        "prompt_tokens": 488,
+        "completion_tokens": 130,
+        "total_tokens": 618,
+        "cost": 0.0000528066,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 288,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.00005334,
+          "upstream_inference_prompt_cost": 0.00003904,
+          "upstream_inference_completions_cost": 0.0000143
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    }
+  },
+  {
+    "model": "Nous Hermes 3 (405B)",
+    "modelId": "nousresearch/hermes-3-llama-3.1-405b",
+    "role": "Pinnacle Flagship",
+    "neutral": {
+      "success": true,
+      "text": "*Perci's ears twitch nervously as she scans the mist-shrouded docks, her golden tails swaying in anxious rhythm.* \"Twenty minutes... that's not much time.\" *She takes a steadying breath, amber eyes narrowing with determination.* \"But you're right, we can do this. I'll slip in, retrieve the lockbox, and be out before they're any wiser.\" *Her small paw reaches up to brush a stray wisp of fur from her face.* \"No steel, no traces. We'll be ghosts - there and gone before they even realize.\"",
+      "latency": 600,
+      "usage": {
+        "prompt_tokens": 315,
+        "completion_tokens": 121,
+        "total_tokens": 436,
+        "cost": 0.00043164,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.000436,
+          "upstream_inference_prompt_cost": 0.000315,
+          "upstream_inference_completions_cost": 0.000121
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    },
+    "romance": {
+      "success": true,
+      "text": "*Perci's fluffy fox ears twitch, laid back against her head in anxious uncertainty, even as her white knuckled grip tightens on the dagger handle. Her long, golden tails swirl and flick behind her, betraying the maelstrom of emotion coursing through her petite frame.* \"I... You...\" *She swallows hard, a visible gulp, as Vaughn's warm breath stirs the delicate fur of her ear. His towering, muscular form cages her against the rough timber, his grey eyes pinning her as effectively as his strength.* \n\n\"Y-you're not playing fair,\" *Perci finally manages to whisper, her melodic voice tremulous.* \"I... My heart wouldn't be racing if you weren't... if you didn't...\" *Her golden eyes, wide and uncertain, finally dip to his mouth, mere inches from hers, before flicking back up. Tremors run through her body from his nearness, her small dagger trembling between them.* \"D-don't make me choose, Vaughn. Not between two things that would both break me...\"",
+      "latency": 130,
+      "usage": {
+        "prompt_tokens": 387,
+        "completion_tokens": 224,
+        "total_tokens": 611,
+        "cost": 0.00060489,
+        "is_byok": false,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 0,
+          "audio_tokens": 0,
+          "video_tokens": 0
+        },
+        "cost_details": {
+          "upstream_inference_cost": 0.000611,
+          "upstream_inference_prompt_cost": 0.000387,
+          "upstream_inference_completions_cost": 0.000224
+        },
+        "completion_tokens_details": {
+          "reasoning_tokens": 0,
+          "image_tokens": 0,
+          "audio_tokens": 0
+        }
+      }
+    }
+  }
+]
