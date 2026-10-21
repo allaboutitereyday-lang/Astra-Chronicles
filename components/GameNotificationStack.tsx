@@ -49,6 +49,7 @@ export interface GameNotificationStackProps {
   onDismiss: (id: string) => void;
   onOpenSystemWindow?: () => void;
   onInspectItem?: (item: any) => void;
+  onOpenHistory?: () => void;
   maxVisible?: number;
   staggerDelayMs?: number;
 }
@@ -381,20 +382,33 @@ export function GameNotificationStack({
   onDismiss,
   onOpenSystemWindow,
   onInspectItem,
+  onOpenHistory,
   maxVisible = 2,
   staggerDelayMs = 750,
 }: GameNotificationStackProps) {
   const [visibleItems, setVisibleItems] = useState<GameNotificationItem[]>([]);
   const pendingQueueRef = useRef<GameNotificationItem[]>([]);
+  const [pendingCount, setPendingCount] = useState<number>(0);
   const seenIdsRef = useRef<Set<string>>(new Set<string>());
-  const isStaggeringRef = useRef<boolean>(false);
+  const staggerTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [queueTick, setQueueTick] = useState<number>(0);
+
+  // Clear running stagger timer on unmount
+  useEffect(() => {
+    return () => {
+      if (staggerTimerRef.current) {
+        clearTimeout(staggerTimerRef.current);
+        staggerTimerRef.current = null;
+      }
+    };
+  }, []);
 
   // Synchronize incoming notifications into pending queue
   useEffect(() => {
     if (!notifications || notifications.length === 0) {
       pendingQueueRef.current = [];
       setVisibleItems([]);
+      setPendingCount(0);
       return;
     }
 
@@ -416,31 +430,49 @@ export function GameNotificationStack({
     );
 
     if (addedNew) {
+      setPendingCount(pendingQueueRef.current.length);
       setQueueTick((t) => t + 1);
     }
   }, [notifications]);
 
-  // Sequential queue processor: slowly releases one notification at a time
+  // Sequential queue processor: releases notifications one at a time with staggerDelay
   useEffect(() => {
-    if (isStaggeringRef.current) return;
+    // If a stagger timer is already in progress, let it run
+    if (staggerTimerRef.current) return;
     if (pendingQueueRef.current.length === 0) return;
     if (visibleItems.length >= maxVisible) return;
 
-    const nextItem = pendingQueueRef.current.shift();
-    if (!nextItem) return;
+    // Pop the next valid item from queue that exists in current notifications
+    let nextItem: GameNotificationItem | undefined;
+    while (pendingQueueRef.current.length > 0) {
+      const candidate = pendingQueueRef.current.shift();
+      if (!candidate) break;
+      if (notifications.some((n) => n.id === candidate.id)) {
+        nextItem = candidate;
+        break;
+      }
+    }
 
-    isStaggeringRef.current = true;
-    soundEffects.playSystemNotification();
+    if (!nextItem) {
+      setPendingCount(pendingQueueRef.current.length);
+      return;
+    }
 
-    setVisibleItems((prev) => [...prev, nextItem]);
+    try {
+      soundEffects.playSystemNotification();
+    } catch {
+      // Audio engine fallback
+    }
 
-    const timer = setTimeout(() => {
-      isStaggeringRef.current = false;
+    setVisibleItems((prev) => [...prev, nextItem!]);
+    setPendingCount(pendingQueueRef.current.length);
+
+    // Schedule next staggered release without clearing when visibleItems changes
+    staggerTimerRef.current = setTimeout(() => {
+      staggerTimerRef.current = null;
       setQueueTick((t) => t + 1);
     }, staggerDelayMs);
-
-    return () => clearTimeout(timer);
-  }, [visibleItems.length, queueTick, maxVisible, staggerDelayMs]);
+  }, [visibleItems.length, queueTick, maxVisible, staggerDelayMs, notifications]);
 
   const handleCardDismiss = (id: string) => {
     setVisibleItems((prev) => prev.filter((item) => item.id !== id));
@@ -448,7 +480,24 @@ export function GameNotificationStack({
     setQueueTick((t) => t + 1);
   };
 
-  if (visibleItems.length === 0 && pendingQueueRef.current.length === 0) return null;
+  const handleFlushNext = () => {
+    if (staggerTimerRef.current) {
+      clearTimeout(staggerTimerRef.current);
+      staggerTimerRef.current = null;
+    }
+    if (pendingQueueRef.current.length > 0) {
+      const nextItem = pendingQueueRef.current.shift();
+      if (nextItem) {
+        try {
+          soundEffects.playSystemNotification();
+        } catch {}
+        setVisibleItems((prev) => [...prev, nextItem]);
+        setPendingCount(pendingQueueRef.current.length);
+      }
+    }
+  };
+
+  if (visibleItems.length === 0 && pendingCount === 0) return null;
 
   return (
     <div
@@ -466,12 +515,31 @@ export function GameNotificationStack({
       ))}
 
       {/* Subtle, reassuring indicator when subsequent alerts are waiting in queue */}
-      {pendingQueueRef.current.length > 0 && (
-        <div className="pointer-events-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-950/90 border border-white/10 text-[10px] font-mono text-zinc-400 shadow-xl backdrop-blur-md animate-pulse select-none">
-          <Bell className="w-3 h-3 text-rose-400 animate-bounce" />
-          <span>
-            +{pendingQueueRef.current.length} more update{pendingQueueRef.current.length > 1 ? "s" : ""} queued...
-          </span>
+      {pendingCount > 0 && (
+        <div className="pointer-events-auto flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-950/95 border border-rose-500/40 hover:border-rose-400 text-[10px] font-mono text-zinc-300 shadow-xl backdrop-blur-md transition-all select-none group">
+          <button
+            type="button"
+            onClick={() => onOpenHistory?.()}
+            className="flex items-center gap-1.5 hover:text-white cursor-pointer"
+            title="Open Notification Archive"
+          >
+            <Bell className="w-3.5 h-3.5 text-rose-400 animate-bounce group-hover:scale-110 transition-transform" />
+            <span>
+              +{pendingCount} more update{pendingCount > 1 ? "s" : ""} queued
+            </span>
+            {onOpenHistory && (
+              <span className="text-[9px] text-rose-400 underline ml-0.5">Archive</span>
+            )}
+          </button>
+          <div className="w-[1px] h-3 bg-white/20" />
+          <button
+            type="button"
+            onClick={handleFlushNext}
+            className="hover:text-amber-300 text-zinc-400 cursor-pointer text-[9px]"
+            title="Display next notification immediately"
+          >
+            Show Now ⏭
+          </button>
         </div>
       )}
     </div>

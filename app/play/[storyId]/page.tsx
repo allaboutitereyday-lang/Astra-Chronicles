@@ -50,7 +50,8 @@ import {
   ShieldCheck,
   Gift,
   Skull,
-  Cloud
+  Cloud,
+  Bell
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -60,6 +61,7 @@ import { SystemNotificationToast } from "@/components/SystemNotificationToast";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
 import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
 import { GameNotificationStack, GameNotificationItem } from "@/components/GameNotificationStack";
+import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
 import { 
   saveGameSlot, 
   loadGameSlot, 
@@ -1005,17 +1007,92 @@ export default function VisualNovelGame() {
     cap?: number;
   } | null>(null);
   const [notifications, setNotifications] = useState<GameNotificationItem[]>([]);
+  const [notificationHistory, setNotificationHistory] = useState<GameNotificationItem[]>([]);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
+  const [showNotificationHistory, setShowNotificationHistory] = useState<boolean>(false);
+
+  // Load notification history on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`astra_notif_history_${params?.storyId || "default"}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setNotificationHistory(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load notification history:", e);
+    }
+  }, [params?.storyId]);
+
+  // Persist notification history on change
+  useEffect(() => {
+    try {
+      if (notificationHistory.length > 0) {
+        localStorage.setItem(
+          `astra_notif_history_${params?.storyId || "default"}`,
+          JSON.stringify(notificationHistory.slice(0, 100))
+        );
+      }
+    } catch (e) {
+      console.warn("Failed to save notification history:", e);
+    }
+  }, [notificationHistory, params?.storyId]);
 
   const pushNotification = (notif: Omit<GameNotificationItem, "id"> & { id?: string }) => {
     const id = notif.id || `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const fullItem: GameNotificationItem = {
+      ...notif,
+      id,
+      timestamp: notif.timestamp || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
     setNotifications((prev) => {
       const existingIdx = prev.findIndex((n) => n.id === id);
       if (existingIdx !== -1) {
         const copy = [...prev];
-        copy[existingIdx] = { ...copy[existingIdx], ...notif, id };
+        copy[existingIdx] = { ...copy[existingIdx], ...fullItem };
         return copy;
       }
-      return [...prev, { ...notif, id }];
+      return [...prev, fullItem];
+    });
+
+    setNotificationHistory((prev) => {
+      const existingIdx = prev.findIndex((n) => n.id === id);
+      if (existingIdx !== -1) {
+        const copy = [...prev];
+        copy[existingIdx] = { ...copy[existingIdx], ...fullItem };
+        return copy;
+      }
+      return [fullItem, ...prev].slice(0, 100);
+    });
+
+    setUnreadNotificationCount((c) => c + 1);
+  };
+
+  const handleClearNotificationHistory = () => {
+    soundEffects.playClick();
+    setNotificationHistory([]);
+    setUnreadNotificationCount(0);
+    try {
+      localStorage.removeItem(`astra_notif_history_${params?.storyId || "default"}`);
+    } catch (e) {
+      console.warn("Failed to clear notification history:", e);
+    }
+  };
+
+  const handleDismissHistoryItem = (id: string) => {
+    soundEffects.playClick();
+    setNotificationHistory((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      try {
+        localStorage.setItem(
+          `astra_notif_history_${params?.storyId || "default"}`,
+          JSON.stringify(updated)
+        );
+      } catch {}
+      return updated;
     });
   };
 
@@ -1028,6 +1105,27 @@ export default function VisualNovelGame() {
   ) => {
     if (typeof updater === "function") {
       setNotifications((prevList) => {
+        const lootIdx = prevList.findIndex((n) => n.type === "loot");
+        if (lootIdx === -1) return prevList;
+        const current = prevList[lootIdx];
+        const result = updater({
+          id: current.id,
+          type: (current.type as any) || "loot",
+          title: current.title,
+          subtitle: current.subtitle,
+          imageUrl: current.imageUrl,
+          rarity: current.rarity,
+        });
+        if (!result) return prevList;
+        const copy = [...prevList];
+        copy[lootIdx] = {
+          ...copy[lootIdx],
+          ...result,
+        };
+        return copy;
+      });
+
+      setNotificationHistory((prevList) => {
         const lootIdx = prevList.findIndex((n) => n.type === "loot");
         if (lootIdx === -1) return prevList;
         const current = prevList[lootIdx];
@@ -5058,6 +5156,11 @@ export default function VisualNovelGame() {
         onDismiss={dismissNotification}
         onOpenSystemWindow={() => setShowSystemModal(true)}
         onInspectItem={(item) => handleInspectItem(item)}
+        onOpenHistory={() => {
+          soundEffects.playClick();
+          setShowNotificationHistory(true);
+          setUnreadNotificationCount(0);
+        }}
       />
 
       {/* TOP HUD */}
@@ -5238,6 +5341,24 @@ export default function VisualNovelGame() {
               title="Save or Load Game"
             >
               <Save className="w-4 h-4" />
+            </button>
+
+            {/* Notification History Bell */}
+            <button
+              onClick={() => {
+                soundEffects.playClick();
+                setShowNotificationHistory(true);
+                setUnreadNotificationCount(0);
+              }}
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-zinc-400 hover:text-white transition-all cursor-pointer relative flex items-center gap-1.5"
+              title="Notification Archive & System Broadcasts"
+            >
+              <Bell className="w-4 h-4 text-rose-400" />
+              {unreadNotificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.7)] animate-pulse">
+                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                </span>
+              )}
             </button>
 
             <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
@@ -5799,6 +5920,16 @@ export default function VisualNovelGame() {
         onClose={() => setShowSystemModal(false)}
         systemState={systemState}
         onCompleteQuest={handleCompleteQuest}
+      />
+
+      <NotificationHistoryModal
+        isOpen={showNotificationHistory}
+        onClose={() => setShowNotificationHistory(false)}
+        history={notificationHistory}
+        onClearHistory={handleClearNotificationHistory}
+        onDismissItem={handleDismissHistoryItem}
+        onOpenSystemWindow={() => setShowSystemModal(true)}
+        onInspectItem={(item) => handleInspectItem(item)}
       />
 
       {/* PARTY ROSTER DRAWER */}
