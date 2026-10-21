@@ -13,6 +13,7 @@ import {
   BookOpen,
   RotateCcw,
   Skull,
+  Flame,
   Bell,
 } from "lucide-react";
 import { QuestDifficulty } from "@/types/system";
@@ -29,7 +30,10 @@ export type NotificationType =
   | "loot"
   | "skill"
   | "level"
-  | "codex";
+  | "codex"
+  | "covenant_severance"
+  | "story_clash"
+  | "companion_friction";
 
 export interface GameNotificationItem {
   id: string;
@@ -205,6 +209,24 @@ function NotificationCard({
           iconBg: "bg-purple-950/80 border-purple-400 text-purple-300",
           accentColor: "#a855f7",
         };
+      case "covenant_severance":
+        return {
+          card: "bg-purple-950/95 border-purple-400 text-purple-100 shadow-[0_0_50px_rgba(168,85,247,0.6)] ring-1 ring-purple-400 animate-pulse",
+          iconBg: "bg-purple-900 border-purple-300 text-purple-200",
+          accentColor: "#c084fc",
+        };
+      case "story_clash":
+        return {
+          card: "bg-rose-950/95 border-rose-500 text-rose-100 shadow-[0_0_45px_rgba(244,63,94,0.55)] ring-1 ring-rose-400 animate-pulse",
+          iconBg: "bg-rose-900 border-rose-400 text-rose-200",
+          accentColor: "#f43f5e",
+        };
+      case "companion_friction":
+        return {
+          card: "bg-amber-950/90 border-amber-500/80 text-amber-100 shadow-[0_0_35px_rgba(245,158,11,0.4)] ring-1 ring-amber-400/50",
+          iconBg: "bg-amber-900 border-amber-400 text-amber-200",
+          accentColor: "#f59e0b",
+        };
       case "loot": {
         const rarity = item.rarity || "rare";
         if (rarity === "cursed") {
@@ -307,6 +329,12 @@ function NotificationCard({
             <Award className="w-5 h-5 animate-bounce text-amber-300" />
           ) : item.type === "codex" ? (
             <BookOpen className="w-5 h-5 text-purple-300" />
+          ) : item.type === "covenant_severance" ? (
+            <Sparkles className="w-5 h-5 text-purple-300 animate-pulse" />
+          ) : item.type === "story_clash" ? (
+            <Flame className="w-5 h-5 text-rose-400 animate-pulse" />
+          ) : item.type === "companion_friction" ? (
+            <Zap className="w-5 h-5 text-amber-400" />
           ) : item.type === "loot" ? (
             <Package className="w-5 h-5" />
           ) : (

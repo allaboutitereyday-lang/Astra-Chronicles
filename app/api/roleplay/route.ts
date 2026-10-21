@@ -9,9 +9,15 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /**
- * Unified Dynamic LLM Router for Astra Chronicles
- * Routes roleplay requests to high-performance OpenRouter cloud models
- * with enforced grammatical rigor, quotation marks, and universe context checking.
+ * ARCHITECTURAL NOTICE / ROUTE GOVERNANCE:
+ * 
+ * Core visual novel roleplay progression in Astra Chronicles is orchestrated by:
+ * - `/api/turn`: Multi-agent DeepSeek V3 GM turn engine (dialogue, actions, choices, inventory, quests, affection).
+ * - `/api/prologue`: Dynamic heroine opening monologue & sensory scene generator.
+ * - `/api/generate-choices`: Standalone situation-aware decision authoring engine.
+ * 
+ * `/api/roleplay` serves as an auxiliary raw multi-turn completion proxy for benchmark testing
+ * and direct LLM evaluation. It applies universal prose sanitization and system directives to all outputs.
  */
 export async function POST(req: Request) {
   try {

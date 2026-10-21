@@ -73,6 +73,71 @@ export interface SystemState {
   regressionHistory?: DeathRegressionRecord[];
   isProtagonistDead?: boolean;
   pendingRegression?: DeathRegressionRecord | null;
+
+  // System Evolution Architecture Expansion (Pillars A, B, C)
+  covenantState?: CausalCovenantState;
+  frictionState?: CompanionFrictionState;
+  activeClash?: ActiveStoryClashState | null;
+}
+
+// --- PITCH A: THE CAUSAL COVENANT ---
+export interface TimelineScar {
+  id: string;
+  title: string;
+  description: string;
+  scarType: "amnesia" | "blight" | "chronal_shadow" | "severance";
+  affectedCompanionName?: string;
+  affectedLocationName?: string;
+  plausibilityCapReduction: number; // e.g. 15
+  createdAtTurn: number;
+  createdAtTime: string;
+}
+
+export interface CausalCovenantState {
+  covenantsInvoked: number;
+  maxPlausibilityCap: number; // starts at 100, drops by 15 per invocation (e.g. 85, 70)
+  timelineScars: TimelineScar[];
+  activeAnomalies: string[];
+}
+
+// --- PITCH B: INTERPERSONAL FRICTION & ROMANTIC ALLEGIANCES ---
+export interface CompanionRivalryRecord {
+  pairKey: string; // e.g. "evelyn_aria"
+  companion1Name: string;
+  companion2Name: string;
+  frictionScore: number; // 0 (harmony) to 100 (lethal animosity)
+  ideologicalAxis: string; // e.g. "Aristocratic Order vs Underworld Anarchy"
+  lastCrossTalkTurn?: number;
+  activeUltimatumPrompt?: string | null;
+}
+
+export interface CompanionFrictionState {
+  rivalries: Record<string, CompanionRivalryRecord>;
+  activeJealousyEvents: string[];
+  swornPartnerId?: string | null;
+  pendingUltimatum?: {
+    companionName: string;
+    rivalName: string;
+    triggerMilestone: number;
+    prompt: string;
+    choices: [string, string, string, string];
+  } | null;
+}
+
+// --- PITCH C: INTEGRATED INFILTRATION & SECTOR CLASHES ---
+export interface ActiveStoryClashState {
+  isActive: boolean;
+  enemyName: string;
+  enemyHp: number;
+  enemyMaxHp: number;
+  enemyDesc?: string;
+  enemyAttackPower?: number; // e.g. 15
+  clashTurn: number;
+  maxClashTurns?: number; // e.g. 5
+  tacticalObjective: string;
+  status: "ongoing" | "victory" | "retreat" | "intervention";
+  companionAssistingName?: string;
+  log: string[];
 }
 
 export type SystemToastType = 
@@ -82,7 +147,10 @@ export type SystemToastType =
   | "quest_failed" 
   | "system_alert" 
   | "penalty_quest" 
-  | "regression_trigger";
+  | "regression_trigger"
+  | "covenant_severance"
+  | "story_clash"
+  | "companion_friction";
 
 export interface SystemToastNotification {
   id: string;

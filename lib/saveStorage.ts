@@ -1,7 +1,7 @@
 // Robust Save Storage & Image Compression Engine for Astra Chronicles
 // Handles IndexedDB storage (unlimited quota) with localStorage fallback & auto-compression
 
-import { TimelineEcho } from "@/types/story";
+import { TimelineEcho, TimelineScar, CausalCovenantState, CompanionFrictionState, ActiveStoryClashState } from "@/types/story";
 import { DeathRegressionRecord, PenaltyScenarioState } from "@/types/system";
 
 export interface SaveSlotPayload {
@@ -31,6 +31,12 @@ export interface SaveSlotPayload {
   regressionHistory?: DeathRegressionRecord[];
   penaltyScenarioState?: PenaltyScenarioState | null;
   unlockedCompanions?: string[]; // IDs or names of heroines encountered in story
+
+  // System Evolution Fields (Pillars A, B, C)
+  timelineScars?: TimelineScar[];
+  covenantState?: CausalCovenantState;
+  frictionState?: CompanionFrictionState;
+  activeClash?: ActiveStoryClashState | null;
 }
 
 const DB_NAME = "AstraChroniclesSaveDB";

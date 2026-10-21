@@ -15,6 +15,8 @@ import {
   BookOpen,
   RotateCcw,
   Skull,
+  Flame,
+  Zap,
   Search,
   ExternalLink,
   ShieldAlert,
@@ -176,6 +178,12 @@ export function NotificationHistoryModal({
         return <BookOpen className="w-4 h-4 text-purple-400" />;
       case "loot":
         return <Package className="w-4 h-4 text-emerald-400" />;
+      case "covenant_severance":
+        return <Sparkles className="w-4 h-4 text-purple-300 animate-pulse" />;
+      case "story_clash":
+        return <Flame className="w-4 h-4 text-rose-400" />;
+      case "companion_friction":
+        return <Zap className="w-4 h-4 text-amber-400" />;
       default:
         return <Bell className="w-4 h-4 text-zinc-400" />;
     }
@@ -203,6 +211,12 @@ export function NotificationHistoryModal({
       case "skill":
       case "level":
         return "border-amber-500/40 bg-zinc-900/80 hover:border-amber-500/70";
+      case "covenant_severance":
+        return "border-purple-500/60 bg-purple-950/40 hover:border-purple-400 shadow-[0_0_20px_rgba(168,85,247,0.3)]";
+      case "story_clash":
+        return "border-rose-500/60 bg-rose-950/40 hover:border-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]";
+      case "companion_friction":
+        return "border-amber-500/50 bg-amber-950/30 hover:border-amber-400";
       default:
         return "border-white/10 bg-zinc-900/60 hover:border-white/25";
     }

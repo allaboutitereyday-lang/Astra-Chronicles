@@ -28,6 +28,8 @@ import { soundEffects } from "@/lib/audioEngine";
 import { StoryCompanion, StoryContext, StoryStartingNode } from "@/types/story";
 import { saveStory } from "@/lib/storyStorage";
 import { processImageUpload, sanitizeImageUrl, DEFAULT_AVATAR, DEFAULT_BG } from "@/lib/imageUtils";
+import { generateProceduralCompanionAvatarSvg } from "@/lib/proceduralArt";
+import { assembleFullStoryContext } from "@/lib/storyAssembler";
 
 const DEFAULT_COMPANION_PRESETS: Partial<StoryCompanion>[] = [
   {
@@ -57,7 +59,12 @@ const DEFAULT_COMPANION_PRESETS: Partial<StoryCompanion>[] = [
     highCompatibility: ["Rogues", "Assassins", "Information Brokers", "Pragmatists"],
     baseAffection: 12,
     seed: 8421935,
-    baseImageUrl: "/characters/aria/aria_neutral.png",
+    baseImageUrl: generateProceduralCompanionAvatarSvg({
+      name: "Kaelen Vane",
+      role: "Covert Saboteur",
+      gender: "male",
+      seed: 8421935,
+    }),
     visualPrompt: "masterpiece anime portrait, handsome male covert operative, dark wind-swept hair, keen amber eyes, high-collar leather mantle, tactical chest rig, rain-drenched rooftop background",
   },
 ];
@@ -174,8 +181,8 @@ export default function CreateCompanionsPage() {
           visualPrompt: DEFAULT_COMPANION_PRESETS[1].visualPrompt!,
           expressions: {
             neutral: DEFAULT_COMPANION_PRESETS[1].baseImageUrl!,
-            combat_ready: "/characters/aria/aria_combat.png",
-            intrigued: "/characters/aria/aria_intrigued.png",
+            combat_ready: DEFAULT_COMPANION_PRESETS[1].baseImageUrl!,
+            intrigued: DEFAULT_COMPANION_PRESETS[1].baseImageUrl!,
           },
         },
       ]);
@@ -214,12 +221,32 @@ export default function CreateCompanionsPage() {
       isPresent: false,
       encountered: false,
       seed: newSeed,
-      baseImageUrl: "/characters/serena/serena_neutral.png",
+      baseImageUrl: generateProceduralCompanionAvatarSvg({
+        name: `Companion ${companions.length + 1}`,
+        role: "Wanderer",
+        gender: "female",
+        seed: newSeed,
+      }),
       visualPrompt: "masterpiece anime portrait, anime heroine, captivating eyes, detailed fantasy clothing, cinematic lighting",
       expressions: {
-        neutral: "/characters/serena/serena_neutral.png",
-        smug: "/characters/serena/serena_smug.png",
-        combat_ready: "/characters/serena/serena_combat.png",
+        neutral: generateProceduralCompanionAvatarSvg({
+          name: `Companion ${companions.length + 1}`,
+          role: "Wanderer",
+          gender: "female",
+          seed: newSeed,
+        }),
+        smug: generateProceduralCompanionAvatarSvg({
+          name: `Companion ${companions.length + 1}`,
+          role: "Wanderer",
+          gender: "female",
+          seed: newSeed,
+        }),
+        combat_ready: generateProceduralCompanionAvatarSvg({
+          name: `Companion ${companions.length + 1}`,
+          role: "Wanderer",
+          gender: "female",
+          seed: newSeed,
+        }),
       },
     };
 
@@ -322,84 +349,7 @@ export default function CreateCompanionsPage() {
     setIsAssembling(true);
     soundEffects.playIntroBell();
 
-    const rawSlug = worldDraft.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-    const storySlug =
-      rawSlug === "astra-chronicles" || rawSlug === "neon-eclipse"
-        ? `${rawSlug}-${Date.now().toString().slice(-4)}`
-        : rawSlug;
-
-    // Generate Starting Prologue Nodes for each companion
-    const startingNodes: StoryStartingNode[] = companions.map((comp, idx) => {
-      const loc = worldDraft.locations[idx % worldDraft.locations.length] || {
-        name: "Starting Sanctuary",
-        description: "An atmospheric entry point.",
-      };
-
-      return {
-        id: `prologue_${comp.id || idx}`,
-        speaker: comp.name,
-        title: `${comp.name}: ${loc.name}`,
-        location: loc.name,
-        sceneSetup: `The atmosphere of ${loc.name} hangs thick in the air. Amidst the shifting currents, ${comp.name} (${comp.title}) emerges from the perimeter, evaluating your sudden arrival.`,
-        dialogue: `You walk unanchored through ${loc.name}. State your purpose before our fates become tangled.`,
-        expressionKey: "neutral",
-        initialAffection: comp.baseAffection || 15,
-        bgImage: loc.bgImage || worldDraft.coverImage,
-        choices: [
-          "[Composure] Step forward into the light, meet their gaze evenly, and offer a contract of alliance.",
-          "[Observation] Detail an acute tactical anomaly you observed in their perimeter defense.",
-          "[Subterfuge] Produce a forged credential claiming authorization from local authorities.",
-          "[Defiance] Keep a hand on your weapon and declare that you owe an explanation to no one.",
-        ],
-      };
-    });
-
-    const fullStory: StoryContext = {
-      id: storySlug || `story_${Date.now()}`,
-      title: worldDraft.title,
-      tagline: worldDraft.tagline,
-      description: worldDraft.loreSummary,
-      coverImage: worldDraft.coverImage,
-      genre: worldDraft.genre,
-      themes: [worldDraft.genre.split("/")[0].trim(), "Dynamic Companions", "LitRPG System"],
-      narrationStyle: worldDraft.narrationStyle,
-      createdAt: new Date().toISOString(),
-      author: "Realm Creator",
-      isPreset: false,
-      worldContext: {
-        settingName: worldDraft.settingName,
-        loreSummary: worldDraft.loreSummary,
-        locations: worldDraft.locations,
-      },
-      rpgRules: {
-        systemName: worldDraft.systemName || "LitRPG System Administrator",
-        currencyName: worldDraft.currencyName || "Gold",
-        causalAnchorName: worldDraft.causalAnchorName || "Causal Plausibility",
-        defaultPlausibility: 80,
-        statDefinitions: {
-          str: "Strength / Power Output",
-          dex: "Dexterity / Reaction Speed",
-          int: "Intelligence / Arcana Analysis",
-        },
-        startingLevel: 1,
-        baseStats: {
-          hp: 100,
-          maxHp: 100,
-          mp: 60,
-          maxMp: 60,
-          exp: 0,
-          maxExp: 100,
-          str: 10,
-          dex: 10,
-          int: 10,
-        },
-      },
-      startingNodes,
-      companions,
-    };
+    const fullStory = assembleFullStoryContext(worldDraft, companions);
 
     // Save story to persistent storage
     await saveStory(fullStory);

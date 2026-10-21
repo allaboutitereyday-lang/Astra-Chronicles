@@ -52,63 +52,11 @@ import {
   getRandomSectorModifier,
   getDiscoveredCompanions,
 } from "@/lib/progressionMechanics";
-
-interface SectorDefinition {
-  sectorNumber: number;
-  title: string;
-  codename: string;
-  difficulty: "D-Rank" | "C-Rank" | "B-Rank" | "A-Rank" | "S-Rank";
-  enemyName: string;
-  enemyHp: number;
-  enemyMaxHp: number;
-  enemyDesc: string;
-  causalModifier: TrialModifier;
-  enemyImageUrl?: string;
-}
-
-// Guaranteed sector completion loot drops
-const SECTOR_LOOT_TABLE: InventoryItem[] = [
-  {
-    id: "trial_loot_s1",
-    name: "Causal Fracture Shard",
-    type: "material",
-    rarity: "uncommon",
-    description: "A crystalline spacetime fragment salvaged from Fracture-Alpha. Emits faint temporal resonance.",
-    effect: "+5% Arcane Resonance • Usable in artifact infusion",
-  },
-  {
-    id: "trial_loot_s2",
-    name: "Obsidian Void Core",
-    type: "relic",
-    rarity: "rare",
-    description: "Extracted from the Obsidian Void Predator. Houses stabilized gravitational void matter.",
-    effect: "+15 Max MP • Voidstrider & Singularity Synergy Catalyst",
-  },
-  {
-    id: "trial_loot_s3",
-    name: "Chrono-Stasis Elixir",
-    type: "consumable",
-    rarity: "rare",
-    description: "A liquid suspension of halted seconds created by the Time-Lost Archon.",
-    effect: "Instantly restores 50 HP and 40 MP in high-stakes combat",
-  },
-  {
-    id: "trial_loot_s4",
-    name: "Titan Calamity Plating",
-    type: "armor",
-    rarity: "relic",
-    description: "Heavy plate alloy scavenged from the Calamity Automaton Titan.",
-    effect: "+25 Max HP • Reduces incoming burst damage by 15%",
-  },
-  {
-    id: "trial_loot_s5",
-    name: "Administrator's Singularity Seal",
-    type: "relic",
-    rarity: "relic",
-    description: "An authentic authority glyph bestowed by the Causal Arbitrator for conquering all 5 trial sectors.",
-    effect: "+35 Max HP • +25 Max MP • Singularity Sovereign Synergy Capstone",
-  },
-];
+import {
+  generateStorySectors,
+  generateStoryLootTable,
+  SectorDefinition,
+} from "@/lib/proceduralTrials";
 
 export interface CombatTelemetry {
   damageDealt?: number;
@@ -269,66 +217,24 @@ function LitRPGTrialsContent() {
     return getSectorModifiersForRun(5, trialRunSeed);
   }, [trialRunSeed]);
 
-  // 5 Consecutive Roguelite Sectors with Predefined Modifiers
+  const storyContext = useMemo(() => {
+    return {
+      id: activeSlot0?.storyId,
+      title: activeSlot0?.storyTitle,
+      genre: activeSlot0?.systemState?.genre || activeSlot0?.gameState?.genre,
+      worldContext: activeSlot0?.systemState?.worldContext,
+    };
+  }, [activeSlot0]);
+
+  // 5 Story-Adaptive Consecutive Roguelite Sectors with Procedural Art & Modifiers
   const sectors: SectorDefinition[] = useMemo(
-    () => [
-      {
-        sectorNumber: 1,
-        title: "Sector 01: Causal Fracture Outpost",
-        codename: "FRACTURE-ALPHA",
-        difficulty: "D-Rank",
-        enemyName: "Planar Glitch Stalker",
-        enemyHp: 60,
-        enemyMaxHp: 60,
-        enemyDesc: "A twitching arachnid construct composed of fractured spacetime shards.",
-        causalModifier: customSectorModifiers[0] || runModifiers[0] || PREDEFINED_TRIAL_MODIFIERS[0],
-      },
-      {
-        sectorNumber: 2,
-        title: "Sector 02: Void Rift Incursion",
-        codename: "RIFT-BETA",
-        difficulty: "C-Rank",
-        enemyName: "Obsidian Void Predator",
-        enemyHp: 95,
-        enemyMaxHp: 95,
-        enemyDesc: "A predatory quad-ped beast phasing between the physical realm and the void vacuum.",
-        causalModifier: customSectorModifiers[1] || runModifiers[1] || PREDEFINED_TRIAL_MODIFIERS[1],
-      },
-      {
-        sectorNumber: 3,
-        title: "Sector 03: Chrono-Stasis Crucible",
-        codename: "CHRONO-GAMMA",
-        difficulty: "B-Rank",
-        enemyName: "Time-Lost Archon Sentinel",
-        enemyHp: 140,
-        enemyMaxHp: 140,
-        enemyDesc: "Ancient gilded guardian animated by compressed timeline conduits.",
-        causalModifier: customSectorModifiers[2] || runModifiers[2] || PREDEFINED_TRIAL_MODIFIERS[2],
-      },
-      {
-        sectorNumber: 4,
-        title: "Sector 04: Abyssal Foundry Chamber",
-        codename: "ABYSS-DELTA",
-        difficulty: "A-Rank",
-        enemyName: "Calamity Automaton Titan",
-        enemyHp: 200,
-        enemyMaxHp: 200,
-        enemyDesc: "Colossal imperial war automaton forged from corrupted celestial iron.",
-        causalModifier: customSectorModifiers[3] || runModifiers[3] || PREDEFINED_TRIAL_MODIFIERS[3],
-      },
-      {
-        sectorNumber: 5,
-        title: "Sector 05: Apex Administrator Spire",
-        codename: "SINGULARITY-OMEGA",
-        difficulty: "S-Rank",
-        enemyName: "The Causal Arbitrator (Avatar)",
-        enemyHp: 280,
-        enemyMaxHp: 280,
-        enemyDesc: "The manifestation of the Multiverse Administrator evaluating your timeline coherence.",
-        causalModifier: customSectorModifiers[4] || runModifiers[4] || PREDEFINED_TRIAL_MODIFIERS[7],
-      },
-    ],
-    [runModifiers, customSectorModifiers]
+    () => generateStorySectors(storyContext, runModifiers, customSectorModifiers, typeof trialRunSeed === "number" ? trialRunSeed : 42),
+    [storyContext, runModifiers, customSectorModifiers, trialRunSeed]
+  );
+
+  const sectorLootTable = useMemo(
+    () => generateStoryLootTable(storyContext),
+    [storyContext]
   );
 
   const activeSector = sectors[currentSectorIdx] || sectors[0];
@@ -821,7 +727,7 @@ function LitRPGTrialsContent() {
         const sectorExp = 60 + (currentSectorIdx + 1) * 40;
         setTrialExpGained((prev) => prev + sectorExp);
 
-        const lootDrop = SECTOR_LOOT_TABLE[currentSectorIdx];
+        const lootDrop = sectorLootTable[currentSectorIdx];
         if (lootDrop) {
           setTrialLootEarned((prev) => {
             if (prev.some((item) => item.id === lootDrop.id)) return prev;
@@ -1242,11 +1148,11 @@ function LitRPGTrialsContent() {
                       </div>
                     </div>
                   </div>
-                ) : monsterImages[activeSector.enemyName] ? (
-                  /* Rendered Monster Artwork */
+                ) : (monsterImages[activeSector.enemyName] || activeSector.enemyImageUrl) ? (
+                  /* Rendered Monster Artwork (AI or Procedural Vector Art) */
                   <>
                     <img
-                      src={monsterImages[activeSector.enemyName]}
+                      src={monsterImages[activeSector.enemyName] || activeSector.enemyImageUrl}
                       alt={activeSector.enemyName}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
@@ -1255,9 +1161,19 @@ function LitRPGTrialsContent() {
                         <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-rose-400">
                           {activeSector.codename} Anomaly
                         </span>
-                        <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-zinc-300 backdrop-blur-sm">
-                          ✦ {activeSector.causalModifier.name}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={handleGenerateMonsterVisuals}
+                            disabled={isGeneratingMonsterImage}
+                            title="Re-synthesize AI Anomaly Artwork"
+                            className="px-2 py-0.5 rounded-full bg-black/60 hover:bg-rose-950/80 border border-white/20 hover:border-rose-500/40 text-zinc-300 hover:text-rose-300 text-[9px] font-mono flex items-center gap-1 transition-all cursor-pointer backdrop-blur-sm"
+                          >
+                            <Sparkles className="w-2.5 h-2.5 text-rose-400" /> AI Synth
+                          </button>
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-black/60 border border-white/20 text-zinc-300 backdrop-blur-sm">
+                            ✦ {activeSector.causalModifier.name}
+                          </span>
+                        </div>
                       </div>
                       <h3 className="text-base sm:text-lg font-bold text-white font-serif tracking-wide drop-shadow-md">
                         {activeSector.enemyName}

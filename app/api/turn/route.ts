@@ -4,6 +4,8 @@ import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relic
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
 import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
+import { generateCrossTalkBanterDirective, evaluateInterpersonalFriction } from "@/lib/companionFriction";
+import { executeCausalCovenant } from "@/lib/causalCovenant";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -40,6 +42,12 @@ export async function POST(req: Request) {
       giftItemContext = null, // { itemName: string, itemDescription: string, itemRarity: string, recipientCompanionName: string, reactionPrompt: string }
       targetEnvironment = "cloud",
       modelId,
+      // System Evolution Fields (Pillars A, B, C)
+      timelineScars = [],
+      covenantAction = null,
+      activeClash = null,
+      frictionState = null,
+      currentTurnNumber = 1,
     } = body;
 
     // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
@@ -228,16 +236,35 @@ The protagonist (${playerProfile.name}) is presenting a gift to ${giftItemContex
 ${giftItemContext.recipientCompanionName} MUST react directly to receiving this specific gift in dialogue, acknowledging its value, expressing genuine emotional surprise, and adjusting her demeanor.`
       : "";
 
-    // Multiple Companion Interpersonal Dynamics Directive
+    // Multiple Companion Interpersonal Dynamics & Cross-Talk Banter (Pitch B)
     const multiCompanionDirective = physicallyPresentCompanions.length > 1
-      ? `--- COMPANION INTERPERSONAL DYNAMICS & CAMP BANTER ---
-There are MULTIPLE companions present in this scene (${presentHeroineNames.join(", ")}).
-1. COMPANIONS SPEAK TO AND CHALLENGE EACH OTHER:
-   - Companions do NOT merely speak to the protagonist; they observe each other, trade banter, offer contrasting advice, and argue conflicting viewpoints.
-   - Highlight personality clashes (e.g. Aria's cynical stealth tradecraft vs Serena's unflinching formal duty vs Morgana's dark planar curiosity).
-2. SUBTLE RIVALRY & FAVORITISM:
-   - If ${playerProfile.name} consistently favors, addresses, or shows preference to one heroine over another, the other heroines notice.
-   - Show natural interpersonal tension: skeptical glances, sarcastic commentary, subtle defensiveness, or competitive posturing.`
+      ? generateCrossTalkBanterDirective(physicallyPresentCompanions, frictionState, sanitizedContextSpeaker)
+      : "";
+
+    // Permanent Timeline Scars Directive (Pitch A)
+    const timelineScarDirective = Array.isArray(timelineScars) && timelineScars.length > 0
+      ? `--- PERMANENT TIMELINE SCARS (REALITY DISTORTIONS) ---
+The world bears permanent scars from prior reality severance covenants:
+${timelineScars.map((s: any) => `* [${s.scarType?.toUpperCase() || "SCAR"}] "${s.title}": ${s.description}`).join("\n")}
+Weave subtle, haunting environmental details and character reactions to these scars into the narrative.`
+      : "";
+
+    // Active Story Clash Directive (Pitch C)
+    const storyClashDirective = activeClash?.isActive
+      ? `--- ACTIVE STORY CLASH COMBAT DIRECTIVE ---
+The party is engaged in active tactical combat against ${activeClash.enemyName} (Threat Level: S-Rank Anomaly, HP: ${activeClash.enemyHp}/${activeClash.enemyMaxHp}).
+Objective: ${activeClash.tacticalObjective}
+- Turn ${activeClash.clashTurn}: Depict vivid, cinematic martial choreography. Describe the kinetic weight of weapon clashes, spell detonations, armor sparks, and tactical spatial movement.
+- If the player's action dealt heavy damage, describe the enemy visibly staggering or sustaining armor fracture.`
+      : "";
+
+    // Causal Covenant Reality Severance Directive (Pitch A)
+    const isCovenantInvoked = Boolean(covenantAction) || action.toLowerCase().includes("covenant: reality severance");
+    const covenantExecutionDirective = isCovenantInvoked
+      ? `--- CRITICAL EVENT: CAUSAL COVENANT REALITY SEVERANCE ---
+The protagonist has invoked the forbidden "Causal Covenant: Reality Severance".
+- An impossible cosmic miracle occurs: the fatal decree or lethal threat is utterly annihilated by shattering local spacetime.
+- Describe the horrifying majesty of the multiverse tearing open, violet fracture rays disintegrating the impossible odds, followed by the permanent toll settling on the protagonist's anchor.`
       : "";
 
     // Timeline Echoes & Regression Directive
@@ -297,6 +324,12 @@ ${multiCompanionDirective}
 ${giftingDirective}
 
 ${timelineEchoDirective}
+
+${timelineScarDirective}
+
+${storyClashDirective}
+
+${covenantExecutionDirective}
 
 --- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
 ${partyMembers.map((c: any) => {
@@ -667,6 +700,34 @@ Respond strictly in valid JSON matching this schema:
           if (!responseData.speaker || responseData.speaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
             responseData.speaker = "Narrator";
           }
+        }
+
+        // Interpersonal Friction & Rivalry Tracking (Pitch B)
+        if (responseData.state_updates?.affected_companion && (responseData.state_updates?.affection_delta || 0) > 0) {
+          const frictionResult = evaluateInterpersonalFriction(
+            partyMembers,
+            responseData.state_updates.affected_companion,
+            responseData.state_updates.affection_delta,
+            frictionState
+          );
+          responseData.state_updates.friction_state = frictionResult.updatedState;
+          if (frictionResult.rivalryAlert) {
+            responseData.state_updates.rivalry_alert = frictionResult.rivalryAlert;
+          }
+          if (frictionResult.triggeredUltimatum) {
+            responseData.state_updates.triggered_ultimatum = frictionResult.triggeredUltimatum;
+          }
+        }
+
+        // Causal Covenant Reality Severance Execution (Pitch A)
+        if (isCovenantInvoked && systemState) {
+          const covenantResult = executeCausalCovenant(systemState, currentTurnNumber, {
+            companionName: sanitizedContextSpeaker,
+            locationName: gameState.location,
+            genre: storyContext?.genre,
+          });
+          if (!responseData.state_updates) responseData.state_updates = {};
+          responseData.state_updates.covenant_update = covenantResult;
         }
 
         if (visualDescription) {

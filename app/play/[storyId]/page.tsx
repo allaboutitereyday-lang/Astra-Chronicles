@@ -56,7 +56,22 @@ import {
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { SystemState, SystemToastNotification, SystemQuest, PlausibilityTier, PenaltyScenarioState, DeathRegressionRecord } from "@/types/system";
+import { 
+  SystemState, 
+  SystemToastNotification, 
+  SystemQuest, 
+  PlausibilityTier, 
+  PenaltyScenarioState, 
+  DeathRegressionRecord,
+  TimelineScar,
+  CausalCovenantState,
+  CompanionFrictionState,
+  CompanionRivalryRecord,
+  ActiveStoryClashState
+} from "@/types/system";
+import { checkCovenantAvailability, executeCausalCovenant } from "@/lib/causalCovenant";
+import { evaluateInterpersonalFriction, resolveCampUltimatum, RIVALRY_PAIRS_CATALOG } from "@/lib/companionFriction";
+import { initiateStoryClash, getStoryClashChoices, resolveClashTurn, FormattedClashChoice } from "@/lib/storyClashEngine";
 import { SystemNotificationToast } from "@/components/SystemNotificationToast";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
 import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
@@ -206,6 +221,10 @@ interface SaveSlotData {
   selectedPrologueId?: string;
   narrationStyle?: string;
   unlockedCompanions?: string[];
+  timelineScars?: TimelineScar[];
+  covenantState?: CausalCovenantState;
+  frictionState?: CompanionFrictionState;
+  activeClash?: ActiveStoryClashState | null;
 }
 
 // ------------------------------------------------------------------
@@ -1288,6 +1307,20 @@ export default function VisualNovelGame() {
   const [showGiftingModal, setShowGiftingModal] = useState(false);
   const [selectedGiftRecipient, setSelectedGiftRecipient] = useState<string>("");
 
+  // Systems Evolution State (Pitches A, B, C)
+  const [timelineScars, setTimelineScars] = useState<TimelineScar[]>([]);
+  const [showCovenantModal, setShowCovenantModal] = useState<boolean>(false);
+  const [showScarsModal, setShowScarsModal] = useState<boolean>(false);
+  const [covenantIntentText, setCovenantIntentText] = useState<string>("");
+  const [isSeveringCovenant, setIsSeveringCovenant] = useState<boolean>(false);
+
+  const [frictionState, setFrictionState] = useState<CompanionFrictionState | null>(null);
+  const [showCampUltimatumModal, setShowCampUltimatumModal] = useState<boolean>(false);
+  const [activeUltimatumRivalry, setActiveUltimatumRivalry] = useState<CompanionRivalryRecord | null>(null);
+
+  const [activeClash, setActiveClash] = useState<ActiveStoryClashState | null>(null);
+  const [isExecutingClashAction, setIsExecutingClashAction] = useState<boolean>(false);
+
   // Nano Banana 2.1 Scene Generation & Item Inspection State
   const [showSceneModal, setShowSceneModal] = useState(false);
   const [isGeneratingScene, setIsGeneratingScene] = useState(false);
@@ -1306,6 +1339,9 @@ export default function VisualNovelGame() {
         if (showMap) { setShowMap(false); return; }
         if (showSaveModal) { setShowSaveModal(false); return; }
         if (showSystemModal) { setShowSystemModal(false); return; }
+        if (showCovenantModal) { setShowCovenantModal(false); return; }
+        if (showCampUltimatumModal) { setShowCampUltimatumModal(false); return; }
+        if (showScarsModal) { setShowScarsModal(false); return; }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -1321,6 +1357,9 @@ export default function VisualNovelGame() {
     showMap,
     showSaveModal,
     showSystemModal,
+    showCovenantModal,
+    showCampUltimatumModal,
+    showScarsModal,
   ]);
   const [isCachedScene, setIsCachedScene] = useState(false);
   const [generatedScene, setGeneratedScene] = useState<{
@@ -2015,6 +2054,47 @@ export default function VisualNovelGame() {
         setUserAuth(data._userStats);
       }
 
+      // Systems Evolution State Handling (Pillars A, B, C)
+      if (data.state_updates?.covenant_update) {
+        const covUpdate = data.state_updates.covenant_update;
+        if (covUpdate.scar) {
+          setTimelineScars((prev) => [covUpdate.scar, ...prev]);
+        }
+        if (covUpdate.systemToast) {
+          setSystemToast(covUpdate.systemToast);
+          pushNotification({
+            id: covUpdate.systemToast.id || `covenant_${Date.now()}`,
+            type: "covenant_severance",
+            title: covUpdate.systemToast.title,
+            subtitle: covUpdate.systemToast.subtitle,
+            difficulty: covUpdate.systemToast.difficulty,
+          });
+        }
+        soundEffects.playSystemAlert();
+      }
+
+      if (data.state_updates?.friction_state) {
+        setFrictionState(data.state_updates.friction_state);
+      }
+      if (data.state_updates?.rivalry_alert) {
+        soundEffects.playSystemAlert();
+        pushNotification({
+          id: `rivalry_${Date.now()}`,
+          type: "companion_friction",
+          title: data.state_updates.rivalry_alert.title || "INTERPERSONAL FRICTION ESCALATION",
+          subtitle: data.state_updates.rivalry_alert.reason,
+        });
+      }
+      if (data.state_updates?.triggered_ultimatum) {
+        soundEffects.playSystemAlert();
+        setActiveUltimatumRivalry(data.state_updates.triggered_ultimatum);
+        setShowCampUltimatumModal(true);
+      }
+
+      if (data.state_updates?.story_clash) {
+        setActiveClash(data.state_updates.story_clash);
+      }
+
       const activeSpeaker = data.speaker || chosen.speaker;
       const initialAffection = typeof data.initial_affection === "number" ? data.initial_affection : 15;
       const activeExpression = data.expression_key || chosen.expressionKey || "neutral";
@@ -2294,6 +2374,10 @@ export default function VisualNovelGame() {
       selectedPrologueId: prologues[selectedPrologue]?.id,
       narrationStyle: narrationStyle || playerRef.current?.narrationStyle || "Grimdark & Atmospheric",
       unlockedCompanions: (party || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
+      timelineScars,
+      covenantState: systemState.covenantState,
+      frictionState: frictionState || undefined,
+      activeClash: activeClash || null,
     };
 
     try {
@@ -2315,6 +2399,9 @@ export default function VisualNovelGame() {
     choices?: string[];
     visitedNodes?: VisitedStoryNode[];
     selectedPrologueId?: string;
+    timelineScars?: TimelineScar[];
+    frictionState?: CompanionFrictionState | null;
+    activeClash?: ActiveStoryClashState | null;
   }) => {
     if (!autoSaveEnabled) return;
 
@@ -2348,6 +2435,10 @@ export default function VisualNovelGame() {
         selectedPrologueId: finalPrologueId,
         narrationStyle: narrationStyle || finalPlayer?.narrationStyle || "Grimdark & Atmospheric",
         unlockedCompanions: (finalParty || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
+        timelineScars: override?.timelineScars !== undefined ? override.timelineScars : timelineScars,
+        covenantState: (override?.systemState || finalSystemState)?.covenantState,
+        frictionState: override?.frictionState !== undefined ? (override.frictionState || undefined) : (frictionState || undefined),
+        activeClash: override?.activeClash !== undefined ? override.activeClash : (activeClash || null),
       };
 
       await saveGameSlot(0, payload);
@@ -2392,6 +2483,10 @@ export default function VisualNovelGame() {
       selectedPrologueId: prologues[selectedPrologue]?.id,
       narrationStyle: narrationStyle || playerRef.current?.narrationStyle || "Grimdark & Atmospheric",
       unlockedCompanions: (party || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
+      timelineScars,
+      covenantState: systemState.covenantState,
+      frictionState: frictionState || undefined,
+      activeClash: activeClash || null,
     };
 
     try {
@@ -2495,6 +2590,22 @@ export default function VisualNovelGame() {
     setChatLog(data.chatLog);
     if (data.systemState) {
       setSystemState(data.systemState);
+    }
+
+    if (data.timelineScars && Array.isArray(data.timelineScars)) {
+      setTimelineScars(data.timelineScars);
+    } else {
+      setTimelineScars([]);
+    }
+    if (data.frictionState) {
+      setFrictionState(data.frictionState);
+    } else {
+      setFrictionState(null);
+    }
+    if (data.activeClash) {
+      setActiveClash(data.activeClash);
+    } else {
+      setActiveClash(null);
     }
 
     if (data.visitedNodes && Array.isArray(data.visitedNodes) && data.visitedNodes.length > 0) {
@@ -2703,7 +2814,12 @@ export default function VisualNovelGame() {
     await sendAction(lastUserMsg.text, true);
   };
 
-  const sendAction = async (rawAction: string, isCustom: boolean = false, giftContext: any = null) => {
+  const sendAction = async (
+    rawAction: string, 
+    isCustom: boolean = false, 
+    giftContext: any = null,
+    covenantContext: { intent: string; targetPlausibility?: number } | null = null
+  ) => {
     if (!rawAction.trim() || isLoading) return;
 
     if (!accessKey) {
@@ -2793,6 +2909,12 @@ export default function VisualNovelGame() {
             speaker: m.speakerName,
             text: m.text,
           })),
+          // Systems Evolution Fields (Pillars A, B, C)
+          covenantAction: covenantContext || (formattedPayload.toLowerCase().includes("covenant: reality severance") ? { intent: formattedPayload } : null),
+          activeClash: activeClash || null,
+          frictionState: frictionState || null,
+          timelineScars: timelineScars || [],
+          currentTurnNumber: chatLog.length + 1,
         }),
       });
 
@@ -3373,6 +3495,24 @@ export default function VisualNovelGame() {
           if (typeof sysUpdates.plausibility_delta === "number" && !isNaN(sysUpdates.plausibility_delta)) {
             nextPlausibility = Math.max(0, Math.min(100, prevSys.plausibility + sysUpdates.plausibility_delta));
           }
+
+          let nextCovenantState: CausalCovenantState = prevSys.covenantState || {
+            covenantsInvoked: 0,
+            maxPlausibilityCap: 100,
+            timelineScars: [],
+            activeAnomalies: [],
+          };
+          if (data.state_updates?.covenant_update?.newCap) {
+            nextCovenantState = {
+              covenantsInvoked: (nextCovenantState.covenantsInvoked || 0) + 1,
+              maxPlausibilityCap: data.state_updates.covenant_update.newCap,
+              timelineScars: data.state_updates.covenant_update.scar
+                ? [data.state_updates.covenant_update.scar, ...(nextCovenantState.timelineScars || [])]
+                : (nextCovenantState.timelineScars || []),
+              activeAnomalies: nextCovenantState.activeAnomalies || [],
+            };
+            nextPlausibility = Math.min(nextCovenantState.maxPlausibilityCap, 85);
+          }
           const nextTier: PlausibilityTier =
             nextPlausibility >= 70
               ? "Stable"
@@ -3457,6 +3597,7 @@ export default function VisualNovelGame() {
             completedQuests: updatedCompleted,
             systemDirectives: updatedDirectives.slice(0, 30),
             penaltyScenario: activePenalty,
+            covenantState: nextCovenantState,
           };
         });
       }
@@ -3629,6 +3770,147 @@ export default function VisualNovelGame() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Systems Evolution Handlers (Pitches A, B, C)
+  const covenantCheck = useMemo(() => {
+    return checkCovenantAvailability(systemState, gameState, player.stats.hp, player.stats.maxHp);
+  }, [systemState, gameState, player.stats.hp, player.stats.maxHp]);
+
+  const handleConfirmCovenant = async (intent: string) => {
+    if (!intent.trim() || isSeveringCovenant) return;
+    setIsSeveringCovenant(true);
+    soundEffects.playSystemAlert();
+    setShowCovenantModal(false);
+
+    const formattedCovenantChoice = `[COVENANT: REALITY SEVERANCE]: ${intent.trim()}`;
+    await sendAction(formattedCovenantChoice, false, null, {
+      intent: intent.trim(),
+      targetPlausibility: 85,
+    });
+    setIsSeveringCovenant(false);
+  };
+
+  const handleExecuteClashAction = async (actionType: "strike" | "burst" | "synergy" | "defense") => {
+    if (!activeClash || !activeClash.isActive || isLoading || isExecutingClashAction) return;
+
+    setIsExecutingClashAction(true);
+    soundEffects.playClick();
+
+    const assistingComp = party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)) || null;
+
+    const result = resolveClashTurn(
+      activeClash,
+      actionType,
+      player.role || "Voidstrider",
+      assistingComp,
+      player.stats
+    );
+
+    const hpAfterHeal = Math.min(player.stats.maxHp, player.stats.hp + result.hpHealed);
+    const hpFinal = Math.max(0, hpAfterHeal - result.enemyDamageTaken);
+    const mpCost = result.mpCost;
+    const mpGain = actionType === "strike" ? 5 : actionType === "defense" ? 15 : 0;
+    const mpFinal = Math.max(0, Math.min(player.stats.maxMp, player.stats.mp - mpCost + mpGain));
+
+    const updatedPlayerState: PlayerProfile = {
+      ...playerRef.current,
+      stats: {
+        ...playerRef.current.stats,
+        hp: hpFinal,
+        mp: mpFinal,
+      },
+    };
+    playerRef.current = updatedPlayerState;
+    setPlayer(updatedPlayerState);
+    setActiveClash(result.updatedClashState);
+
+    if (result.isVictory) {
+      soundEffects.playQuestComplete();
+      pushNotification({
+        id: `clash_win_${Date.now()}`,
+        type: "story_clash",
+        title: "SECTOR CLASH VICTORY",
+        subtitle: `${activeClash.enemyName} neutralized! Sector secured.`,
+        difficulty: "S",
+      });
+    } else {
+      soundEffects.playFavorSound(false);
+      pushNotification({
+        id: `clash_hit_${Date.now()}`,
+        type: "story_clash",
+        title: actionType.toUpperCase() + " RESOLVED",
+        subtitle: `Dealt ${result.damageDealt} DMG. ${result.enemyDamageTaken > 0 ? `Took ${result.enemyDamageTaken} DMG counter.` : ''}`,
+      });
+    }
+
+    setIsExecutingClashAction(false);
+    await sendAction(result.narrativePromptAction, false);
+  };
+
+  const handleInitiateSectorClash = (enemyName: string = "Sector Anomaly Golem", enemyHp: number = 75) => {
+    const assistingComp = party.find((c) => c.isPresent)?.name;
+    const clash = initiateStoryClash({
+      enemyName,
+      enemyHp,
+      tacticalObjective: `Neutralize the ${enemyName} before causal perimeter breaches.`,
+      companionAssistingName: assistingComp,
+    });
+    setActiveClash(clash);
+    soundEffects.playSystemAlert();
+    pushNotification({
+      id: `clash_start_${Date.now()}`,
+      type: "story_clash",
+      title: "TACTICAL CLASH ENGAGED",
+      subtitle: `${enemyName} (HP: ${enemyHp}) detected within combat radius. Class Arsenal primed.`,
+      difficulty: "A",
+    });
+  };
+
+  const handleResolveCampUltimatum = async (choiceKey: "reconcile" | "comp1" | "comp2" | "command") => {
+    if (!activeUltimatumRivalry || !frictionState) return;
+
+    let choiceText = "";
+    if (choiceKey === "reconcile") {
+      choiceText = `[Reconcile/Triad]: Challenge both ${activeUltimatumRivalry.companion1Name} and ${activeUltimatumRivalry.companion2Name} to rise above their past and unite their strengths into an unbreakable triad bond.`;
+    } else if (choiceKey === "comp1") {
+      choiceText = `[Affirm/${activeUltimatumRivalry.companion1Name}]: Affirm ${activeUltimatumRivalry.companion1Name}'s core philosophy and declare your unwavering loyalty to her side.`;
+    } else if (choiceKey === "comp2") {
+      choiceText = `[Affirm/${activeUltimatumRivalry.companion2Name}]: Affirm ${activeUltimatumRivalry.companion2Name}'s convictions and declare your unwavering loyalty to her side.`;
+    } else {
+      choiceText = `[Command/Stern]: Reject both emotional ultimatums, demanding absolute tactical discipline under your command.`;
+    }
+
+    const resolution = resolveCampUltimatum(choiceText, frictionState);
+
+    setParty((prevParty) =>
+      prevParty.map((c) => {
+        if (resolution.chosenAllegiance === "reconciled") {
+          if (c.name.includes(activeUltimatumRivalry.companion1Name) || c.name.includes(activeUltimatumRivalry.companion2Name)) {
+            return { ...c, affection: Math.min(100, c.affection + 6) };
+          }
+        } else if (resolution.chosenAllegiance === "comp1" && c.name.includes(activeUltimatumRivalry.companion1Name)) {
+          return { ...c, affection: Math.min(100, c.affection + 12) };
+        } else if (resolution.chosenAllegiance === "comp2" && c.name.includes(activeUltimatumRivalry.companion2Name)) {
+          return { ...c, affection: Math.min(100, c.affection + 12) };
+        } else if (resolution.chosenAllegiance === "neutral") {
+          return { ...c, affection: Math.min(100, c.affection + 2) };
+        }
+        return c;
+      })
+    );
+
+    setShowCampUltimatumModal(false);
+    setActiveUltimatumRivalry(null);
+
+    pushNotification({
+      id: `ultimatum_res_${Date.now()}`,
+      type: "companion_friction",
+      title: "CAMP ULTIMATUM RESOLVED",
+      subtitle: resolution.narrativeResolution,
+    });
+
+    await sendAction(choiceText, false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -5303,6 +5585,22 @@ export default function VisualNovelGame() {
               <span className="hidden xl:inline text-[10px] font-mono">Share</span>
             </button>
 
+            {/* Timeline Scars Inspector (Pitch A) */}
+            {timelineScars.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowScarsModal(true);
+                }}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse"
+                title="View Timeline Scars incurred from Causal Covenants"
+              >
+                <Zap className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden xl:inline text-[10px] font-mono font-bold">{timelineScars.length} Scars</span>
+              </button>
+            )}
+
             {/* Illustrate Scene (Nano Banana 2.1) */}
             <button
               onClick={() => handleGenerateSceneCG(false)}
@@ -5832,7 +6130,88 @@ export default function VisualNovelGame() {
           </div>
         </div>
 
-        {choices.length > 0 && !isLoading && (
+        {/* Pitch C: Integrated Sector Clash Tactical Combat Dock */}
+        {activeClash && activeClash.isActive && (
+          <div className="pointer-events-auto bg-gradient-to-b from-zinc-900/95 via-black/90 to-zinc-950/95 border border-red-500/40 rounded-2xl p-3 sm:p-4 backdrop-blur-xl shadow-[0_0_30px_rgba(239,68,68,0.2)] mb-2 select-none">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-500/20 pb-2 mb-2">
+              <div className="flex items-center gap-2">
+                <Swords className="w-4 h-4 text-red-400 animate-pulse" />
+                <span className="font-bold text-xs sm:text-sm text-red-200 tracking-wide">{activeClash.enemyName}</span>
+                <span className="text-[10px] font-mono text-zinc-400">Turn {activeClash.clashTurn} / {activeClash.maxClashTurns}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-red-300 font-bold">{activeClash.enemyHp} / {activeClash.enemyMaxHp} HP</span>
+                {activeClash.companionAssistingName && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/30 text-rose-300">
+                    Synergy: {activeClash.companionAssistingName}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="w-full bg-zinc-900/80 rounded-full h-2 overflow-hidden border border-red-950 mb-2.5">
+              <div
+                className="bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 h-full transition-all duration-300"
+                style={{ width: `${Math.max(0, Math.min(100, (activeClash.enemyHp / activeClash.enemyMaxHp) * 100))}%` }}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2">
+              {getStoryClashChoices(
+                player.role || "Voidstrider",
+                party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)),
+                player.stats.mp
+              ).map((clashChoice, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  disabled={isLoading || isExecutingClashAction || clashChoice.disabled}
+                  onClick={() => handleExecuteClashAction(clashChoice.actionType)}
+                  className={`group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    clashChoice.disabled
+                      ? "bg-zinc-950/40 border-white/5 opacity-40 cursor-not-allowed"
+                      : "bg-zinc-900/90 hover:bg-zinc-800 border-red-500/30 hover:border-red-400 shadow-md active:scale-[0.99]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-xs font-bold text-red-200 group-hover:text-white">
+                      {clashChoice.actionName}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-400">
+                      {clashChoice.mpCost > 0 ? `-${clashChoice.mpCost} MP` : "0 MP"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-300 group-hover:text-zinc-100 line-clamp-2">
+                    {clashChoice.label}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pitch A: The Causal Covenant Reality Severance Trigger */}
+        {covenantCheck.available && (!activeClash || !activeClash.isActive) && (
+          <button
+            type="button"
+            onClick={() => {
+              soundEffects.playClick();
+              setShowCovenantModal(true);
+            }}
+            className="pointer-events-auto w-full mb-1.5 sm:mb-2 py-2 px-3.5 rounded-xl border border-purple-500/60 bg-gradient-to-r from-purple-950/80 via-zinc-950/90 to-purple-950/80 hover:border-purple-400 text-purple-200 hover:text-white font-mono text-xs font-semibold flex items-center justify-between shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(168,85,247,0.45)] transition-all cursor-pointer group select-none"
+            title={covenantCheck.reason}
+          >
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-purple-400 animate-pulse" />
+              <span>✦ [COVENANT: REALITY SEVERANCE]</span>
+            </div>
+            <span className="text-[10px] text-purple-300/80 group-hover:text-purple-200 font-mono hidden sm:inline">
+              Burn Cap (-15%) → Overwrite Cosmic Fate
+            </span>
+          </button>
+        )}
+
+        {choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive) && (
           <div className="pointer-events-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 select-none shrink-0 max-h-32 sm:max-h-36 overflow-y-auto pr-0.5">
             {choices.map((choice, idx) => (
               <button
@@ -6704,6 +7083,203 @@ export default function VisualNovelGame() {
 
             <div className="text-[11px] text-zinc-400 font-mono italic">
               Presenting gifts deepens affection, yields stat boosts, and triggers dynamic camp downtime interactions. Other present companions will react to your attentiveness.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pitch A: The Causal Covenant Confirmation Modal */}
+      {showCovenantModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-zinc-950 border border-purple-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(168,85,247,0.3)] text-zinc-200 select-none">
+            <div className="flex items-center justify-between pb-3 border-b border-purple-500/20 mb-4">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-400 animate-pulse" />
+                <h3 className="font-bold text-sm tracking-wide text-purple-200">THE CAUSAL COVENANT: REALITY SEVERANCE</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCovenantModal(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-5 text-xs text-zinc-300 leading-relaxed">
+              <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 text-purple-200">
+                <p className="font-semibold text-purple-300 mb-1">⚠️ Cosmic Price of Spacetime Severance:</p>
+                <ul className="list-disc pl-4 space-y-1 text-[11px] text-purple-200/90 font-mono">
+                  <li>Permanent Maximum Plausibility Cap burn: -15% (Will drop from {systemState.covenantState?.maxPlausibilityCap ?? 100}% to {Math.max(30, (systemState.covenantState?.maxPlausibilityCap ?? 100) - 15)}%).</li>
+                  <li>Incurs an indelible Timeline Scar upon reality.</li>
+                  <li>Companions will react with profound moral distress.</li>
+                </ul>
+              </div>
+
+              <p className="text-zinc-400">Select or declare your Reality Severance intent:</p>
+
+              <div className="space-y-2">
+                {[
+                  "[Breakthrough/Survival]: Shatter the fatal causal nexus to force an absolute survival breakthrough.",
+                  "[Obliteration/Cosmic]: Sever the spacetime anchor of all opposing anomalies in this sector.",
+                  "[Preservation/Shielding]: Freeze local casualty coordinates to shield all present allies from death.",
+                ].map((presetIntent, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleConfirmCovenant(presetIntent)}
+                    disabled={isSeveringCovenant}
+                    className="w-full p-2.5 rounded-xl border border-purple-500/20 bg-zinc-900/80 hover:bg-purple-950/60 hover:border-purple-400 text-left font-mono text-[11px] text-purple-200 hover:text-white transition-all cursor-pointer"
+                  >
+                    {presetIntent}
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <input
+                  type="text"
+                  placeholder="Or enter custom severance intent..."
+                  value={covenantIntentText}
+                  onChange={(e) => setCovenantIntentText(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setShowCovenantModal(false)}
+                className="px-4 py-2 rounded-xl text-xs text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                Abort
+              </button>
+              <button
+                type="button"
+                disabled={!covenantIntentText.trim() || isSeveringCovenant}
+                onClick={() => handleConfirmCovenant(covenantIntentText)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-purple-600 hover:bg-purple-500 transition-colors disabled:opacity-40 cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.4)]"
+              >
+                Execute Severance
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pitch B: Camp Ultimatum Ideological Conflict Modal */}
+      {showCampUltimatumModal && activeUltimatumRivalry && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(244,63,94,0.3)] text-zinc-200 select-none">
+            <div className="flex items-center justify-between pb-3 border-b border-rose-500/20 mb-4">
+              <div className="flex items-center gap-2">
+                <Swords className="w-5 h-5 text-rose-400 animate-pulse" />
+                <h3 className="font-bold text-sm tracking-wide text-rose-200">CAMP ULTIMATUM: IDEOLOGICAL CONFLICT</h3>
+              </div>
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-rose-950 border border-rose-500/40 text-rose-300">
+                Friction: {activeUltimatumRivalry.frictionScore}%
+              </span>
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="p-3 rounded-xl bg-zinc-900/80 border border-white/10 text-xs leading-relaxed text-zinc-300">
+                <p className="font-semibold text-white mb-1">
+                  {activeUltimatumRivalry.companion1Name} vs. {activeUltimatumRivalry.companion2Name}
+                </p>
+                <p className="text-[11px] text-zinc-400 font-mono mb-2">
+                  Conflict Axis: {activeUltimatumRivalry.ideologicalAxis}
+                </p>
+                <p className="italic text-zinc-300">
+                  "The unresolved hostility between {activeUltimatumRivalry.companion1Name} and {activeUltimatumRivalry.companion2Name} has fractured party discipline. Both demand you declare your loyalty."
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleResolveCampUltimatum("reconcile")}
+                  className="w-full p-3 rounded-xl border border-cyan-500/30 bg-cyan-950/30 hover:bg-cyan-950/60 hover:border-cyan-400 text-left font-mono text-xs text-cyan-200 hover:text-white transition-all cursor-pointer"
+                >
+                  [Reconcile/Triad]: Challenge both to unite above past grievances into an unbreakable triad bond (+Affection to both, unlocks Duo Synergy).
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResolveCampUltimatum("comp1")}
+                  className="w-full p-3 rounded-xl border border-rose-500/30 bg-rose-950/30 hover:bg-rose-950/60 hover:border-rose-400 text-left font-mono text-xs text-rose-200 hover:text-white transition-all cursor-pointer"
+                >
+                  [Affirm/{activeUltimatumRivalry.companion1Name}]: Declare unwavering allegiance to {activeUltimatumRivalry.companion1Name}'s principles (+Major Favor).
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResolveCampUltimatum("comp2")}
+                  className="w-full p-3 rounded-xl border border-purple-500/30 bg-purple-950/30 hover:bg-purple-950/60 hover:border-purple-400 text-left font-mono text-xs text-purple-200 hover:text-white transition-all cursor-pointer"
+                >
+                  [Affirm/{activeUltimatumRivalry.companion2Name}]: Declare unwavering allegiance to {activeUltimatumRivalry.companion2Name}'s principles (+Major Favor).
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResolveCampUltimatum("command")}
+                  className="w-full p-3 rounded-xl border border-zinc-700 bg-zinc-900/80 hover:bg-zinc-800 text-left font-mono text-xs text-zinc-300 hover:text-white transition-all cursor-pointer"
+                >
+                  [Command/Stern]: Reject emotional drama and impose strict commander discipline (+Survival Focus).
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Timeline Scars Inspector Modal */}
+      {showScarsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-zinc-950 border border-purple-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(168,85,247,0.2)] text-zinc-200 select-none">
+            <div className="flex items-center justify-between pb-3 border-b border-purple-500/20 mb-4">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-purple-400" />
+                <h3 className="font-bold text-sm tracking-wide text-purple-200">TIMELINE SCARS ({timelineScars.length})</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowScarsModal(false)}
+                className="text-zinc-500 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-2.5 pr-1 mb-4">
+              {timelineScars.length === 0 ? (
+                <p className="text-zinc-500 text-xs italic text-center py-6">
+                  No timeline scars incurred. Reality remains pristine and unsevered.
+                </p>
+              ) : (
+                timelineScars.map((scar) => (
+                  <div key={scar.id} className="p-3 rounded-xl bg-purple-950/20 border border-purple-500/30">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-purple-300">{scar.title}</span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-950 border border-purple-500/40 text-purple-300 uppercase">
+                        {scar.scarType}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300 leading-relaxed mb-1.5">{scar.description}</p>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500">
+                      <span>Turn {scar.createdAtTurn} • {scar.createdAtTime}</span>
+                      <span className="text-purple-400">-{scar.plausibilityCapReduction}% Plausibility Cap</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => setShowScarsModal(false)}
+                className="px-4 py-2 rounded-xl text-xs text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

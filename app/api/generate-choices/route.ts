@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getChoicesStyleDirective, getNarrationProseDirective } from "@/lib/narrationStyles";
+import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -54,19 +55,21 @@ export async function POST(req: Request) {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       // Graceful fallback if API key is unconfigured
+      const loc = gameState?.location || "this area";
+      const role = playerProfile?.role || "wanderer";
       return NextResponse.json({
         choices: isProtagonistAlone
           ? [
-              `[Survey] Scrutinize the surroundings in ${gameState?.location || "this area"} for hidden runes, traps, or anomalies.`,
-              `[Tactics] Stay low and steady your breathing, securing a quiet defensive perimeter.`,
-              `[System] Check the LitRPG interface to analyze causal stability and active directives.`,
-              `[Action] Draw your weapon and advance cautiously into the quiet expanse.`,
+              `[Survey/Analytical]: Scrutinize the surroundings in ${loc} for hidden runes, traps, or anomalies.`,
+              `[Tactics/Survival]: Stay low, steady your breathing, and establish a quiet defensive perimeter.`,
+              `[System/Analytical]: Query the LitRPG interface to analyze causal stability and active directives.`,
+              `[Combat/Aggressive]: Draw your weapon and advance cautiously into the quiet expanse.`,
             ]
           : [
-              `[Inquire] Press ${sanitizedSpeaker} on the deeper implications of what was just disclosed in ${gameState?.location || "this area"}.`,
-              `[Pragmatism] Evaluate the tactical stakes and propose a calculated compromise with ${sanitizedSpeaker}.`,
-              `[Action] Step forward as a ${playerProfile?.role || "wanderer"} and assert your intent directly.`,
-              `[Empathy] Read ${sanitizedSpeaker}'s expression and look for unspoken motives behind their demeanor.`,
+              `[Inquire/Diplomatic]: Press ${sanitizedSpeaker} on the deeper implications of what was just disclosed in ${loc}.`,
+              `[Pragmatism/Tactical]: Evaluate the tactical stakes and propose a calculated compromise with ${sanitizedSpeaker}.`,
+              `[Combat/Defiant]: Step forward as a ${role}, draw your blade with a metallic scrape, and assert your terms.`,
+              `[Empathy/Gentle]: Read ${sanitizedSpeaker}'s expression and look for unspoken motives behind their demeanor.`,
             ],
       });
     }
@@ -98,17 +101,17 @@ export async function POST(req: Request) {
 The protagonist (${playerProfile?.name || "Protagonist"}) is navigating ${gameState?.location || "this sector"} COMPLETELY ALONE.
 - Absolutely DO NOT author options that address, speak to, inquire of, or converse with absent heroines (e.g. Serena, Aria, Evelyn, etc.).
 - Generate exactly 4 distinct, immersive options tailored to solitary exploration, environmental examination, stealth/traps, LitRPG System analysis, or personal contemplation:
-  1. [Survey / Lore]: Examining ancient architecture, inscriptions, strange footprints, or planar resonance.
-  2. [Tactics / Stealth]: Checking vantage points, securing a perimeter, or moving silently through the shadows.
-  3. [LitRPG / System]: Probing the System interface, evaluating causal plausibility, or priming an ability.
-  4. [Action / Resolve]: Advancing decisively with weapon at the ready, determined to press onward alone.`
+  1. [Survey/Analytical]: Examining ancient architecture, inscriptions, strange footprints, or planar resonance.
+  2. [Tactics/Survival]: Checking vantage points, securing a perimeter, or moving silently through the shadows.
+  3. [System/Analytical]: Probing the System interface, evaluating causal plausibility, or priming an ability.
+  4. [Combat/Aggressive]: Advancing decisively with weapon at the ready, determined to press onward alone.`
       : `--- CHOICE AUTHORING DIRECTIVE (ACCOMPANIED BY ${presentHeroineNames.join(", ")}) ---
 Generate exactly 4 distinct, context-aware options that directly and compellingly respond to what ${sanitizedSpeaker} just said and the immediate situation in ${gameState?.location}.
-Prefix each choice with a tactical/roleplay bracket tag indicating the vector of action:
-1. [Inquire / Lore]: Probing, questioning, or pressing ${sanitizedSpeaker} about secrets, terms, or ancient lore.
-2. [Pragmatism / Tactics]: Proposing a grounded compromise, tradecraft, preparation, or conditional alliance.
-3. [Bold / Action]: Taking decisive physical action, asserting authority, casting a spell, or demonstrating resolve.
-4. [Empathy / Intuition]: Reading ${sanitizedSpeaker}'s emotional state, appealing to shared survival, or forming an emotional bond.`;
+Prefix each choice with a strict tactical/roleplay dual tag indicating the vector of action:
+1. [Inquire/Diplomatic]: Probing, questioning, or pressing ${sanitizedSpeaker} about secrets, terms, or ancient lore.
+2. [Pragmatism/Tactical]: Proposing a grounded compromise, tradecraft, preparation, or conditional alliance.
+3. [Combat/Defiant]: Taking decisive physical action, asserting authority, casting a spell, or demonstrating resolve.
+4. [Empathy/Gentle]: Reading ${sanitizedSpeaker}'s emotional state, appealing to shared survival, or forming an emotional bond.`;
 
     const systemPrompt = `You are the Interactive Decision Architect and Game Master for "${storyTitle}", set in ${settingName}.
 Atmospheric Tone: ${effectiveTone}.
@@ -136,9 +139,10 @@ ${canonicalMemories}
 
 ${choiceDirective}
 
-Requirements:
-- Each choice must be 1-2 vivid, natural sentences written from ${playerProfile?.name}'s perspective.
-- Each option must address the exact specifics of the scene, not generic placeholder text.
+Format Requirement:
+- Every choice MUST strictly follow the format: [Tone/Action]: Short summary of character action/dialogue (e.g. "[Inquire/Diplomatic]: Ask who funded the expedition", "[Combat/Aggressive]: Draw blade and lunge forward", "[Arcana/Analytical]: Channel mana into the containment ward", "[Subterfuge/Cunning]: Slip into the shadows unnoticed").
+- Never output bare single brackets like [Combat] or [Inquire]. Always use the [Tone/Action]: format.
+- Each choice must be 1 concise, vivid, natural sentence summarizing the protagonist's intended move or reply.
 - Return strictly JSON matching:
 {
   "choices": [string, string, string, string]
@@ -196,30 +200,48 @@ Requirements:
 
     if (!dynamicChoices) {
       // High-quality contextual algorithmic fallback
-      const speaker = gameState?.speaker || "Companion";
+      const speaker = sanitizedSpeaker || "Companion";
       const loc = gameState?.location || "the area";
       const role = playerProfile?.role || "Wanderer";
-      dynamicChoices = [
-        `[Inquire] Press ${speaker} on the deeper implications of what was just disclosed.`,
-        `[Pragmatism] Evaluate the physical stakes in ${loc} and propose a balanced counter-term.`,
-        `[Action] Ready your stance as a ${role} and demand immediate clarity on the next move.`,
-        `[Observe] Scrutinize ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
-      ];
+      dynamicChoices = isProtagonistAlone
+        ? [
+            `[Survey/Analytical]: Scrutinize the surroundings in ${loc} for hidden runes, traps, or anomalies.`,
+            `[Tactics/Survival]: Stay low, steady your breathing, and establish a quiet defensive perimeter.`,
+            `[System/Analytical]: Query the LitRPG interface to analyze causal stability and active directives.`,
+            `[Combat/Aggressive]: Draw your weapon and advance cautiously toward the perimeter disturbance.`,
+          ]
+        : [
+            `[Inquire/Diplomatic]: Press ${speaker} on the deeper implications of what was just disclosed.`,
+            `[Pragmatism/Tactical]: Evaluate the physical stakes in ${loc} and propose a balanced counter-term.`,
+            `[Combat/Defiant]: Ready your stance as a ${role} and demand immediate clarity on the next move.`,
+            `[Empathy/Gentle]: Scrutinize ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
+          ];
     }
+
+    // Guarantee all choices conform strictly to [Tone/Action]: format and clean prose
+    const sanitizedChoices = dynamicChoices.map((c: string) => {
+      const match = c.trim().match(/^\[([A-Za-z0-9\s/]+)\](?::)?\s*(.+)$/);
+      if (match) {
+        const rawTag = match[1].trim();
+        const body = sanitizeVisualNovelProse(match[2].trim());
+        return ensureChoiceIntentTag(`[${rawTag}]: ${body}`);
+      }
+      return ensureChoiceIntentTag(sanitizeVisualNovelProse(c));
+    });
 
     return NextResponse.json({
       success: true,
-      choices: dynamicChoices,
+      choices: sanitizedChoices,
     });
   } catch (error: any) {
     console.error("API /api/generate-choices Error:", error);
     return NextResponse.json(
       {
         choices: [
-          `[Inquire] Press the speaker on the matters unfolding before you.`,
-          `[Pragmatism] Propose a pragmatic mutual alliance under clear conditions.`,
-          `[Action] Prepare your weapons and ready yourself for sudden escalation.`,
-          `[Caution] Remain guarded, maintain distance, and evaluate the atmosphere.`,
+          `[Inquire/Diplomatic]: Press the speaker on the matters unfolding before you.`,
+          `[Pragmatism/Tactical]: Propose a pragmatic mutual alliance under clear conditions.`,
+          `[Combat/Defiant]: Prepare your weapons and ready yourself for sudden escalation.`,
+          `[Tactics/Caution]: Remain guarded, maintain distance, and evaluate the atmosphere.`,
         ]
       },
       { status: 200 }

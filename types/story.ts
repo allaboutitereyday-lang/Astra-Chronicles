@@ -1,4 +1,17 @@
-import { SystemQuest } from "./system";
+import {
+  SystemQuest,
+  TimelineScar,
+  CausalCovenantState,
+  CompanionFrictionState,
+  ActiveStoryClashState,
+} from "./system";
+
+export type {
+  TimelineScar,
+  CausalCovenantState,
+  CompanionFrictionState,
+  ActiveStoryClashState,
+};
 
 export type CompanionExpressionKey =
   | "neutral"
@@ -378,6 +391,12 @@ export interface StoryContext {
   visitedNodes?: VisitedStoryNode[]; // chronological visited anchor nodes for flowchart tracking
   flowchartTree?: StoryFlowNode[]; // full interactive branching graph definition
   timelineEchoes?: TimelineEcho[]; // persistent cross-rewind memories
+
+  // System Evolution Architecture Expansion (Pillars A, B, C)
+  timelineScars?: TimelineScar[];
+  covenantState?: CausalCovenantState;
+  frictionState?: CompanionFrictionState;
+  activeClash?: ActiveStoryClashState | null;
 
   createdAt: string;
   author?: string;

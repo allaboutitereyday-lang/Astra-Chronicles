@@ -1,20 +1,22 @@
 import { NextResponse } from "next/server";
 import { validateUserKey } from "@/lib/userAccess";
+import {
+  generateProceduralLootSvg,
+  generateProceduralMonsterSvg,
+  generateProceduralCompanionAvatarSvg,
+} from "@/lib/proceduralArt";
 
 export const runtime = "nodejs";
 
-const NANO_BANANA_MODELS = [
-  "google/gemini-nano-banana-2.1",
-  "google/gemini-3.1-flash-lite-image", // Nano Banana 2 Lite
-  "google/gemini-2.5-flash-image",       // Nano Banana Flash
-  "google/gemini-3.1-flash-image",      // Nano Banana 2
-  "openai/gpt-5-image-mini",
+const OPENROUTER_IMAGE_MODELS = [
+  "black-forest-labs/flux-1-schnell",
+  "black-forest-labs/flux-1-dev",
+  "stabilityai/stable-diffusion-xl-base-1.0",
 ];
 
 const FAST_LLM_MODELS = [
-  "deepseek/deepseek-v4-flash",
-  "z-ai/glm-5.3-flash",
-  "nvidia/nemotron-3.5-lightning:free",
+  "deepseek/deepseek-chat",
+  "nousresearch/hermes-3-llama-3.1-70b",
 ];
 
 /**
@@ -123,11 +125,11 @@ ${recentHistory || fullNarrative || dialogue}`;
   return { scenePrompt, isAiSynthesized: false };
 }
 
-async function queryNanoBanana(
+async function queryImageEngine(
   apiKey: string,
   prompt: string
 ): Promise<{ imageUrl: string; modelUsed: string } | null> {
-  for (const model of NANO_BANANA_MODELS) {
+  for (const model of OPENROUTER_IMAGE_MODELS) {
     try {
       const response = await fetch("https://openrouter.ai/api/v1/images", {
         method: "POST",
@@ -145,7 +147,7 @@ async function queryNanoBanana(
 
       if (!response.ok) {
         const errText = await response.text();
-        console.warn(`Nano Banana model ${model} failed (${response.status}): ${errText.slice(0, 160)}`);
+        console.warn(`Image model ${model} failed (${response.status}): ${errText.slice(0, 160)}`);
         continue;
       }
 
@@ -213,7 +215,7 @@ export async function POST(req: Request) {
       );
 
       if (apiKey) {
-        const result = await queryNanoBanana(apiKey, scenePrompt);
+        const result = await queryImageEngine(apiKey, scenePrompt);
         if (result) {
           return NextResponse.json({
             success: true,
@@ -240,7 +242,7 @@ export async function POST(req: Request) {
     }
 
     // -------------------------------------------------------------
-    // 2. DYNAMIC LOOT DROP GENERATION (NANO BANANA 2.1)
+    // 2. DYNAMIC LOOT DROP GENERATION
     // -------------------------------------------------------------
     if (mode === "loot" || mode === "item") {
       const itemName = item?.name || "Mystic Artifact";
@@ -262,7 +264,7 @@ export async function POST(req: Request) {
       const lootPrompt = prompt || `Game inventory item icon of "${itemName}", ${itemRarity} rarity ${itemType} in a ${genre} visual novel. ${itemDesc}. Featuring ${rarityVisual}. Centered RPG inventory game icon, isolated on a clean dark slate background, glowing border aura, highly detailed digital game asset, crisp edges, 1:1 square ratio.`;
 
       if (apiKey) {
-        const result = await queryNanoBanana(apiKey, lootPrompt);
+        const result = await queryImageEngine(apiKey, lootPrompt);
         if (result) {
           return NextResponse.json({
             success: true,
@@ -278,14 +280,24 @@ export async function POST(req: Request) {
         }
       }
 
-      // Fallback
+      // High-detail procedural vector fallback instead of empty string
+      const proceduralSvg = generateProceduralLootSvg({
+        name: itemName,
+        type: itemType,
+        rarity: itemRarity,
+        genre,
+      });
+
       return NextResponse.json({
         success: true,
         mode: "loot",
-        imageUrl: "",
-        model: "offline-fallback",
+        imageUrl: proceduralSvg,
+        model: "procedural-vector-engine",
         prompt: lootPrompt,
-        item,
+        item: {
+          ...item,
+          imageUrl: proceduralSvg,
+        },
       });
     }
 
@@ -302,7 +314,7 @@ export async function POST(req: Request) {
       const monsterPrompt = prompt || `Epic anime visual novel boss monster portrait: "${eName}". ${eDesc}. Encountered in ${secLocation} under active spacetime anomaly: ${modName}. Menacing stance, dark futuristic glowing runes, fractured aether plasma, volumetric god rays, high concept art for ${storyGenre}, dark atmospheric framing, crisp digital painting, 16:9 cinematic widescreen, masterpiece asset.`;
 
       if (apiKey) {
-        const result = await queryNanoBanana(apiKey, monsterPrompt);
+        const result = await queryImageEngine(apiKey, monsterPrompt);
         if (result) {
           return NextResponse.json({
             success: true,
@@ -315,12 +327,20 @@ export async function POST(req: Request) {
         }
       }
 
-      // Offline / fallback response
+      // Procedural boss anomaly portrait instead of landscape terrain
+      const monsterRank = modifier?.includes("S-Rank") ? "S" : modifier?.includes("A-Rank") ? "A" : modifier?.includes("B-Rank") ? "B" : modifier?.includes("C-Rank") ? "C" : "D";
+      const proceduralSvg = generateProceduralMonsterSvg({
+        name: eName,
+        rank: monsterRank,
+        genre: storyGenre,
+        modifier: modName,
+      });
+
       return NextResponse.json({
         success: true,
         mode: "monster",
-        imageUrl: "/backgrounds/gray_zone.jpg",
-        model: "offline-fallback",
+        imageUrl: proceduralSvg,
+        model: "procedural-vector-engine",
         prompt: monsterPrompt,
         enemyName: eName,
       });
@@ -370,34 +390,22 @@ export async function POST(req: Request) {
 
     let generatedImageUrl = baseImageUrl;
 
-    const themedAvatars = {
-      female: [
-        "/characters/evelyn/evelyn_neutral.png",
-        "/characters/aria/aria_neutral.png",
-        "/characters/serena/serena_neutral.png",
-        "/characters/morgana/morgana_neutral.png",
-        "/characters/perci/perci_neutral.png",
-      ],
-      male: [
-        "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=600&q=80",
-        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
-      ],
-    };
+    const canonHeroines = ["evelyn", "aria", "serena", "morgana", "perci"];
+    const matchedCanon = canonHeroines.find((h) =>
+      characterName.toLowerCase().includes(h) || (baseImageUrl && baseImageUrl.toLowerCase().includes(h))
+    );
 
-    if (!generatedImageUrl) {
-      const pool = gender === "male" ? themedAvatars.male : themedAvatars.female;
-      const index = Math.abs(lockedSeed) % pool.length;
-      generatedImageUrl = pool[index];
-    }
-
-    if (expressionKey !== "neutral" && baseImageUrl) {
-      const matchHeroine = ["evelyn", "aria", "serena", "morgana", "perci"].find((h) =>
-        baseImageUrl.toLowerCase().includes(h)
-      );
-      if (matchHeroine) {
-        generatedImageUrl = `/characters/${matchHeroine}/${matchHeroine}_${expressionKey === "hurt" ? "hurt" : expressionKey}.png`;
-      }
+    if (matchedCanon) {
+      const expr = expressionKey === "hurt" ? "hurt" : (expressionKey || "neutral");
+      generatedImageUrl = `/characters/${matchedCanon}/${matchedCanon}_${expr}.png`;
+    } else if (!generatedImageUrl) {
+      // Procedural companion vector avatar
+      generatedImageUrl = generateProceduralCompanionAvatarSvg({
+        name: characterName,
+        role: body.role || (gender === "male" ? "Netrunner / Rogue" : "Arcane Vanguard"),
+        gender,
+        seed: lockedSeed,
+      });
     }
 
     return NextResponse.json({

@@ -119,10 +119,10 @@
       "initialAffection": 18,
       "bgImage": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80",
       "choices": [
-        "[Decrypt] Flash the encrypted biometric cipher given to you by the Rust Gutter contact.",
-        "[Hack] Overclock your Neural Anchor and siphon his feedback burst into a dead-end buffer.",
-        "[Composure] Take a seat opposite him and slide a military-grade memory shard across the terminal.",
-        "[Threat] Prime your monowire whip and remind him that dead men don't collect finder's fees."
+        "[Decrypt/Analytical]: Flash the encrypted biometric cipher given to you by the Rust Gutter contact.",
+        "[Subterfuge/Hacking]: Overclock your Neural Anchor and siphon his feedback burst into a dead-end buffer.",
+        "[Composure/Diplomatic]: Take a seat opposite him and slide a military-grade memory shard across the terminal.",
+        "[Combat/Defiant]: Prime your monowire whip and remind him that dead men don't collect finder's fees."
       ]
     },
     {
@@ -136,10 +136,10 @@
       "initialAffection": 15,
       "bgImage": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
       "choices": [
-        "[Reflexes] Counter-strike the incoming corporate tracker drone before it can ping the network.",
-        "[Tactics] Point out the drone was an intentional decoy to flush out the sniper on the rooftop.",
-        "[Defiance] Ignite your own thermal blade and tell her to worry about her own flank.",
-        "[Discipline] Form up in tactical breaching order and report the target perimeter clear."
+        "[Combat/Aggressive]: Counter-strike the incoming corporate tracker drone before it can ping the network.",
+        "[Tactics/Analytical]: Point out the drone was an intentional decoy to flush out the sniper on the rooftop.",
+        "[Defiance/Combat]: Ignite your own thermal blade and tell her to worry about her own flank.",
+        "[Discipline/Tactical]: Form up in tactical breaching order and report the target perimeter clear."
       ]
     }
   ],
@@ -180,13 +180,13 @@
       "visualPrompt": "masterpiece anime portrait, handsome cyberpunk male netrunner, undercut dark messy hair, glowing cyan cybernetic left eye, tactical techwear coat, high collar, holographic interface glow on face, rain-slicked neon background",
       "expressions": {
         "neutral": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "intrigued": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "flustered": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "smug": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "surprised": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "combat_ready": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "dangerous": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80",
-        "hurt": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80"
+        "intrigued": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80#intrigued",
+        "flustered": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80#flustered",
+        "smug": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80#smug",
+        "surprised": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80#surprised",
+        "combat_ready": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80#combat_ready",
+        "dangerous": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80#dangerous",
+        "hurt": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80#hurt"
       }
     },
     {
@@ -225,13 +225,13 @@
       "visualPrompt": "masterpiece anime portrait, badass female cyberpunk street samurai, sleek jet-black hair with crimson bangs, dual thermal katanas on back, reinforced carbon-fiber chest rig, intense gaze, neon alleyway reflections",
       "expressions": {
         "neutral": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
-        "intrigued": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
-        "flustered": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
-        "smug": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
-        "surprised": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
-        "combat_ready": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
-        "dangerous": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80",
-        "hurt": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80"
+        "intrigued": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80#intrigued",
+        "flustered": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80#flustered",
+        "smug": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80#smug",
+        "surprised": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80#surprised",
+        "combat_ready": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80#combat_ready",
+        "dangerous": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80#dangerous",
+        "hurt": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80#hurt"
       }
     }
   ],

@@ -221,7 +221,7 @@ export default function MultiverseCodexPage() {
     if (!activeScene) return;
     soundEffects.playClick();
     setIsRegenerating(true);
-    setStatusMessage("Synthesizing alternative render with Nano Banana 2.1...");
+    setStatusMessage("Synthesizing alternative render with Neural Visual Engine...");
 
     try {
       const accessKey = typeof window !== "undefined" ? localStorage.getItem("astra_access_key") || "" : "";
@@ -251,7 +251,7 @@ export default function MultiverseCodexPage() {
       const updated = await updateCodexSceneImage(
         activeScene.id,
         data.imageUrl,
-        data.model || "Google: Nano Banana 2.1"
+        data.model || "FLUX.1 / Neural Visual Engine"
       );
       if (updated) {
         setScenes((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
@@ -273,7 +273,7 @@ export default function MultiverseCodexPage() {
     if (!activeLoot) return;
     soundEffects.playClick();
     setIsRegenerating(true);
-    setStatusMessage("Synthesizing alternative icon with Nano Banana 2.1...");
+    setStatusMessage("Synthesizing alternative icon with Procedural & Neural Engine...");
 
     try {
       const accessKey = typeof window !== "undefined" ? localStorage.getItem("astra_access_key") || "" : "";
@@ -304,7 +304,7 @@ export default function MultiverseCodexPage() {
       const updated = await updateCodexLootImage(
         activeLoot.id,
         data.imageUrl,
-        data.model || "Google: Nano Banana 2.1"
+        data.model || "FLUX.1 / Neural Visual Engine"
       );
       if (updated) {
         setLoot((prev) => prev.map((l) => (l.id === updated.id ? updated : l)));
@@ -413,7 +413,7 @@ export default function MultiverseCodexPage() {
                 </span>
               </h1>
               <p className="text-xs text-zinc-400 font-sans">
-                Unified account-wide chronicle of Nano Banana 2.1 scenes & discovered relics
+                Unified account-wide chronicle of illustrated event scenes & discovered relics
               </p>
             </div>
           </div>
@@ -555,7 +555,7 @@ export default function MultiverseCodexPage() {
               </div>
               <h3 className="font-mono text-base font-bold text-white">No Scene Chronicles Archived</h3>
               <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                As you journey through worlds, trigger "Illustrate" in any dialogue scene using Nano Banana 2.1 to permanently preserve high-definition illustrations here.
+                As you journey through worlds, trigger "Illustrate" in any dialogue scene to permanently preserve high-definition event CG illustrations here.
               </p>
               <Link
                 href="/play/astra-chronicles"
@@ -637,7 +637,7 @@ export default function MultiverseCodexPage() {
             </div>
             <h3 className="font-mono text-base font-bold text-white">No Relics Discovered Yet</h3>
             <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-              Defeat adversaries, explore ruins, and complete system directives to uncover legendary gear and artifacts synthesized by Nano Banana 2.1.
+              Defeat adversaries, explore ruins, and complete system directives to uncover legendary gear and artifacts synthesized by the Neural & Procedural Art Engine.
             </p>
             <Link
               href="/play/astra-chronicles"
@@ -739,7 +739,7 @@ export default function MultiverseCodexPage() {
               {isRegenerating && (
                 <div className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <RefreshCw className="w-8 h-8 text-rose-400 animate-spin" />
-                  <p className="font-mono text-xs text-white">Synthesizing render with Nano Banana 2.1...</p>
+                  <p className="font-mono text-xs text-white">Synthesizing high-fidelity scene render...</p>
                 </div>
               )}
             </div>
@@ -823,10 +823,10 @@ export default function MultiverseCodexPage() {
                   disabled={isRegenerating}
                   onClick={handleRerollScene}
                   className="px-3.5 py-2 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-400/40 text-purple-200 font-mono text-xs flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
-                  title="Re-render with Nano Banana 2.1"
+                  title="Re-synthesize Scene Visuals"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
-                  <span>Re-roll (Nano Banana)</span>
+                  <span>Re-roll Scene</span>
                 </button>
 
                 {/* Download HD */}
@@ -942,7 +942,7 @@ export default function MultiverseCodexPage() {
                   disabled={isRegenerating}
                   onClick={handleRerollLoot}
                   className="px-3 py-2 rounded-xl bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 text-amber-200 font-mono text-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Synthesize new icon with Nano Banana 2.1"
+                  title="Synthesize new item icon"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? "animate-spin" : ""}`} />
                   <span>Re-roll</span>
