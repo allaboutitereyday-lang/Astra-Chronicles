@@ -184,6 +184,7 @@ interface ChatMessage {
   text: string;
   timestamp: string;
   avatarSrc?: string;
+  isPending?: boolean;
 }
 
 interface SaveSlotData {
@@ -2613,41 +2614,52 @@ export default function VisualNovelGame() {
     setIsLoading(true);
     setChoices([]);
 
-    // Immediately create and append player message to chat feed with typewriter effect
     const playerMsgId = `player_msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    
+    // For preset choice clicks, do NOT write the raw choice string into the player's text box.
+    // Instead, show a pending state and prompt the LLM to generate the protagonist's response.
+    // For custom typed actions, render verbatim immediately.
     const playerMsg: ChatMessage = {
       id: playerMsgId,
       sender: "user",
       speakerName: player.name,
-      text: formattedPayload,
+      text: isCustom ? formattedPayload : "",
       timestamp: timeString,
       avatarSrc: playerAvatar || undefined,
+      isPending: !isCustom,
     };
 
     setChatLog((prev) => [...prev, playerMsg]);
-    clearUserTypewriter();
-    setTypingUserMsgId(playerMsgId);
-    setDisplayedUserText("");
 
-    const userTarget = formattedPayload;
-    const userStep = Math.max(1, Math.ceil(userTarget.length / 28));
-    let userIndex = 0;
-    let blipCounter = 0;
+    if (isCustom) {
+      clearUserTypewriter();
+      setTypingUserMsgId(playerMsgId);
+      setDisplayedUserText("");
 
-    userTypewriterIntervalRef.current = setInterval(() => {
-      userIndex += userStep;
-      if (userIndex >= userTarget.length) {
-        setDisplayedUserText(userTarget);
-        setTypingUserMsgId(null);
-        clearUserTypewriter();
-      } else {
-        setDisplayedUserText(userTarget.slice(0, userIndex));
-        blipCounter++;
-        if (blipCounter % 3 === 0) {
-          soundEffects.playDialogueBlip();
+      const userTarget = formattedPayload;
+      const userStep = Math.max(1, Math.ceil(userTarget.length / 28));
+      let userIndex = 0;
+      let blipCounter = 0;
+
+      userTypewriterIntervalRef.current = setInterval(() => {
+        userIndex += userStep;
+        if (userIndex >= userTarget.length) {
+          setDisplayedUserText(userTarget);
+          setTypingUserMsgId(null);
+          clearUserTypewriter();
+        } else {
+          setDisplayedUserText(userTarget.slice(0, userIndex));
+          blipCounter++;
+          if (blipCounter % 3 === 0) {
+            soundEffects.playDialogueBlip();
+          }
         }
-      }
-    }, 18);
+      }, 18);
+    } else {
+      clearUserTypewriter();
+      setTypingUserMsgId(null);
+      setDisplayedUserText("");
+    }
 
     try {
       const res = await fetch("/api/turn", {
@@ -2714,7 +2726,15 @@ export default function VisualNovelGame() {
       const speakerName = rawSpeaker;
       const narrative = data.narrative_text || gameState.dialogue;
       
-      const playerText = isCustom ? formattedPayload : (data.player_execution || formattedPayload);
+      let playerText = "";
+      if (isCustom) {
+        playerText = formattedPayload;
+      } else if (data.player_execution && data.player_execution.trim()) {
+        playerText = data.player_execution.trim().replace(/^\[[^\]]+\]\s*/, "");
+      } else {
+        const cleanVector = formattedPayload.replace(/^\[[^\]]+\]\s*/, "");
+        playerText = `${player.name} steps forward to take action. "${cleanVector}"`;
+      }
       
       const nextExpression = data.state_updates?.expression_key || "neutral";
       const nextLocation = data.state_updates?.current_location || gameState.location;
@@ -2814,11 +2834,9 @@ export default function VisualNovelGame() {
         })
       );
 
-      // Finalize user typewriter state
-      clearUserTypewriter();
-      setDisplayedUserText(playerText);
-      setTypingUserMsgId(null);
+      // Finalize user message and clear pending state
       playerMsg.text = playerText;
+      playerMsg.isPending = false;
 
       const isAmbientSpeaker = ["narrator", "system", "inner monologue"].some((s) => speakerName.toLowerCase().includes(s));
       const companionMsg: ChatMessage = {
@@ -2831,9 +2849,40 @@ export default function VisualNovelGame() {
       };
 
       setChatLog((prev) => {
-        const updatedChat = prev.map((m) => (m.id === playerMsgId ? { ...m, text: playerText } : m));
+        const updatedChat = prev.map((m) => (m.id === playerMsgId ? { ...m, isPending: false, text: playerText } : m));
         return [...updatedChat, companionMsg];
       });
+
+      if (!isCustom) {
+        // Run typewriter on the LLM-generated protagonist execution
+        clearUserTypewriter();
+        setTypingUserMsgId(playerMsgId);
+        setDisplayedUserText("");
+
+        const userTarget = playerText;
+        const userStep = Math.max(2, Math.ceil(userTarget.length / 32));
+        let userIndex = 0;
+        let blipCounter = 0;
+
+        userTypewriterIntervalRef.current = setInterval(() => {
+          userIndex += userStep;
+          if (userIndex >= userTarget.length) {
+            setDisplayedUserText(userTarget);
+            setTypingUserMsgId(null);
+            clearUserTypewriter();
+          } else {
+            setDisplayedUserText(userTarget.slice(0, userIndex));
+            blipCounter++;
+            if (blipCounter % 3 === 0) {
+              soundEffects.playDialogueBlip();
+            }
+          }
+        }, 16);
+      } else {
+        clearUserTypewriter();
+        setDisplayedUserText(playerText);
+        setTypingUserMsgId(null);
+      }
 
       if (data.player_progression) {
         const prog = data.player_progression;
@@ -5514,7 +5563,7 @@ export default function VisualNovelGame() {
                           </span>
                           <span className="text-[11px] text-zinc-500 font-mono select-none">{msg.timestamp}</span>
 
-                          {!isEditing && (
+                          {!isEditing && !msg.isPending && (
                             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ml-1 select-none">
                               <button
                                 onClick={() => handleStartEdit(msg)}
@@ -5583,6 +5632,16 @@ export default function VisualNovelGame() {
                               </button>
                             </div>
                           </div>
+                        </div>
+                      ) : msg.isPending ? (
+                        <div className="flex items-center gap-2.5 py-1 text-rose-100 font-sans select-none">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-100"></span>
+                          </span>
+                          <span className="text-xs font-medium tracking-wide italic text-rose-100/90">
+                            {player.name} is taking action...
+                          </span>
                         </div>
                       ) : isLatestCharacterTurn ? (
                         <MarkdownRenderer

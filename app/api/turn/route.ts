@@ -117,12 +117,22 @@ ${i + 1}. ${c.name}:
       ? `[INPUT TYPE: CUSTOM PLAYER ACTION]
 The user wrote their own action verbatim: "${action}".
 - Do NOT rewrite, expand, paraphrase, or narrate what the player does or says.
-- Set "player_execution" to null or "".
+- Set "player_execution" to null.
 - Accept their action as immediate canon and advance the scene through world and NPC reactions in "narrative_text".`
-      : `[INPUT TYPE: PRESET CHOICE SELECTED]
-The user selected this prompt vector: "${action}".
-- In "player_execution", author a vivid, immersive execution of this action from ${playerProfile.name}'s perspective matching their role (${playerProfile.role}).
-- Then follow up with the world and companion reaction in "narrative_text".`;
+      : `[INPUT TYPE: PRESET CHOICE VECTOR SELECTED]
+The user selected this choice/action vector: "${action}".
+- CRITICAL: The user did NOT type this text verbatim. This prompt vector represents their tactical and narrative intent.
+- In "player_execution", you MUST write a substantial, immersive narrative sequence from the protagonist's perspective (${playerProfile.name}, Role: ${playerProfile.role}, Stance: ${activeStance || "neutral"}).
+- LENGTH & SUBSTANCE REQUIREMENT: Must be MORE than just a couple of sentences! Write a full, vivid passage of at least 3 to 6 sentences across 1 to 2 rich paragraphs.
+- CONTENT REQUIREMENTS FOR "player_execution":
+  1. Spoken Dialogue: Include ${playerProfile.name}'s actual spoken dialogue in quotation marks ("...") addressing the companion, enemies, or situation.
+  2. Physical Action & Gestures: Describe ${playerProfile.name}'s physical movements, weapon/gear handling, posture, footsteps, and spatial maneuvering matching their role (${playerProfile.role}).
+  3. Tactical & Sensory Presence: Depict their sensory observations (breathing, cold air, blade weight, tension) and inner focus as they commit to the move.
+  4. STRICT NEGATIVE CONSTRAINTS:
+     - NEVER output only 1 or 2 brief sentences.
+     - NEVER include bracket tags like "[Combat]", "[Arcana]", "[Subterfuge]", "[Inquire]" in "player_execution". Strip all tag markers.
+     - NEVER summarize with meta commentary like "The player chooses to...". Write directly as immersive narrative prose and dialogue.
+- Follow up in "narrative_text" with how the world and companion respond to this execution.`;
 
     const isFirstEncounter = !recentHistory || recentHistory.length <= 1;
 
@@ -326,16 +336,17 @@ ${synergyDirective}
 
 --- MECHANICAL RULES ---
 1. Speaker Attribution: "speaker" MUST NEVER BE "${playerProfile.name}". If accompanied, set "speaker" to the canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). If alone, set to "Narrator", "Inner Monologue", or "System".
-2. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
-3. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
-4. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"), written in the voice, vocabulary, and attitude of the active Narration Style.
-5. Narrative Prose & Markdown Formatting: "narrative_text" MUST STRICTLY follow the active Narration Style directive above. The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures and atmospheric sensory cues; use **bold** for loud vocal emphasis or spell invocations; use > quotes for mental echoes or ancient runes. Spoken dialogue MUST be inside quotation marks "...".
+2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive, multi-sentence passage (minimum 3-6 sentences across 1-2 paragraphs) featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
+3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
+4. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
+5. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"), written in the voice, vocabulary, and attitude of the active Narration Style.
+6. Narrative Prose & Markdown Formatting: "narrative_text" MUST STRICTLY follow the active Narration Style directive above. The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures and atmospheric sensory cues; use **bold** for loud vocal emphasis or spell invocations; use > quotes for mental echoes or ancient runes. Spoken dialogue MUST be inside quotation marks "...".
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
 {
   "speaker": string,
-  "player_execution": string | null, // 1 concise sentence describing the player's physical execution of their action, styled strictly in accordance with the active Narration Style.
+  "player_execution": string | null, // When preset choice is selected: a substantial, immersive narrative passage (at least 3-6 sentences across 1-2 paragraphs) detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in quotation marks "...". NEVER 1-2 sentences. Null only for custom player inputs.
   "narrative_text": string, // 2-3 immersive paragraphs containing environmental details, character dialogue, and action beats. MUST STRICTLY adhere to the prose cadence, tone, vocabulary, and negative constraints of the active Narration Style.
   "death_event": {
     "is_fatal": boolean,
@@ -416,13 +427,17 @@ Respond strictly in valid JSON matching this schema:
       });
     }
 
+    const userPromptContent = isCustom
+      ? `Player Action: ${action}`
+      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a substantial 3-6 sentence narrative passage of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "...". Do NOT output bracket tags like [Combat] in "player_execution". Advance companion/world response in "narrative_text".]`;
+
     if (playerAvatarBase64 && isFirstEncounter) {
       messages.push({
         role: "user",
         content: [
           { 
             type: "text", 
-            text: `Player Action: ${action}\n[Note to Game Master: Inspect the attached protagonist image and integrate initial observations into dialogue/narrative.]` 
+            text: `${userPromptContent}\n[Note to Game Master: Inspect the attached protagonist image and integrate initial observations into dialogue/narrative.]` 
           },
           { 
             type: "image_url", 
@@ -433,7 +448,7 @@ Respond strictly in valid JSON matching this schema:
     } else {
       messages.push({
         role: "user",
-        content: `Player Action: ${action}`,
+        content: userPromptContent,
       });
     }
 
@@ -481,6 +496,15 @@ Respond strictly in valid JSON matching this schema:
         content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
 
         responseData = JSON.parse(content);
+
+        // Fail-safe post-processing: sanitize and guarantee player_execution for preset choices
+        if (responseData.player_execution) {
+          responseData.player_execution = responseData.player_execution.replace(/^\[[^\]]+\]\s*/, "").trim();
+        }
+        if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().length === 0)) {
+          const cleanAct = action.replace(/^\[[^\]]+\]\s*/, "").trim();
+          responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the moment, posture set and blade held ready. "${cleanAct}"`;
+        }
 
         // Fail-safe post-processing: enforce speaker attribution and solitude rules
         if (responseData.speaker && responseData.speaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
