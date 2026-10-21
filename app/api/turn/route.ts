@@ -132,7 +132,7 @@ The user wrote their own action verbatim: "${action}".
 - Accept their action as immediate canon and advance the scene through world and NPC reactions in "narrative_text".`
       : `[INPUT TYPE: PRESET CHOICE VECTOR SELECTED]
 The user selected this choice/action vector: "${action}".
-- CRITICAL: The user did NOT type this text verbatim. This prompt vector represents their tactical and narrative intent.
+- CRITICAL: The user did NOT type this text verbatim. This prompt vector represents their tactical and narrative intent following the format "[Tone/Action]: Short summary of character action/dialogue".
 - In "player_execution", you MUST write a substantial, immersive narrative sequence from the protagonist's perspective (${playerProfile.name}, Role: ${playerProfile.role}, Stance: ${activeStance || "neutral"}).
 - LENGTH & SUBSTANCE REQUIREMENT: Must be MORE than just a couple of sentences! Write a full, vivid passage of at least 3 to 6 sentences across 1 to 2 rich paragraphs.
 - CONTENT REQUIREMENTS FOR "player_execution":
@@ -141,7 +141,7 @@ The user selected this choice/action vector: "${action}".
   3. Tactical & Sensory Presence: Depict their sensory observations (breathing, cold air, blade weight, tension) and inner focus as they commit to the move.
   4. STRICT NEGATIVE CONSTRAINTS:
      - NEVER output only 1 or 2 brief sentences.
-     - NEVER include bracket tags like "[Combat]", "[Arcana]", "[Subterfuge]", "[Inquire]" in "player_execution". Strip all tag markers.
+     - NEVER include bracket tags like "[Combat/Aggressive]:", "[Arcana/Analytical]:", "[Subterfuge/Cunning]:" in "player_execution". Strip all tag markers.
      - NEVER summarize with meta commentary like "The player chooses to...". Write directly as immersive narrative prose and dialogue.
 - Follow up in "narrative_text" with how the world and companion respond to this execution.`;
 
@@ -391,7 +391,14 @@ ${synergyDirective}
 2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive, multi-sentence passage (minimum 3-6 sentences across 1-2 paragraphs) featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
 3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
 4. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
-5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST be prefixed with an intent tag in brackets: "[Combat]", "[Arcana]", "[Subterfuge]", "[Inquire]", or "[Tactics]", written in the voice, vocabulary, and attitude of the active Narration Style.
+5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST strictly follow this format:
+   "[Tone/Action]: Short summary of character action/dialogue"
+   Examples:
+   - "[Combat/Aggressive]: Step forward and drive your broadsword toward the beast's exposed flank."
+   - "[Arcana/Analytical]: Channel ether into your palm to decipher the fluctuating rune sequence."
+   - "[Subterfuge/Cunning]: Slip into the perimeter shadows and pick the cargo vault lock."
+   - "[Inquire/Diplomatic]: Lower your weapon, meet her cold gaze, and demand to know House Abbandonato's stake here."
+   These tags serve as an explicit intent prompt for the AI to author a rich, thoughtful protagonist action and dialogue in subsequent turns.
 6. Narrative Prose, Grammar & Markdown Formatting:
    - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
    - MANDATORY QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). Anchor dialogue to physical gestures, body language, tone, or facial expressions. Unspoken internal thoughts must use *italics* without quotes.
@@ -499,7 +506,7 @@ Respond strictly in valid JSON matching this schema:
 
     const userPromptContent = isCustom
       ? `Player Action: ${action}`
-      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a substantial 3-6 sentence narrative passage of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "...". Do NOT output bracket tags like [Combat] in "player_execution". Advance companion/world response in "narrative_text".]`;
+      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a substantial 3-6 sentence narrative passage of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "...". Do NOT output bracket tags like [Combat/Aggressive]: in "player_execution". Advance companion/world response in "narrative_text".]`;
 
     let responseData = null;
     let lastError = null;
@@ -631,7 +638,7 @@ Respond strictly in valid JSON matching this schema:
           responseData.player_execution = sanitizeVisualNovelProse(responseData.player_execution);
         }
         if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().split(/[.!?]+/).filter(Boolean).length < 2)) {
-          const cleanAct = action.replace(/^\[[^\]]+\]\s*/, "").trim();
+          const cleanAct = action.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
           const stanceDesc = activeStance === "aggressive" ? "blade angled forward with relentless pressure" : activeStance === "defensive" ? "guard raised high and footing braced firmly against the ground" : "shoulders squared and senses locked on the target";
           responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The cold tension in the air crystallizes as every muscle tightens for immediate follow-through. "${cleanAct}"`;
         }

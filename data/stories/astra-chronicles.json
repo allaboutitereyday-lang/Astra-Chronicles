@@ -137,10 +137,10 @@
       "initialAffection": 15,
       "bgImage": "/backgrounds/imperial_capital_imperium.jpg",
       "choices": [
-        "[Subterfuge] Show the forged imperial cipher you lifted from the guard captain at the lower docks.",
-        "[Arcana] Point out that the Mage Tower's secondary focus ring is misaligned by three degrees.",
-        "[Composure] Step forward into the lantern light, meet her gaze evenly, and offer your services in contract.",
-        "[Force] Keep your hand resting close to your weapon and demand passage through the upper corridor."
+        "[Subterfuge/Cunning]: Present the forged imperial cipher lifted from the harbor watch.",
+        "[Arcana/Analytical]: Point out that the Mage Tower's secondary focus ring is misaligned by three degrees.",
+        "[Composure/Diplomatic]: Step forward into the lantern light, meet her gaze evenly, and offer your contract services.",
+        "[Combat/Defiant]: Keep your hand resting on your blade hilt and demand passage through the upper corridor."
       ]
     },
     {
@@ -154,10 +154,10 @@
       "initialAffection": 12,
       "bgImage": "/backgrounds/mage_tower.jpg",
       "choices": [
-        "[Subterfuge] Signal the covert Veil Seeker counter-cipher with your left hand.",
-        "[Observation] Note that her daggers are leaking residual ward-discharge—she triggered the inner glyphs herself.",
-        "[Persuade] Propose a split: she takes the astral grimoire on the pedestal, you take the vault ciphers.",
-        "[Combat] Drop your center of gravity and prepare to counter her first lunge."
+        "[Subterfuge/Cunning]: Signal the covert Veil Seeker counter-cipher with your left hand.",
+        "[Arcana/Analytical]: Note that her daggers are leaking ward-discharge—she triggered the inner glyphs herself.",
+        "[Pragmatism/Diplomatic]: Propose a split: she takes the astral grimoire on the pedestal, you take the vault ciphers.",
+        "[Combat/Aggressive]: Drop your center of gravity and prepare to counter her first strike."
       ]
     },
     {
@@ -171,10 +171,10 @@
       "initialAffection": 15,
       "bgImage": "/backgrounds/bloodrose_duchy.jpg",
       "choices": [
-        "[Observation] Note that she isn't even out of breath, and ask how many mercenaries are left in the woods.",
-        "[Composure] Ignore the carnage entirely and request Earl Grey tea, black.",
-        "[Tactics] Draw your weapon and suggest clearing the remaining western wing together.",
-        "[Persuade] Ask her gently to lower the mace before she accidentally collapses the rest of the portico."
+        "[Observation/Analytical]: Note that she isn't even out of breath, and ask how many mercenaries remain in the woods.",
+        "[Composure/Stoic]: Ignore the carnage entirely, bow politely, and request Earl Grey tea, black.",
+        "[Tactics/Decisive]: Draw your weapon and suggest sweeping the remaining western wing together.",
+        "[Inquire/Gentle]: Ask her gently to lower the mace before she accidentally collapses the portico."
       ]
     },
     {
@@ -188,10 +188,10 @@
       "initialAffection": 10,
       "bgImage": "/backgrounds/gray_zone.jpg",
       "choices": [
-        "[Composure] Step to the rim of the fissure, meet her gaze, and say you seek planar power, not death.",
-        "[Arcana] Identify the demonic seal binding her goblet and ask how she crossed the Gray Zone wards.",
-        "[Pragmatism] Offer mutual assistance against the Imperial hunting parties tracking both of you.",
-        "[Defiance] Keep a hand on your weapon and state that the wastes belong to whoever survives them."
+        "[Composure/Defiant]: Step to the rim of the fissure, meet her gaze evenly, and state that you seek power, not death.",
+        "[Arcana/Analytical]: Identify the demonic seal binding her goblet and ask how she breached the Gray Zone wards.",
+        "[Tactics/Pragmatic]: Offer mutual intelligence regarding the Imperial hunting parties tracking both of you.",
+        "[Combat/Aggressive]: Keep your hand gripped on your weapon and declare the wastes belong to whoever survives."
       ]
     },
     {
@@ -205,10 +205,10 @@
       "initialAffection": 12,
       "bgImage": "/backgrounds/port_city.jpg",
       "choices": [
-        "[Gentle] Step back, lower your hands, and reassure her you have no interest in the harbor watch bounties.",
-        "[Observation] Point out the blood on her sleeve and ask if she was the one who cut down the corsairs at the slipway.",
-        "[Survival] Offer to hide her from the upcoming patrol in exchange for a local guide through the lower docks.",
-        "[Rogue] Show your own covert guild sign, proving you are an operative rather than an imperial guard."
+        "[Inquire/Gentle]: Step back, lower your hands in the lantern light, and reassure her you have no interest in bounties.",
+        "[Observation/Analytical]: Point out the fresh blood on her sleeve and ask if she cut down the corsairs at the slipway.",
+        "[Tactics/Survival]: Offer to shield her from the approaching watch in exchange for guidance through the lower docks.",
+        "[Subterfuge/Rogue]: Flash your own covert operative emblem, proving you are not an imperial patrol."
       ]
     }
   ],

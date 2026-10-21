@@ -104,17 +104,20 @@ export function balanceMarkdownAsterisks(text: string): string {
 }
 
 /**
- * Strips leaked meta and bracket tags like "[Combat]", "[Perci's Response]", "[Inquire]".
+ * Strips leaked meta and bracket tags like "[Combat]", "[Combat/Aggressive]:", "[Perci's Response]", "[Inquire]".
  */
 export function stripMetaAndBracketTags(text: string): string {
   if (!text) return "";
 
   return text
     // Remove model section headers like [PERCI'S RESPONSE] or [SCENE CONTINUATION]
-    .replace(/^\[[A-Z0-9\s'_—\-:]+\]\s*/i, "")
+    .replace(/^\[[A-Z0-9\s'_—\-\/:]+\](?::)?\s*/i, "")
+    // Remove dual-intent bracket vectors like [Combat/Aggressive]: or [Arcana/Analytical]
+    .replace(/^\[[A-Za-z\s]+\/[A-Za-z\s]+\](?::)?\s*/i, "")
     // Remove inline bracket action vectors like [Combat] or [Subterfuge]
-    .replace(/^\[(Combat|Arcana|Subterfuge|Inquire|Composure|Force|Diplomacy|Stealth|Observe)\]\s*/i, "")
-    .replace(/\s*\[(Combat|Arcana|Subterfuge|Inquire|Composure|Force|Diplomacy|Stealth|Observe)\]\s*/gi, " ")
+    .replace(/^\[(Combat|Arcana|Subterfuge|Inquire|Composure|Force|Diplomacy|Stealth|Observe|Tactics|Pragmatism|Defiance|Resolve)\](?::)?\s*/i, "")
+    .replace(/\s*\[[A-Za-z\s]+\/[A-Za-z\s]+\](?::)?\s*/gi, " ")
+    .replace(/\s*\[(Combat|Arcana|Subterfuge|Inquire|Composure|Force|Diplomacy|Stealth|Observe|Tactics|Pragmatism|Defiance|Resolve)\](?::)?\s*/gi, " ")
     // Remove meta introductory phrases like "Here is Perci's response:"
     .replace(/^(Here is (the )?|Perci's response:?|The companion replies:?)\s*/i, "")
     .trim();
@@ -169,15 +172,47 @@ export function normalizeSingleQuoteDialogue(text: string): string {
 }
 
 /**
- * Guarantees every suggested choice starts with a tactical LitRPG intent badge.
+ * Guarantees every suggested choice follows the strict format:
+ * [Tone/Action]: Short summary of character action/dialogue
  */
 export function ensureChoiceIntentTag(choice: string): string {
   if (!choice) return "";
   const trimmed = choice.trim();
-  if (/^\[.+?\]/.test(trimmed)) return trimmed;
 
+  // If already matches [Tone/Action]: Summary or [Tone/Action] Summary
+  const dualTagMatch = trimmed.match(/^\[([A-Za-z]+)\/([A-Za-z]+)\](?::)?\s*(.+)$/);
+  if (dualTagMatch) {
+    const tone = dualTagMatch[1];
+    const action = dualTagMatch[2];
+    const rest = dualTagMatch[3].trim();
+    return `[${tone}/${action}]: ${rest}`;
+  }
+
+  // If matches single tag [Tag] Summary or [Tag]: Summary
+  const singleTagMatch = trimmed.match(/^\[([A-Za-z\s]+)\](?::)?\s*(.+)$/);
+  if (singleTagMatch) {
+    const rawTag = singleTagMatch[1].trim().toLowerCase();
+    const rest = singleTagMatch[2].trim();
+    let dualTag = "[Tactics/Decisive]";
+
+    if (rawTag.includes("combat") || rawTag.includes("force") || rawTag.includes("bold") || rawTag.includes("challenge") || rawTag.includes("attack")) {
+      dualTag = "[Combat/Aggressive]";
+    } else if (rawTag.includes("arcana") || rawTag.includes("magic") || rawTag.includes("spell")) {
+      dualTag = "[Arcana/Analytical]";
+    } else if (rawTag.includes("subterfuge") || rawTag.includes("stealth") || rawTag.includes("rogue") || rawTag.includes("shadow")) {
+      dualTag = "[Subterfuge/Cunning]";
+    } else if (rawTag.includes("inquire") || rawTag.includes("observation") || rawTag.includes("persuade") || rawTag.includes("diplomacy") || rawTag.includes("lore")) {
+      dualTag = "[Inquire/Diplomatic]";
+    } else if (rawTag.includes("composure") || rawTag.includes("gentle") || rawTag.includes("defiance") || rawTag.includes("resolve") || rawTag.includes("pragmatism")) {
+      dualTag = "[Composure/Defiant]";
+    }
+
+    return `${dualTag}: ${rest}`;
+  }
+
+  // If untagged text, infer dual intent tag
   const lower = trimmed.toLowerCase();
-  let tag = "[Tactics]";
+  let dualTag = "[Tactics/Decisive]";
   if (
     lower.includes("attack") ||
     lower.includes("strike") ||
@@ -191,7 +226,7 @@ export function ensureChoiceIntentTag(choice: string): string {
     lower.includes("block") ||
     lower.includes("draw")
   ) {
-    tag = "[Combat]";
+    dualTag = "[Combat/Aggressive]";
   } else if (
     lower.includes("spell") ||
     lower.includes("magic") ||
@@ -202,7 +237,7 @@ export function ensureChoiceIntentTag(choice: string): string {
     lower.includes("enchant") ||
     lower.includes("focus")
   ) {
-    tag = "[Arcana]";
+    dualTag = "[Arcana/Analytical]";
   } else if (
     lower.includes("sneak") ||
     lower.includes("hide") ||
@@ -214,7 +249,7 @@ export function ensureChoiceIntentTag(choice: string): string {
     lower.includes("retreat") ||
     lower.includes("dodge")
   ) {
-    tag = "[Subterfuge]";
+    dualTag = "[Subterfuge/Cunning]";
   } else if (
     lower.includes("ask") ||
     lower.includes("inquire") ||
@@ -227,9 +262,19 @@ export function ensureChoiceIntentTag(choice: string): string {
     lower.includes("question") ||
     lower.includes("whisper")
   ) {
-    tag = "[Inquire]";
+    dualTag = "[Inquire/Diplomatic]";
+  } else if (
+    lower.includes("stand") ||
+    lower.includes("refuse") ||
+    lower.includes("calm") ||
+    lower.includes("gaze") ||
+    lower.includes("meet") ||
+    lower.includes("wait")
+  ) {
+    dualTag = "[Composure/Defiant]";
   }
-  return `${tag} ${trimmed}`;
+
+  return `${dualTag}: ${trimmed}`;
 }
 
 /**

@@ -3,6 +3,7 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
 import { sanitizeVisualNovelProse, sanitizeSpokenDialogue, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
+import { HEROINE_INTRODUCTION_DOSSIERS, HeroineIntroductionDossier } from "@/lib/heroineDossiers";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -77,6 +78,12 @@ export async function POST(req: Request) {
     const settingName = storyContext?.worldContext?.settingName || "the Astra Continent";
     const effectiveTone = narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
+    // Match starting heroine to her bespoke canonical introduction dossier
+    const heroineKey = Object.keys(HEROINE_INTRODUCTION_DOSSIERS).find(
+      (k) => k.toLowerCase().includes((startingHeroine || "").toLowerCase()) || (startingHeroine || "").toLowerCase().includes(k.toLowerCase())
+    ) || "Evelyn Abbandonato";
+    const heroineDossier = HEROINE_INTRODUCTION_DOSSIERS[heroineKey];
+
     const companionDossiers = storyContext?.companions && storyContext.companions.length > 0
       ? storyContext.companions.map((c: any, i: number) => `
 ${i + 1}. ${c.name} (${c.title || c.role}):
@@ -124,6 +131,30 @@ You are generating the bespoke dynamic prologue and opening encounter.
 --- HEROINE DOSSIERS & COMPATIBILITY CRITERIA ---
 ${companionDossiers}
 
+--- BESPOKE HEROINE DOSSIER & CANONICAL BASELINE (${heroineDossier.name}) ---
+Title: ${heroineDossier.title}
+Canonical Location: ${heroineDossier.defaultLocation}
+Atmosphere & Sensory Cues: ${heroineDossier.environment}
+Physical Appearance & Presence: ${heroineDossier.appearanceSensoryCues}
+Psychological Profile: ${heroineDossier.psychologicalProfile}
+Canonical Encounter Baseline: ${heroineDossier.canonicalEncounter}
+Dialogue Cadence: ${heroineDossier.dialogueCadence}
+Canonical Opening Dialogue: "${heroineDossier.signatureOpeningDialogue}"
+Canonical Baseline Choices:
+${heroineDossier.baselineChoices.map((c) => `- ${c}`).join("\n")}
+
+--- CRITICAL GAME MASTER INSTRUCTIONS ---
+1. Use the bespoke heroine dossier as the working baseline. Capture her specific atmospheric environment, sensory triggers (smells, weather, ambient lighting, acoustic textures), and psychological demeanor.
+2. In her opening reaction, ${startingHeroine} MUST explicitly observe and remark on ${playerProfile.name}'s specific appearance, archetype (${playerProfile.role}), physical build, gear, and bearing.
+3. OPENING CHOICES GUIDELINE: The 4 generated options in "opening_choices" MUST STRICTLY follow this guideline:
+   [Tone/Action]: Short summary of character action/dialogue
+   Examples:
+   - [Combat/Aggressive]: Step forward, draw your blade with a metallic rasp, and demand passage.
+   - [Arcana/Analytical]: Channel ether into your fingertips and call out the instability in her containment glyph.
+   - [Subterfuge/Cunning]: Flash the clandestine counter-cipher with your left hand while keeping to the shadows.
+   - [Composure/Diplomatic]: Stand your ground calmly, meet her gaze without blinking, and propose a mutual bargain.
+   DO NOT generate single tags like [Combat] or [Subterfuge] without the Action tone. Every single choice MUST be in "[Tone/Action]: Short summary" format.
+
 --- COMPATIBILITY & BASE AFFECTION RULES ---
 - Base affection must start LOW overall (range: 5 to 25). Heroines in this world are guarded and cynical.
 - High Compatibility (class, vibe, and visual presentation strongly match her values): 18 - 25.
@@ -156,7 +187,7 @@ Respond strictly in valid JSON matching this schema:
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
   "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
-  "opening_choices": [string, string, string, string], // 4 tailored, distinct dialogue or action responses tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Composure]", "[Force]")
+  "opening_choices": [string, string, string, string], // 4 tailored, distinct dialogue or action responses strictly formatted as "[Tone/Action]: Short summary of character action/dialogue"
   "initial_quest": {
     "id": "scenario_01",
     "title": string,
@@ -320,10 +351,24 @@ Generate the dynamic opening prologue according to the instructions.`;
     }
 
     if (!responseData) {
-      throw lastError || new Error("Failed to generate prologue from models.");
+      console.warn("Prologue generation from models was unavailable or failed. Using bespoke canonical heroine dossier baseline.");
+      responseData = {
+        speaker: heroineDossier.name,
+        location: heroineDossier.defaultLocation || startingLocation,
+        scene_setup: heroineDossier.canonicalEncounter,
+        dialogue: heroineDossier.signatureOpeningDialogue,
+        initial_affection: 15,
+        initial_mood: heroineDossier.initialMood || "Guarded & Observant",
+        expression_key: heroineDossier.defaultExpression || "neutral",
+        opening_choices: heroineDossier.baselineChoices,
+        initial_quest: heroineDossier.initialQuest,
+        system_announcement: `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`,
+        plausibility: 80,
+        plausibility_tier: "Stable",
+      };
     }
 
-    const defaultQuest = {
+    const defaultQuest = heroineDossier.initialQuest || {
       id: "scenario_01",
       title: `Scenario 1: Awakening at ${startingLocation || "the Imperial Realm"}`,
       description: `The Administrator has initialized in the presence of ${startingHeroine}. Establish your standing without compromising causal probability.`,

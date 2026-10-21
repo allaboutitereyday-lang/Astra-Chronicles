@@ -2019,7 +2019,10 @@ export default function VisualNovelGame() {
       const initialAffection = typeof data.initial_affection === "number" ? data.initial_affection : 15;
       const activeExpression = data.expression_key || chosen.expressionKey || "neutral";
       const initialSprite = getSpriteSrc(activeSpeaker, activeExpression);
-      const openingPrologueText = `${data.scene_setup || chosen.sceneSetup}\n\n"${data.dialogue || chosen.dialogue}"`;
+      const rawDialogue = (data.dialogue || chosen.dialogue || "").trim();
+      const formattedDialogue = rawDialogue.startsWith('"') ? rawDialogue : `"${rawDialogue}"`;
+      const sceneSetup = (data.scene_setup || chosen.sceneSetup || "").trim();
+      const openingPrologueText = sceneSetup ? `${sceneSetup}\n\n${formattedDialogue}` : formattedDialogue;
 
       setParty((prevParty) =>
         prevParty.map((comp) => {
@@ -2037,7 +2040,7 @@ export default function VisualNovelGame() {
       setGameState({
         speaker: activeSpeaker,
         location: data.location || chosen.location,
-        dialogue: data.dialogue || chosen.dialogue,
+        dialogue: openingPrologueText,
         mood: data.initial_mood || "Guarded & Observant",
         bgImage: initialBg,
         presentCompanions: [activeSpeaker],
@@ -2081,7 +2084,7 @@ export default function VisualNovelGame() {
           gameState: {
             speaker: activeSpeaker,
             location: data.location || chosen.location,
-            dialogue: data.dialogue || chosen.dialogue,
+            dialogue: openingPrologueText,
             mood: data.initial_mood || "Guarded & Observant",
             bgImage: initialBg,
             presentCompanions: [activeSpeaker],
@@ -2147,7 +2150,10 @@ export default function VisualNovelGame() {
       console.warn("Prologue AI fallback:", err);
 
       const initialSprite = getSpriteSrc(chosen.speaker, chosen.expressionKey);
-      const openingPrologueText = `${chosen.sceneSetup}\n\n"${chosen.dialogue}"`;
+      const rawDialogue = (chosen.dialogue || "").trim();
+      const formattedDialogue = rawDialogue.startsWith('"') ? rawDialogue : `"${rawDialogue}"`;
+      const sceneSetup = (chosen.sceneSetup || "").trim();
+      const openingPrologueText = sceneSetup ? `${sceneSetup}\n\n${formattedDialogue}` : formattedDialogue;
 
       setParty((prevParty) =>
         prevParty.map((comp) => {
@@ -2165,7 +2171,7 @@ export default function VisualNovelGame() {
       setGameState({
         speaker: chosen.speaker,
         location: chosen.location,
-        dialogue: chosen.dialogue,
+        dialogue: openingPrologueText,
         mood: "Guarded & Observant",
         bgImage: initialBg,
         presentCompanions: [chosen.speaker],
@@ -2207,7 +2213,7 @@ export default function VisualNovelGame() {
           gameState: {
             speaker: chosen.speaker,
             location: chosen.location,
-            dialogue: chosen.dialogue,
+            dialogue: openingPrologueText,
             mood: "Guarded & Observant",
             bgImage: initialBg,
             presentCompanions: [chosen.speaker],
@@ -2828,9 +2834,9 @@ export default function VisualNovelGame() {
       if (isCustom) {
         playerText = formattedPayload;
       } else if (data.player_execution && data.player_execution.trim()) {
-        playerText = data.player_execution.trim().replace(/^\[[^\]]+\]\s*/, "");
+        playerText = data.player_execution.trim().replace(/^\[[^\]]+\](?::)?\s*/, "");
       } else {
-        const cleanVector = formattedPayload.replace(/^\[[^\]]+\]\s*/, "");
+        const cleanVector = formattedPayload.replace(/^\[[^\]]+\](?::)?\s*/, "");
         playerText = `${player.name} steps forward to take action. "${cleanVector}"`;
       }
       
