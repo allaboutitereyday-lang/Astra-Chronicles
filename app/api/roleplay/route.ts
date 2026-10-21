@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import {
+  UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE,
+  UNIVERSE_STATE_AND_MEMORY_CHECKLIST,
+} from "@/lib/narrationStyles";
 
 export const runtime = "nodejs";
 
 /**
  * Unified Dynamic LLM Router for Astra Chronicles
- * Dynamically routes requests between Local Ollama (Nous Hermes 3)
- * and Cloud inference (OpenRouter).
+ * Routes roleplay requests to high-performance OpenRouter cloud models
+ * with enforced grammatical rigor, quotation marks, and universe context checking.
  */
 export async function POST(req: Request) {
   try {
@@ -16,16 +20,44 @@ export async function POST(req: Request) {
       modelId,
       messages = [],
       prompt,
-      temperature = 0.8,
+      temperature = 0.85,
       max_tokens = 1024,
       repetition_penalty = 1.1,
     } = body;
 
     // Standardize OpenAI-style messages array
-    const formattedMessages =
+    const rawMessages =
       Array.isArray(messages) && messages.length > 0
         ? messages
         : [{ role: "user", content: prompt || "Continue the chronicle." }];
+
+    // Inject Universal Immersion, Grammar & State Verification directives
+    const hasSystemMessage = rawMessages.some((m: any) => m.role === "system");
+    let formattedMessages = [...rawMessages];
+
+    if (hasSystemMessage) {
+      formattedMessages = formattedMessages.map((m: any) => {
+        if (m.role === "system") {
+          const content = m.content || "";
+          if (!content.includes("UNIVERSAL LITERARY RIGOR")) {
+            return {
+              ...m,
+              content: `${content}\n\n${UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE}\n\n${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
+            };
+          }
+        }
+        return m;
+      });
+    } else {
+      formattedMessages.unshift({
+        role: "system",
+        content: `You are the Game Master, Narrator, and Companion Roleplay Engine for Astra Chronicles.
+
+${UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE}
+
+${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
+      });
+    }
 
     let endpointUrl: string;
     let headers: Record<string, string>;

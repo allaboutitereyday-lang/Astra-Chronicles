@@ -149,8 +149,8 @@ Respond strictly in valid JSON matching this schema:
 {
   "speaker": "${startingHeroine}",
   "location": "${startingLocation}",
-  "scene_setup": string, // 1-2 paragraphs detailing the location, sounds, and how the player arrives/stands before the heroine, strictly following the selected prose style. Use Markdown (*italics* for sensory actions/ambiance, **bold** for impact)
-  "dialogue": string, // The heroine's authentic, voice-accurate opening lines addressing the protagonist (strictly following the active narration style, including visual observations if image was attached)
+  "scene_setup": string, // 1-2 paragraphs detailing the location, sounds, and how the player arrives/stands before the heroine, with flawless grammar and markdown (*italics* for physical gestures, ambient sounds, sensory cues, **bold** for impact)
+  "dialogue": string, // The heroine's spoken lines addressing the protagonist. MUST BE IN QUOTATION MARKS ("...") and anchored to physical gestures or expressions in *italics*.
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
   "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
@@ -342,6 +342,13 @@ Generate the dynamic opening prologue according to the instructions.`;
     responseData.system_announcement =
       responseData.system_announcement ||
       `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`;
+    if (responseData.dialogue) {
+      const trimmed = responseData.dialogue.trim();
+      if (!trimmed.startsWith('"') && !trimmed.startsWith('*') && !trimmed.includes('"')) {
+        responseData.dialogue = `"${trimmed}"`;
+      }
+    }
+
     responseData.plausibility = typeof responseData.plausibility === "number" ? responseData.plausibility : 80;
     responseData.plausibility_tier = responseData.plausibility >= 70 ? "Stable" : "Strained";
 

@@ -369,14 +369,18 @@ ${synergyDirective}
 3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
 4. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
 5. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"), written in the voice, vocabulary, and attitude of the active Narration Style.
-6. Narrative Prose & Markdown Formatting: "narrative_text" MUST STRICTLY follow the active Narration Style directive above. The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures and atmospheric sensory cues; use **bold** for loud vocal emphasis or spell invocations; use > quotes for mental echoes or ancient runes. Spoken dialogue MUST be inside quotation marks "...".
+6. Narrative Prose, Grammar & Markdown Formatting:
+   - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
+   - MANDATORY QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). Anchor dialogue to physical gestures, body language, tone, or facial expressions. Unspoken internal thoughts must use *italics* without quotes.
+   - MARKDOWN IMMERSION: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, tactile sensations (temperature, grit, blood, wind), and subtle micro-expressions; use **bold** for loud vocal emphasis, shouts, or heavy kinetic clashes; use > quotes for mental echoes or ancient runes.
+   - PARAGRAPHING: Structure "narrative_text" into 2 to 3 evocative paragraphs separated by clean line breaks. Avoid monolithic walls of text.
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
 {
   "speaker": string,
-  "player_execution": string | null, // When preset choice is selected: a substantial, immersive narrative passage (at least 3-6 sentences across 1-2 paragraphs) detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in quotation marks "...". NEVER 1-2 sentences. Null only for custom player inputs.
-  "narrative_text": string, // 2-3 immersive paragraphs containing environmental details, character dialogue, and action beats. MUST STRICTLY adhere to the prose cadence, tone, vocabulary, and negative constraints of the active Narration Style.
+  "player_execution": string | null, // When preset choice is selected: a substantial, immersive narrative passage (at least 3-6 sentences across 1-2 paragraphs) with flawless grammar, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in quotation marks "...". NEVER 1-2 sentences. Null only for custom player inputs.
+  "narrative_text": string, // 2-3 immersive paragraphs containing environmental details, character dialogue in quotation marks ("..."), and action beats. Flawless grammar and syntax. Must use *italics* for physical gestures/sensory details and **bold** for impacts. MUST STRICTLY adhere to the prose cadence, tone, vocabulary, and negative constraints of the active Narration Style.
   "death_event": {
     "is_fatal": boolean,
     "cause_of_death": string | null,

@@ -74,6 +74,42 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
 };
 
 /**
+ * Universal directive enforcing impeccable grammar, mandatory quotation marks,
+ * and visual novel markdown immersion across all styles.
+ */
+export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY RIGOR, GRAMMAR & MARKDOWN IMMERSION DIRECTIVE ---
+1. GRAMMATICAL ACCURACY & SYNTACTIC POLISH:
+   - Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs.
+   - Strictly prohibit grammatical errors: no comma splices, dropped clauses, run-on fragments, or unnatural tense flipping.
+   - Maintain consistent past-tense for narrative prose descriptions and present-tense for spoken character dialogue.
+   - Eliminate repetitive robotic AI clichés and machine transitions (e.g. avoid repeating "Suddenly...", "As if on cue...", "A testament to...", "A palpable silence...").
+2. MANDATORY QUOTATION MARKS FOR ALL SPOKEN DIALOGUE:
+   - ALL spoken words, verbal banter, and character utterances MUST be cleanly enclosed in standard double quotation marks ("...").
+   - NEVER output floating or unattributed speech. Every spoken line must be physically anchored to an action beat, facial micro-expression, tone of voice, or spatial movement.
+   - Distinguish internal thoughts from spoken words by formatting unspoken internal monologue in *italics* without quotation marks.
+3. VISUAL NOVEL MARKDOWN FORMATTING RULES:
+   - Use *italics* for physical gestures, tactile sensations (temperature, grit, blood, rain, breath), subtle micro-expressions, and whispered tones.
+   - Use **bold** sparingly for explosive kinetic impacts, loud vocal shouts, thunderous spell invocations, or metallic clashes.
+   - Use > blockquotes for telepathic impressions, ancient runic inscriptions, or intense timeline regression memories.
+   - Structure prose into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks. Avoid single massive blocks of text.`;
+
+/**
+ * Mandatory checklist ensuring the LLM checks universe state, memory, and scene context before responding.
+ */
+export const UNIVERSE_STATE_AND_MEMORY_CHECKLIST = `--- PRE-RESPONSE VERIFICATION PROTOCOL: UNIVERSE STATE, MEMORY & SCENE CONTEXT ---
+BEFORE GENERATING ANY NARRATIVE PROSE OR DIALOGUE, YOU MUST INTERNALLY VERIFY THE FOLLOWING THREE PILLARS:
+1. STATE OF THE UNIVERSE:
+   - Location & Environmental Constraints: What are the physical realities of the active location? (Lighting, ambient hazards, weather, terrain, noise level). Actions must obey physical geography and spatial logic.
+   - LitRPG System State: Check active quests, objective statuses, and causal plausibility score. The protagonist's loadout (weapon, armor, relic), stance, and stamina dictate their physical limits.
+2. CONTINUITY OF MEMORY & HISTORY:
+   - Chronicle Beats: Cross-reference previous interaction beats and memories. Characters must acknowledge established agreements, past battles, confessions, or betrayals.
+   - Affection Locks & Boundaries: Respect companion favor caps. If locked at a threshold (25%, 50%, 75%), emotional defense mechanisms are active—favor cannot rise until milestone quests are completed.
+   - Timeline Echoes: If timeline echoes are present, reflect instinctual deja-vu or uncanny foreknowledge from prior deaths/loops.
+3. CONTEXT OF THE ACTIVE SCENE:
+   - Physical Presence vs Absence: Check who is physically standing in the scene. If the protagonist is alone, companions cannot talk or react. If companions are present, portray dynamic eye contact, physical distance, and interpersonal friction.
+   - Persona & Expression Demeanor: The active speaker must strictly embody their voice profile, ideological values, and current expression key.`;
+
+/**
  * Normalizes any freeform or select dropdown narration style string into a canonical key.
  */
 export function resolveNarrationStyleKey(rawTone?: string): NarrationStyleKey {
@@ -121,14 +157,16 @@ export function getNarrationStyleBadge(rawTone?: string): string {
 
 /**
  * Builds the comprehensive, unambiguous prose directive injected into the LLM system prompt.
- * Strictly forces the LLM to write in the chosen prose style and explicitly enforces negative constraints.
+ * Strictly forces the LLM to write in the chosen prose style and explicitly enforces negative constraints,
+ * universal grammar rules, quotation mark enforcement, and visual novel markdown formatting.
  */
 export function getNarrationProseDirective(rawTone?: string): string {
   const key = resolveNarrationStyleKey(rawTone);
 
+  let styleBody = "";
   if (key !== "custom") {
     const def = NARRATION_STYLE_DEFINITIONS[key];
-    return `--- MANDATORY PROSE & NARRATION DIRECTIVE: [${def.label.toUpperCase()}] ---
+    styleBody = `--- MANDATORY PROSE & NARRATION DIRECTIVE: [${def.label.toUpperCase()}] ---
 YOU MUST STRICTLY ADHERE TO THIS PROSE STYLE FOR ALL NARRATIVE TEXT, ENVIRONMENTAL DESCRIPTIONS, SENSORY BEATS, AND CHARACTER DIALOGUE. DO NOT REVERT TO GENERIC STOCK WRITING:
 1. CORE PHILOSOPHY & ATMOSPHERE:
    ${def.corePhilosophy}
@@ -142,15 +180,20 @@ YOU MUST STRICTLY ADHERE TO THIS PROSE STYLE FOR ALL NARRATIVE TEXT, ENVIRONMENT
 ${def.negativeConstraints.map((nc) => `   - ${nc}`).join("\n")}
 6. TARGET PROSE CADENCE REFERENCE (MATCH THIS EXACT TONE & REGISTER):
    "${def.proseExample}"`;
-  }
-
-  // Custom tone fallback
-  const customTone = rawTone?.trim() || "Grimdark & Atmospheric";
-  return `--- MANDATORY PROSE & NARRATION DIRECTIVE: [${customTone.toUpperCase()}] ---
+  } else {
+    const customTone = rawTone?.trim() || "Grimdark & Atmospheric";
+    styleBody = `--- MANDATORY PROSE & NARRATION DIRECTIVE: [${customTone.toUpperCase()}] ---
 YOU MUST STRICTLY ADHERE TO THE TONE AND PROSE CONVENTIONS OF "${customTone}":
 1. Consistently calibrate all environmental descriptions, sensory details, and character dialogue to faithfully reflect "${customTone}".
 2. Dialogue and character voices must actively express the vocabulary, attitude, and emotional pacing inherent to "${customTone}".
 3. Do not revert to generic stock narration; let "${customTone}" guide the sentence rhythm, word choice, and narrative tension across all generated prose.`;
+  }
+
+  return `${styleBody}
+
+${UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE}
+
+${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`;
 }
 
 /**
@@ -159,11 +202,10 @@ YOU MUST STRICTLY ADHERE TO THE TONE AND PROSE CONVENTIONS OF "${customTone}":
 export function getChoicesStyleDirective(rawTone?: string): string {
   const key = resolveNarrationStyleKey(rawTone);
   if (key === "light_novel") {
-    return `Generate 4 distinct player action choices reflecting a Light Novel / High Fantasy dynamic: snappy, proactive, spirited, and heroic with tactical and character-driven flavor.`;
+    return `Generate 4 distinct player action choices reflecting a Light Novel / High Fantasy dynamic: snappy, proactive, spirited, and heroic with tactical and character-driven flavor. Each choice must have flawless grammar and syntax.`;
   }
   if (key === "noir") {
-    return `Generate 4 distinct player action choices reflecting a Noir Arcana style: cynical, sharp, street-smart, guarded, and pragmatic underworld maneuvering.`;
+    return `Generate 4 distinct player action choices reflecting a Noir Arcana style: cynical, sharp, street-smart, guarded, and pragmatic underworld maneuvering. Each choice must have flawless grammar and syntax.`;
   }
-  return `Generate 4 distinct player action choices reflecting a Grimdark & Atmospheric style: tense, calculated, gritty, and acutely aware of mortal consequences.`;
+  return `Generate 4 distinct player action choices reflecting a Grimdark & Atmospheric style: tense, calculated, gritty, and acutely aware of mortal consequences. Each choice must have flawless grammar and syntax.`;
 }
-
