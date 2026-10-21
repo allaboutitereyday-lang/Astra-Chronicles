@@ -88,6 +88,7 @@ import {
 } from "@/lib/codexStorage";
 import { processImageUpload } from "@/lib/imageUtils";
 import { validateKeyClientSide } from "@/lib/clientKeyValidation";
+import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 import { GeneratedGearPiece } from "@/app/api/generate-starting-gear/route";
 
 export interface InventoryItem {
@@ -1070,6 +1071,17 @@ export default function VisualNovelGame() {
     }
   };
   
+  const [pageLoaded, setPageLoaded] = useState(false);
+  const [screenTransition, setScreenTransition] = useState<ScreenTransitionConfig>({
+    isOpen: false,
+    title: "",
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setPageLoaded(true), 40);
+    return () => clearTimeout(timer);
+  }, []);
+
   const [showPlayerSheet, setShowPlayerSheet] = useState(false);
   const [showPartyDrawer, setShowPartyDrawer] = useState(false);
   const [showChronicle, setShowChronicle] = useState(false);
@@ -2223,7 +2235,14 @@ export default function VisualNovelGame() {
   };
 
   const handleNavigateToTrials = async () => {
-    soundEffects.playClick();
+    soundEffects.playRiftTransition();
+    setScreenTransition({
+      isOpen: true,
+      title: "ENTERING LITRPG TRIALS",
+      subtitle: "Saving Story Snapshot • Synchronizing Causal Matrix...",
+      theme: "cyan",
+      icon: "swords",
+    });
 
     // Snapshot the exact current story turn into Slot 0 so returning restores this exact point
     const currentAvatar = playerAvatar;
@@ -2259,7 +2278,37 @@ export default function VisualNovelGame() {
       sessionStorage.setItem("astra_trials_return_url", returnUrl);
     } catch {}
 
-    router.push(`/trials?storyId=${encodeURIComponent(currentStory.id)}&returnTo=${encodeURIComponent(returnUrl)}`);
+    setTimeout(() => {
+      router.push(`/trials?storyId=${encodeURIComponent(currentStory.id)}&returnTo=${encodeURIComponent(returnUrl)}`);
+    }, 350);
+  };
+
+  const handleNavigateToCodex = () => {
+    soundEffects.playIntroBell();
+    setScreenTransition({
+      isOpen: true,
+      title: "ACCESSING MULTIVERSE CODEX",
+      subtitle: "Querying Indexed Relics, Story CGs & Neural Art Cache...",
+      theme: "amber",
+      icon: "book",
+    });
+    setTimeout(() => {
+      router.push("/codex");
+    }, 320);
+  };
+
+  const handleNavigateToCatalogue = () => {
+    soundEffects.playClick();
+    setScreenTransition({
+      isOpen: true,
+      title: "RETURNING TO STORY CATALOGUE",
+      subtitle: "Archiving Chronicle Anchors & Active Flowchart Reality...",
+      theme: "purple",
+      icon: "arrow",
+    });
+    setTimeout(() => {
+      router.push("/");
+    }, 320);
   };
 
   const handleLoadSlot = async (slotId: number, explicitData?: SaveSlotData) => {
@@ -4010,10 +4059,7 @@ export default function VisualNovelGame() {
                   </button>
 
                   <button
-                    onClick={() => {
-                      soundEffects.playClick();
-                      router.push("/codex");
-                    }}
+                    onClick={handleNavigateToCodex}
                     className="px-3 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 font-mono text-xs flex items-center gap-1.5 cursor-pointer transition-all"
                     title="Open Multiverse Codex"
                   >
@@ -4242,7 +4288,9 @@ export default function VisualNovelGame() {
   // 1. OPENING / WELCOME SPLASH SCREEN (FIRST LOAD)
   if (!isConfigured && !hasSeenWelcome) {
     return (
-      <div className="relative h-screen w-screen overflow-hidden bg-black font-sans flex flex-col items-center justify-center select-none">
+      <div className={`relative h-screen w-screen overflow-hidden bg-black font-sans flex flex-col items-center justify-center select-none transition-all duration-300 ease-out ${
+        pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+      }`}>
         <div 
           className="absolute inset-0 bg-cover bg-center transition-all duration-1000 brightness-[0.38] contrast-125 scale-105 pointer-events-none"
           style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
@@ -4254,7 +4302,7 @@ export default function VisualNovelGame() {
 
         <div className="absolute top-5 left-5 z-30 flex items-center gap-2">
           <button
-            onClick={() => router.push("/")}
+            onClick={handleNavigateToCatalogue}
             className="px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-white/30 text-zinc-300 hover:text-white transition-all cursor-pointer backdrop-blur-md shadow-lg flex items-center gap-2 font-mono text-xs"
           >
             <ArrowLeft className="w-3.5 h-3.5 text-zinc-400" /> Back to Catalogue
@@ -4330,6 +4378,7 @@ export default function VisualNovelGame() {
 
         {renderSaveModal()}
         {renderAuthModal()}
+        <ScreenTransitionOverlay {...screenTransition} />
       </div>
     );
   }
@@ -4338,7 +4387,9 @@ export default function VisualNovelGame() {
   if (!isConfigured) {
     if (creationStep === "gear") {
       return (
-        <div className="relative h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto">
+        <div className={`relative h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto transition-all duration-300 ease-out ${
+          pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+        }`}>
           <div 
             className="absolute inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none"
             style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
@@ -4547,12 +4598,15 @@ export default function VisualNovelGame() {
           {renderAuthModal()}
           {renderTransitionOverlay()}
           {renderAbilityModal()}
+          <ScreenTransitionOverlay {...screenTransition} />
         </div>
       );
     }
 
     return (
-      <div className="relative h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto">
+      <div className={`relative h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto transition-all duration-300 ease-out ${
+        pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+      }`}>
         <div 
           className="absolute inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none"
           style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
@@ -4564,7 +4618,7 @@ export default function VisualNovelGame() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push("/")}
+                onClick={handleNavigateToCatalogue}
                 className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-all cursor-pointer font-mono"
                 title="Return to Story Catalogue"
               >
@@ -4838,12 +4892,15 @@ export default function VisualNovelGame() {
         {renderAuthModal()}
         {renderTransitionOverlay()}
         {renderAbilityModal()}
+        <ScreenTransitionOverlay {...screenTransition} />
       </div>
     );
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-zinc-950 font-sans">
+    <div className={`relative h-screen w-screen overflow-hidden bg-zinc-950 font-sans transition-all duration-300 ease-out ${
+      pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+    }`}>
       
       <div 
         key={gameState.bgImage}
@@ -4867,7 +4924,7 @@ export default function VisualNovelGame() {
         {/* LEFT CLUSTER: Navigation, Player Anchor & LitRPG System */}
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => router.push("/")}
+            onClick={handleNavigateToCatalogue}
             className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer"
             title="Return to Story Catalogue"
           >
@@ -5586,8 +5643,14 @@ export default function VisualNovelGame() {
 
       {/* PARTY ROSTER DRAWER */}
       {showPartyDrawer && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none">
-          <div className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4">
+        <div 
+          onClick={() => setShowPartyDrawer(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none animate-in fade-in duration-200"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4 animate-in slide-in-from-right duration-300 ease-out shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-rose-400" />
@@ -5704,8 +5767,14 @@ export default function VisualNovelGame() {
 
       {/* REGION MAP MODAL */}
       {showMap && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none">
-          <div className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-5">
+        <div 
+          onClick={() => setShowMap(false)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in zoom-in-95 duration-300 ease-out"
+          >
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <MapIcon className="w-5 h-5 text-emerald-400" />
@@ -5763,8 +5832,14 @@ export default function VisualNovelGame() {
 
       {/* PLAYER SHEET & INVENTORY DRAWER */}
       {showPlayerSheet && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-start select-none">
-          <div className="w-full max-w-md bg-zinc-950/95 border-r border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-6">
+        <div 
+          onClick={() => setShowPlayerSheet(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-start select-none animate-in fade-in duration-200"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-zinc-950/95 border-r border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-6 animate-in slide-in-from-left duration-300 ease-out shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 shrink-0 flex items-center justify-center">
@@ -6007,10 +6082,7 @@ export default function VisualNovelGame() {
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => {
-                  soundEffects.playClick();
-                  router.push("/codex");
-                }}
+                onClick={handleNavigateToCodex}
                 className="w-full py-2.5 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-mono text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md"
               >
                 <BookOpen className="w-4 h-4 text-amber-400" />
@@ -6091,8 +6163,14 @@ export default function VisualNovelGame() {
 
       {/* CHRONICLE LOG DRAWER */}
       {showChronicle && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none">
-          <div className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4">
+        <div 
+          onClick={() => setShowChronicle(false)}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none animate-in fade-in duration-200"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4 animate-in slide-in-from-right duration-300 ease-out shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
                 <Scroll className="w-5 h-5 text-sky-400" />
@@ -6329,6 +6407,8 @@ export default function VisualNovelGame() {
         </div>
       )}
 
+      {/* Screen Transition Overlay */}
+      <ScreenTransitionOverlay {...screenTransition} />
     </div>
   );
 }

@@ -37,6 +37,7 @@ import { loadGameSlot, saveGameSlot, SaveSlotPayload } from "@/lib/saveStorage";
 import { saveCodexLoot, saveCodexScene, getAllCodexScenes } from "@/lib/codexStorage";
 import { InventoryItem, PlayerProfile, AbilityDetail, StoryCompanion, TrialModifier } from "@/types/story";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
+import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "@/lib/trialsClassArsenals";
 import {
   buildActiveTrialCompanion,
@@ -177,9 +178,14 @@ function LitRPGTrialsContent() {
   const [isGeneratingMonsterImage, setIsGeneratingMonsterImage] = useState<boolean>(false);
   const [showSkillsDrawer, setShowSkillsDrawer] = useState<boolean>(false);
   const [pageLoaded, setPageLoaded] = useState<boolean>(false);
+  const [screenTransition, setScreenTransition] = useState<ScreenTransitionConfig>({
+    isOpen: false,
+    title: "",
+  });
 
   useEffect(() => {
-    setPageLoaded(true);
+    const timer = setTimeout(() => setPageLoaded(true), 40);
+    return () => clearTimeout(timer);
   }, []);
 
   // Daily Seed calculation
@@ -880,7 +886,14 @@ function LitRPGTrialsContent() {
   const handleReturnToStory = async () => {
     if (isSyncingBack) return;
     setIsSyncingBack(true);
-    soundEffects.playIntroBell();
+    soundEffects.playRiftTransition();
+    setScreenTransition({
+      isOpen: true,
+      title: "SYNCHRONIZING STORY CAMPAIGN",
+      subtitle: "Consolidating EXP, Relic Synergies & Coherence Parameters...",
+      theme: "rose",
+      icon: "sparkles",
+    });
 
     try {
       const slot0 = activeSlot0 || (await loadGameSlot(0));
@@ -1005,7 +1018,9 @@ function LitRPGTrialsContent() {
     // Direct route back to the active story route and resume turn
     const baseReturn = returnTo || `/play/${storyId}`;
     const connector = baseReturn.includes("?") ? "&" : "?";
-    router.push(`${baseReturn}${connector}loadSlot=0&resuming=true`);
+    setTimeout(() => {
+      router.push(`${baseReturn}${connector}loadSlot=0&resuming=true`);
+    }, 350);
   };
 
   // Custom abilities rolled in Character Creator with Skill Evolution (Pillar 2)
@@ -1058,7 +1073,7 @@ function LitRPGTrialsContent() {
 
   return (
     <div className={`min-h-screen bg-zinc-950 text-zinc-100 font-sans flex flex-col relative overflow-hidden select-none transition-all duration-300 ease-out ${
-      pageLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+      pageLoaded && !screenTransition.isOpen ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-1 scale-[0.99]"
     }`}>
       {/* Background Ambience */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/20 via-zinc-950 to-black pointer-events-none" />
@@ -2187,6 +2202,9 @@ function LitRPGTrialsContent() {
           </div>
         </div>
       )}
+
+      {/* Screen Transition Overlay */}
+      <ScreenTransitionOverlay {...screenTransition} />
     </div>
   );
 }

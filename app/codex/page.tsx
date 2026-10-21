@@ -40,6 +40,7 @@ import {
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 import { processImageUpload } from "@/lib/imageUtils";
+import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 
 export default function MultiverseCodexPage() {
   const router = useRouter();
@@ -47,6 +48,16 @@ export default function MultiverseCodexPage() {
   const [scenes, setScenes] = useState<CodexSceneEntry[]>([]);
   const [loot, setLoot] = useState<CodexLootEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pageLoaded, setPageLoaded] = useState(false);
+  const [screenTransition, setScreenTransition] = useState<ScreenTransitionConfig>({
+    isOpen: false,
+    title: "",
+  });
+
+  useEffect(() => {
+    const timer = setTimeout(() => setPageLoaded(true), 40);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -326,8 +337,24 @@ export default function MultiverseCodexPage() {
     }
   };
 
+  const handleReturnFromCodex = () => {
+    soundEffects.playClick();
+    setScreenTransition({
+      isOpen: true,
+      title: "RETURNING TO STORY CATALOGUE",
+      subtitle: "Archiving Codex State • Calibrating Reality Matrix...",
+      theme: "purple",
+      icon: "arrow",
+    });
+    setTimeout(() => {
+      router.push("/");
+    }, 320);
+  };
+
   return (
-    <main className="relative min-h-screen w-full bg-black text-zinc-100 overflow-x-hidden select-none font-sans">
+    <main className={`relative min-h-screen w-full bg-black text-zinc-100 overflow-x-hidden select-none font-sans transition-all duration-300 ease-out ${
+      pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+    }`}>
       {/* Background Ambience */}
       <div
         className="fixed inset-0 bg-cover bg-center opacity-15 pointer-events-none brightness-50 contrast-125"
@@ -366,7 +393,7 @@ export default function MultiverseCodexPage() {
             <button
               onClick={() => {
                 soundEffects.playClick();
-                router.push("/");
+                handleReturnFromCodex();
               }}
               className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-white/30 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer shadow-lg"
               title="Return to Story Catalogue"
@@ -932,6 +959,8 @@ export default function MultiverseCodexPage() {
           </div>
         </div>
       )}
+      {/* Screen Transition Overlay */}
+      <ScreenTransitionOverlay {...screenTransition} />
     </main>
   );
 }
