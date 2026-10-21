@@ -4371,13 +4371,15 @@ export default function VisualNovelGame() {
         pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
       }`}>
         <div 
-          className="absolute inset-0 bg-cover bg-center transition-all duration-1000 brightness-[0.38] contrast-125 scale-105 pointer-events-none"
+          className="fixed inset-0 bg-cover bg-center transition-all duration-1000 brightness-[0.38] contrast-125 scale-105 pointer-events-none select-none z-0"
           style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/80 pointer-events-none" />
-        <div className="absolute inset-0 cinematic-vignette pointer-events-none" />
+        <div className="fixed inset-0 bg-gradient-to-t from-black via-black/60 to-black/80 pointer-events-none z-0" />
+        <div className="fixed inset-0 cinematic-vignette pointer-events-none z-0" />
 
-        <AtmosphericParticles location="Imperial Capital Imperium" intensity="intense" />
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <AtmosphericParticles location="Imperial Capital Imperium" intensity="intense" />
+        </div>
 
         <div className="absolute top-5 left-5 z-30 flex items-center gap-2">
           <button
@@ -4466,15 +4468,17 @@ export default function VisualNovelGame() {
   if (!isConfigured) {
     if (creationStep === "gear") {
       return (
-        <div className={`relative h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto transition-all duration-300 ease-out ${
+        <div className={`relative min-h-screen w-full bg-zinc-950 flex items-center justify-center p-4 py-8 md:py-12 overflow-y-auto transition-all duration-300 ease-out ${
           pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
         }`}>
           <div 
-            className="absolute inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none"
+            className="fixed inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none select-none z-0"
             style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
           />
-          <div className="absolute inset-0 cinematic-vignette pointer-events-none" />
-          <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
+          <div className="fixed inset-0 cinematic-vignette pointer-events-none z-0" />
+          <div className="fixed inset-0 pointer-events-none z-0">
+            <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
+          </div>
 
           <div className="relative z-10 w-full max-w-5xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 my-auto">
             {/* Top Navigation & Status */}
@@ -4683,15 +4687,17 @@ export default function VisualNovelGame() {
     }
 
     return (
-      <div className={`relative h-screen w-screen bg-zinc-950 flex items-center justify-center p-4 overflow-y-auto transition-all duration-300 ease-out ${
+      <div className={`relative min-h-screen w-full bg-zinc-950 flex items-center justify-center p-4 py-8 md:py-12 overflow-y-auto transition-all duration-300 ease-out ${
         pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
       }`}>
         <div 
-          className="absolute inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none"
+          className="fixed inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none select-none z-0"
           style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
         />
-        <div className="absolute inset-0 cinematic-vignette pointer-events-none" />
-        <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
+        <div className="fixed inset-0 cinematic-vignette pointer-events-none z-0" />
+        <div className="fixed inset-0 pointer-events-none z-0">
+          <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
+        </div>
 
         <div className="relative z-10 w-full max-w-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 my-auto">
           <div className="flex items-center justify-between">
