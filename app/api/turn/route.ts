@@ -6,9 +6,10 @@ import { getNarrationProseDirective } from "@/lib/narrationStyles";
 export const runtime = "nodejs";
 
 const FALLBACK_MODELS = [
-  "deepseek/deepseek-v4-flash",
-  "z-ai/glm-5.3-flash",
-  "nvidia/nemotron-3.5-lightning:free",
+  "sao10k/l3.1-euryale-70b",
+  "nousresearch/hermes-3-llama-3.1-70b",
+  "deepseek/deepseek-chat",
+  "sao10k/l3-lunaris-8b",
 ];
 
 export async function POST(req: Request) {
@@ -455,7 +456,9 @@ Respond strictly in valid JSON matching this schema:
     let responseData = null;
     let lastError = null;
 
-    const modelsToTry = isLocal ? [modelId || "hermes3:8b"] : FALLBACK_MODELS;
+    const modelsToTry = isLocal
+      ? [modelId || "hermes3:8b"]
+      : (modelId ? [modelId, ...FALLBACK_MODELS.filter((m) => m !== modelId)] : FALLBACK_MODELS);
 
     for (const model of modelsToTry) {
       try {

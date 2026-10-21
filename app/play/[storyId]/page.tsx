@@ -4957,7 +4957,7 @@ export default function VisualNovelGame() {
               <button
                 type="button"
                 onClick={() => {
-                  const next = { ...llmConfig, targetEnvironment: "cloud" as const, modelId: "deepseek/deepseek-chat" };
+                  const next = { ...llmConfig, targetEnvironment: "cloud" as const, modelId: "sao10k/l3.1-euryale-70b" };
                   setLlmConfig(next);
                   saveStoredLlmConfig(next);
                 }}

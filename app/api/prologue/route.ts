@@ -5,11 +5,10 @@ import { getNarrationProseDirective } from "@/lib/narrationStyles";
 export const runtime = "nodejs";
 
 const PROLOGUE_MODELS = [
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
-  "deepseek/deepseek-v4.1-flash-1017",
-  "dots-studio/dots-3-note-preview:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "nvidia/nemotron-3.5-lightning:free",
+  "sao10k/l3.1-euryale-70b",
+  "nousresearch/hermes-3-llama-3.1-70b",
+  "deepseek/deepseek-chat",
+  "sao10k/l3-lunaris-8b",
 ];
 
 export async function POST(req: Request) {
@@ -185,7 +184,9 @@ Generate the dynamic opening prologue according to the instructions.`;
     let responseData = null;
     let lastError = null;
 
-    const modelsToTry = isLocal ? [modelId || "hermes3:8b"] : PROLOGUE_MODELS;
+    const modelsToTry = isLocal
+      ? [modelId || "hermes3:8b"]
+      : (modelId ? [modelId, ...PROLOGUE_MODELS.filter((m) => m !== modelId)] : PROLOGUE_MODELS);
 
     for (const model of modelsToTry) {
       try {

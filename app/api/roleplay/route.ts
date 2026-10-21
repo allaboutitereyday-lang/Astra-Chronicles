@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       }
 
       endpointUrl = "https://openrouter.ai/api/v1/chat/completions";
-      targetModel = modelId || "deepseek/deepseek-chat";
+      targetModel = modelId || "sao10k/l3.1-euryale-70b";
       headers = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,

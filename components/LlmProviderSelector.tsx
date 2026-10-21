@@ -14,9 +14,9 @@ export interface LlmConfig {
 }
 
 export const DEFAULT_LLM_CONFIG: LlmConfig = {
-  targetEnvironment: "local",
-  modelId: "hermes3:8b",
-  temperature: 0.8,
+  targetEnvironment: "cloud",
+  modelId: "sao10k/l3.1-euryale-70b",
+  temperature: 0.85,
   max_tokens: 1024,
   repetition_penalty: 1.1,
 };
@@ -68,10 +68,12 @@ export const LOCAL_MODELS = [
 ];
 
 export const CLOUD_MODELS = [
-  { id: "deepseek/deepseek-chat", name: "DeepSeek Chat (V3) • Fast & Creative" },
-  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Nous Hermes 3 (405B) • Flagship Cloud" },
-  { id: "meta-llama/llama-3.3-70b-instruct", name: "Llama 3.3 (70B) Instruct" },
-  { id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet" },
+  { id: "sao10k/l3.1-euryale-70b", name: "Sao10K: Euryale 70B (v2.2) • Best-in-Class Uncensored Roleplay & ERP" },
+  { id: "nousresearch/hermes-3-llama-3.1-70b", name: "Nous Hermes 3 (70B) • Uncensored Storytelling & Tool-Use" },
+  { id: "deepseek/deepseek-chat", name: "DeepSeek Chat (V3) • High Intelligence & Cost Effective" },
+  { id: "sao10k/l3-lunaris-8b", name: "Sao10K: Lunaris 8B • Fast & Uncensored Roleplay" },
+  { id: "gryphe/mythomax-l2-13b", name: "MythoMax 13B • Classic Uncensored Fiction" },
+  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Nous Hermes 3 (405B) • Massive Flagship Cloud" },
 ];
 
 /**
