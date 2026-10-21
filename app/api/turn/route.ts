@@ -435,30 +435,22 @@ Respond strictly in valid JSON matching this schema:
       });
     }
 
+    function supportsVision(modelName?: string): boolean {
+      if (!modelName) return false;
+      const m = modelName.toLowerCase();
+      return (
+        m.includes("vision") ||
+        m.includes("vl") ||
+        m.includes("4o") ||
+        m.includes("gemini") ||
+        m.includes("claude-3") ||
+        m.includes("pixtral")
+      );
+    }
+
     const userPromptContent = isCustom
       ? `Player Action: ${action}`
       : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a substantial 3-6 sentence narrative passage of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "...". Do NOT output bracket tags like [Combat] in "player_execution". Advance companion/world response in "narrative_text".]`;
-
-    if (playerAvatarBase64 && isFirstEncounter) {
-      messages.push({
-        role: "user",
-        content: [
-          { 
-            type: "text", 
-            text: `${userPromptContent}\n[Note to Game Master: Inspect the attached protagonist image and integrate initial observations into dialogue/narrative.]` 
-          },
-          { 
-            type: "image_url", 
-            image_url: { url: playerAvatarBase64 } 
-          },
-        ],
-      });
-    } else {
-      messages.push({
-        role: "user",
-        content: userPromptContent,
-      });
-    }
 
     let responseData = null;
     let lastError = null;
@@ -482,17 +474,87 @@ Respond strictly in valid JSON matching this schema:
               "X-Title": "Astra Chronicles",
             };
 
-        const response = await fetch(fetchUrl, {
+        // Construct model-appropriate messages payload (avoid image_url on text-only models)
+        const modelMessages: any[] = [{ role: "system", content: systemPrompt }];
+
+        if (recentHistory && Array.isArray(recentHistory)) {
+          recentHistory.forEach((turn: { speaker: string; text: string }) => {
+            modelMessages.push({
+              role: turn.speaker === playerProfile.name ? "user" : "assistant",
+              content: `${turn.speaker}: ${turn.text}`,
+            });
+          });
+        }
+
+        if (playerAvatarBase64 && isFirstEncounter && supportsVision(model)) {
+          modelMessages.push({
+            role: "user",
+            content: [
+              { 
+                type: "text", 
+                text: `${userPromptContent}\n[Note to Game Master: Inspect the attached protagonist image and integrate initial observations into dialogue/narrative.]` 
+              },
+              { 
+                type: "image_url", 
+                image_url: { url: playerAvatarBase64 } 
+              },
+            ],
+          });
+        } else {
+          const textNote = (playerAvatarBase64 && isFirstEncounter)
+            ? `\n[Protagonist Archetype: ${playerProfile.name}, Role: ${playerProfile.role}, Stance: ${activeStance || "neutral"}. Note to Game Master: A custom portrait was provided; reflect these warrior traits in character observations.]`
+            : "";
+          modelMessages.push({
+            role: "user",
+            content: `${userPromptContent}${textNote}`,
+          });
+        }
+
+        let response = await fetch(fetchUrl, {
           method: "POST",
           headers,
           body: JSON.stringify({
             model,
-            messages,
+            messages: modelMessages,
             user: activeUser.key,
             temperature: 0.8,
             response_format: { type: "json_object" },
           }),
         });
+
+        // Fail-safe retry: If OpenRouter rejects because of image input, retry immediately as text-only
+        if (!response.ok) {
+          const firstErrText = await response.text();
+          if (firstErrText.includes("image input") || firstErrText.includes("Image Support") || firstErrText.includes("Filter by Image")) {
+            console.warn(`Model ${model} does not accept vision payload. Retrying with pure text...`);
+            const fallbackMessages = modelMessages.map((m) => {
+              if (Array.isArray(m.content)) {
+                const textOnly = m.content
+                  .filter((c: any) => c.type !== "image_url")
+                  .map((c: any) => c.text || "")
+                  .join("\n");
+                return { ...m, content: textOnly };
+              }
+              return m;
+            });
+
+            response = await fetch(fetchUrl, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                model,
+                messages: fallbackMessages,
+                user: activeUser.key,
+                temperature: 0.8,
+                response_format: { type: "json_object" },
+              }),
+            });
+          } else {
+            console.warn(`Model ${model} on ${isLocal ? "local" : "cloud"} failed (${response.status}): ${firstErrText}`);
+            lastError = new Error(`Model ${model} returned HTTP ${response.status}`);
+            continue;
+          }
+        }
 
         if (!response.ok) {
           const errText = await response.text();

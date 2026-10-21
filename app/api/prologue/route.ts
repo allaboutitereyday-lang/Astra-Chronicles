@@ -166,27 +166,18 @@ Starting Heroine: ${startingHeroine}
 
 Generate the dynamic opening prologue according to the instructions.`;
 
-    const userContent: any[] = [];
-    if (playerAvatarBase64) {
-      userContent.push({
-        type: "text",
-        text: `${promptText}\n[Note to Game Master: Inspect the attached protagonist image and author ${startingHeroine}'s visual observations into her opening response.]`,
-      });
-      userContent.push({
-        type: "image_url",
-        image_url: { url: playerAvatarBase64 },
-      });
-    } else {
-      userContent.push({
-        type: "text",
-        text: promptText,
-      });
+    function supportsVision(modelName?: string): boolean {
+      if (!modelName) return false;
+      const m = modelName.toLowerCase();
+      return (
+        m.includes("vision") ||
+        m.includes("vl") ||
+        m.includes("4o") ||
+        m.includes("gemini") ||
+        m.includes("claude-3") ||
+        m.includes("pixtral")
+      );
     }
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userContent.length === 1 ? userContent[0].text : userContent },
-    ];
 
     let responseData = null;
     let lastError = null;
@@ -210,7 +201,32 @@ Generate the dynamic opening prologue according to the instructions.`;
               "X-Title": "Astra Chronicles",
             };
 
-        const response = await fetch(fetchUrl, {
+        const userContent: any[] = [];
+        if (playerAvatarBase64 && supportsVision(model)) {
+          userContent.push({
+            type: "text",
+            text: `${promptText}\n[Note to Game Master: Inspect the attached protagonist image and author ${startingHeroine}'s visual observations into her opening response.]`,
+          });
+          userContent.push({
+            type: "image_url",
+            image_url: { url: playerAvatarBase64 },
+          });
+        } else {
+          const avatarNote = playerAvatarBase64
+            ? `\n[Note to Game Master: The protagonist has an uploaded portrait; portray their striking persona and features in ${startingHeroine}'s reaction.]`
+            : "";
+          userContent.push({
+            type: "text",
+            text: `${promptText}${avatarNote}`,
+          });
+        }
+
+        const messages = [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent.length === 1 ? userContent[0].text : userContent },
+        ];
+
+        let response = await fetch(fetchUrl, {
           method: "POST",
           headers,
           body: JSON.stringify({
@@ -221,6 +237,34 @@ Generate the dynamic opening prologue according to the instructions.`;
             response_format: { type: "json_object" },
           }),
         });
+
+        // Fail-safe retry: If OpenRouter rejects because of image input, retry immediately as text-only
+        if (!response.ok) {
+          const firstErrText = await response.text();
+          if (firstErrText.includes("image input") || firstErrText.includes("Image Support") || firstErrText.includes("Filter by Image")) {
+            console.warn(`Prologue model ${model} does not accept vision payload. Retrying with pure text...`);
+            const fallbackMessages = [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: promptText },
+            ];
+
+            response = await fetch(fetchUrl, {
+              method: "POST",
+              headers,
+              body: JSON.stringify({
+                model,
+                messages: fallbackMessages,
+                user: activeUser.key,
+                temperature: 0.85,
+                response_format: { type: "json_object" },
+              }),
+            });
+          } else {
+            console.warn(`Prologue model ${model} on ${isLocal ? "local" : "cloud"} failed (${response.status}): ${firstErrText}`);
+            lastError = new Error(`Model ${model} returned HTTP ${response.status}`);
+            continue;
+          }
+        }
 
         if (!response.ok) {
           const errText = await response.text();
