@@ -4,6 +4,7 @@ import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const PROLOGUE_MODELS = [
   "sao10k/l3.1-euryale-70b",

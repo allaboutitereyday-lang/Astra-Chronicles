@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
+const isElectronBuild = process.env.ELECTRON_BUILD === 'true';
+
 const nextConfig = {
-  output: 'export',
+  ...(isElectronBuild ? { output: 'export' } : {}),
   images: {
     unoptimized: true,
   },
 };
 
 export default nextConfig;
-

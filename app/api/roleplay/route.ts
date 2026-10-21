@@ -5,6 +5,7 @@ import {
 } from "@/lib/narrationStyles";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 /**
  * Unified Dynamic LLM Router for Astra Chronicles
