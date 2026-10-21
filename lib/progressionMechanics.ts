@@ -226,17 +226,19 @@ export const COMBAT_STANCES: Record<CombatStanceType, CombatStanceConfig> = {
 };
 
 export function getAvailableStancesForRole(role?: string): CombatStanceType[] {
+  // Universal Combat Stances: All classes have access to the complete 6-stance matrix.
+  // Order prioritizes class affinity while guaranteeing universal tactical access.
   const r = (role || "").toLowerCase();
   if (r.includes("spell") || r.includes("blade") || r.includes("mage")) {
-    return ["neutral", "frost", "flame"];
+    return ["neutral", "flame", "frost", "phase", "shadow", "graviton"];
   }
   if (r.includes("void") || r.includes("singularity") || r.includes("chrono")) {
-    return ["neutral", "phase", "graviton"];
+    return ["neutral", "phase", "graviton", "flame", "frost", "shadow"];
   }
   if (r.includes("rogue") || r.includes("assassin") || r.includes("shadow")) {
-    return ["neutral", "shadow", "frost"];
+    return ["neutral", "shadow", "phase", "flame", "frost", "graviton"];
   }
-  return ["neutral", "flame", "frost"];
+  return ["neutral", "flame", "frost", "phase", "shadow", "graviton"];
 }
 
 // ============================================================================

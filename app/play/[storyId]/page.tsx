@@ -51,7 +51,8 @@ import {
   Gift,
   Skull,
   Cloud,
-  Bell
+  Bell,
+  Settings2
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -5068,6 +5069,15 @@ export default function VisualNovelGame() {
           {renderTransitionOverlay()}
           {renderAbilityModal()}
           <ScreenTransitionOverlay {...screenTransition} />
+          <LlmProviderModal
+            isOpen={showLlmModal}
+            onClose={() => setShowLlmModal(false)}
+            config={llmConfig}
+            onChange={(newConfig: LlmConfig) => {
+              setLlmConfig(newConfig);
+              saveStoredLlmConfig(newConfig);
+            }}
+          />
         </div>
       );
     }
@@ -5323,10 +5333,15 @@ export default function VisualNovelGame() {
               <label className="text-xs font-mono text-zinc-400">AI Roleplay Model (OpenRouter Cloud)</label>
               <button
                 type="button"
-                onClick={() => setShowLlmModal(true)}
-                className="text-[10px] font-mono text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowLlmModal(true);
+                }}
+                className="text-[10px] font-mono text-rose-400 hover:text-rose-300 underline cursor-pointer flex items-center gap-1"
+                title="Configure LLM model parameters and generation settings"
               >
-                Model Details
+                <Settings2 className="w-3 h-3" />
+                <span>Model Settings</span>
               </button>
             </div>
             <div className="p-3 rounded-xl bg-zinc-950/80 border border-white/10 flex items-center justify-between gap-3 shadow-lg">
@@ -5362,7 +5377,10 @@ export default function VisualNovelGame() {
               </div>
               <button
                 type="button"
-                onClick={() => setShowLlmModal(true)}
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowLlmModal(true);
+                }}
                 className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-rose-500/40 text-xs font-mono text-zinc-200 transition-all cursor-pointer shrink-0"
               >
                 Switch Model
@@ -5421,6 +5439,15 @@ export default function VisualNovelGame() {
         {renderTransitionOverlay()}
         {renderAbilityModal()}
         <ScreenTransitionOverlay {...screenTransition} />
+        <LlmProviderModal
+          isOpen={showLlmModal}
+          onClose={() => setShowLlmModal(false)}
+          config={llmConfig}
+          onChange={(newConfig: LlmConfig) => {
+            setLlmConfig(newConfig);
+            saveStoredLlmConfig(newConfig);
+          }}
+        />
       </div>
     );
   }

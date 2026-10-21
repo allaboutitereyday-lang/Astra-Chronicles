@@ -57,6 +57,14 @@ import {
   generateStoryLootTable,
   SectorDefinition,
 } from "@/lib/proceduralTrials";
+import {
+  LlmConfig,
+  DEFAULT_LLM_CONFIG,
+  getStoredLlmConfig,
+  saveStoredLlmConfig,
+  LlmProviderModal,
+  LlmQuickPill,
+} from "@/components/LlmProviderSelector";
 
 export interface CombatTelemetry {
   damageDealt?: number;
@@ -80,6 +88,13 @@ export interface CombatFeedEntry {
   blurb?: string;
   isAiGenerated?: boolean;
   telemetry?: CombatTelemetry;
+}
+
+export interface FloatingCombatText {
+  id: string;
+  text: string;
+  type: "damage" | "crit" | "heal" | "player_damage" | "stagger" | "shield" | "evade";
+  target: "enemy" | "player";
 }
 
 function LitRPGTrialsContent() {
@@ -120,6 +135,27 @@ function LitRPGTrialsContent() {
   const [activeStance, setActiveStance] = useState<CombatStanceType>("neutral");
   const [activeShield, setActiveShield] = useState(0);
   const [trialTurnCount, setTrialTurnCount] = useState(0);
+
+  // Visual Damage Feedback & Floating Numbers State
+  const [floatingTexts, setFloatingTexts] = useState<FloatingCombatText[]>([]);
+  const [isEnemyFlashing, setIsEnemyFlashing] = useState<boolean>(false);
+  const [isPlayerFlashing, setIsPlayerFlashing] = useState<boolean>(false);
+
+  // Neural Engine LLM Routing State (Trials Cloud Routing)
+  const [llmConfig, setLlmConfig] = useState<LlmConfig>(DEFAULT_LLM_CONFIG);
+  const [showLlmModal, setShowLlmModal] = useState<boolean>(false);
+
+  const spawnFloatingText = (text: string, type: FloatingCombatText["type"], target: "enemy" | "player") => {
+    const id = `ftext_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    setFloatingTexts((prev) => [...prev, { id, text, type, target }]);
+    setTimeout(() => {
+      setFloatingTexts((prev) => prev.filter((item) => item.id !== id));
+    }, 1100);
+  };
+
+  useEffect(() => {
+    setLlmConfig(getStoredLlmConfig());
+  }, []);
 
   // Monster Visual Art & Dynamic Skills Drawer States (Phase 2 UI Overhaul)
   const [monsterImages, setMonsterImages] = useState<Record<string, string>>({});
@@ -239,6 +275,7 @@ function LitRPGTrialsContent() {
 
   const activeSector = sectors[currentSectorIdx] || sectors[0];
   const [currentEnemyHp, setCurrentEnemyHp] = useState(activeSector.enemyHp);
+  const [ghostEnemyHp, setGhostEnemyHp] = useState(activeSector.enemyHp);
 
   // Helper to compute effective MP cost based on the active sector's causal modifier
   const getEffectiveMpCost = (baseCost: number): number => {
@@ -271,6 +308,7 @@ function LitRPGTrialsContent() {
   // Sync enemy HP and log protocol ONLY ONCE per sector transition (prevents duplicates)
   useEffect(() => {
     setCurrentEnemyHp(activeSector.enemyHp);
+    setGhostEnemyHp(activeSector.enemyHp);
     if (!loggedSectorsRef.current.has(currentSectorIdx)) {
       loggedSectorsRef.current.add(currentSectorIdx);
       const protocolEntry: CombatFeedEntry = {
@@ -543,7 +581,12 @@ function LitRPGTrialsContent() {
 
       // Apply Combat Stance Multiplier & Modifier Player Damage Multiplier
       const currentStanceConfig = COMBAT_STANCES[activeStance as CombatStanceType] || COMBAT_STANCES.neutral;
-      const stanceDmgMult = currentStanceConfig.damageMultiplier;
+      let stanceDmgMult = currentStanceConfig.damageMultiplier;
+      if (activeStance === "flame") {
+        stanceDmgMult = 1.25; // Flame Surge: +25% Direct & Burn DMG
+      } else if (activeStance === "phase") {
+        stanceDmgMult = 1.15; // Phase Shift: bypasses armor
+      }
       const modifierDmgMult = modifierEffects.playerDamageMultiplier ?? 1.0;
       playerDamage = Math.floor(playerDamage * stanceDmgMult * modifierDmgMult);
 
@@ -551,7 +594,9 @@ function LitRPGTrialsContent() {
       if (playerDamage > 0) {
         const baseCritRate = 0.10;
         const critBonus = modifierEffects.critRateBonus ?? 0;
-        const critChance = Math.min(0.85, baseCritRate + critBonus);
+        // Universal Stance: Shadowstalker grants +30% critical hit chance
+        const stanceCritBonus = activeStance === "shadow" ? 0.30 : 0;
+        const critChance = Math.min(0.90, baseCritRate + critBonus + stanceCritBonus);
         if (Math.random() < critChance) {
           isCriticalHit = true;
           const critMultiplier = modifierEffects.critDamageMultiplier ?? 1.5;
@@ -562,12 +607,19 @@ function LitRPGTrialsContent() {
       }
 
       // Stagger Multiplier (amplifies coherence shift & poise breaks)
-      const staggerMult = modifierEffects.staggerMultiplier ?? 1.0;
+      let staggerMult = modifierEffects.staggerMultiplier ?? 1.0;
+      // Universal Stances: Graviton Singularity (+40% Stagger Burst), Frost (+35% Stagger Rate)
+      if (activeStance === "graviton") {
+        staggerMult += 0.40;
+      } else if (activeStance === "frost") {
+        staggerMult += 0.35;
+      }
+
       if (staggerMult > 1.0) {
         if (plausibilityShift > 0) {
           plausibilityShift = Math.round(plausibilityShift * staggerMult);
         }
-        const staggerBreakChance = Math.min(0.40, (staggerMult - 1.0) * 0.65);
+        const staggerBreakChance = Math.min(0.55, (staggerMult - 1.0) * 0.75);
         if (!isStunned && playerDamage > 0 && Math.random() < staggerBreakChance) {
           isStunned = true;
           actionName = `${actionName} [STAGGER]`;
@@ -594,24 +646,55 @@ function LitRPGTrialsContent() {
         if (isCrisis || isInterval) {
           if (passive.type === "shield") {
             setActiveShield((prev) => Math.min(80, prev + passive.value));
+            spawnFloatingText(`+${passive.value} SHIELD`, "shield", "player");
           } else if (passive.type === "heal") {
             hpRegen += passive.value;
           }
         }
       }
 
-      // Apply to enemy
+      // Apply to enemy with hit flash & smooth ghost HP trail
       const nextEnemyHp = Math.max(0, currentEnemyHp - playerDamage);
       setCurrentEnemyHp(nextEnemyHp);
+      setTimeout(() => {
+        setGhostEnemyHp(nextEnemyHp);
+      }, 260);
+
+      // Trigger Visual Combat Feedback on Enemy
+      if (playerDamage > 0) {
+        setIsEnemyFlashing(true);
+        setTimeout(() => setIsEnemyFlashing(false), 220);
+
+        if (isCriticalHit) {
+          spawnFloatingText(`CRIT! -${playerDamage}`, "crit", "enemy");
+        } else {
+          spawnFloatingText(`-${playerDamage}`, "damage", "enemy");
+        }
+
+        if (isStunned) {
+          spawnFloatingText("STAGGER!", "stagger", "enemy");
+        }
+      }
+
       setPlayerMp((prev) => Math.max(0, prev - mpUsed));
-      setPlayerHp((prev) => Math.min(playerMaxHp, prev + hpRegen));
+      if (hpRegen > 0) {
+        setPlayerHp((prev) => Math.min(playerMaxHp, prev + hpRegen));
+        spawnFloatingText(`+${hpRegen} HP`, "heal", "player");
+      }
       setCausalPlausibility((prev) => Math.max(10, Math.min(100, prev + plausibilityShift)));
 
       // Enemy Counter-attack if alive and not stunned
       let enemyDamage = 0;
       if (nextEnemyHp > 0) {
+        // Universal Stance: Phase Shift grants +20% Evasion to dodge counter-attacks
+        const isEvaded = activeStance === "phase" && Math.random() < 0.20;
+
         if (isStunned) {
           enemyDamage = 0; // Stunned or Staggered!
+        } else if (isEvaded) {
+          enemyDamage = 0;
+          spawnFloatingText("EVADED!", "evade", "player");
+          soundEffects.playClick();
         } else {
           let baseEnemyDamage = 14 + Math.random() * 14 + currentSectorIdx * 6;
           // Defensive stance reduces incoming enemy strike by 55%
@@ -619,23 +702,31 @@ function LitRPGTrialsContent() {
             baseEnemyDamage = Math.floor(baseEnemyDamage * 0.45);
           }
 
+          // Universal Stance: Frost Infusion reduces enemy lethality by 15%
+          const stanceLethalityMult = activeStance === "frost" ? 0.85 : 1.0;
           const enemyLethality = modifierEffects.enemyLethalityMultiplier ?? 1.0;
-          let rawEnemyDamage = Math.floor(baseEnemyDamage * enemyLethality);
+          let rawEnemyDamage = Math.floor(baseEnemyDamage * enemyLethality * stanceLethalityMult);
 
           // Absorb with shield
           if (activeShield > 0) {
             if (activeShield >= rawEnemyDamage) {
               setActiveShield((prev) => prev - rawEnemyDamage);
               enemyDamage = 0;
+              spawnFloatingText("BLOCKED!", "shield", "player");
             } else {
               enemyDamage = rawEnemyDamage - activeShield;
               setActiveShield(0);
+              spawnFloatingText(`SHIELD BROKEN (-${activeShield})`, "shield", "player");
             }
           } else {
             enemyDamage = rawEnemyDamage;
           }
 
           if (enemyDamage > 0) {
+            setIsPlayerFlashing(true);
+            setTimeout(() => setIsPlayerFlashing(false), 320);
+            spawnFloatingText(`-${enemyDamage} HP`, "player_damage", "player");
+
             setPlayerHp((prev) => {
               const nextHp = prev - enemyDamage;
               if (nextHp <= 0) {
@@ -766,6 +857,7 @@ function LitRPGTrialsContent() {
     setTrialRunSeed(`run_${Date.now()}`);
     setCurrentSectorIdx(0);
     setCurrentEnemyHp(sectors[0].enemyHp);
+    setGhostEnemyHp(sectors[0].enemyHp);
     setTrialCompleted(false);
     setTrialFailed(false);
     setPlayerHp(playerMaxHp);
@@ -985,6 +1077,11 @@ function LitRPGTrialsContent() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-950/20 via-zinc-950 to-black pointer-events-none" />
       <div className="absolute -top-40 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
 
+      {/* Screen Damage Vignette Flash */}
+      {isPlayerFlashing && (
+        <div className="fixed inset-0 pointer-events-none z-50 bg-rose-600/15 border-[6px] border-rose-500/50 shadow-[inset_0_0_100px_rgba(225,29,72,0.4)] animate-hit-pulse" />
+      )}
+
       {/* HEADER BAR */}
       <header className="relative z-10 px-4 sm:px-8 py-4 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -1013,13 +1110,22 @@ function LitRPGTrialsContent() {
           </div>
         </div>
 
-        {/* Causal Stability Indicator */}
-        <div className="flex items-center gap-3">
+        {/* Causal Stability & LLM Engine Cluster */}
+        <div className="flex items-center gap-2.5">
+          <LlmQuickPill
+            config={llmConfig}
+            onClick={() => {
+              soundEffects.playClick();
+              setShowLlmModal(true);
+            }}
+          />
+
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-white/10 font-mono text-xs">
             <Shield className="w-3.5 h-3.5 text-blue-400" />
             <span>Causal Coherence:</span>
             <strong className="text-cyan-300">{causalPlausibility}%</strong>
           </div>
+
           <button
             onClick={handleRestartTrial}
             className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
@@ -1129,6 +1235,31 @@ function LitRPGTrialsContent() {
             <div className="mb-6 p-4 rounded-3xl bg-black/50 border border-white/10 space-y-3.5 shadow-xl relative overflow-hidden">
               {/* Monster Visual Art Container */}
               <div className="relative w-full h-44 sm:h-52 rounded-2xl overflow-hidden bg-zinc-950 border border-white/10 shadow-inner group">
+                {/* Visual Impact Flash Overlay */}
+                {isEnemyFlashing && (
+                  <div className="absolute inset-0 pointer-events-none z-20 bg-white/40 mix-blend-overlay animate-hit-pulse" />
+                )}
+
+                {/* Floating Damage Numbers Container */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
+                  {floatingTexts
+                    .filter((ft) => ft.target === "enemy")
+                    .map((ft) => (
+                      <div
+                        key={ft.id}
+                        className={`absolute left-1/2 -translate-x-1/2 top-1/3 pointer-events-none select-none font-mono animate-combat-float ${
+                          ft.type === "crit"
+                            ? "text-xl sm:text-2xl font-black text-amber-300 drop-shadow-[0_0_14px_rgba(245,158,11,1)] scale-110 tracking-wide"
+                            : ft.type === "stagger"
+                            ? "text-sm sm:text-base font-bold text-cyan-300 drop-shadow-[0_0_10px_rgba(34,211,238,1)] tracking-wider"
+                            : "text-base sm:text-lg font-extrabold text-rose-400 drop-shadow-[0_0_10px_rgba(244,63,94,0.9)]"
+                        }`}
+                      >
+                        {ft.text}
+                      </div>
+                    ))}
+                </div>
+
                 {isGeneratingMonsterImage ? (
                   /* Lightweight Skeleton Loader */
                   <div className="w-full h-full flex flex-col items-center justify-center p-4 relative overflow-hidden bg-zinc-950">
@@ -1206,23 +1337,36 @@ function LitRPGTrialsContent() {
                 )}
               </div>
 
-              {/* Enemy Info Header & HP Status */}
-              <div className="flex items-center justify-between pt-1">
-                <div>
-                  <h3 className="text-sm sm:text-base font-bold text-rose-200 font-serif">
+              {/* Clean Consolidated Enemy Status Bar */}
+              <div className="flex items-center justify-between pt-1 font-mono text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-rose-950/60 border border-rose-500/30 text-rose-300">
+                    Threat: {activeSector.difficulty}
+                  </span>
+                  <span className="text-[11px] text-zinc-400 hidden sm:inline">
                     {activeSector.enemyName}
-                  </h3>
-                  <p className="text-xs text-zinc-400 italic mt-0.5">{activeSector.enemyDesc}</p>
+                  </span>
                 </div>
-                <div className="text-right font-mono text-xs">
-                  <span className="text-rose-400 font-bold">{currentEnemyHp}</span> / {activeSector.enemyMaxHp} HP
+                <div className="flex items-center gap-1.5 font-mono text-xs">
+                  <span className="text-rose-400 font-bold">{currentEnemyHp}</span>
+                  <span className="text-zinc-500">/</span>
+                  <span className="text-zinc-300">{activeSector.enemyMaxHp} HP</span>
+                  <span className="text-[10px] text-zinc-400 font-bold ml-1">
+                    ({Math.max(0, Math.round((currentEnemyHp / activeSector.enemyMaxHp) * 100))}%)
+                  </span>
                 </div>
               </div>
 
-              {/* Enemy Health Bar */}
-              <div className="w-full bg-zinc-950 h-2.5 rounded-full overflow-hidden border border-white/10 shadow-inner">
+              {/* Enemy Health Bar with Animated Ghost HP Trail */}
+              <div className="w-full bg-zinc-950 h-3 rounded-full overflow-hidden border border-white/10 shadow-inner relative">
+                {/* Ghost HP Trail (smooth trailing bar showing damage chunk taken) */}
                 <div
-                  className="h-full bg-gradient-to-r from-rose-600 via-rose-500 to-pink-500 transition-all duration-300"
+                  className="absolute inset-y-0 left-0 bg-amber-500/70 transition-all duration-700 ease-out"
+                  style={{ width: `${Math.max(0, Math.min(100, (ghostEnemyHp / activeSector.enemyMaxHp) * 100))}%` }}
+                />
+                {/* Active HP Bar */}
+                <div
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-rose-600 via-rose-500 to-pink-500 transition-all duration-200"
                   style={{ width: `${Math.max(0, Math.min(100, (currentEnemyHp / activeSector.enemyMaxHp) * 100))}%` }}
                 />
               </div>
@@ -1346,15 +1490,45 @@ function LitRPGTrialsContent() {
                   </button>
                 </div>
 
-                {/* Pillar 2: Combat Stance / Mode Toggles */}
-                {availableStances.length > 1 && (
-                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                    <span className="text-[10px] font-mono text-zinc-400 shrink-0 font-bold flex items-center gap-1">
-                      <Zap className="w-3 h-3 text-cyan-400" /> Tactical Stance:
+                {/* Pillar 2: Universal Combat Stance / Mode Matrix */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    <span className="text-[10px] font-mono text-zinc-400 shrink-0 font-bold flex items-center gap-1 mr-1">
+                      <Zap className="w-3 h-3 text-cyan-400" /> Stance Matrix:
                     </span>
                     {availableStances.map((stId) => {
                       const cfg = COMBAT_STANCES[stId];
                       const isActive = activeStance === stId;
+
+                      const stanceStyles: Record<string, { active: string; icon: React.ReactNode }> = {
+                        neutral: {
+                          active: "bg-slate-900/95 border-slate-300 text-slate-100 shadow-[0_0_12px_rgba(203,213,225,0.35)] ring-1 ring-slate-400/40",
+                          icon: <Shield className="w-3 h-3 text-slate-300" />,
+                        },
+                        flame: {
+                          active: "bg-orange-950/95 border-orange-500 text-orange-200 shadow-[0_0_14px_rgba(249,115,22,0.4)] ring-1 ring-orange-500/50",
+                          icon: <Flame className="w-3 h-3 text-orange-400" />,
+                        },
+                        frost: {
+                          active: "bg-cyan-950/95 border-cyan-400 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.4)] ring-1 ring-cyan-400/50",
+                          icon: <Zap className="w-3 h-3 text-cyan-400" />,
+                        },
+                        phase: {
+                          active: "bg-indigo-950/95 border-indigo-400 text-indigo-200 shadow-[0_0_14px_rgba(129,140,248,0.4)] ring-1 ring-indigo-400/50",
+                          icon: <Sparkles className="w-3 h-3 text-indigo-400" />,
+                        },
+                        shadow: {
+                          active: "bg-violet-950/95 border-violet-400 text-violet-200 shadow-[0_0_14px_rgba(167,139,250,0.4)] ring-1 ring-violet-400/50",
+                          icon: <Crosshair className="w-3 h-3 text-violet-400" />,
+                        },
+                        graviton: {
+                          active: "bg-purple-950/95 border-purple-400 text-purple-200 shadow-[0_0_14px_rgba(192,132,252,0.4)] ring-1 ring-purple-400/50",
+                          icon: <Target className="w-3 h-3 text-purple-400" />,
+                        },
+                      };
+
+                      const currentStyle = stanceStyles[stId] || stanceStyles.neutral;
+
                       return (
                         <button
                           key={stId}
@@ -1362,19 +1536,37 @@ function LitRPGTrialsContent() {
                             setActiveStance(stId);
                             soundEffects.playClick();
                           }}
-                          className={`px-2.5 py-1 rounded-xl text-[10px] font-mono transition-all cursor-pointer shrink-0 border ${
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-mono transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
                             isActive
-                              ? "bg-cyan-950/90 border-cyan-400 text-cyan-200 font-bold shadow-[0_0_12px_rgba(34,211,238,0.35)]"
-                              : "bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white"
+                              ? `${currentStyle.active} font-bold scale-[1.02]`
+                              : "bg-zinc-900/60 border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
                           }`}
                           title={cfg.modifierLabel}
                         >
-                          {cfg.name}
+                          {currentStyle.icon}
+                          <span>{cfg.name}</span>
                         </button>
                       );
                     })}
                   </div>
-                )}
+
+                  {/* Active Stance Detailed Tactical Benefit Badge */}
+                  {(() => {
+                    const cfg = COMBAT_STANCES[activeStance as CombatStanceType] || COMBAT_STANCES.neutral;
+                    return (
+                      <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-black/40 border border-white/5 text-[10px] font-mono">
+                        <div className="flex items-center gap-1.5 truncate">
+                          <span className="text-zinc-500 font-bold shrink-0">Mode:</span>
+                          <span className="font-bold text-white shrink-0">{cfg.name}</span>
+                          <span className="text-zinc-400 truncate">&bull; {cfg.modifierLabel}</span>
+                        </div>
+                        <span className="text-cyan-400 font-bold shrink-0 text-[9px] uppercase tracking-wider ml-2">
+                          Universal
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </div>
 
                 {/* Class Tactical Arsenal Banner */}
                 <div className="flex items-center justify-between px-1">
@@ -1649,7 +1841,33 @@ function LitRPGTrialsContent() {
         {/* RIGHT COLUMN: PROTAGONIST STATUS & SYSTEM TERMINAL FEED */}
         <div className="lg:col-span-5 space-y-4">
           {/* Protagonist Status Widget */}
-          <div className="p-4 rounded-3xl bg-zinc-900/80 border border-white/10 backdrop-blur-md space-y-3">
+          <div className={`p-4 rounded-3xl bg-zinc-900/80 border backdrop-blur-md space-y-3 relative transition-all duration-200 overflow-hidden ${
+            isPlayerFlashing
+              ? "border-rose-500/80 ring-2 ring-rose-500/50 shadow-[0_0_25px_rgba(244,63,94,0.4)]"
+              : "border-white/10"
+          }`}>
+            {/* Floating Combat Numbers over Protagonist */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden z-30">
+              {floatingTexts
+                .filter((ft) => ft.target === "player")
+                .map((ft) => (
+                  <div
+                    key={ft.id}
+                    className={`absolute left-1/2 -translate-x-1/2 top-1/4 pointer-events-none select-none font-mono animate-combat-float ${
+                      ft.type === "heal"
+                        ? "text-sm sm:text-base font-black text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,1)] tracking-wide"
+                        : ft.type === "shield"
+                        ? "text-xs sm:text-sm font-bold text-cyan-300 drop-shadow-[0_0_8px_rgba(34,211,238,1)] tracking-wide"
+                        : ft.type === "evade"
+                        ? "text-sm sm:text-base font-bold text-purple-300 drop-shadow-[0_0_10px_rgba(168,85,247,1)] tracking-wide"
+                        : "text-sm sm:text-base font-extrabold text-rose-500 drop-shadow-[0_0_12px_rgba(239,68,68,1)]"
+                    }`}
+                  >
+                    {ft.text}
+                  </div>
+                ))}
+            </div>
+
             <div className="flex items-center justify-between pb-2 border-b border-white/10">
               <div className="flex flex-col">
                 <h3 className="text-xs font-mono font-bold text-zinc-300 uppercase tracking-wider">
@@ -2118,6 +2336,17 @@ function LitRPGTrialsContent() {
           </div>
         </div>
       )}
+
+      {/* Dynamic LLM Engine & Model Settings Selector Modal */}
+      <LlmProviderModal
+        isOpen={showLlmModal}
+        onClose={() => setShowLlmModal(false)}
+        config={llmConfig}
+        onChange={(newConfig: LlmConfig) => {
+          setLlmConfig(newConfig);
+          saveStoredLlmConfig(newConfig);
+        }}
+      />
 
       {/* Screen Transition Overlay */}
       <ScreenTransitionOverlay {...screenTransition} />

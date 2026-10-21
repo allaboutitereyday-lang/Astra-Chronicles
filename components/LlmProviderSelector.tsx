@@ -160,12 +160,19 @@ interface LlmProviderSelectorProps {
   config: LlmConfig;
   onChange: (newConfig: LlmConfig) => void;
   className?: string;
+  defaultOpenSettings?: boolean;
 }
 
 /**
- * Clean UI dropdown and model card selector for OpenRouter Cloud LLMs.
+ * Clean UI dropdown, model card selector, and interactive Model Settings for OpenRouter Cloud LLMs.
  */
-export function LlmProviderSelector({ config, onChange, className = "" }: LlmProviderSelectorProps) {
+export function LlmProviderSelector({
+  config,
+  onChange,
+  className = "",
+  defaultOpenSettings = false,
+}: LlmProviderSelectorProps) {
+  const [showSettings, setShowSettings] = React.useState(defaultOpenSettings);
   const selectedModel = CLOUD_MODELS.find((m) => m.id === config.modelId) || CLOUD_MODELS[0];
 
   const handleModelChange = (selectedModelId: string) => {
@@ -175,6 +182,26 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
       modelId: selectedModelId,
     });
   };
+
+  const handleParamChange = (field: keyof LlmConfig, value: number) => {
+    onChange({
+      ...config,
+      [field]: value,
+    });
+  };
+
+  const handleResetDefaults = () => {
+    onChange({
+      ...config,
+      temperature: DEFAULT_LLM_CONFIG.temperature,
+      max_tokens: DEFAULT_LLM_CONFIG.max_tokens,
+      repetition_penalty: DEFAULT_LLM_CONFIG.repetition_penalty,
+    });
+  };
+
+  const currentTemp = config.temperature ?? DEFAULT_LLM_CONFIG.temperature!;
+  const currentTokens = config.max_tokens ?? DEFAULT_LLM_CONFIG.max_tokens!;
+  const currentRepPenalty = config.repetition_penalty ?? DEFAULT_LLM_CONFIG.repetition_penalty!;
 
   return (
     <div className={`p-4 rounded-2xl bg-zinc-950/90 border border-white/10 space-y-4 backdrop-blur-md shadow-xl ${className}`}>
@@ -186,17 +213,37 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
             AI Story &amp; Roleplay Engine
           </span>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border bg-cyan-950/40 border-cyan-500/40 text-cyan-400 text-[10px] font-mono">
-          <Cloud className="w-3 h-3 text-cyan-400" />
-          <span>OpenRouter Cloud</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowSettings(!showSettings)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[10px] font-mono transition-all cursor-pointer ${
+              showSettings
+                ? "bg-rose-950/70 border-rose-500/50 text-rose-300 font-bold"
+                : "bg-zinc-900 hover:bg-zinc-800 border-white/10 text-zinc-300 hover:text-white"
+            }`}
+            title="Adjust Temperature, Max Tokens, and Repetition Penalty"
+          >
+            <Settings2 className="w-3 h-3 text-rose-400" />
+            <span>Model Settings</span>
+          </button>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border bg-cyan-950/40 border-cyan-500/40 text-cyan-400 text-[10px] font-mono">
+            <Cloud className="w-3 h-3 text-cyan-400" />
+            <span>OpenRouter Cloud</span>
+          </div>
         </div>
       </div>
 
       {/* Model Selection Dropdown */}
       <div>
-        <label className="text-[11px] font-mono text-zinc-400 block mb-1.5">
-          Active AI Engine
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-[11px] font-mono text-zinc-400 block">
+            Active AI Engine
+          </label>
+          <span className="text-[10px] font-mono text-zinc-500">
+            {CLOUD_MODELS.length} Models Available
+          </span>
+        </div>
         <select
           value={config.modelId}
           onChange={(e) => handleModelChange(e.target.value)}
@@ -226,14 +273,106 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
         </p>
       </div>
 
+      {/* Interactive Model Settings Panel */}
+      {showSettings && (
+        <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-rose-500/30 space-y-3.5 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <div className="flex items-center gap-1.5 text-rose-400">
+              <Settings2 className="w-3.5 h-3.5" />
+              <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-white">
+                Inference Parameters
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetDefaults}
+              className="text-[10px] font-mono text-zinc-400 hover:text-rose-300 underline cursor-pointer"
+            >
+              Reset Defaults
+            </button>
+          </div>
+
+          {/* Temperature Slider */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-zinc-300 font-medium">Temperature (Creativity)</span>
+              <span className="text-rose-400 font-bold">{currentTemp.toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              min="0.2"
+              max="1.5"
+              step="0.05"
+              value={currentTemp}
+              onChange={(e) => handleParamChange("temperature", parseFloat(e.target.value))}
+              className="w-full accent-rose-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+            />
+            <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+              <span>0.2 (Precise / Factual)</span>
+              <span>0.85 (Balanced RP)</span>
+              <span>1.5 (Wild / Novel)</span>
+            </div>
+          </div>
+
+          {/* Max Tokens Slider */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-zinc-300 font-medium">Max Output Tokens</span>
+              <span className="text-cyan-400 font-bold">{currentTokens} tokens</span>
+            </div>
+            <input
+              type="range"
+              min="256"
+              max="2048"
+              step="64"
+              value={currentTokens}
+              onChange={(e) => handleParamChange("max_tokens", parseInt(e.target.value, 10))}
+              className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+            />
+            <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+              <span>256 (Snappy)</span>
+              <span>1024 (Standard Scene)</span>
+              <span>2048 (Expansive)</span>
+            </div>
+          </div>
+
+          {/* Repetition Penalty Slider */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-mono">
+              <span className="text-zinc-300 font-medium">Repetition Penalty</span>
+              <span className="text-amber-400 font-bold">{currentRepPenalty.toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              min="1.0"
+              max="1.3"
+              step="0.02"
+              value={currentRepPenalty}
+              onChange={(e) => handleParamChange("repetition_penalty", parseFloat(e.target.value))}
+              className="w-full accent-amber-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+            />
+            <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+              <span>1.00 (Off)</span>
+              <span>1.10 (Standard)</span>
+              <span>1.30 (Strict Novelty)</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Endpoint & Vision Info Tip */}
       <div className="text-[10px] font-mono text-zinc-500 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-white/5 space-y-1">
-        <div className="flex items-center gap-1 text-cyan-400">
-          <Cloud className="w-3 h-3 shrink-0" />
-          <span>Direct OpenRouter Cloud Routing</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 text-cyan-400">
+            <Cloud className="w-3 h-3 shrink-0" />
+            <span>Direct OpenRouter Cloud Routing</span>
+          </div>
+          <span className="text-zinc-400">
+            T: {currentTemp.toFixed(2)} &bull; {currentTokens} tok &bull; R: {currentRepPenalty.toFixed(2)}
+          </span>
         </div>
         <div>
-          Target: <code className="text-zinc-300">openrouter.ai/api/v1</code> &bull; Vision-to-Text Character Pipeline &bull; Automated Spell &amp; Quote Sanitizer
+          Target: <code className="text-zinc-300">openrouter.ai/api/v1</code> &bull; Vision-to-Text Pipeline &bull; Automated LitRPG Parser
         </div>
       </div>
     </div>
@@ -245,12 +384,19 @@ interface LlmProviderModalProps {
   onClose: () => void;
   config: LlmConfig;
   onChange: (newConfig: LlmConfig) => void;
+  initialOpenSettings?: boolean;
 }
 
 /**
  * Floating Backdrop Modal for configuring AI Cloud Model settings
  */
-export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProviderModalProps) {
+export function LlmProviderModal({
+  isOpen,
+  onClose,
+  config,
+  onChange,
+  initialOpenSettings = false,
+}: LlmProviderModalProps) {
   if (!isOpen) return null;
 
   return (
@@ -260,7 +406,7 @@ export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProvi
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200"
+        className="w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div className="flex items-center gap-2.5">
@@ -269,10 +415,10 @@ export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProvi
             </div>
             <div>
               <h3 className="text-sm font-bold font-mono text-white tracking-wide">
-                AI ENGINE SELECTION
+                AI ENGINE &amp; MODEL SETTINGS
               </h3>
               <p className="text-[11px] text-zinc-400 font-sans">
-                Select your cloud model or smart hybrid orchestration
+                Configure your cloud model, temperature, and generation tokens
               </p>
             </div>
           </div>
@@ -284,7 +430,11 @@ export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProvi
           </button>
         </div>
 
-        <LlmProviderSelector config={config} onChange={onChange} />
+        <LlmProviderSelector
+          config={config}
+          onChange={onChange}
+          defaultOpenSettings={initialOpenSettings}
+        />
 
         <div className="flex justify-end pt-2">
           <button
