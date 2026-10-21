@@ -39,7 +39,14 @@ export async function POST(req: Request) {
       modelId,
     } = body;
 
-    const isLocal = targetEnvironment === "local";
+    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
+    // auto-route to cloud!
+    let effectiveEnvironment = targetEnvironment;
+    if (effectiveEnvironment === "local" && modelId && modelId.includes("/")) {
+      console.warn(`Local environment requested with cloud model ID "${modelId}". Auto-routing to cloud.`);
+      effectiveEnvironment = "cloud";
+    }
+    const isLocal = effectiveEnvironment === "local";
 
     const computedSynergies = activeSynergies && activeSynergies.length > 0
       ? activeSynergies
@@ -457,7 +464,7 @@ Respond strictly in valid JSON matching this schema:
     let lastError = null;
 
     const modelsToTry = isLocal
-      ? [modelId || "hermes3:8b"]
+      ? [modelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
       : (modelId ? [modelId, ...FALLBACK_MODELS.filter((m) => m !== modelId)] : FALLBACK_MODELS);
 
     for (const model of modelsToTry) {

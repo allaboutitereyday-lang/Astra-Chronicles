@@ -28,7 +28,14 @@ export async function POST(req: Request) {
       modelId,
     } = body;
 
-    const isLocal = targetEnvironment === "local";
+    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
+    // auto-route to cloud!
+    let effectiveEnvironment = targetEnvironment;
+    if (effectiveEnvironment === "local" && modelId && modelId.includes("/")) {
+      console.warn(`Local environment requested with cloud model ID "${modelId}". Auto-routing to cloud.`);
+      effectiveEnvironment = "cloud";
+    }
+    const isLocal = effectiveEnvironment === "local";
 
     const accessKey = headerKey || userAccessKey;
     const authCheck = validateUserKey(accessKey);

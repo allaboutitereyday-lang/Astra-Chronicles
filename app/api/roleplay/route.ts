@@ -31,8 +31,16 @@ export async function POST(req: Request) {
     let headers: Record<string, string>;
     let targetModel: string;
 
+    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
+    // auto-route to cloud!
+    let effectiveEnvironment = targetEnvironment;
+    if (effectiveEnvironment === "local" && modelId && modelId.includes("/")) {
+      console.warn(`Local environment requested with cloud model ID "${modelId}". Auto-routing to cloud.`);
+      effectiveEnvironment = "cloud";
+    }
+
     // Route logic: Assign fetch URL, headers, and model string
-    if (targetEnvironment === "local") {
+    if (effectiveEnvironment === "local") {
       endpointUrl = "http://127.0.0.1:11434/v1/chat/completions";
       targetModel = modelId || "hermes3:8b";
       headers = {

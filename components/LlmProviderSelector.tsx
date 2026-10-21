@@ -28,6 +28,14 @@ export function getStoredLlmConfig(): LlmConfig {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && (parsed.targetEnvironment === "local" || parsed.targetEnvironment === "cloud")) {
+        // Auto-heal: If local but modelId is a cloud slug, correct targetEnvironment to cloud
+        if (parsed.targetEnvironment === "local" && parsed.modelId?.includes("/")) {
+          parsed.targetEnvironment = "cloud";
+        }
+        // Auto-heal: If cloud but modelId is a local slug without a provider slash, correct to cloud default
+        if (parsed.targetEnvironment === "cloud" && !parsed.modelId?.includes("/")) {
+          parsed.modelId = DEFAULT_LLM_CONFIG.modelId;
+        }
         return parsed;
       }
     }
@@ -119,7 +127,7 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
   const isLocal = config.targetEnvironment === "local";
 
   const handleEnvironmentChange = (env: TargetEnvironment) => {
-    const defaultModel = env === "local" ? "hermes3:8b" : "deepseek/deepseek-chat";
+    const defaultModel = env === "local" ? "hermes3:8b" : "sao10k/l3.1-euryale-70b";
     onChange({
       ...config,
       targetEnvironment: env,
@@ -127,10 +135,12 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
     });
   };
 
-  const handleModelChange = (modelId: string) => {
+  const handleModelChange = (selectedModelId: string) => {
+    const isCloudModel = CLOUD_MODELS.some((m) => m.id === selectedModelId) || selectedModelId.includes("/");
     onChange({
       ...config,
-      modelId,
+      targetEnvironment: isCloudModel ? "cloud" : "local",
+      modelId: selectedModelId,
     });
   };
 
