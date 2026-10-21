@@ -134,6 +134,104 @@ export function cleanPunctuationSpacing(text: string): string {
     .trim();
 }
 
+const CLICHE_PATTERNS = [
+  /\s*The choice (of what happens next|is yours|now rests).*?([.!?]|$)/gi,
+  /\s*What will (you|they|he|she|Vaughn) do next\??/gi,
+  /\s*Only time will tell.*?([.!?]|$)/gi,
+  /\s*.*?waits with bated breath to see how.*?proceeds?\.?/gi,
+  /\s*The next (move|step|action) is (yours|up to you).*?([.!?]|$)/gi,
+  /\s*The future hangs in the balance.*?([.!?]|$)/gi,
+  /\s*How will (you|they|he|she|Vaughn) respond\??/gi,
+];
+
+/**
+ * Strips lazy AI meta endings and cliffhanger clichés.
+ */
+export function stripMetaCliches(text: string): string {
+  if (!text) return "";
+  let cleaned = text;
+  for (const pattern of CLICHE_PATTERNS) {
+    cleaned = cleaned.replace(pattern, "");
+  }
+  return cleaned.trim();
+}
+
+/**
+ * Converts dialogue wrapped in single quotes into proper double quotes.
+ * e.g. 'Back down,' she said. -> "Back down," she said.
+ */
+export function normalizeSingleQuoteDialogue(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/(^|\n)\s*'([A-Z][^'\n]{2,}?[,!?…])'/g, '$1"$2"')
+    .replace(/([\s*])'([A-Z][^'\n]{2,}?[,!?…])'/g, '$1"$2"')
+    .replace(/([\s*])'([A-Z][^'\n]{2,}?\.)'/g, '$1"$2"');
+}
+
+/**
+ * Guarantees every suggested choice starts with a tactical LitRPG intent badge.
+ */
+export function ensureChoiceIntentTag(choice: string): string {
+  if (!choice) return "";
+  const trimmed = choice.trim();
+  if (/^\[.+?\]/.test(trimmed)) return trimmed;
+
+  const lower = trimmed.toLowerCase();
+  let tag = "[Tactics]";
+  if (
+    lower.includes("attack") ||
+    lower.includes("strike") ||
+    lower.includes("blade") ||
+    lower.includes("fight") ||
+    lower.includes("combat") ||
+    lower.includes("kill") ||
+    lower.includes("sword") ||
+    lower.includes("charge") ||
+    lower.includes("parry") ||
+    lower.includes("block") ||
+    lower.includes("draw")
+  ) {
+    tag = "[Combat]";
+  } else if (
+    lower.includes("spell") ||
+    lower.includes("magic") ||
+    lower.includes("arcana") ||
+    lower.includes("channel") ||
+    lower.includes("rune") ||
+    lower.includes("smoke") ||
+    lower.includes("enchant") ||
+    lower.includes("focus")
+  ) {
+    tag = "[Arcana]";
+  } else if (
+    lower.includes("sneak") ||
+    lower.includes("hide") ||
+    lower.includes("shadow") ||
+    lower.includes("steal") ||
+    lower.includes("feign") ||
+    lower.includes("escape") ||
+    lower.includes("ambush") ||
+    lower.includes("retreat") ||
+    lower.includes("dodge")
+  ) {
+    tag = "[Subterfuge]";
+  } else if (
+    lower.includes("ask") ||
+    lower.includes("inquire") ||
+    lower.includes("demand") ||
+    lower.includes("speak") ||
+    lower.includes("talk") ||
+    lower.includes("reason") ||
+    lower.includes("negotiate") ||
+    lower.includes("call out") ||
+    lower.includes("question") ||
+    lower.includes("whisper")
+  ) {
+    tag = "[Inquire]";
+  }
+  return `${tag} ${trimmed}`;
+}
+
 /**
  * Master prose sanitizer: runs all cleaning passes and guarantees
  * flawless visual novel typography, quotes, and markdown.
@@ -146,18 +244,24 @@ export function sanitizeVisualNovelProse(rawText: string | null | undefined): st
   // 1. Strip prompt/bracket tags
   processed = stripMetaAndBracketTags(processed);
 
-  // 2. Normalize and fix duplicate quotation marks
+  // 2. Strip AI cliché meta endings
+  processed = stripMetaCliches(processed);
+
+  // 3. Normalize single-quote spoken dialogue into double quotes
+  processed = normalizeSingleQuoteDialogue(processed);
+
+  // 4. Normalize and fix duplicate quotation marks
   processed = normalizeQuotes(processed);
 
-  // 3. Balance quotes per paragraph
+  // 5. Balance quotes per paragraph
   const paragraphs = processed.split(/\n\s*\n/);
   const balancedParagraphs = paragraphs.map((p) => balanceQuotationMarks(p.trim()));
   processed = balancedParagraphs.join("\n\n");
 
-  // 4. Balance markdown asterisks
+  // 6. Balance markdown asterisks
   processed = balanceMarkdownAsterisks(processed);
 
-  // 5. Clean up punctuation spacing
+  // 7. Clean up punctuation spacing
   processed = cleanPunctuationSpacing(processed);
 
   return processed;

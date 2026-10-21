@@ -77,7 +77,7 @@ export const CLOUD_MODELS = [
     id: "orchestrated-hybrid",
     name: "Smart Hybrid (DeepSeek V3 + Euryale 70B)",
     shortName: "Smart Hybrid",
-    description: "Automatic Multi-Model Orchestration: DeepSeek V3 handles instant background stats, abilities & choices, while Sao10K Euryale 70B drives uncensored story, romance & dialogue.",
+    description: "Automatic Multi-Model Orchestration: DeepSeek V3 orchestrates game mastery, LitRPG systems, choices & tactical combat, combined with flagship companion roleplay.",
     badge: "Recommended",
   },
   {

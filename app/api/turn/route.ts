@@ -3,15 +3,15 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
-import { sanitizeVisualNovelProse } from "@/lib/proseSanitizer";
+import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const FALLBACK_MODELS = [
-  "sao10k/l3.1-euryale-70b",
-  "nousresearch/hermes-3-llama-3.1-70b",
   "deepseek/deepseek-chat",
+  "nousresearch/hermes-3-llama-3.1-70b",
+  "sao10k/l3.1-euryale-70b",
   "sao10k/l3-lunaris-8b",
 ];
 
@@ -391,10 +391,11 @@ ${synergyDirective}
 2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive, multi-sentence passage (minimum 3-6 sentences across 1-2 paragraphs) featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
 3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
 4. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
-5. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"), written in the voice, vocabulary, and attitude of the active Narration Style.
+5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST be prefixed with an intent tag in brackets: "[Combat]", "[Arcana]", "[Subterfuge]", "[Inquire]", or "[Tactics]", written in the voice, vocabulary, and attitude of the active Narration Style.
 6. Narrative Prose, Grammar & Markdown Formatting:
    - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
    - MANDATORY QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). Anchor dialogue to physical gestures, body language, tone, or facial expressions. Unspoken internal thoughts must use *italics* without quotes.
+   - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
    - MARKDOWN IMMERSION: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, tactile sensations (temperature, grit, blood, wind), and subtle micro-expressions; use **bold** for loud vocal emphasis, shouts, or heavy kinetic clashes; use > quotes for mental echoes or ancient runes.
    - PARAGRAPHING: Structure "narrative_text" into 2 to 3 evocative paragraphs separated by clean line breaks. Avoid monolithic walls of text.
 
@@ -503,8 +504,9 @@ Respond strictly in valid JSON matching this schema:
     let responseData = null;
     let lastError = null;
 
-    // If orchestrated-hybrid is selected, flagship roleplay uses Euryale 70B
-    const effectiveModelId = modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : modelId;
+    // Smart Hybrid routes structured Game Master turns and LitRPG state orchestration
+    // to DeepSeek V3 for elite coherence, 0.3s latency, flawless choices & player execution
+    const effectiveModelId = modelId === "orchestrated-hybrid" ? "deepseek/deepseek-chat" : (modelId || "deepseek/deepseek-chat");
 
     const modelsToTry = isLocal
       ? [effectiveModelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
@@ -570,7 +572,8 @@ Respond strictly in valid JSON matching this schema:
             model,
             messages: modelMessages,
             user: activeUser.key,
-            temperature: 0.8,
+            temperature: 0.75,
+            max_tokens: 2048,
             response_format: { type: "json_object" },
           }),
         });
@@ -598,7 +601,8 @@ Respond strictly in valid JSON matching this schema:
                 model,
                 messages: fallbackMessages,
                 user: activeUser.key,
-                temperature: 0.8,
+                temperature: 0.75,
+                max_tokens: 2048,
                 response_format: { type: "json_object" },
               }),
             });
@@ -622,23 +626,26 @@ Respond strictly in valid JSON matching this schema:
 
         responseData = JSON.parse(content);
 
-        // Fail-safe post-processing: sanitize and guarantee player_execution for preset choices
+        // Fail-safe post-processing: sanitize and guarantee substantial player_execution for preset choices
         if (responseData.player_execution) {
           responseData.player_execution = sanitizeVisualNovelProse(responseData.player_execution);
         }
-        if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().length === 0)) {
+        if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().split(/[.!?]+/).filter(Boolean).length < 2)) {
           const cleanAct = action.replace(/^\[[^\]]+\]\s*/, "").trim();
-          responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the moment, posture set and blade held ready. "${cleanAct}"`;
+          const stanceDesc = activeStance === "aggressive" ? "blade angled forward with relentless pressure" : activeStance === "defensive" ? "guard raised high and footing braced firmly against the ground" : "shoulders squared and senses locked on the target";
+          responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The cold tension in the air crystallizes as every muscle tightens for immediate follow-through. "${cleanAct}"`;
         }
 
-        // Deep-sanitize narrative text: fix duplicate quotes, dangling quotes, unbalanced asterisks, spacing
+        // Deep-sanitize narrative text: fix duplicate quotes, dangling quotes, unbalanced asterisks, spacing, and strip meta cliches
         if (responseData.narrative_text) {
           responseData.narrative_text = sanitizeVisualNovelProse(responseData.narrative_text);
         }
 
-        // Sanitize suggested choices
+        // Sanitize suggested choices and guarantee intent tags
         if (Array.isArray(responseData.suggested_choices)) {
-          responseData.suggested_choices = responseData.suggested_choices.map((c: string) => sanitizeVisualNovelProse(c));
+          responseData.suggested_choices = responseData.suggested_choices.map((c: string) =>
+            ensureChoiceIntentTag(sanitizeVisualNovelProse(c))
+          );
         }
 
         // Fail-safe post-processing: enforce speaker attribution and solitude rules

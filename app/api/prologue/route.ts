@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
-import { sanitizeVisualNovelProse, sanitizeSpokenDialogue } from "@/lib/proseSanitizer";
+import { sanitizeVisualNovelProse, sanitizeSpokenDialogue, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const PROLOGUE_MODELS = [
-  "sao10k/l3.1-euryale-70b",
-  "nousresearch/hermes-3-llama-3.1-70b",
   "deepseek/deepseek-chat",
+  "nousresearch/hermes-3-llama-3.1-70b",
+  "sao10k/l3.1-euryale-70b",
   "sao10k/l3-lunaris-8b",
 ];
 
@@ -206,7 +206,8 @@ Generate the dynamic opening prologue according to the instructions.`;
     let responseData = null;
     let lastError = null;
 
-    const effectiveModelId = modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : modelId;
+    // Smart Hybrid routes structured prologue orchestration to DeepSeek V3
+    const effectiveModelId = modelId === "orchestrated-hybrid" ? "deepseek/deepseek-chat" : (modelId || "deepseek/deepseek-chat");
     const modelsToTry = isLocal
       ? [effectiveModelId || "hermes3:8b"]
       : (effectiveModelId ? [effectiveModelId, ...PROLOGUE_MODELS.filter((m) => m !== effectiveModelId)] : PROLOGUE_MODELS);
@@ -260,7 +261,8 @@ Generate the dynamic opening prologue according to the instructions.`;
             model,
             messages,
             user: activeUser.key,
-            temperature: 0.85,
+            temperature: 0.75,
+            max_tokens: 2048,
             response_format: { type: "json_object" },
           }),
         });
@@ -282,7 +284,8 @@ Generate the dynamic opening prologue according to the instructions.`;
                 model,
                 messages: fallbackMessages,
                 user: activeUser.key,
-                temperature: 0.85,
+                temperature: 0.75,
+                max_tokens: 2048,
                 response_format: { type: "json_object" },
               }),
             });
@@ -352,7 +355,9 @@ Generate the dynamic opening prologue according to the instructions.`;
       responseData.dialogue = sanitizeSpokenDialogue(responseData.dialogue);
     }
     if (Array.isArray(responseData.opening_choices)) {
-      responseData.opening_choices = responseData.opening_choices.map((c: string) => sanitizeVisualNovelProse(c));
+      responseData.opening_choices = responseData.opening_choices.map((c: string) =>
+        ensureChoiceIntentTag(sanitizeVisualNovelProse(c))
+      );
     }
 
     responseData.plausibility = typeof responseData.plausibility === "number" ? responseData.plausibility : 80;
