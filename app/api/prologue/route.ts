@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
+import { getNarrationProseDirective } from "@/lib/narrationStyles";
 
 export const runtime = "nodejs";
 
@@ -87,7 +88,8 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
    - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.`;
 
     const systemPrompt = `You are the Game Master and Director for "${storyTitle}", an interactive visual novel set on ${settingName}.
-Tone: ${effectiveTone} (visceral, sensory-rich, morally gray, intense).
+
+${getNarrationProseDirective(effectiveTone)}
 
 You are generating the bespoke dynamic prologue and opening encounter.
 
@@ -115,8 +117,8 @@ Respond strictly in valid JSON matching this schema:
 {
   "speaker": "${startingHeroine}",
   "location": "${startingLocation}",
-  "scene_setup": string, // 1-2 atmospheric, sensory-rich paragraphs detailing the location, sounds, and how the player arrives/stands before the heroine. Use Markdown (*italics* for sensory actions/ambiance, **bold** for impact)
-  "dialogue": string, // The heroine's authentic, voice-accurate opening lines addressing the protagonist (including visual observations if image was attached)
+  "scene_setup": string, // 1-2 paragraphs detailing the location, sounds, and how the player arrives/stands before the heroine, strictly following the selected prose style. Use Markdown (*italics* for sensory actions/ambiance, **bold** for impact)
+  "dialogue": string, // The heroine's authentic, voice-accurate opening lines addressing the protagonist (strictly following the active narration style, including visual observations if image was attached)
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
   "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",

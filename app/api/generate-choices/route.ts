@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
+import { getChoicesStyleDirective, getNarrationProseDirective } from "@/lib/narrationStyles";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
       recentHistory = [],
       systemState,
       userAccessKey,
+      narrationStyle,
     } = body;
 
     const accessKey = headerKey || userAccessKey;
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
 
     const storyTitle = storyContext?.title || "Astra Chronicles";
     const settingName = storyContext?.worldContext?.settingName || "the world";
-    const effectiveTone = storyContext?.narrationStyle || "Grimdark & Atmospheric";
+    const effectiveTone = narrationStyle || playerProfile?.narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
     const presentCompanions = physicallyPresentCompanions.length > 0
       ? physicallyPresentCompanions
@@ -109,6 +111,7 @@ Prefix each choice with a tactical/roleplay bracket tag indicating the vector of
 
     const systemPrompt = `You are the Interactive Decision Architect and Game Master for "${storyTitle}", set in ${settingName}.
 Atmospheric Tone: ${effectiveTone}.
+Style Directive: ${getChoicesStyleDirective(effectiveTone)}
 
 The player is loading into a saved game state. Your sole task is to dynamically author exactly 4 distinct, immersive, and situationally tailored dialogue and action choices for the protagonist (${playerProfile?.name || "Protagonist"}).
 

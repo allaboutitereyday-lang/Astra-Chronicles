@@ -90,6 +90,7 @@ import { processImageUpload } from "@/lib/imageUtils";
 import { validateKeyClientSide } from "@/lib/clientKeyValidation";
 import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 import { GeneratedGearPiece } from "@/app/api/generate-starting-gear/route";
+import { getNarrationStyleBadge } from "@/lib/narrationStyles";
 
 export interface InventoryItem {
   id: string;
@@ -154,6 +155,7 @@ interface PlayerProfile {
   inventory: InventoryItem[];
   deathCount?: number;
   activeStance?: CombatStanceType;
+  narrationStyle?: string;
 }
 
 interface RoleplayState {
@@ -189,6 +191,7 @@ interface SaveSlotData {
   choices?: string[];
   visitedNodes?: VisitedStoryNode[];
   selectedPrologueId?: string;
+  narrationStyle?: string;
   unlockedCompanions?: string[];
 }
 
@@ -1861,6 +1864,7 @@ export default function VisualNovelGame() {
       gear: initialGear,
       gearImages: initialGearImages,
       inventory: customInventory ? [...(player.inventory || []), ...customInventory] : (player.inventory || []),
+      narrationStyle,
     };
     setPlayer(finalStartingPlayer);
     playerRef.current = finalStartingPlayer;
@@ -2166,6 +2170,7 @@ export default function VisualNovelGame() {
       choices,
       visitedNodes: visitedStoryNodes,
       selectedPrologueId: prologues[selectedPrologue]?.id,
+      narrationStyle: narrationStyle || playerRef.current?.narrationStyle || "Grimdark & Atmospheric",
       unlockedCompanions: (party || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
     };
 
@@ -2219,6 +2224,7 @@ export default function VisualNovelGame() {
         choices: finalChoices,
         visitedNodes: finalVisitedNodes,
         selectedPrologueId: finalPrologueId,
+        narrationStyle: narrationStyle || finalPlayer?.narrationStyle || "Grimdark & Atmospheric",
         unlockedCompanions: (finalParty || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
       };
 
@@ -2262,6 +2268,7 @@ export default function VisualNovelGame() {
       choices,
       visitedNodes: visitedStoryNodes,
       selectedPrologueId: prologues[selectedPrologue]?.id,
+      narrationStyle: narrationStyle || playerRef.current?.narrationStyle || "Grimdark & Atmospheric",
       unlockedCompanions: (party || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
     };
 
@@ -2356,6 +2363,9 @@ export default function VisualNovelGame() {
     playerRef.current = loadedPlayer;
     setPlayer(loadedPlayer);
     setPlayerAvatar(data.playerAvatar);
+    if (data.narrationStyle || loadedPlayer?.narrationStyle) {
+      setNarrationStyle(data.narrationStyle || loadedPlayer?.narrationStyle);
+    }
     setGameState(sanitizedGameState);
     setDisplayedText(sanitizedGameState.dialogue || "");
     setParty(loadedParty);
@@ -2431,6 +2441,7 @@ export default function VisualNovelGame() {
         })),
         systemState: data.systemState,
         userAccessKey: accessKey,
+        narrationStyle: data.narrationStyle || loadedPlayer?.narrationStyle || narrationStyle,
       }),
     })
       .then((res) => res.json())
@@ -2635,7 +2646,7 @@ export default function VisualNovelGame() {
           partyMembers: party,
           playerProfile: player,
           playerAvatarBase64: playerAvatar,
-          narrationStyle,
+          narrationStyle: narrationStyle || player?.narrationStyle || currentStory?.narrationStyle || "Grimdark & Atmospheric",
           plotMemories: memories,
           userAccessKey: accessKey,
           systemState,
@@ -4833,7 +4844,11 @@ export default function VisualNovelGame() {
             <label className="text-xs font-mono text-zinc-400 block mb-1">Narration Atmosphere & Tone</label>
             <select
               value={narrationStyle}
-              onChange={(e) => setNarrationStyle(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNarrationStyle(val);
+                setPlayer((prev) => ({ ...prev, narrationStyle: val }));
+              }}
               className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none"
             >
               <option>Grimdark & Atmospheric (Tense, visceral, sensory)</option>
@@ -5852,6 +5867,11 @@ export default function VisualNovelGame() {
                 <div>
                   <h2 className="text-lg font-bold text-white font-mono">{player.name}</h2>
                   <p className="text-xs text-rose-400 font-mono">Level {player.level} {player.role}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-300">
+                      Tone: {getNarrationStyleBadge(narrationStyle || player.narrationStyle)}
+                    </span>
+                  </div>
                 </div>
               </div>
               <button onClick={() => setShowPlayerSheet(false)} className="text-zinc-400 hover:text-white cursor-pointer">

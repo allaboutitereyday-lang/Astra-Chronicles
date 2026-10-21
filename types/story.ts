@@ -248,6 +248,7 @@ export interface PlayerProfile {
   abilityEvolutions?: Record<string, string>; // Maps base ability name -> current evolved name
   deathCount?: number;
   regressionCount?: number;
+  narrationStyle?: string; // Active narration prose directive / atmosphere tone
 }
 
 export interface VisitedStoryNode {

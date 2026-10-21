@@ -19,6 +19,7 @@ export interface SaveSlotPayload {
   choices?: string[];
   visitedNodes?: any[];
   selectedPrologueId?: string;
+  narrationStyle?: string; // Preserved narration atmosphere & prose tone
 
   // Major Feature Expansion Fields
   timelineEchoes?: TimelineEcho[];

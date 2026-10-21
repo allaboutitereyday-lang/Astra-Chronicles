@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
+import { getNarrationProseDirective } from "@/lib/narrationStyles";
 
 export const runtime = "nodejs";
 
@@ -208,7 +209,7 @@ NARRATIVE INSTRUCTION:
 
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
-Atmosphere Tone: ${effectiveTone} (sensory-rich, visceral, morally gray, high tension).
+${getNarrationProseDirective(effectiveTone)}
 
 --- HEROINE DOSSIERS & VOICE PROFILES ---
 ${companionDossiers}
@@ -323,15 +324,15 @@ ${synergyDirective}
 1. Speaker Attribution: "speaker" MUST NEVER BE "${playerProfile.name}". If accompanied, set "speaker" to the canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). If alone, set to "Narrator", "Inner Monologue", or "System".
 2. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
 3. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
-4. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]").
-5. Markdown Formatting: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures and atmospheric sensory cues; use **bold** for loud vocal emphasis or spell invocations; use > quotes for mental echoes or ancient runes. Spoken dialogue MUST be inside quotation marks "...".
+4. Choices: Always generate 4 distinct, engaging prompt options for the next turn tagged with intent (e.g. "[Arcana]", "[Subterfuge]", "[Combat]", "[Inquire]"), written in the voice, vocabulary, and attitude of the active Narration Style.
+5. Narrative Prose & Markdown Formatting: "narrative_text" MUST STRICTLY follow the active Narration Style directive above. The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures and atmospheric sensory cues; use **bold** for loud vocal emphasis or spell invocations; use > quotes for mental echoes or ancient runes. Spoken dialogue MUST be inside quotation marks "...".
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
 {
   "speaker": string,
-  "player_execution": string | null,
-  "narrative_text": string,
+  "player_execution": string | null, // 1 concise sentence describing the player's physical execution of their action, styled strictly in accordance with the active Narration Style.
+  "narrative_text": string, // 2-3 immersive paragraphs containing environmental details, character dialogue, and action beats. MUST STRICTLY adhere to the prose cadence, tone, vocabulary, and negative constraints of the active Narration Style.
   "death_event": {
     "is_fatal": boolean,
     "cause_of_death": string | null,
