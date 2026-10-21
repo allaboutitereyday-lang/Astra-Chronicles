@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
+import { sanitizeVisualNovelProse, sanitizeSpokenDialogue } from "@/lib/proseSanitizer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -205,9 +206,10 @@ Generate the dynamic opening prologue according to the instructions.`;
     let responseData = null;
     let lastError = null;
 
+    const effectiveModelId = modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : modelId;
     const modelsToTry = isLocal
-      ? [modelId || "hermes3:8b"]
-      : (modelId ? [modelId, ...PROLOGUE_MODELS.filter((m) => m !== modelId)] : PROLOGUE_MODELS);
+      ? [effectiveModelId || "hermes3:8b"]
+      : (effectiveModelId ? [effectiveModelId, ...PROLOGUE_MODELS.filter((m) => m !== effectiveModelId)] : PROLOGUE_MODELS);
 
     for (const model of modelsToTry) {
       try {
@@ -343,11 +345,14 @@ Generate the dynamic opening prologue according to the instructions.`;
     responseData.system_announcement =
       responseData.system_announcement ||
       `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`;
+    if (responseData.scene_setup) {
+      responseData.scene_setup = sanitizeVisualNovelProse(responseData.scene_setup);
+    }
     if (responseData.dialogue) {
-      const trimmed = responseData.dialogue.trim();
-      if (!trimmed.startsWith('"') && !trimmed.startsWith('*') && !trimmed.includes('"')) {
-        responseData.dialogue = `"${trimmed}"`;
-      }
+      responseData.dialogue = sanitizeSpokenDialogue(responseData.dialogue);
+    }
+    if (Array.isArray(responseData.opening_choices)) {
+      responseData.opening_choices = responseData.opening_choices.map((c: string) => sanitizeVisualNovelProse(c));
     }
 
     responseData.plausibility = typeof responseData.plausibility === "number" ? responseData.plausibility : 80;

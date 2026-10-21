@@ -15,7 +15,7 @@ export interface LlmConfig {
 
 export const DEFAULT_LLM_CONFIG: LlmConfig = {
   targetEnvironment: "cloud",
-  modelId: "sao10k/l3.1-euryale-70b",
+  modelId: "orchestrated-hybrid",
   temperature: 0.85,
   max_tokens: 1024,
   repetition_penalty: 1.1,
@@ -30,8 +30,8 @@ export function getStoredLlmConfig(): LlmConfig {
       if (parsed) {
         // Enforce cloud environment for all sessions
         parsed.targetEnvironment = "cloud";
-        // If modelId is empty or an old local model, default to Euryale 70B
-        if (!parsed.modelId || !parsed.modelId.includes("/")) {
+        // If modelId is empty or an old local model, default to Smart Hybrid
+        if (!parsed.modelId || (!parsed.modelId.includes("/") && parsed.modelId !== "orchestrated-hybrid")) {
           parsed.modelId = DEFAULT_LLM_CONFIG.modelId;
         }
         return parsed;
@@ -73,6 +73,13 @@ export const LOCAL_MODELS = [
 ];
 
 export const CLOUD_MODELS = [
+  {
+    id: "orchestrated-hybrid",
+    name: "Smart Hybrid (DeepSeek V3 + Euryale 70B)",
+    shortName: "Smart Hybrid",
+    description: "Automatic Multi-Model Orchestration: DeepSeek V3 handles instant background stats, abilities & choices, while Sao10K Euryale 70B drives uncensored story, romance & dialogue.",
+    badge: "Recommended",
+  },
   {
     id: "sao10k/l3.1-euryale-70b",
     name: "Sao10K: Euryale 70B (v2.2)",
@@ -124,6 +131,8 @@ export async function sendRoleplayTurn(
   messages: ChatMessage[],
   config: LlmConfig
 ): Promise<RoleplayApiResponse> {
+  const resolvedModel = config.modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : config.modelId;
+
   const res = await fetch("/api/roleplay", {
     method: "POST",
     headers: {
@@ -131,7 +140,7 @@ export async function sendRoleplayTurn(
     },
     body: JSON.stringify({
       targetEnvironment: "cloud",
-      modelId: config.modelId,
+      modelId: resolvedModel,
       messages,
       temperature: config.temperature ?? 0.85,
       max_tokens: config.max_tokens ?? 1024,
@@ -186,7 +195,7 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
       {/* Model Selection Dropdown */}
       <div>
         <label className="text-[11px] font-mono text-zinc-400 block mb-1.5">
-          Active Cloud Model
+          Active AI Engine
         </label>
         <select
           value={config.modelId}
@@ -224,7 +233,7 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
           <span>Direct OpenRouter Cloud Routing</span>
         </div>
         <div>
-          Target: <code className="text-zinc-300">openrouter.ai/api/v1</code> &bull; Vision-to-Text Character Pipeline Active
+          Target: <code className="text-zinc-300">openrouter.ai/api/v1</code> &bull; Vision-to-Text Character Pipeline &bull; Automated Spell &amp; Quote Sanitizer
         </div>
       </div>
     </div>
@@ -260,10 +269,10 @@ export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProvi
             </div>
             <div>
               <h3 className="text-sm font-bold font-mono text-white tracking-wide">
-                AI MODEL SELECTION
+                AI ENGINE SELECTION
               </h3>
               <p className="text-[11px] text-zinc-400 font-sans">
-                Select your cloud model for roleplay turns, dialogue &amp; world generation
+                Select your cloud model or smart hybrid orchestration
               </p>
             </div>
           </div>
@@ -303,15 +312,24 @@ interface LlmQuickPillProps {
 export function LlmQuickPill({ config, onClick, className = "" }: LlmQuickPillProps) {
   const activeModel = CLOUD_MODELS.find((m) => m.id === config.modelId);
   const displayName = activeModel ? activeModel.shortName : (config.modelId.split("/").pop() || config.modelId);
+  const isHybrid = config.modelId === "orchestrated-hybrid";
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border transition-all cursor-pointer shadow-lg text-xs font-mono backdrop-blur-md bg-cyan-950/40 hover:bg-cyan-900/50 border-cyan-500/40 hover:border-cyan-500/70 text-cyan-300 ${className}`}
-      title={`AI Story Engine: ${displayName} (Click to switch model)`}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border transition-all cursor-pointer shadow-lg text-xs font-mono backdrop-blur-md ${
+        isHybrid
+          ? "bg-gradient-to-r from-rose-950/60 to-cyan-950/60 border-rose-500/50 hover:border-rose-400 text-white shadow-rose-950/30"
+          : "bg-cyan-950/40 hover:bg-cyan-900/50 border-cyan-500/40 hover:border-cyan-500/70 text-cyan-300"
+      } ${className}`}
+      title={`AI Story Engine: ${displayName} (Click to switch engine)`}
     >
-      <Cloud className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+      {isHybrid ? (
+        <Zap className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+      ) : (
+        <Cloud className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+      )}
       <span className="font-semibold text-[11px]">
         <span className="text-zinc-400">AI:</span>{" "}
         <span className="text-white">{displayName}</span>

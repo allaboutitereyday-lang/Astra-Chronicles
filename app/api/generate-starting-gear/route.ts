@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const FAST_LLM_MODELS = [
-  "deepseek/deepseek-v4-flash",
-  "z-ai/glm-5.3-flash",
-  "nvidia/nemotron-3.5-lightning:free",
-  "meta-llama/llama-3.2-11b-vision-instruct:free",
+  "deepseek/deepseek-chat",
+  "nousresearch/hermes-3-llama-3.1-70b",
+  "sao10k/l3-lunaris-8b",
 ];
 
 export interface GeneratedGearPiece {

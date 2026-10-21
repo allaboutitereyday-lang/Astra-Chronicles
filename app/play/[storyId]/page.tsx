@@ -4945,16 +4945,28 @@ export default function VisualNovelGame() {
             </div>
             <div className="p-3 rounded-xl bg-zinc-950/80 border border-white/10 flex items-center justify-between gap-3 shadow-lg">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 shrink-0">
-                  <Cloud className="w-4 h-4" />
+                <div className={`p-2 rounded-lg border shrink-0 ${
+                  llmConfig.modelId === "orchestrated-hybrid"
+                    ? "bg-gradient-to-tr from-rose-950/80 to-cyan-950/80 border-rose-500/40 text-rose-400"
+                    : "bg-cyan-950/60 border-cyan-500/30 text-cyan-400"
+                }`}>
+                  {llmConfig.modelId === "orchestrated-hybrid" ? (
+                    <Sparkles className="w-4 h-4 text-rose-400" />
+                  ) : (
+                    <Cloud className="w-4 h-4" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-mono font-bold text-white truncate">
                       {CLOUD_MODELS.find((m) => m.id === llmConfig.modelId)?.shortName || llmConfig.modelId.split("/").pop()}
                     </span>
-                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 shrink-0">
-                      Cloud
+                    <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full border shrink-0 ${
+                      llmConfig.modelId === "orchestrated-hybrid"
+                        ? "bg-rose-950/70 border-rose-500/40 text-rose-300"
+                        : "bg-cyan-950 border-cyan-500/40 text-cyan-400"
+                    }`}>
+                      {llmConfig.modelId === "orchestrated-hybrid" ? "Multi-Model" : "Cloud"}
                     </span>
                   </div>
                   <p className="text-[10px] text-zinc-400 truncate font-sans">

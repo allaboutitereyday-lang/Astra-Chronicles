@@ -91,7 +91,13 @@ export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY
    - Use *italics* for physical gestures, tactile sensations (temperature, grit, blood, rain, breath), subtle micro-expressions, and whispered tones.
    - Use **bold** sparingly for explosive kinetic impacts, loud vocal shouts, thunderous spell invocations, or metallic clashes.
    - Use > blockquotes for telepathic impressions, ancient runic inscriptions, or intense timeline regression memories.
-   - Structure prose into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks. Avoid single massive blocks of text.`;
+   - Structure prose into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks. Avoid single massive blocks of text.
+4. PRE-FLIGHT SPELLCHECK & SELF-VERIFICATION (MANDATORY):
+   - Before outputting your response, perform an internal self-check:
+     * SPELLCHECK & DICTION: Verify that all vocabulary, character names, and descriptive words are spelled accurately with zero letter omissions or mangled words.
+     * ZERO DUPLICATE QUOTES: Never output doubled quotes (""..."" or ""text""). Spoken lines must use exactly ONE opening quote and ONE closing quote ("...").
+     * PROPER MARKDOWN BOUNDARIES: Every opened asterisk must be closed (*action*, **impact**). Never leave a dangling asterisk right before an opening quote or at the end of a line.
+     * ZERO BRACKET TAG LEAKS: Strip all meta or intent tags like [Combat], [Arcana], [Subterfuge], or [Character Response] from dialogue and narrative prose.`;
 
 /**
  * Mandatory checklist ensuring the LLM checks universe state, memory, and scene context before responding.

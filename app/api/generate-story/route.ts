@@ -3,11 +3,12 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { StoryContext } from "@/types/story";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const GENERATE_MODELS = [
-  "deepseek/deepseek-v4-flash",
-  "z-ai/glm-5.3-flash",
-  "nvidia/nemotron-3.5-lightning:free",
+  "nousresearch/hermes-3-llama-3.1-70b",
+  "deepseek/deepseek-chat",
+  "sao10k/l3.1-euryale-70b",
 ];
 
 export async function POST(req: Request) {

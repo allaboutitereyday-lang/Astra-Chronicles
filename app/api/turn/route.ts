@@ -3,6 +3,7 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
+import { sanitizeVisualNovelProse } from "@/lib/proseSanitizer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -251,9 +252,30 @@ NARRATIVE INSTRUCTION:
 - If this turn reveals a critical future truth or alternate branch divergence, record it in "timeline_echo_unlocked".`
       : "";
 
+    // Dynamic Romance & Intimacy Calibration Directive
+    const activeCompanionData = (partyMembers || []).find((c: any) => c.name === sanitizedContextSpeaker) || (partyMembers || [])[0];
+    const companionAffection = activeCompanionData?.affection || 0;
+    const isRomanceTensionElevated = companionAffection >= 40 ||
+      action.toLowerCase().includes("lean") ||
+      action.toLowerCase().includes("close") ||
+      action.toLowerCase().includes("kiss") ||
+      action.toLowerCase().includes("touch") ||
+      action.toLowerCase().includes("whisper") ||
+      action.toLowerCase().includes("hold");
+
+    const dynamicRomanceDirective = isRomanceTensionElevated
+      ? `--- DYNAMIC ROMANCE & INTIMACY CALIBRATION (AFFECTION: ${companionAffection}%) ---
+The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has reached an emotionally charged, high-intimacy threshold:
+- SENSORY PHYSICALITY: Describe physical proximity with visceral nuance: heat of breath stirring skin or hair, heartbeat racing in chest or pulse fluttering at the throat, dilated pupils, subtle shivers, the friction of fabric and touch.
+- UNRESTRICTED CHEMISTRY: Allow authentic psychological vulnerability, uninhibited desire, playful/tsundere push-pull, or passionate escalation. Do NOT sanitize emotional tension or shy away from intense romantic beats.
+- ANCHOR TO PERSONA: Ensure the intimacy reflects ${sanitizedContextSpeaker}'s distinct personality.`
+      : "";
+
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
 ${getNarrationProseDirective(effectiveTone)}
+
+${dynamicRomanceDirective}
 
 --- HEROINE DOSSIERS & VOICE PROFILES ---
 ${companionDossiers}
@@ -481,9 +503,12 @@ Respond strictly in valid JSON matching this schema:
     let responseData = null;
     let lastError = null;
 
+    // If orchestrated-hybrid is selected, flagship roleplay uses Euryale 70B
+    const effectiveModelId = modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : modelId;
+
     const modelsToTry = isLocal
-      ? [modelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
-      : (modelId ? [modelId, ...FALLBACK_MODELS.filter((m) => m !== modelId)] : FALLBACK_MODELS);
+      ? [effectiveModelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
+      : (effectiveModelId ? [effectiveModelId, ...FALLBACK_MODELS.filter((m) => m !== effectiveModelId)] : FALLBACK_MODELS);
 
     for (const model of modelsToTry) {
       try {
@@ -599,11 +624,21 @@ Respond strictly in valid JSON matching this schema:
 
         // Fail-safe post-processing: sanitize and guarantee player_execution for preset choices
         if (responseData.player_execution) {
-          responseData.player_execution = responseData.player_execution.replace(/^\[[^\]]+\]\s*/, "").trim();
+          responseData.player_execution = sanitizeVisualNovelProse(responseData.player_execution);
         }
         if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().length === 0)) {
           const cleanAct = action.replace(/^\[[^\]]+\]\s*/, "").trim();
           responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the moment, posture set and blade held ready. "${cleanAct}"`;
+        }
+
+        // Deep-sanitize narrative text: fix duplicate quotes, dangling quotes, unbalanced asterisks, spacing
+        if (responseData.narrative_text) {
+          responseData.narrative_text = sanitizeVisualNovelProse(responseData.narrative_text);
+        }
+
+        // Sanitize suggested choices
+        if (Array.isArray(responseData.suggested_choices)) {
+          responseData.suggested_choices = responseData.suggested_choices.map((c: string) => sanitizeVisualNovelProse(c));
         }
 
         // Fail-safe post-processing: enforce speaker attribution and solitude rules

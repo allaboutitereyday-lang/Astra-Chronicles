@@ -3,6 +3,7 @@ import {
   UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE,
   UNIVERSE_STATE_AND_MEMORY_CHECKLIST,
 } from "@/lib/narrationStyles";
+import { sanitizeVisualNovelProse } from "@/lib/proseSanitizer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -90,7 +91,8 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
       }
 
       endpointUrl = "https://openrouter.ai/api/v1/chat/completions";
-      targetModel = modelId || "sao10k/l3.1-euryale-70b";
+      const resolvedModelId = modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : modelId;
+      targetModel = resolvedModelId || "sao10k/l3.1-euryale-70b";
       headers = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
@@ -128,10 +130,11 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content ?? "";
+    const cleanedText = sanitizeVisualNovelProse(rawContent);
 
     return NextResponse.json({
       success: true,
-      text: rawContent,
+      text: cleanedText,
       model: targetModel,
       targetEnvironment,
       usage: data.usage ?? null,
