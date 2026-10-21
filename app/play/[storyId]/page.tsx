@@ -50,7 +50,6 @@ import {
   ShieldCheck,
   Gift,
   Skull,
-  Cpu,
   Cloud
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
@@ -100,6 +99,7 @@ import {
   saveStoredLlmConfig,
   LlmProviderModal,
   LlmQuickPill,
+  CLOUD_MODELS,
 } from "@/components/LlmProviderSelector";
 
 export interface InventoryItem {
@@ -4931,50 +4931,43 @@ export default function VisualNovelGame() {
             </select>
           </div>
 
-          {/* AI Neural Engine Provider Toggle */}
+          {/* AI Story & Roleplay Model Selector */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-mono text-zinc-400">AI Neural Engine Provider</label>
+              <label className="text-xs font-mono text-zinc-400">AI Roleplay Model (OpenRouter Cloud)</label>
               <button
                 type="button"
                 onClick={() => setShowLlmModal(true)}
                 className="text-[10px] font-mono text-rose-400 hover:text-rose-300 underline cursor-pointer"
               >
-                Model Settings
+                Model Details
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="p-3 rounded-xl bg-zinc-950/80 border border-white/10 flex items-center justify-between gap-3 shadow-lg">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-cyan-400 shrink-0">
+                  <Cloud className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono font-bold text-white truncate">
+                      {CLOUD_MODELS.find((m) => m.id === llmConfig.modelId)?.shortName || llmConfig.modelId.split("/").pop()}
+                    </span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-cyan-950 border border-cyan-500/40 text-cyan-400 shrink-0">
+                      Cloud
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 truncate font-sans">
+                    {CLOUD_MODELS.find((m) => m.id === llmConfig.modelId)?.name || "Uncensored Roleplay & Story Engine"}
+                  </p>
+                </div>
+              </div>
               <button
                 type="button"
-                onClick={() => {
-                  const next = { ...llmConfig, targetEnvironment: "local" as const, modelId: "hermes3:8b" };
-                  setLlmConfig(next);
-                  saveStoredLlmConfig(next);
-                }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-mono transition-all cursor-pointer ${
-                  llmConfig.targetEnvironment === "local"
-                    ? "bg-emerald-950/60 border-emerald-500 text-emerald-300 font-bold shadow-lg ring-1 ring-emerald-500/30"
-                    : "bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20"
-                }`}
+                onClick={() => setShowLlmModal(true)}
+                className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-rose-500/40 text-xs font-mono text-zinc-200 transition-all cursor-pointer shrink-0"
               >
-                <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Local (Hermes 3)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = { ...llmConfig, targetEnvironment: "cloud" as const, modelId: "sao10k/l3.1-euryale-70b" };
-                  setLlmConfig(next);
-                  saveStoredLlmConfig(next);
-                }}
-                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-mono transition-all cursor-pointer ${
-                  llmConfig.targetEnvironment === "cloud"
-                    ? "bg-cyan-950/60 border-cyan-500 text-cyan-300 font-bold shadow-lg ring-1 ring-cyan-500/30"
-                    : "bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20"
-                }`}
-              >
-                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Cloud (OpenRouter)</span>
+                Switch Model
               </button>
             </div>
           </div>

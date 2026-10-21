@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Cpu, Cloud, Check, Loader2, Sparkles, X, Settings2 } from "lucide-react";
+import React from "react";
+import { Cloud, Sparkles, X, Settings2, Check, Zap } from "lucide-react";
 
 export type TargetEnvironment = "local" | "cloud";
 
@@ -27,13 +27,11 @@ export function getStoredLlmConfig(): LlmConfig {
     const raw = localStorage.getItem("astra_llm_config");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && (parsed.targetEnvironment === "local" || parsed.targetEnvironment === "cloud")) {
-        // Auto-heal: If local but modelId is a cloud slug, correct targetEnvironment to cloud
-        if (parsed.targetEnvironment === "local" && parsed.modelId?.includes("/")) {
-          parsed.targetEnvironment = "cloud";
-        }
-        // Auto-heal: If cloud but modelId is a local slug without a provider slash, correct to cloud default
-        if (parsed.targetEnvironment === "cloud" && !parsed.modelId?.includes("/")) {
+      if (parsed) {
+        // Enforce cloud environment for all sessions
+        parsed.targetEnvironment = "cloud";
+        // If modelId is empty or an old local model, default to Euryale 70B
+        if (!parsed.modelId || !parsed.modelId.includes("/")) {
           parsed.modelId = DEFAULT_LLM_CONFIG.modelId;
         }
         return parsed;
@@ -46,7 +44,8 @@ export function getStoredLlmConfig(): LlmConfig {
 export function saveStoredLlmConfig(config: LlmConfig): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem("astra_llm_config", JSON.stringify(config));
+    const cloudOnlyConfig = { ...config, targetEnvironment: "cloud" as const };
+    localStorage.setItem("astra_llm_config", JSON.stringify(cloudOnlyConfig));
   } catch {}
 }
 
@@ -69,19 +68,53 @@ export interface RoleplayApiResponse {
 }
 
 export const LOCAL_MODELS = [
-  { id: "hermes3:8b", name: "Nous Hermes 3 (8B) • Recommended for 6GB VRAM" },
-  { id: "hermes3:70b", name: "Nous Hermes 3 (70B) • High Capacity / CPU Offload" },
-  { id: "llama3.2:3b", name: "Llama 3.2 (3B) • Ultra-Fast Local" },
-  { id: "qwen2.5:7b", name: "Qwen 2.5 (7B) • High Reasoning" },
+  { id: "hermes3:8b", name: "Nous Hermes 3 (8B) • Local Inference" },
+  { id: "hermes3:70b", name: "Nous Hermes 3 (70B) • High Capacity Local" },
 ];
 
 export const CLOUD_MODELS = [
-  { id: "sao10k/l3.1-euryale-70b", name: "Sao10K: Euryale 70B (v2.2) • Best-in-Class Uncensored Roleplay & ERP" },
-  { id: "nousresearch/hermes-3-llama-3.1-70b", name: "Nous Hermes 3 (70B) • Uncensored Storytelling & Tool-Use" },
-  { id: "deepseek/deepseek-chat", name: "DeepSeek Chat (V3) • High Intelligence & Cost Effective" },
-  { id: "sao10k/l3-lunaris-8b", name: "Sao10K: Lunaris 8B • Fast & Uncensored Roleplay" },
-  { id: "gryphe/mythomax-l2-13b", name: "MythoMax 13B • Classic Uncensored Fiction" },
-  { id: "nousresearch/hermes-3-llama-3.1-405b", name: "Nous Hermes 3 (405B) • Massive Flagship Cloud" },
+  {
+    id: "sao10k/l3.1-euryale-70b",
+    name: "Sao10K: Euryale 70B (v2.2)",
+    shortName: "Euryale 70B",
+    description: "Best-in-class uncensored roleplay & ERP. Nuanced character chemistry, deep psychological reactions, and evocative dark fantasy prose.",
+    badge: "Flagship RP",
+  },
+  {
+    id: "nousresearch/hermes-3-llama-3.1-70b",
+    name: "Nous Hermes 3 (70B)",
+    shortName: "Hermes 3 70B",
+    description: "Exceptional multi-turn storytelling, creative dialogue, and precise adherence to LitRPG system state and combat mechanics.",
+    badge: "Story & LitRPG",
+  },
+  {
+    id: "deepseek/deepseek-chat",
+    name: "DeepSeek Chat (V3)",
+    shortName: "DeepSeek Chat",
+    description: "Cutting-edge 671B MoE model. Ultra-fast, highly intelligent, capable of deep narrative reasoning and intricate tactical choices.",
+    badge: "Intelligence",
+  },
+  {
+    id: "sao10k/l3-lunaris-8b",
+    name: "Sao10K: Lunaris 8B",
+    shortName: "Lunaris 8B",
+    description: "Fast, uncensored 8B model with strong romantic and adventure dialogue. Highly responsive with minimal generation latency.",
+    badge: "Fast & Light",
+  },
+  {
+    id: "gryphe/mythomax-l2-13b",
+    name: "MythoMax 13B",
+    shortName: "MythoMax 13B",
+    description: "Legendary visual novel & fictional roleplay merge. Fluid conversational pacing and poetic descriptive style.",
+    badge: "Classic Fiction",
+  },
+  {
+    id: "nousresearch/hermes-3-llama-3.1-405b",
+    name: "Nous Hermes 3 (405B)",
+    shortName: "Hermes 3 405B",
+    description: "Colossal 405B parameter flagship model. Pinnacle narrative depth, intricate lore preservation, and uncensored world simulation.",
+    badge: "Maximum Scale",
+  },
 ];
 
 /**
@@ -97,10 +130,10 @@ export async function sendRoleplayTurn(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      targetEnvironment: config.targetEnvironment,
+      targetEnvironment: "cloud",
       modelId: config.modelId,
       messages,
-      temperature: config.temperature ?? 0.8,
+      temperature: config.temperature ?? 0.85,
       max_tokens: config.max_tokens ?? 1024,
       repetition_penalty: config.repetition_penalty ?? 1.1,
     }),
@@ -121,110 +154,78 @@ interface LlmProviderSelectorProps {
 }
 
 /**
- * Reusable UI toggle and dropdown selector for dynamic LLM routing.
+ * Clean UI dropdown and model card selector for OpenRouter Cloud LLMs.
  */
 export function LlmProviderSelector({ config, onChange, className = "" }: LlmProviderSelectorProps) {
-  const isLocal = config.targetEnvironment === "local";
-
-  const handleEnvironmentChange = (env: TargetEnvironment) => {
-    const defaultModel = env === "local" ? "hermes3:8b" : "sao10k/l3.1-euryale-70b";
-    onChange({
-      ...config,
-      targetEnvironment: env,
-      modelId: defaultModel,
-    });
-  };
+  const selectedModel = CLOUD_MODELS.find((m) => m.id === config.modelId) || CLOUD_MODELS[0];
 
   const handleModelChange = (selectedModelId: string) => {
-    const isCloudModel = CLOUD_MODELS.some((m) => m.id === selectedModelId) || selectedModelId.includes("/");
     onChange({
       ...config,
-      targetEnvironment: isCloudModel ? "cloud" : "local",
+      targetEnvironment: "cloud",
       modelId: selectedModelId,
     });
   };
 
-  const activeOptions = isLocal ? LOCAL_MODELS : CLOUD_MODELS;
-
   return (
-    <div className={`p-4 rounded-2xl bg-zinc-950/80 border border-white/10 space-y-3.5 backdrop-blur-md shadow-xl ${className}`}>
+    <div className={`p-4 rounded-2xl bg-zinc-950/90 border border-white/10 space-y-4 backdrop-blur-md shadow-xl ${className}`}>
       {/* Header & Status Indicator */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-rose-400" />
           <span className="text-xs font-mono font-semibold text-zinc-200 tracking-wider uppercase">
-            Neural Engine Route
+            AI Story &amp; Roleplay Engine
           </span>
         </div>
-        <span
-          className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-            isLocal
-              ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-400"
-              : "bg-cyan-950/40 border-cyan-500/40 text-cyan-400"
-          }`}
-        >
-          {isLocal ? "Ollama :11434" : "OpenRouter Cloud"}
-        </span>
-      </div>
-
-      {/* Target Environment Segmented Toggle */}
-      <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-900 rounded-xl border border-white/5">
-        <button
-          type="button"
-          onClick={() => handleEnvironmentChange("local")}
-          className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-            isLocal
-              ? "bg-zinc-800 text-white shadow-sm border border-white/10 font-bold"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
-        >
-          <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Local (Hermes 3)</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => handleEnvironmentChange("cloud")}
-          className={`flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-            !isLocal
-              ? "bg-zinc-800 text-white shadow-sm border border-white/10 font-bold"
-              : "text-zinc-400 hover:text-zinc-200"
-          }`}
-        >
-          <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Cloud (OpenRouter)</span>
-        </button>
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border bg-cyan-950/40 border-cyan-500/40 text-cyan-400 text-[10px] font-mono">
+          <Cloud className="w-3 h-3 text-cyan-400" />
+          <span>OpenRouter Cloud</span>
+        </div>
       </div>
 
       {/* Model Selection Dropdown */}
       <div>
         <label className="text-[11px] font-mono text-zinc-400 block mb-1.5">
-          Active Model Designation
+          Active Cloud Model
         </label>
         <select
           value={config.modelId}
           onChange={(e) => handleModelChange(e.target.value)}
-          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white font-sans focus:border-rose-500 focus:outline-none transition-colors"
+          className="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white font-sans focus:border-rose-500 focus:outline-none transition-colors cursor-pointer"
         >
-          {activeOptions.map((m) => (
+          {CLOUD_MODELS.map((m) => (
             <option key={m.id} value={m.id} className="bg-zinc-900 text-white">
-              {m.name}
+              {m.name} [{m.badge}]
             </option>
           ))}
         </select>
       </div>
 
-      {/* Endpoint Info Tip */}
-      <div className="text-[10px] font-mono text-zinc-500 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-white/5">
-        {isLocal ? (
-          <span>
-            Target: <code className="text-zinc-300">http://127.0.0.1:11434/v1</code> &bull; Local zero-latency inference via Ollama.
+      {/* Active Model Highlight Card */}
+      <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+            <Zap className="w-3 h-3 text-amber-400" />
+            {selectedModel.name}
           </span>
-        ) : (
-          <span>
-            Target: <code className="text-zinc-300">openrouter.ai/api/v1</code> &bull; Authenticated via <code className="text-zinc-300">OPENROUTER_API_KEY</code>.
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-950/50 border border-rose-500/30 text-rose-300">
+            {selectedModel.badge}
           </span>
-        )}
+        </div>
+        <p className="text-[11px] text-zinc-400 leading-relaxed font-sans">
+          {selectedModel.description}
+        </p>
+      </div>
+
+      {/* Endpoint & Vision Info Tip */}
+      <div className="text-[10px] font-mono text-zinc-500 leading-relaxed bg-white/[0.02] p-2.5 rounded-lg border border-white/5 space-y-1">
+        <div className="flex items-center gap-1 text-cyan-400">
+          <Cloud className="w-3 h-3 shrink-0" />
+          <span>Direct OpenRouter Cloud Routing</span>
+        </div>
+        <div>
+          Target: <code className="text-zinc-300">openrouter.ai/api/v1</code> &bull; Vision-to-Text Character Pipeline Active
+        </div>
       </div>
     </div>
   );
@@ -238,7 +239,7 @@ interface LlmProviderModalProps {
 }
 
 /**
- * Floating Backdrop Modal for configuring LLM Neural Engine settings
+ * Floating Backdrop Modal for configuring AI Cloud Model settings
  */
 export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProviderModalProps) {
   if (!isOpen) return null;
@@ -254,15 +255,15 @@ export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProvi
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-600/30 to-purple-600/30 border border-rose-500/40">
-              <Settings2 className="w-4 h-4 text-rose-400" />
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-cyan-600/30 to-rose-600/30 border border-cyan-500/40">
+              <Cloud className="w-4 h-4 text-cyan-400" />
             </div>
             <div>
               <h3 className="text-sm font-bold font-mono text-white tracking-wide">
-                AI ENGINE CONFIGURATION
+                AI MODEL SELECTION
               </h3>
               <p className="text-[11px] text-zinc-400 font-sans">
-                Select inference engine for roleplay turns & world generation
+                Select your cloud model for roleplay turns, dialogue &amp; world generation
               </p>
             </div>
           </div>
@@ -282,7 +283,7 @@ export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProvi
             onClick={onClose}
             className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold transition-all cursor-pointer shadow-lg shadow-rose-900/40"
           >
-            Apply & Close
+            Apply &amp; Close
           </button>
         </div>
       </div>
@@ -300,29 +301,20 @@ interface LlmQuickPillProps {
  * Compact Pill button showing current AI backend, clickable to open the configuration modal
  */
 export function LlmQuickPill({ config, onClick, className = "" }: LlmQuickPillProps) {
-  const isLocal = config.targetEnvironment === "local";
+  const activeModel = CLOUD_MODELS.find((m) => m.id === config.modelId);
+  const displayName = activeModel ? activeModel.shortName : (config.modelId.split("/").pop() || config.modelId);
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border transition-all cursor-pointer shadow-lg text-xs font-mono backdrop-blur-md ${
-        isLocal
-          ? "bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/40 hover:border-emerald-500/70 text-emerald-300"
-          : "bg-cyan-950/40 hover:bg-cyan-900/50 border-cyan-500/40 hover:border-cyan-500/70 text-cyan-300"
-      } ${className}`}
-      title={`AI Engine: ${isLocal ? "Local Ollama" : "Cloud OpenRouter"} (${config.modelId})`}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border transition-all cursor-pointer shadow-lg text-xs font-mono backdrop-blur-md bg-cyan-950/40 hover:bg-cyan-900/50 border-cyan-500/40 hover:border-cyan-500/70 text-cyan-300 ${className}`}
+      title={`AI Story Engine: ${displayName} (Click to switch model)`}
     >
-      {isLocal ? (
-        <Cpu className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-      ) : (
-        <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-      )}
+      <Cloud className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
       <span className="font-semibold text-[11px]">
-        {isLocal ? "Local" : "Cloud"}:{" "}
-        <span className="text-white">
-          {config.modelId.includes("hermes3") ? "Hermes 3" : config.modelId.split("/").pop() || config.modelId}
-        </span>
+        <span className="text-zinc-400">AI:</span>{" "}
+        <span className="text-white">{displayName}</span>
       </span>
     </button>
   );

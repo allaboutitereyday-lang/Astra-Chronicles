@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
+import { describeProtagonistAvatar } from "@/lib/visionEncoder";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,21 @@ export async function POST(req: Request) {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!isLocal && !apiKey) {
       return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
+    }
+
+    // Inspect uploaded protagonist avatar if present using fast vision encoder
+    let visualDescription: string | null = null;
+    if (playerAvatarBase64) {
+      try {
+        visualDescription = await describeProtagonistAvatar(
+          playerAvatarBase64,
+          playerProfile?.name || "The Protagonist",
+          playerProfile?.role || "Adventurer",
+          apiKey
+        );
+      } catch (vErr: any) {
+        console.warn("[Prologue API] Failed to encode avatar with vision:", vErr?.message);
+      }
     }
 
     const storyTitle = storyContext?.title || "Astra Chronicles";
@@ -113,9 +129,15 @@ ${companionDossiers}
 - Low / Suspicious Compatibility (clashes with her nature or poses an overt annoyance): 5 - 11.
 
 --- VISUAL INSPECTION DIRECTIVE ---
-If a character avatar image is provided, ${startingHeroine} MUST explicitly and naturally observe their appearance in her initial reaction:
+${visualDescription
+  ? `Detailed visual appearance of ${playerProfile.name} (derived from uploaded avatar):
+"${visualDescription}"
+CRITICAL OPENING DIRECTIVE: ${startingHeroine} MUST explicitly observe and remark on ${playerProfile.name}'s specific appearance, attire, physical build, and bearing in her opening dialogue or internal impressions.`
+  : playerAvatarBase64
+  ? `If a character avatar image is provided, ${startingHeroine} MUST explicitly and naturally observe their appearance in her initial reaction:
 - Take note of their physical features (hair, eyes, build, stance), armor/clothing, visible weapons, and overall aura.
-- Weave these direct observations naturally into her dialogue or internal impression.
+- Weave these direct observations naturally into her dialogue or internal impression.`
+  : `Portray the protagonist with the presence and demeanor befitting a ${playerProfile.role}.`}
 
 --- SYSTEM ADMINISTRATOR DIRECTIVE ---
 You also operate the transcendent LitRPG/Manhwa 'SYSTEM' that tracks and guides the protagonist.
@@ -212,7 +234,9 @@ Generate the dynamic opening prologue according to the instructions.`;
             image_url: { url: playerAvatarBase64 },
           });
         } else {
-          const avatarNote = playerAvatarBase64
+          const avatarNote = visualDescription
+            ? `\n[Protagonist Visual Description: "${visualDescription}"]`
+            : playerAvatarBase64
             ? `\n[Note to Game Master: The protagonist has an uploaded portrait; portray their striking persona and features in ${startingHeroine}'s reaction.]`
             : "";
           userContent.push({
@@ -320,6 +344,10 @@ Generate the dynamic opening prologue according to the instructions.`;
       `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`;
     responseData.plausibility = typeof responseData.plausibility === "number" ? responseData.plausibility : 80;
     responseData.plausibility_tier = responseData.plausibility >= 70 ? "Stable" : "Strained";
+
+    if (visualDescription) {
+      responseData.visual_description = visualDescription;
+    }
 
     return NextResponse.json(responseData);
   } catch (error: any) {

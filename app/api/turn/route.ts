@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
+import { describeProtagonistAvatar } from "@/lib/visionEncoder";
 
 export const runtime = "nodejs";
 
@@ -144,11 +145,31 @@ The user selected this choice/action vector: "${action}".
 
     const isFirstEncounter = !recentHistory || recentHistory.length <= 1;
 
-    const visualInspectionInstruction = (playerAvatarBase64 && isFirstEncounter)
+    // Inspect uploaded protagonist avatar if present using fast vision encoder
+    let visualDescription: string | null = null;
+    if (playerAvatarBase64) {
+      try {
+        visualDescription = await describeProtagonistAvatar(
+          playerAvatarBase64,
+          playerProfile?.name || "The Protagonist",
+          playerProfile?.role || "Adventurer",
+          apiKey
+        );
+      } catch (vErr: any) {
+        console.warn("[Turn API] Failed to encode avatar with vision:", vErr?.message);
+      }
+    }
+
+    const visualInspectionInstruction = visualDescription
+      ? `--- PROTAGONIST VISUAL APPEARANCE (DERIVED FROM AVATAR VIA VISION ENGINE) ---
+Detailed visual appearance of ${playerProfile.name}:
+"${visualDescription}"
+${isFirstEncounter ? `CRITICAL FIRST ENCOUNTER DIRECTIVE: The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on ${playerProfile.name}'s specific visual features (attire, physical build, hair/eyes, visible weapons, or demeanor) in their dialogue or narrative prose.` : "You may reference these specific visual traits when describing physical gestures, combat actions, close proximity, or emotional moments."}`
+      : (playerAvatarBase64 && isFirstEncounter)
       ? `--- FIRST ENCOUNTER APPEARANCE DIRECTIVE ---
 This is the initial meeting with the protagonist (${playerProfile.name}).
-- Inspect the character's visual features (hair, eyes, build, clothing/armor, stance).
-- The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on the protagonist's initial appearance in their dialogue or narrative prose.`
+- Portray the character with the physical bearing, attire, and combat readiness of their role (${playerProfile.role}).
+- The active speaker (${sanitizedContextSpeaker}) should naturally observe and comment on the protagonist's initial appearance in their dialogue or narrative prose.`
       : `--- APPEARANCE DIRECTIVE ---
 Do NOT repeatedly comment on or re-describe the player's general physical appearance unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
 
@@ -501,7 +522,9 @@ Respond strictly in valid JSON matching this schema:
             ],
           });
         } else {
-          const textNote = (playerAvatarBase64 && isFirstEncounter)
+          const textNote = visualDescription
+            ? `\n[Protagonist Appearance Context: "${visualDescription}"]`
+            : (playerAvatarBase64 && isFirstEncounter)
             ? `\n[Protagonist Archetype: ${playerProfile.name}, Role: ${playerProfile.role}, Stance: ${activeStance || "neutral"}. Note to Game Master: A custom portrait was provided; reflect these warrior traits in character observations.]`
             : "";
           modelMessages.push({
@@ -590,6 +613,10 @@ Respond strictly in valid JSON matching this schema:
           if (!responseData.speaker || responseData.speaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
             responseData.speaker = "Narrator";
           }
+        }
+
+        if (visualDescription) {
+          responseData.visual_description = visualDescription;
         }
 
         const userStats = !isLocal && authCheck.valid
