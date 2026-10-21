@@ -49,7 +49,9 @@ import {
   EyeOff,
   ShieldCheck,
   Gift,
-  Skull
+  Skull,
+  Cpu,
+  Cloud
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -91,6 +93,14 @@ import { validateKeyClientSide } from "@/lib/clientKeyValidation";
 import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 import { GeneratedGearPiece } from "@/app/api/generate-starting-gear/route";
 import { getNarrationStyleBadge } from "@/lib/narrationStyles";
+import {
+  LlmConfig,
+  DEFAULT_LLM_CONFIG,
+  getStoredLlmConfig,
+  saveStoredLlmConfig,
+  LlmProviderModal,
+  LlmQuickPill,
+} from "@/components/LlmProviderSelector";
 
 export interface InventoryItem {
   id: string;
@@ -326,6 +336,10 @@ export default function VisualNovelGame() {
   const [isConfigured, setIsConfigured] = useState(false);
   const [narrationStyle, setNarrationStyle] = useState("Grimdark & Atmospheric");
   const [selectedPrologue, setSelectedPrologue] = useState(0);
+
+  // Neural Engine LLM Routing State
+  const [llmConfig, setLlmConfig] = useState<LlmConfig>(DEFAULT_LLM_CONFIG);
+  const [showLlmModal, setShowLlmModal] = useState<boolean>(false);
 
   // Immersion & Transition States
   const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
@@ -840,6 +854,7 @@ export default function VisualNovelGame() {
 
   useEffect(() => {
     let active = true;
+    setLlmConfig(getStoredLlmConfig());
     getStoryById(storyId).then((story) => {
       if (active && story) {
         setCurrentStory(story);
@@ -1887,6 +1902,8 @@ export default function VisualNovelGame() {
           userAccessKey: accessKey,
           storyContext: currentStory,
           activeSynergies: activeRelicSynergies,
+          targetEnvironment: llmConfig.targetEnvironment,
+          modelId: llmConfig.modelId,
         }),
       });
 
@@ -2654,6 +2671,8 @@ export default function VisualNovelGame() {
           timelineEchoes,
           activeStance: player.activeStance || "neutral",
           giftItemContext: giftContext,
+          targetEnvironment: llmConfig.targetEnvironment,
+          modelId: llmConfig.modelId,
           recentHistory: chatLog.slice(-14).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
@@ -4857,6 +4876,54 @@ export default function VisualNovelGame() {
             </select>
           </div>
 
+          {/* AI Neural Engine Provider Toggle */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-mono text-zinc-400">AI Neural Engine Provider</label>
+              <button
+                type="button"
+                onClick={() => setShowLlmModal(true)}
+                className="text-[10px] font-mono text-rose-400 hover:text-rose-300 underline cursor-pointer"
+              >
+                Model Settings
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const next = { ...llmConfig, targetEnvironment: "local" as const, modelId: "hermes3:8b" };
+                  setLlmConfig(next);
+                  saveStoredLlmConfig(next);
+                }}
+                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-mono transition-all cursor-pointer ${
+                  llmConfig.targetEnvironment === "local"
+                    ? "bg-emerald-950/60 border-emerald-500 text-emerald-300 font-bold shadow-lg ring-1 ring-emerald-500/30"
+                    : "bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20"
+                }`}
+              >
+                <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Local (Hermes 3)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = { ...llmConfig, targetEnvironment: "cloud" as const, modelId: "deepseek/deepseek-chat" };
+                  setLlmConfig(next);
+                  saveStoredLlmConfig(next);
+                }}
+                className={`p-2.5 rounded-xl border flex items-center justify-center gap-2 text-xs font-mono transition-all cursor-pointer ${
+                  llmConfig.targetEnvironment === "cloud"
+                    ? "bg-cyan-950/60 border-cyan-500 text-cyan-300 font-bold shadow-lg ring-1 ring-cyan-500/30"
+                    : "bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20"
+                }`}
+              >
+                <Cloud className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Cloud (OpenRouter)</span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="text-xs font-mono text-zinc-400 block mb-2">Select Starting Scenario & Companion</label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
@@ -5013,8 +5080,16 @@ export default function VisualNovelGame() {
           </button>
         </div>
 
-        {/* RIGHT CLUSTER: Auto-Save Pulse & Unified Glass Command Dock */}
+        {/* RIGHT CLUSTER: Auto-Save Pulse, LLM Engine Pill & Unified Glass Command Dock */}
         <div className="flex items-center gap-2 shrink-0">
+          <LlmQuickPill
+            config={llmConfig}
+            onClick={() => {
+              soundEffects.playClick();
+              setShowLlmModal(true);
+            }}
+          />
+
           {showAutoSaveIndicator && (
             <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_15px_rgba(52,211,153,0.3)] backdrop-blur-md">
               <Zap className="w-3 h-3 text-emerald-400 animate-pulse" />
@@ -6429,6 +6504,17 @@ export default function VisualNovelGame() {
 
       {/* Screen Transition Overlay */}
       <ScreenTransitionOverlay {...screenTransition} />
+
+      {/* Dynamic LLM Engine Selector Modal */}
+      <LlmProviderModal
+        isOpen={showLlmModal}
+        onClose={() => setShowLlmModal(false)}
+        config={llmConfig}
+        onChange={(newConfig: LlmConfig) => {
+          setLlmConfig(newConfig);
+          saveStoredLlmConfig(newConfig);
+        }}
+      />
     </div>
   );
 }

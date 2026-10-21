@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Cpu, Cloud, Check, Loader2, Sparkles } from "lucide-react";
+import { Cpu, Cloud, Check, Loader2, Sparkles, X, Settings2 } from "lucide-react";
 
 export type TargetEnvironment = "local" | "cloud";
 
@@ -11,6 +11,35 @@ export interface LlmConfig {
   temperature?: number;
   max_tokens?: number;
   repetition_penalty?: number;
+}
+
+export const DEFAULT_LLM_CONFIG: LlmConfig = {
+  targetEnvironment: "local",
+  modelId: "hermes3:8b",
+  temperature: 0.8,
+  max_tokens: 1024,
+  repetition_penalty: 1.1,
+};
+
+export function getStoredLlmConfig(): LlmConfig {
+  if (typeof window === "undefined") return DEFAULT_LLM_CONFIG;
+  try {
+    const raw = localStorage.getItem("astra_llm_config");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && (parsed.targetEnvironment === "local" || parsed.targetEnvironment === "cloud")) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return DEFAULT_LLM_CONFIG;
+}
+
+export function saveStoredLlmConfig(config: LlmConfig): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("astra_llm_config", JSON.stringify(config));
+  } catch {}
 }
 
 export interface ChatMessage {
@@ -138,7 +167,7 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
           }`}
         >
           <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Local (Ollama)</span>
+          <span>Local (Hermes 3)</span>
         </button>
 
         <button
@@ -186,5 +215,103 @@ export function LlmProviderSelector({ config, onChange, className = "" }: LlmPro
         )}
       </div>
     </div>
+  );
+}
+
+interface LlmProviderModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  config: LlmConfig;
+  onChange: (newConfig: LlmConfig) => void;
+}
+
+/**
+ * Floating Backdrop Modal for configuring LLM Neural Engine settings
+ */
+export function LlmProviderModal({ isOpen, onClose, config, onChange }: LlmProviderModalProps) {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 select-none"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200"
+      >
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-rose-600/30 to-purple-600/30 border border-rose-500/40">
+              <Settings2 className="w-4 h-4 text-rose-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold font-mono text-white tracking-wide">
+                AI ENGINE CONFIGURATION
+              </h3>
+              <p className="text-[11px] text-zinc-400 font-sans">
+                Select inference engine for roleplay turns & world generation
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <LlmProviderSelector config={config} onChange={onChange} />
+
+        <div className="flex justify-end pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold transition-all cursor-pointer shadow-lg shadow-rose-900/40"
+          >
+            Apply & Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface LlmQuickPillProps {
+  config: LlmConfig;
+  onClick: () => void;
+  className?: string;
+}
+
+/**
+ * Compact Pill button showing current AI backend, clickable to open the configuration modal
+ */
+export function LlmQuickPill({ config, onClick, className = "" }: LlmQuickPillProps) {
+  const isLocal = config.targetEnvironment === "local";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border transition-all cursor-pointer shadow-lg text-xs font-mono backdrop-blur-md ${
+        isLocal
+          ? "bg-emerald-950/40 hover:bg-emerald-900/50 border-emerald-500/40 hover:border-emerald-500/70 text-emerald-300"
+          : "bg-cyan-950/40 hover:bg-cyan-900/50 border-cyan-500/40 hover:border-cyan-500/70 text-cyan-300"
+      } ${className}`}
+      title={`AI Engine: ${isLocal ? "Local Ollama" : "Cloud OpenRouter"} (${config.modelId})`}
+    >
+      {isLocal ? (
+        <Cpu className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+      ) : (
+        <Cloud className="w-3.5 h-3.5 text-cyan-400" />
+      )}
+      <span className="font-semibold text-[11px]">
+        {isLocal ? "Local" : "Cloud"}:{" "}
+        <span className="text-white">
+          {config.modelId.includes("hermes3") ? "Hermes 3" : config.modelId.split("/").pop() || config.modelId}
+        </span>
+      </span>
+    </button>
   );
 }

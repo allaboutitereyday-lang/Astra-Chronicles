@@ -34,7 +34,11 @@ export async function POST(req: Request) {
       timelineEchoes = [],
       activeStance = "neutral",
       giftItemContext = null, // { itemName: string, itemDescription: string, itemRarity: string, recipientCompanionName: string, reactionPrompt: string }
+      targetEnvironment = "cloud",
+      modelId,
     } = body;
+
+    const isLocal = targetEnvironment === "local";
 
     const computedSynergies = activeSynergies && activeSynergies.length > 0
       ? activeSynergies
@@ -43,7 +47,7 @@ export async function POST(req: Request) {
 
     const accessKey = headerKey || userAccessKey;
     const authCheck = validateUserKey(accessKey);
-    if (!authCheck.valid) {
+    if (!isLocal && !authCheck.valid) {
       return NextResponse.json(
         { 
           error: authCheck.error || "Access denied. Valid access key required.",
@@ -52,10 +56,10 @@ export async function POST(req: Request) {
         { status: authCheck.user?.remainingTurns === 0 ? 403 : 401 }
       );
     }
-    const activeUser = authCheck.user!;
+    const activeUser = authCheck.user || { key: "local_player", name: "Local Adventurer", role: "admin", remainingTurns: -1 };
 
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
+    if (!isLocal && !apiKey) {
       return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
     }
 
@@ -436,16 +440,26 @@ Respond strictly in valid JSON matching this schema:
     let responseData = null;
     let lastError = null;
 
-    for (const model of FALLBACK_MODELS) {
+    const modelsToTry = isLocal ? [modelId || "hermes3:8b"] : FALLBACK_MODELS;
+
+    for (const model of modelsToTry) {
       try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const fetchUrl = isLocal
+          ? "http://127.0.0.1:11434/v1/chat/completions"
+          : "https://openrouter.ai/api/v1/chat/completions";
+
+        const headers: Record<string, string> = isLocal
+          ? { "Content-Type": "application/json" }
+          : {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+              "HTTP-Referer": "https://astra-chronicles.local",
+              "X-Title": "Astra Chronicles",
+            };
+
+        const response = await fetch(fetchUrl, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://astra-chronicles.local",
-            "X-Title": "Astra Chronicles",
-          },
+          headers,
           body: JSON.stringify({
             model,
             messages,
@@ -457,7 +471,7 @@ Respond strictly in valid JSON matching this schema:
 
         if (!response.ok) {
           const errText = await response.text();
-          console.warn(`Model ${model} failed (${response.status}): ${errText}`);
+          console.warn(`Model ${model} on ${isLocal ? "local" : "cloud"} failed (${response.status}): ${errText}`);
           lastError = new Error(`Model ${model} returned HTTP ${response.status}`);
           continue;
         }
@@ -482,7 +496,9 @@ Respond strictly in valid JSON matching this schema:
           }
         }
 
-        const userStats = recordUserTurn(activeUser.key, data.usage, model);
+        const userStats = !isLocal && authCheck.valid
+          ? recordUserTurn(activeUser.key, data.usage, model)
+          : activeUser;
         responseData._userStats = userStats;
         break;
       } catch (err: any) {

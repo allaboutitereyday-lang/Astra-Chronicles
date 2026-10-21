@@ -34,6 +34,14 @@ import { loadAllGameSlots } from "@/lib/saveStorage";
 import { sanitizeImageUrl, DEFAULT_BG, DEFAULT_AVATAR } from "@/lib/imageUtils";
 import { getCodexStats } from "@/lib/codexStorage";
 import { validateKeyClientSide } from "@/lib/clientKeyValidation";
+import { 
+  LlmConfig, 
+  DEFAULT_LLM_CONFIG, 
+  getStoredLlmConfig, 
+  saveStoredLlmConfig, 
+  LlmProviderModal, 
+  LlmQuickPill 
+} from "@/components/LlmProviderSelector";
 
 export default function StoryCataloguePage() {
   const router = useRouter();
@@ -58,8 +66,13 @@ export default function StoryCataloguePage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [showKeySecret, setShowKeySecret] = useState<boolean>(false);
 
+  // LLM Provider Routing State
+  const [llmConfig, setLlmConfig] = useState<LlmConfig>(DEFAULT_LLM_CONFIG);
+  const [showLlmModal, setShowLlmModal] = useState<boolean>(false);
+
   useEffect(() => {
     setIsAudioMuted(soundEffects.isMuted());
+    setLlmConfig(getStoredLlmConfig());
     loadStories();
 
     // Load active save slots
@@ -204,6 +217,15 @@ export default function StoryCataloguePage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            {/* LLM Engine Quick Selector */}
+            <LlmQuickPill
+              config={llmConfig}
+              onClick={() => {
+                soundEffects.playClick();
+                setShowLlmModal(true);
+              }}
+            />
+
             <button
               onClick={handleToggleAudio}
               className="p-2.5 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white transition-all cursor-pointer backdrop-blur-md shadow-lg"
@@ -595,6 +617,17 @@ export default function StoryCataloguePage() {
           </div>
         </div>
       )}
+
+      {/* Dynamic LLM Engine Selector Modal */}
+      <LlmProviderModal
+        isOpen={showLlmModal}
+        onClose={() => setShowLlmModal(false)}
+        config={llmConfig}
+        onChange={(newConfig: LlmConfig) => {
+          setLlmConfig(newConfig);
+          saveStoredLlmConfig(newConfig);
+        }}
+      />
     </div>
   );
 }
