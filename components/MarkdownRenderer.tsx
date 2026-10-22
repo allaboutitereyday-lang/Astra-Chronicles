@@ -1,24 +1,51 @@
 "use client";
 
 import React from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
+import { Terminal } from "lucide-react";
+import { sanitizeNarrativeAndMechanics } from "@/lib/textSanitizer";
 
 interface MarkdownRendererProps {
   content: string;
+  mechanics?: string | null;
   isUser?: boolean;
   isStreaming?: boolean;
   className?: string;
 }
 
+/**
+ * Renders a single paragraph with spoken double-quoted dialogue ("...")
+ * styled distinctly from surrounding narrative description, without relying on
+ * fragile Markdown asterisk parsing.
+ */
+function renderFormattedParagraph(paragraph: string, isUser: boolean) {
+  const parts = paragraph.split(/("[^"\n]+")/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith('"') && part.endsWith('"') && part.length >= 2) {
+      return (
+        <span
+          key={idx}
+          className={
+            isUser
+              ? "text-white font-medium"
+              : "text-rose-100 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
+          }
+        >
+          {part}
+        </span>
+      );
+    }
+    return <React.Fragment key={idx}>{part}</React.Fragment>;
+  });
+}
+
 export function MarkdownRenderer({
   content,
+  mechanics = null,
   isUser = false,
   isStreaming = false,
   className = "",
 }: MarkdownRendererProps) {
-  if (!content) {
+  if (!content && !mechanics) {
     return isStreaming ? (
       <span
         className={`inline-block w-1.5 h-3.5 ml-1 animate-pulse align-middle ${
@@ -30,133 +57,50 @@ export function MarkdownRenderer({
     ) : null;
   }
 
+  const sanitized = sanitizeNarrativeAndMechanics(content, mechanics);
+  const paragraphs = sanitized.narrative
+    ? sanitized.narrative
+        .split(/\n\s*\n/)
+        .map((p) => p.trim())
+        .filter(Boolean)
+    : [];
+
   return (
     <div
-      className={`text-sm leading-relaxed ${
+      className={`text-sm leading-relaxed space-y-2.5 ${
         isUser ? "text-white" : "text-zinc-200"
       } ${className}`}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks]}
-        components={{
-          p: ({ children }) => (
+      {/* Structured Narrative Prose Container */}
+      <div className="space-y-2">
+        {paragraphs.map((para, pIdx) => {
+          const isLastParagraph = pIdx === paragraphs.length - 1;
+          return (
             <p
-              className={`mb-2 last:mb-0 leading-relaxed font-normal ${
-                isStreaming ? "last:inline" : ""
-              }`}
+              key={pIdx}
+              className="leading-relaxed font-normal tracking-[0.01em]"
             >
-              {children}
+              {renderFormattedParagraph(para, isUser)}
+              {isStreaming && isLastParagraph && (
+                <span
+                  className={`inline-block w-1.5 h-3.5 ml-1 animate-pulse align-middle ${
+                    isUser
+                      ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]"
+                      : "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]"
+                  }`}
+                />
+              )}
             </p>
-          ),
-          strong: ({ children }) => (
-            <strong
-              className={`font-semibold ${
-                isUser ? "text-white drop-shadow-sm" : "text-zinc-100 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]"
-              }`}
-            >
-              {children}
-            </strong>
-          ),
-          em: ({ children }) => (
-            <em
-              className={`italic font-serif tracking-wide ${
-                isUser ? "text-pink-100" : "text-rose-200/90"
-              }`}
-            >
-              {children}
-            </em>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote
-              className={`border-l-2 pl-3 my-2 italic py-1 rounded-r ${
-                isUser
-                  ? "border-white/80 text-pink-100 bg-white/10"
-                  : "border-rose-500/70 text-zinc-300 bg-rose-950/20"
-              }`}
-            >
-              {children}
-            </blockquote>
-          ),
-          code: ({ children, className: codeClassName, ...props }: any) => {
-            const isCodeBlock = !props.inline && typeof children === "string" && children.includes("\n");
-            if (isCodeBlock) {
-              return (
-                <code className="text-xs font-mono text-zinc-200" {...props}>
-                  {children}
-                </code>
-              );
-            }
-            return (
-              <code
-                className={`px-1.5 py-0.5 rounded text-xs font-mono border ${
-                  isUser
-                    ? "bg-black/30 text-pink-100 border-white/20"
-                    : "bg-black/60 text-rose-300 border-white/10"
-                }`}
-                {...props}
-              >
-                {children}
-              </code>
-            );
-          },
-          pre: ({ children }) => (
-            <pre className="bg-black/80 border border-white/15 p-3 rounded-xl my-2 overflow-x-auto text-xs font-mono text-zinc-200 shadow-inner">
-              {children}
-            </pre>
-          ),
-          ul: ({ children }) => (
-            <ul className="list-disc list-inside space-y-1 my-1.5 text-zinc-200">
-              {children}
-            </ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="list-decimal list-inside space-y-1 my-1.5 text-zinc-200">
-              {children}
-            </ol>
-          ),
-          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-          h1: ({ children }) => (
-            <h1 className="text-base font-bold text-rose-300 mt-2 mb-1 border-b border-white/10 pb-0.5">
-              {children}
-            </h1>
-          ),
-          h2: ({ children }) => (
-            <h2 className="text-sm font-semibold text-rose-300 mt-2 mb-1">
-              {children}
-            </h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider mt-1.5 mb-1">
-              {children}
-            </h3>
-          ),
-          hr: () => <hr className="border-white/10 my-2.5" />,
-          del: ({ children }) => (
-            <del className="line-through opacity-65">{children}</del>
-          ),
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-rose-400 underline underline-offset-2 hover:text-rose-300 transition-colors"
-            >
-              {children}
-            </a>
-          ),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+          );
+        })}
+      </div>
 
-      {isStreaming && (
-        <span
-          className={`inline-block w-1.5 h-3.5 ml-1 animate-pulse align-middle ${
-            isUser
-              ? "bg-white shadow-[0_0_8px_rgba(255,255,255,0.9)]"
-              : "bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.8)]"
-          }`}
-        />
+      {/* Dedicated LitRPG System / Mechanics Container */}
+      {sanitized.mechanics && !isUser && (
+        <div className="mt-2 px-3 py-2 rounded-xl bg-cyan-950/35 border border-cyan-500/30 text-cyan-200 font-mono text-xs flex items-start gap-2 shadow-inner">
+          <Terminal className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+          <span className="leading-snug">{sanitized.mechanics}</span>
+        </div>
       )}
     </div>
   );

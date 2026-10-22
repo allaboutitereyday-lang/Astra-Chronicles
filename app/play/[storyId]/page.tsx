@@ -93,6 +93,7 @@ import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsea
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup } from "@/components/play/SectorClashHud";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
+import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType } from "@/lib/progressionMechanics";
 import { FlowchartViewer } from "@/components/FlowchartViewer";
 import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
@@ -1381,6 +1382,7 @@ export default function VisualNovelGame() {
   const [inspectedItem, setInspectedItem] = useState<InventoryItem | null>(null);
   const [isGeneratingItemIcon, setIsGeneratingItemIcon] = useState(false);
   const [isAwakeningRelic, setIsAwakeningRelic] = useState(false);
+  const [showPortraitEditor, setShowPortraitEditor] = useState(false);
   const [clashCombatPopups, setClashCombatPopups] = useState<ClashCombatPopup[]>([]);
   const sceneFileInputRef = useRef<HTMLInputElement | null>(null);
   const itemFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -6710,20 +6712,42 @@ export default function VisualNovelGame() {
           >
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 shrink-0 flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setShowPortraitEditor(true);
+                  }}
+                  className="group relative w-14 h-14 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 hover:border-rose-500/60 shrink-0 flex items-center justify-center cursor-pointer transition-all shadow-md"
+                  title="Click to Edit Character Portrait"
+                >
                   {playerAvatar && playerAvatar.trim() ? (
-                    <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
+                    <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   ) : (
-                    <User className="w-6 h-6 text-zinc-500" />
+                    <User className="w-6 h-6 text-zinc-500 group-hover:text-rose-400 transition-colors" />
                   )}
-                </div>
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Edit3 className="w-4 h-4 text-white" />
+                  </div>
+                </button>
                 <div>
                   <h2 className="text-lg font-bold text-white font-mono">{player.name}</h2>
                   <p className="text-xs text-rose-400 font-mono">Level {player.level} {player.role}</p>
-                  <div className="flex items-center gap-1.5 mt-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-300">
                       Tone: {getNarrationStyleBadge(narrationStyle || player.narrationStyle)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playClick();
+                        setShowPortraitEditor(true);
+                      }}
+                      className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/40 text-rose-200 hover:text-white flex items-center gap-1 cursor-pointer transition-all"
+                    >
+                      <Edit3 className="w-3 h-3 text-rose-400" />
+                      <span>Edit Portrait</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -7479,6 +7503,32 @@ export default function VisualNovelGame() {
 
       {/* Screen Transition Overlay */}
       <ScreenTransitionOverlay {...screenTransition} />
+
+      {/* Dynamic Character Portrait Editor Modal */}
+      <PortraitEditorModal
+        isOpen={showPortraitEditor}
+        onClose={() => setShowPortraitEditor(false)}
+        currentAvatar={playerAvatar}
+        playerName={player.name || "Wanderer"}
+        playerRole={player.role || "Adventurer"}
+        storyGenre={currentStory.genre}
+        accessKey={accessKey}
+        onSaveAvatar={(newAvatarUrl) => {
+          setPlayerAvatar(newAvatarUrl);
+          setPlayer((prev) => {
+            const next = { ...prev, visualDescription: undefined };
+            playerRef.current = next;
+            performAutoSave({ player: next, playerAvatar: newAvatarUrl });
+            return next;
+          });
+          pushNotification({
+            id: `avatar_updated_${Date.now()}`,
+            type: "quest_assigned",
+            title: "CHARACTER PORTRAIT UPDATED",
+            subtitle: "New protagonist portrait synchronized to HUD and save state.",
+          });
+        }}
+      />
 
       {/* Dynamic LLM Engine Selector Modal */}
       <LlmProviderModal
