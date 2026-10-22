@@ -77,26 +77,25 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
  * Universal directive enforcing impeccable grammar, mandatory quotation marks,
  * and visual novel markdown immersion across all styles.
  */
-export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY RIGOR, GRAMMAR & MARKDOWN IMMERSION DIRECTIVE ---
+export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY RIGOR, GRAMMAR & PLAIN-TEXT JSON DIRECTIVE ---
 1. GRAMMATICAL ACCURACY & SYNTACTIC POLISH:
    - Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs.
    - Strictly prohibit grammatical errors: no comma splices, dropped clauses, run-on fragments, or unnatural tense flipping.
    - Maintain consistent past-tense for narrative prose descriptions and present-tense for spoken character dialogue.
    - Eliminate repetitive robotic AI clichés and machine transitions (e.g. avoid repeating "Suddenly...", "As if on cue...", "A testament to...", "A palpable silence...").
-2. MANDATORY QUOTATION MARKS FOR ALL SPOKEN DIALOGUE:
-   - ALL spoken words, verbal banter, and character utterances MUST be cleanly enclosed in standard double quotation marks ("...").
+2. MANDATORY DOUBLE QUOTATION MARKS FOR ALL SPOKEN DIALOGUE:
+   - ALL spoken words, verbal banter, and character utterances MUST be cleanly enclosed in standard double quotation marks ("..."). NEVER use single quotes ('...') to wrap spoken dialogue.
    - NEVER output floating or unattributed speech. Every spoken line must be physically anchored to an action beat, facial micro-expression, tone of voice, or spatial movement.
-   - Distinguish internal thoughts from spoken words by formatting unspoken internal monologue in *italics* without quotation marks.
-3. VISUAL NOVEL MARKDOWN FORMATTING RULES:
-   - Use *italics* for physical gestures, tactile sensations (temperature, grit, blood, rain, breath), subtle micro-expressions, and whispered tones.
-   - Use **bold** sparingly for explosive kinetic impacts, loud vocal shouts, thunderous spell invocations, or metallic clashes.
-   - Use > blockquotes for telepathic impressions, ancient runic inscriptions, or intense timeline regression memories.
-   - Structure prose into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks. Avoid single massive blocks of text.
+3. STRICT ZERO-MARKDOWN RULE IN PROSE:
+   - DO NOT use Markdown asterisks (*italics* or **bold**), underscores, headers (#), blockquotes (>), or Markdown tables inside narrative prose or dialogue fields.
+   - Convey physical gestures, sensory textures, and kinetic impacts through vivid literary diction and sentence rhythm rather than asterisks or bold tags.
+   - Place all LitRPG system notifications, stat checks, or mechanical readouts inside the dedicated "mechanics" / "system_announcement" JSON fields—never inline inside story paragraphs.
+   - Structure prose into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks (\\n\\n).
 4. PRE-FLIGHT SPELLCHECK & SELF-VERIFICATION (MANDATORY):
    - Before outputting your response, perform an internal self-check:
      * SPELLCHECK & DICTION: Verify that all vocabulary, character names, and descriptive words are spelled accurately with zero letter omissions or mangled words.
-     * ZERO DUPLICATE QUOTES: Never output doubled quotes (""..."" or ""text""). Spoken lines must use exactly ONE opening quote and ONE closing quote ("...").
-     * PROPER MARKDOWN BOUNDARIES: Every opened asterisk must be closed (*action*, **impact**). Never leave a dangling asterisk right before an opening quote or at the end of a line.
+     * ZERO DUPLICATE OR SINGLE QUOTES: Never output doubled quotes (""..."" or ""text"") or single-quoted speech ('...'). Spoken lines must use standard double quotes ("...").
+     * ZERO ASTERISKS OR MARKDOWN TAGS: Ensure zero * or ** characters appear in the narrative text.
      * ZERO BRACKET TAG LEAKS: Strip all meta or intent tags like [Combat], [Arcana], [Subterfuge], or [Character Response] from dialogue and narrative prose.`;
 
 /**

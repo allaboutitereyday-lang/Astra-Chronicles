@@ -10,6 +10,14 @@
  * - Punctuation spacing anomalies and stray artifacts
  */
 
+import {
+  fixSingleQuotedSpeechWithApostrophes,
+  stripErraticMarkdownFormatting,
+  sanitizeNarrativeAndMechanics,
+} from "./textSanitizer";
+
+export { sanitizeNarrativeAndMechanics, fixSingleQuotedSpeechWithApostrophes, stripErraticMarkdownFormatting };
+
 /**
  * Normalizes quotes and fixes duplicates / smart quotes / nested quotes.
  */
@@ -292,19 +300,20 @@ export function sanitizeVisualNovelProse(rawText: string | null | undefined): st
   // 2. Strip AI cliché meta endings
   processed = stripMetaCliches(processed);
 
-  // 3. Normalize single-quote spoken dialogue into double quotes
+  // 3. Normalize single-quote spoken dialogue (including sentences with apostrophes) into double quotes
+  processed = fixSingleQuotedSpeechWithApostrophes(processed);
   processed = normalizeSingleQuoteDialogue(processed);
 
-  // 4. Normalize and fix duplicate quotation marks
+  // 4. Strip erratic inline Markdown (**bold**, *italics*, broken tables, unclosed tags)
+  processed = stripErraticMarkdownFormatting(processed);
+
+  // 5. Normalize and fix duplicate quotation marks
   processed = normalizeQuotes(processed);
 
-  // 5. Balance quotes per paragraph
+  // 6. Balance quotes per paragraph
   const paragraphs = processed.split(/\n\s*\n/);
   const balancedParagraphs = paragraphs.map((p) => balanceQuotationMarks(p.trim()));
   processed = balancedParagraphs.join("\n\n");
-
-  // 6. Balance markdown asterisks
-  processed = balanceMarkdownAsterisks(processed);
 
   // 7. Clean up punctuation spacing
   processed = cleanPunctuationSpacing(processed);

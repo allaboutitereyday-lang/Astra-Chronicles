@@ -3,7 +3,7 @@ import {
   UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE,
   UNIVERSE_STATE_AND_MEMORY_CHECKLIST,
 } from "@/lib/narrationStyles";
-import { sanitizeVisualNovelProse } from "@/lib/proseSanitizer";
+import { sanitizeVisualNovelProse, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -136,11 +136,14 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content ?? "";
-    const cleanedText = sanitizeVisualNovelProse(rawContent);
+    const separated = sanitizeNarrativeAndMechanics(rawContent);
+    const cleanedText = sanitizeVisualNovelProse(separated.narrative);
 
     return NextResponse.json({
       success: true,
       text: cleanedText,
+      narrative: cleanedText,
+      mechanics: separated.mechanics || null,
       model: targetModel,
       targetEnvironment,
       usage: data.usage ?? null,

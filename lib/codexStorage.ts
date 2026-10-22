@@ -13,6 +13,19 @@ export interface CodexSceneEntry {
   model: string;
   unlockedAt: string;
   isFavorite?: boolean;
+  timelineSnapshot?: {
+    location: string;
+    speaker: string;
+    speakerRole?: string;
+    emotion?: string;
+    dialogue: string;
+    narrativeText: string;
+    choices: { id: string; text: string; tone: string }[];
+    turnNumber?: number;
+    causalPlausibility?: number;
+    player?: any;
+    party?: any[];
+  };
 }
 
 export interface CodexLootEntry {

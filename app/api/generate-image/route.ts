@@ -9,9 +9,14 @@ import {
 export const runtime = "nodejs";
 
 const OPENROUTER_IMAGE_MODELS = [
-  "black-forest-labs/flux-1-schnell",
-  "black-forest-labs/flux-1-dev",
-  "stabilityai/stable-diffusion-xl-base-1.0",
+  "google/gemini-3.1-flash-lite-image",   // Nano Banana 2 Lite (Fastest, ~3s latency)
+  "google/gemini-2.5-flash-image",        // Nano Banana Flash (~6s, high fidelity)
+  "google/gemini-3.1-flash-image",        // Nano Banana 2 (Flagship anime CG resolution)
+  "bytedance-seed/seedream-4.5",          // Seedream 4.5 (Exceptional fantasy concept art)
+  "bytedance-seed/seedream-5-0-flash",    // Seedream 5.0 Flash
+  "black-forest-labs/flux-3-image",       // FLUX 3 Image
+  "openai/gpt-image-1-mini",              // OpenAI GPT Image Mini
+  "google/gemini-nano-banana-2.1",        // Nano Banana 2.1 (Classic fallback)
 ];
 
 const FAST_LLM_MODELS = [
@@ -89,7 +94,7 @@ ${recentHistory || fullNarrative || dialogue}`;
             ],
             response_format: { type: "json_object" },
             temperature: 0.75,
-            max_tokens: 220,
+            max_tokens: 500,
           }),
         });
 
@@ -399,13 +404,24 @@ export async function POST(req: Request) {
       const expr = expressionKey === "hurt" ? "hurt" : (expressionKey || "neutral");
       generatedImageUrl = `/characters/${matchedCanon}/${matchedCanon}_${expr}.png`;
     } else if (!generatedImageUrl) {
-      // Procedural companion vector avatar
-      generatedImageUrl = generateProceduralCompanionAvatarSvg({
-        name: characterName,
-        role: body.role || (gender === "male" ? "Netrunner / Rogue" : "Arcane Vanguard"),
-        gender,
-        seed: lockedSeed,
-      });
+      // 1. Attempt AI Generation for custom character if API key is present
+      if (apiKey) {
+        const charPrompt = fullVisualPrompt || `Masterpiece anime visual novel character sprite portrait of ${characterName}, ${gender}, ${body.role || "Companion"}, highly detailed anime concept art, expressive face, clean solid background.`;
+        const aiResult = await queryImageEngine(apiKey, charPrompt);
+        if (aiResult?.imageUrl) {
+          generatedImageUrl = aiResult.imageUrl;
+        }
+      }
+
+      // 2. Procedural companion vector avatar fallback
+      if (!generatedImageUrl) {
+        generatedImageUrl = generateProceduralCompanionAvatarSvg({
+          name: characterName,
+          role: body.role || (gender === "male" ? "Netrunner / Rogue" : "Arcane Vanguard"),
+          gender,
+          seed: lockedSeed,
+        });
+      }
     }
 
     return NextResponse.json({

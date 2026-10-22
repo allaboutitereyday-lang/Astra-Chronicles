@@ -153,6 +153,38 @@ export interface TrialModifier {
   statEffectLabel: string;
 }
 
+export type RelicUnsealingConditionType =
+  | "clash_victory"
+  | "low_hp_survival"
+  | "covenant_invoked"
+  | "high_affection"
+  | "turns_survived";
+
+export interface RelicUnsealingCondition {
+  id: string;
+  type: RelicUnsealingConditionType;
+  label: string;
+  description: string;
+  targetValue: number;
+  currentValue: number;
+  isMet: boolean;
+}
+
+export interface RelicAwakenedForm {
+  awakenedName: string;
+  awakenedDescription: string;
+  awakenedEffect: string;
+  visualPrompt: string;
+  signatureSkill: AbilityDetail;
+  statBonuses: {
+    str?: number;
+    dex?: number;
+    int?: number;
+    maxHp?: number;
+    maxMp?: number;
+  };
+}
+
 export interface StoryRelicItem {
   id: string;
   name: string;
@@ -165,6 +197,10 @@ export interface StoryRelicItem {
   isEquipped?: boolean;
   cursedEffect?: CursedRelicModifier;
   isGiftable?: boolean;
+  // Relic Awakening & Purification System
+  isAwakened?: boolean;
+  unsealingCondition?: RelicUnsealingCondition;
+  awakenedForm?: RelicAwakenedForm;
 }
 
 export type InventoryItem = StoryRelicItem;
@@ -262,6 +298,7 @@ export interface PlayerProfile {
   deathCount?: number;
   regressionCount?: number;
   narrationStyle?: string; // Active narration prose directive / atmosphere tone
+  visualDescription?: string; // Persisted vision-encoded physical appearance description
 }
 
 export interface VisitedStoryNode {
@@ -397,8 +434,17 @@ export interface StoryContext {
   covenantState?: CausalCovenantState;
   frictionState?: CompanionFrictionState;
   activeClash?: ActiveStoryClashState | null;
+  npcKnowledgeMap?: NpcKnowledgeMap;
 
   createdAt: string;
   author?: string;
   isPreset?: boolean;
 }
+
+export interface CompanionKnowledgeState {
+  knowsName: boolean;
+  knowsClass: boolean;
+  knowsOrigin: boolean;
+}
+
+export type NpcKnowledgeMap = Record<string, CompanionKnowledgeState>;

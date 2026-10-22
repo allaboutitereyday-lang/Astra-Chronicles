@@ -3,9 +3,17 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
-import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
+import { sanitizeVisualNovelProse, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
 import { generateCrossTalkBanterDirective, evaluateInterpersonalFriction } from "@/lib/companionFriction";
 import { executeCausalCovenant } from "@/lib/causalCovenant";
+import {
+  createDefaultNpcKnowledgeMap,
+  evaluateActionForKnowledgeUnlocks,
+  applyLlmKnowledgeUnlocks,
+  buildKnowledgeGateDirective,
+  getCompanionKnowledge,
+  enforceSpokenDialogueMasking,
+} from "@/lib/knowledgeGating";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -48,7 +56,15 @@ export async function POST(req: Request) {
       activeClash = null,
       frictionState = null,
       currentTurnNumber = 1,
+      temperature,
+      max_tokens,
+      repetition_penalty,
+      npcKnowledgeMap = null,
     } = body;
+
+    const effectiveTemperature = typeof temperature === "number" ? Math.max(0.1, Math.min(1.8, temperature)) : 0.75;
+    const effectiveMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 2048;
+    const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.5, repetition_penalty)) : 1.1;
 
     // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
     // auto-route to cloud!
@@ -155,9 +171,9 @@ The user selected this choice/action vector: "${action}".
 
     const isFirstEncounter = !recentHistory || recentHistory.length <= 1;
 
-    // Inspect uploaded protagonist avatar if present using fast vision encoder
-    let visualDescription: string | null = null;
-    if (playerAvatarBase64) {
+    // Inspect uploaded protagonist avatar if present using persisted description or fast vision encoder
+    let visualDescription: string | null = playerProfile?.visualDescription || null;
+    if (!visualDescription && playerAvatarBase64) {
       try {
         visualDescription = await describeProtagonistAvatar(
           playerAvatarBase64,
@@ -298,6 +314,23 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
 - ANCHOR TO PERSONA: Ensure the intimacy reflects ${sanitizedContextSpeaker}'s distinct personality.`
       : "";
 
+    // NPC Knowledge Gating & Anti-Metagaming Evaluation
+    const preTurnUnlockEval = evaluateActionForKnowledgeUnlocks(
+      action || "",
+      playerProfile?.name || "Wanderer",
+      playerProfile?.role || "Adventurer",
+      playerProfile?.abilities || [],
+      presentHeroineNames,
+      npcKnowledgeMap || storyContext?.npcKnowledgeMap || createDefaultNpcKnowledgeMap(storyContext?.companions)
+    );
+    const workingKnowledgeMap = preTurnUnlockEval.updatedMap;
+    const activeSpeakerKnowledge = getCompanionKnowledge(workingKnowledgeMap, sanitizedContextSpeaker);
+    const knowledgeGateDirective = buildKnowledgeGateDirective(
+      workingKnowledgeMap,
+      presentHeroineNames,
+      playerProfile
+    );
+
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
 ${getNarrationProseDirective(effectiveTone)}
@@ -308,7 +341,8 @@ ${dynamicRomanceDirective}
 ${companionDossiers}
 
 --- CURRENT CAMPAIGN STATE ---
-- Protagonist: ${playerProfile.name} (Lv.${playerProfile.level} ${playerProfile.role})
+- Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
+- Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
 - Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
 - Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
 - Active Stance: [${activeStance.toUpperCase()}]
@@ -316,6 +350,8 @@ ${companionDossiers}
 - Active Location: ${gameState.location}
 - Active Speaker Context: ${sanitizedContextSpeaker}
 - Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE (No companions present)" : `Accompanied by: ${presentHeroineNames.join(", ")}`}
+
+${knowledgeGateDirective}
 
 ${scenePresenceDirective}
 
@@ -432,19 +468,20 @@ ${synergyDirective}
    - "[Subterfuge/Cunning]: Slip into the perimeter shadows and pick the cargo vault lock."
    - "[Inquire/Diplomatic]: Lower your weapon, meet her cold gaze, and demand to know House Abbandonato's stake here."
    These tags serve as an explicit intent prompt for the AI to author a rich, thoughtful protagonist action and dialogue in subsequent turns.
-6. Narrative Prose, Grammar & Markdown Formatting:
+6. Narrative Prose, Grammar & Strict Plain-Text JSON Formatting:
    - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
-   - MANDATORY QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). Anchor dialogue to physical gestures, body language, tone, or facial expressions. Unspoken internal thoughts must use *italics* without quotes.
+   - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
    - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
-   - MARKDOWN IMMERSION: The visual novel text box renders full Markdown. In "narrative_text", use *italics* for physical gestures, tactile sensations (temperature, grit, blood, wind), and subtle micro-expressions; use **bold** for loud vocal emphasis, shouts, or heavy kinetic clashes; use > quotes for mental echoes or ancient runes.
+   - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
    - PARAGRAPHING: Structure "narrative_text" into 2 to 3 evocative paragraphs separated by clean line breaks. Avoid monolithic walls of text.
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
 {
   "speaker": string,
-  "player_execution": string | null, // When preset choice is selected: a substantial, immersive narrative passage (at least 3-6 sentences across 1-2 paragraphs) with flawless grammar, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in quotation marks "...". NEVER 1-2 sentences. Null only for custom player inputs.
-  "narrative_text": string, // 2-3 immersive paragraphs containing environmental details, character dialogue in quotation marks ("..."), and action beats. Flawless grammar and syntax. Must use *italics* for physical gestures/sensory details and **bold** for impacts. MUST STRICTLY adhere to the prose cadence, tone, vocabulary, and negative constraints of the active Narration Style.
+  "player_execution": string | null, // When preset choice is selected: a substantial, immersive plain-text passage (at least 3-6 sentences across 1-2 paragraphs) with flawless grammar and ZERO Markdown asterisks, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in double quotation marks "...". Null only for custom player inputs.
+  "narrative_text": string, // 2-3 immersive plain-text paragraphs containing environmental details, character dialogue in double quotation marks ("..."), and action beats. Flawless grammar and syntax. ZERO Markdown asterisks (* or **). MUST STRICTLY adhere to the prose cadence, tone, vocabulary, and negative constraints of the active Narration Style.
+  "mechanics": string | null, // Concise LitRPG system or tactical mechanics readout for this turn (e.g. "[SYSTEM: Stance Resonance Active • Causal Plausibility Stable]"), or null if none.
   "death_event": {
     "is_fatal": boolean,
     "cause_of_death": string | null,
@@ -462,7 +499,12 @@ Respond strictly in valid JSON matching this schema:
     "affected_companion": string | null,
     "affection_delta": number,
     "present_companions": string[],
-    "newly_encountered_heroines": string[]
+    "newly_encountered_heroines": string[],
+    "knowledge_unlocked": {
+      "knowsName": boolean, // Set true ONLY if the protagonist explicitly introduced their name in this turn
+      "knowsClass": boolean, // Set true ONLY if the protagonist explicitly stated or visibly unleashed their signature class archetype in this turn
+      "knowsOrigin": boolean // Set true ONLY if the protagonist explicitly revealed their Regressor/System origin in this turn
+    }
   },
   "player_progression": {
     "exp_gained": number,
@@ -612,8 +654,9 @@ Respond strictly in valid JSON matching this schema:
             model,
             messages: modelMessages,
             user: activeUser.key,
-            temperature: 0.75,
-            max_tokens: 2048,
+            temperature: effectiveTemperature,
+            max_tokens: effectiveMaxTokens,
+            repetition_penalty: effectiveRepetitionPenalty,
             response_format: { type: "json_object" },
           }),
         });
@@ -641,8 +684,9 @@ Respond strictly in valid JSON matching this schema:
                 model,
                 messages: fallbackMessages,
                 user: activeUser.key,
-                temperature: 0.75,
-                max_tokens: 2048,
+                temperature: effectiveTemperature,
+                max_tokens: effectiveMaxTokens,
+                repetition_penalty: effectiveRepetitionPenalty,
                 response_format: { type: "json_object" },
               }),
             });
@@ -676,10 +720,33 @@ Respond strictly in valid JSON matching this schema:
           responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The cold tension in the air crystallizes as every muscle tightens for immediate follow-through. "${cleanAct}"`;
         }
 
-        // Deep-sanitize narrative text: fix duplicate quotes, dangling quotes, unbalanced asterisks, spacing, and strip meta cliches
-        if (responseData.narrative_text) {
-          responseData.narrative_text = sanitizeVisualNovelProse(responseData.narrative_text);
-        }
+        // Merge LLM-reported knowledge unlocks with pre-turn deterministic unlocks
+        const finalKnowledgeMap = applyLlmKnowledgeUnlocks(
+          workingKnowledgeMap,
+          presentHeroineNames,
+          responseData.state_updates?.knowledge_unlocked || null
+        );
+        const finalSpeakerName = responseData.speaker || sanitizedContextSpeaker;
+        const speakerKnowsNameNow = getCompanionKnowledge(finalKnowledgeMap, finalSpeakerName).knowsName;
+
+        // Deep-sanitize narrative & mechanics: strip inline markdown, fix single-quoted speech, and separate LitRPG readouts
+        const rawNarrativeSource = responseData.narrative_text || responseData.narrative || "";
+        const rawMechanicsSource =
+          responseData.mechanics ||
+          responseData.system_updates?.system_announcement ||
+          null;
+        const separated = sanitizeNarrativeAndMechanics(rawNarrativeSource, rawMechanicsSource);
+        const cleanedProse = enforceSpokenDialogueMasking(
+          sanitizeVisualNovelProse(separated.narrative),
+          playerProfile?.name,
+          speakerKnowsNameNow
+        );
+        responseData.narrative_text = cleanedProse;
+        responseData.narrative = cleanedProse;
+        responseData.mechanics = separated.mechanics || null;
+        if (!responseData.state_updates) responseData.state_updates = {};
+        responseData.state_updates.npc_knowledge_map = finalKnowledgeMap;
+        responseData.state_updates.newly_unlocked_knowledge = preTurnUnlockEval.newlyUnlocked;
 
         // Sanitize suggested choices and guarantee intent tags
         if (Array.isArray(responseData.suggested_choices)) {

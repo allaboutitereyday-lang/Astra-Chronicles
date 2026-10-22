@@ -89,7 +89,10 @@ import {
   loadPersistentRegressionHistory,
   appendPersistentDeathRegression
 } from "@/lib/saveStorage";
-import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho } from "@/types/story";
+import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm } from "@/types/story";
+import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
+import { SectorClashHud, ClashCombatPopup } from "@/components/play/SectorClashHud";
+import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType } from "@/lib/progressionMechanics";
 import { FlowchartViewer } from "@/components/FlowchartViewer";
 import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
@@ -129,6 +132,9 @@ export interface InventoryItem {
   effect?: string;
   imageUrl?: string;
   isGiftable?: boolean;
+  isAwakened?: boolean;
+  unsealingCondition?: RelicUnsealingCondition;
+  awakenedForm?: RelicAwakenedForm;
 }
 
 export interface Companion {
@@ -184,6 +190,7 @@ interface PlayerProfile {
   deathCount?: number;
   activeStance?: CombatStanceType;
   narrationStyle?: string;
+  visualDescription?: string;
 }
 
 interface RoleplayState {
@@ -1373,6 +1380,8 @@ export default function VisualNovelGame() {
   const [sceneGenError, setSceneGenError] = useState<string | null>(null);
   const [inspectedItem, setInspectedItem] = useState<InventoryItem | null>(null);
   const [isGeneratingItemIcon, setIsGeneratingItemIcon] = useState(false);
+  const [isAwakeningRelic, setIsAwakeningRelic] = useState(false);
+  const [clashCombatPopups, setClashCombatPopups] = useState<ClashCombatPopup[]>([]);
   const sceneFileInputRef = useRef<HTMLInputElement | null>(null);
   const itemFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -1490,6 +1499,85 @@ export default function VisualNovelGame() {
           const params = new URLSearchParams(window.location.search);
           const loadSlotParam = params.get("loadSlot");
           const isReturningFromTrials = params.get("resuming") === "true" || sessionStorage.getItem("astra_trials_returning") === "true";
+          const isCodexDivergence = params.get("diverge") === "codex";
+
+          if (isCodexDivergence) {
+            try {
+              const rawSnapshot = sessionStorage.getItem("astra_codex_divergence_snapshot");
+              if (rawSnapshot) {
+                sessionStorage.removeItem("astra_codex_divergence_snapshot");
+                window.history.replaceState({}, document.title, window.location.pathname);
+                const parsed = JSON.parse(rawSnapshot);
+                const snap = parsed.timelineSnapshot || {};
+                const baseSlot = slots[0];
+
+                if (snap.player) {
+                  setPlayer(snap.player);
+                  playerRef.current = snap.player;
+                } else if (baseSlot?.player) {
+                  setPlayer(baseSlot.player);
+                  playerRef.current = baseSlot.player;
+                }
+                if (baseSlot?.playerAvatar) {
+                  setPlayerAvatar(baseSlot.playerAvatar);
+                }
+                if (Array.isArray(snap.party) && snap.party.length > 0) {
+                  setParty(snap.party);
+                } else if (baseSlot?.party && baseSlot.party.length > 0) {
+                  setParty(baseSlot.party);
+                }
+
+                const branchLoc = snap.location || parsed.location || "Astral Convergence";
+                const branchSpk = snap.speaker || parsed.speaker || "Astra";
+                const branchDialogue =
+                  snap.dialogue ||
+                  snap.narrativeText ||
+                  parsed.prompt ||
+                  `Timeline diverged at ${branchLoc}. The Akashic currents await your new decree.`;
+                const branchChoices: string[] = Array.isArray(snap.choices) && snap.choices.length > 0
+                  ? snap.choices.map((c: any) => (typeof c === "string" ? c : c.text || "[Act] Forge a new path"))
+                  : [
+                      `[Tactical] Seize control of the situation in ${branchLoc}`,
+                      `[Empathetic] Confer with ${branchSpk} using foresight from the Codex`,
+                      `[Bold] Channel your stance resonance and alter fate`,
+                    ];
+
+                isResumingSaveRef.current = true;
+                setGameState((prev) => ({
+                  ...prev,
+                  location: branchLoc,
+                  speaker: branchSpk,
+                  dialogue: branchDialogue,
+                  bgImage: parsed.imageUrl || prev.bgImage,
+                }));
+                setDisplayedText(branchDialogue);
+                setChoices(branchChoices);
+                setChatLog([
+                  {
+                    id: `diverge_${Date.now()}`,
+                    sender: "character",
+                    speakerName: branchSpk,
+                    text: branchDialogue,
+                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                  },
+                ]);
+                setHasSeenWelcome(true);
+                setIsConfigured(true);
+                setTimeout(() => {
+                  soundEffects.playIntroBell();
+                  pushNotification({
+                    id: `codex_diverge_${Date.now()}`,
+                    type: "quest_assigned",
+                    title: "AKASHIC TIMELINE DIVERGED",
+                    subtitle: `What-If Replay branched at ${branchLoc} with ${branchSpk}.`,
+                  });
+                }, 500);
+                return;
+              }
+            } catch (divErr) {
+              console.warn("Failed to hydrate Codex timeline divergence:", divErr);
+            }
+          }
 
           if (loadSlotParam !== null || isReturningFromTrials) {
             const slotNum = loadSlotParam !== null ? parseInt(loadSlotParam, 10) : 0;
@@ -1801,6 +1889,18 @@ export default function VisualNovelGame() {
         prompt: sceneData.prompt,
         imageUrl: sceneData.imageUrl,
         model: sceneData.model,
+        timelineSnapshot: {
+          location: sceneData.location,
+          speaker: sceneData.speaker,
+          emotion: gameState.mood,
+          dialogue: gameState.dialogue,
+          narrativeText: gameState.dialogue,
+          choices: choices.map((c, idx) => ({ id: `choice_${idx}`, text: c, tone: "Adaptive" })),
+          turnNumber: chatLog.length,
+          causalPlausibility: (systemState.covenantState as any)?.currentPlausibility ?? 85,
+          player: playerRef.current || player,
+          party,
+        },
       });
 
       soundEffects.playIntroBell();
@@ -1923,6 +2023,138 @@ export default function VisualNovelGame() {
     }
   };
 
+  const handlePurifyAndAwakenRelic = async (targetItem: InventoryItem) => {
+    if (isAwakeningRelic) return;
+    soundEffects.playQuestComplete();
+    setIsAwakeningRelic(true);
+
+    try {
+      const prepared = ensureRelicUnsealingCondition(targetItem);
+      const { awakenedItem, statBonuses, unlockedSkill } = awakenRelicItem(prepared);
+
+      let newIconUrl = awakenedItem.imageUrl;
+      try {
+        const res = await fetch("/api/generate-image", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-user-key": accessKey,
+          },
+          body: JSON.stringify({
+            mode: "loot",
+            item: {
+              name: awakenedItem.name,
+              type: awakenedItem.type,
+              rarity: "relic",
+              description: awakenedItem.description,
+            },
+            genre: currentStory.genre,
+            userAccessKey: accessKey,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.imageUrl) {
+          newIconUrl = data.imageUrl;
+        }
+      } catch (imgErr) {
+        console.warn("Awakened relic image synthesis fallback:", imgErr);
+      }
+
+      const finalAwakened: InventoryItem = {
+        ...awakenedItem,
+        imageUrl: newIconUrl,
+      };
+
+      const oldNameClean = (targetItem.name || "").trim().toLowerCase();
+      setPlayer((prev) => {
+        const updatedInventory = prev.inventory.map((inv) =>
+          (inv.id && inv.id === targetItem.id) ||
+          inv.name.trim().toLowerCase() === oldNameClean
+            ? finalAwakened
+            : inv
+        );
+
+        const updatedGear = { ...prev.gear };
+        if (updatedGear.weapon?.trim().toLowerCase() === oldNameClean) {
+          updatedGear.weapon = finalAwakened.name;
+        }
+        if (updatedGear.armor?.trim().toLowerCase() === oldNameClean) {
+          updatedGear.armor = finalAwakened.name;
+        }
+        if (updatedGear.relic?.trim().toLowerCase() === oldNameClean) {
+          updatedGear.relic = finalAwakened.name;
+        }
+
+        const updatedGearImages = { ...(prev.gearImages || {}) };
+        if (newIconUrl) {
+          updatedGearImages[finalAwakened.id] = newIconUrl;
+          updatedGearImages[finalAwakened.name] = newIconUrl;
+        }
+
+        const updatedAbilities = unlockedSkill && !prev.abilities.includes(unlockedSkill.name)
+          ? [...prev.abilities, unlockedSkill.name]
+          : prev.abilities;
+
+        const updatedAbilityDetails = unlockedSkill
+          ? { ...(prev.abilityDetails || {}), [unlockedSkill.name]: unlockedSkill }
+          : prev.abilityDetails;
+
+        const hpBonus = statBonuses.maxHp || 25;
+        const mpBonus = statBonuses.maxMp || 15;
+
+        const nextP: PlayerProfile = {
+          ...prev,
+          stats: {
+            ...prev.stats,
+            maxHp: prev.stats.maxHp + hpBonus,
+            hp: prev.stats.hp + hpBonus,
+            maxMp: prev.stats.maxMp + mpBonus,
+            mp: prev.stats.mp + mpBonus,
+            str: prev.stats.str + (statBonuses.str || 4),
+            dex: prev.stats.dex + (statBonuses.dex || 4),
+            int: prev.stats.int + (statBonuses.int || 4),
+          },
+          gear: updatedGear,
+          gearImages: updatedGearImages,
+          abilities: updatedAbilities,
+          abilityDetails: updatedAbilityDetails,
+          inventory: updatedInventory,
+        };
+        playerRef.current = nextP;
+        performAutoSave({ player: nextP });
+        return nextP;
+      });
+
+      setInspectedItem(finalAwakened);
+
+      if (newIconUrl) {
+        await saveCodexLoot({
+          storyId: currentStory.id,
+          storyTitle: currentStory.title,
+          itemName: finalAwakened.name,
+          itemType: finalAwakened.type,
+          rarity: "relic",
+          description: finalAwakened.description,
+          effect: finalAwakened.effect,
+          imageUrl: newIconUrl,
+          model: "Mythic Awakening Synthesis",
+        });
+      }
+
+      pushNotification({
+        id: `relic_awakened_${Date.now()}`,
+        type: "loot",
+        title: "MYTHIC RELIC AWAKENED",
+        subtitle: `${targetItem.name} purified into ${finalAwakened.name}! Unlocked Skill: ${unlockedSkill.name}`,
+        imageUrl: newIconUrl,
+        rarity: "relic",
+        metadata: finalAwakened,
+      });
+    } finally {
+      setIsAwakeningRelic(false);
+    }
+  };
+
   const getSpriteSrc = (speaker: string, key: string) => {
     const normalizedKey = key === "injured" ? "hurt" : key;
     const companion = currentStory.companions?.find(
@@ -2017,7 +2249,7 @@ export default function VisualNovelGame() {
       ...player,
       gear: initialGear,
       gearImages: initialGearImages,
-      inventory: customInventory ? [...(player.inventory || []), ...customInventory] : (player.inventory || []),
+      inventory: ensureInventoryRelicConditions(customInventory ? [...(player.inventory || []), ...customInventory] : (player.inventory || [])),
       narrationStyle,
     };
     setPlayer(finalStartingPlayer);
@@ -2043,6 +2275,9 @@ export default function VisualNovelGame() {
           activeSynergies: activeRelicSynergies,
           targetEnvironment: llmConfig.targetEnvironment,
           modelId: llmConfig.modelId,
+          temperature: llmConfig.temperature,
+          max_tokens: llmConfig.max_tokens,
+          repetition_penalty: llmConfig.repetition_penalty,
         }),
       });
 
@@ -2053,6 +2288,13 @@ export default function VisualNovelGame() {
       const data = await res.json();
       if (data._userStats) {
         setUserAuth(data._userStats);
+      }
+      if (data.visual_description && typeof data.visual_description === "string") {
+        setPlayer((prev) => {
+          const next = { ...prev, visualDescription: data.visual_description };
+          playerRef.current = next;
+          return next;
+        });
       }
 
       // Systems Evolution State Handling (Pillars A, B, C)
@@ -2906,6 +3148,9 @@ export default function VisualNovelGame() {
           giftItemContext: giftContext,
           targetEnvironment: llmConfig.targetEnvironment,
           modelId: llmConfig.modelId,
+          temperature: llmConfig.temperature,
+          max_tokens: llmConfig.max_tokens,
+          repetition_penalty: llmConfig.repetition_penalty,
           recentHistory: chatLog.slice(-14).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
@@ -2931,6 +3176,13 @@ export default function VisualNovelGame() {
       const data = await res.json();
       if (data._userStats) {
         setUserAuth(data._userStats);
+      }
+      if (data.visual_description && typeof data.visual_description === "string") {
+        setPlayer((prev) => {
+          const next = { ...prev, visualDescription: data.visual_description };
+          playerRef.current = next;
+          return next;
+        });
       }
 
       // 1. Determine presence
@@ -3267,12 +3519,40 @@ export default function VisualNovelGame() {
           });
         }
 
+        const maxAff = Math.max(0, ...party.map((c) => c.affection || 0));
+        const unsealTurnRes = updateInventoryUnsealingProgress(
+          ensureInventoryRelicConditions(updatedInventory),
+          "any_turn",
+          1,
+          maxAff
+        );
+        let finalTurnInventory = unsealTurnRes.updatedInventory;
+        const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + (prog.hp_change || 0)));
+        if (resolvedHp > 0 && resolvedHp <= newMaxHp * 0.6) {
+          const lowHpRes = updateInventoryUnsealingProgress(finalTurnInventory, "low_hp_survival", 1, maxAff);
+          finalTurnInventory = lowHpRes.updatedInventory;
+          unsealTurnRes.newlyReadyItems.push(...lowHpRes.newlyReadyItems);
+        }
+        if (unsealTurnRes.newlyReadyItems.length > 0) {
+          unsealTurnRes.newlyReadyItems.forEach((readyItem) => {
+            pushNotification({
+              id: `unseal_ready_${readyItem.id}_${Date.now()}`,
+              type: "loot",
+              title: "RELIC UNSEALING COMPLETE",
+              subtitle: `${readyItem.name} is ready for Mythic Purification in your Inventory!`,
+              rarity: "relic",
+              metadata: readyItem,
+            });
+          });
+        }
+
         const nextPlayerState: PlayerProfile = {
           ...playerRef.current,
+          visualDescription: data.visual_description || playerRef.current.visualDescription,
           level: newLevel,
           stats: {
             ...playerRef.current.stats,
-            hp: Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + (prog.hp_change || 0))),
+            hp: resolvedHp,
             mp: Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + (prog.mp_change || 0))),
             exp: newExp,
             maxExp: newMaxExp,
@@ -3285,7 +3565,7 @@ export default function VisualNovelGame() {
           gear: updatedGear,
           abilities: updatedAbilities,
           abilityDetails: updatedAbilityDetails,
-          inventory: updatedInventory,
+          inventory: finalTurnInventory,
         };
 
         playerRef.current = nextPlayerState;
@@ -3785,6 +4065,16 @@ export default function VisualNovelGame() {
     setShowCovenantModal(false);
 
     const formattedCovenantChoice = `[COVENANT: REALITY SEVERANCE]: ${intent.trim()}`;
+    setPlayer((prev) => {
+      const covUnseal = updateInventoryUnsealingProgress(
+        ensureInventoryRelicConditions(prev.inventory || []),
+        "covenant_invoked",
+        2
+      );
+      const next = { ...prev, inventory: covUnseal.updatedInventory };
+      playerRef.current = next;
+      return next;
+    });
     await sendAction(formattedCovenantChoice, false, null, {
       intent: intent.trim(),
       targetPlausibility: 85,
@@ -3805,8 +4095,37 @@ export default function VisualNovelGame() {
       actionType,
       player.role || "Voidstrider",
       assistingComp,
-      player.stats
+      player.stats,
+      (player.activeStance as any) || "neutral"
     );
+
+    const newPopups: ClashCombatPopup[] = [
+      {
+        id: `dmg_${Date.now()}`,
+        text: result.isCrit ? `CRIT! -${result.damageDealt} HP` : `-${result.damageDealt} HP`,
+        subtext: result.isStaggered ? "STAGGERED!" : `${(player.activeStance || "neutral").toUpperCase()} STANCE`,
+        colorClass: result.isCrit
+          ? "border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
+          : "border-rose-500/60 text-rose-300",
+      },
+    ];
+    if (result.isEvaded) {
+      newPopups.push({
+        id: `evade_${Date.now()}`,
+        text: "PHASE EVADED!",
+        subtext: "0 Counter DMG",
+        colorClass: "border-violet-400 text-violet-300",
+      });
+    } else if (result.enemyDamageTaken > 0) {
+      newPopups.push({
+        id: `counter_${Date.now()}`,
+        text: `-${result.enemyDamageTaken} Player HP`,
+        subtext: "Enemy Counter",
+        colorClass: "border-red-500/60 text-red-300",
+      });
+    }
+    setClashCombatPopups(newPopups);
+    setTimeout(() => setClashCombatPopups([]), 2400);
 
     const hpAfterHeal = Math.min(player.stats.maxHp, player.stats.hp + result.hpHealed);
     const hpFinal = Math.max(0, hpAfterHeal - result.enemyDamageTaken);
@@ -3814,8 +4133,17 @@ export default function VisualNovelGame() {
     const mpGain = actionType === "strike" ? 5 : actionType === "defense" ? 15 : 0;
     const mpFinal = Math.max(0, Math.min(player.stats.maxMp, player.stats.mp - mpCost + mpGain));
 
+    const unsealAfterClash = result.isVictory
+      ? updateInventoryUnsealingProgress(
+          ensureInventoryRelicConditions(playerRef.current.inventory || []),
+          "clash_victory",
+          3
+        )
+      : { updatedInventory: playerRef.current.inventory || [], newlyReadyItems: [] };
+
     const updatedPlayerState: PlayerProfile = {
       ...playerRef.current,
+      inventory: unsealAfterClash.updatedInventory,
       stats: {
         ...playerRef.current.stats,
         hp: hpFinal,
@@ -4641,6 +4969,76 @@ export default function VisualNovelGame() {
                 ✦ {inspectedItem.effect}
               </div>
             )}
+
+            {/* Cursed & Relic Purification / Mythic Awakening Section */}
+            {(inspectedItem.rarity === "cursed" || inspectedItem.rarity === "relic") && (() => {
+              const preparedRelic = ensureRelicUnsealingCondition(inspectedItem);
+              const cond = preparedRelic.unsealingCondition;
+              const awakenedForm = preparedRelic.awakenedForm;
+              if (preparedRelic.isAwakened) {
+                return (
+                  <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-950/60 via-purple-950/40 to-amber-950/60 border border-amber-400/50 space-y-1">
+                    <div className="flex items-center justify-between text-[10px] font-mono uppercase tracking-wider text-amber-300 font-bold">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Mythic Awakening Complete
+                      </span>
+                      <span>Purified Sovereign Relic</span>
+                    </div>
+                    <p className="text-[11px] text-zinc-300 font-sans">
+                      This artifact&apos;s abyssal seal has been shattered and permanently transmuted into its Sovereign Mythic Form.
+                    </p>
+                  </div>
+                );
+              }
+              if (!cond || !awakenedForm) return null;
+              const pct = Math.min(100, Math.round((cond.currentValue / Math.max(1, cond.targetValue)) * 100));
+              return (
+                <div className="p-3 rounded-2xl bg-zinc-900/90 border border-rose-500/35 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-rose-300 font-bold flex items-center gap-1">
+                      <Zap className="w-3.5 h-3.5 text-rose-400" /> Unsealing Trial: {cond.label}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold text-amber-300">
+                      {cond.currentValue} / {cond.targetValue} ({pct}%)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-300 font-sans leading-relaxed">
+                    {cond.description}
+                  </p>
+                  <div className="w-full bg-black/80 rounded-full h-2 overflow-hidden border border-white/10">
+                    <div
+                      className="bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 h-full transition-all duration-300"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="pt-1 flex items-center justify-between gap-2">
+                    <div className="text-[10px] font-mono text-zinc-400 truncate">
+                      Awakens: <strong className="text-amber-300">{awakenedForm.awakenedName}</strong>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isAwakeningRelic}
+                      onClick={() => handlePurifyAndAwakenRelic(preparedRelic)}
+                      className={`px-3 py-1.5 rounded-xl font-mono text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                        cond.isMet
+                          ? "bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-black shadow-[0_0_15px_rgba(245,158,11,0.45)]"
+                          : "bg-purple-950/70 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200"
+                      }`}
+                      title={cond.isMet ? "Unsealing condition met! Awaken Mythic Form" : "Channel Astral Resonance to force-purify and awaken now"}
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${isAwakeningRelic ? "animate-spin" : ""}`} />
+                      <span>
+                        {isAwakeningRelic
+                          ? "Awakening..."
+                          : cond.isMet
+                          ? "Purify & Awaken Relic"
+                          : "Force Purify & Awaken"}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex items-center gap-2 pt-2 border-t border-white/10">
@@ -4855,215 +5253,20 @@ export default function VisualNovelGame() {
   if (!isConfigured) {
     if (creationStep === "gear") {
       return (
-        <div className={`relative min-h-screen w-full bg-zinc-950 flex items-center justify-center p-4 py-8 md:py-12 overflow-y-auto transition-all duration-300 ease-out ${
-          pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
-        }`}>
-          <div 
-            className="fixed inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none select-none z-0"
-            style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
-          />
-          <div className="fixed inset-0 cinematic-vignette pointer-events-none z-0" />
-          <div className="fixed inset-0 pointer-events-none z-0">
-            <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
-          </div>
-
-          <div className="relative z-10 w-full max-w-5xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 my-auto">
-            {/* Top Navigation & Status */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/10 pb-4">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundEffects.playClick();
-                    setCreationStep("character");
-                  }}
-                  className="px-3 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer font-mono"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Back to Setup</span>
-                </button>
-                <div className="h-4 w-px bg-white/10" />
-                <span className="text-xs font-mono px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold">
-                  Step 2 of 2: System Choice Starting Gear
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isGeneratingGear}
-                  onClick={handleGenerateStartingGear}
-                  className="px-3.5 py-1.5 bg-gradient-to-r from-amber-600/80 to-rose-600/80 hover:from-amber-500 hover:to-rose-500 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
-                  title="Resynthesize 3 starting gear pieces with the LLM"
-                >
-                  <Dices className={`w-3.5 h-3.5 ${isGeneratingGear ? "animate-spin" : ""}`} />
-                  <span>{isGeneratingGear ? "Forging Armaments..." : "Reroll Gear (3 Cards)"}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Header Titles */}
-            <div className="space-y-1">
-              <div className="inline-flex items-center gap-2 text-xs font-mono text-rose-400 uppercase tracking-widest font-bold">
-                <Sparkles className="w-4 h-4 text-rose-400 animate-pulse" />
-                <span>Class Armament Manifestation</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-bold font-mono text-white tracking-tight">
-                System Loadout for <span className="text-rose-400">{player.name}</span> ({player.role || "Adventurer"})
-              </h2>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                The System has synthesized 3 bespoke starting pieces based upon your chosen class: <strong className="text-zinc-200 font-mono">{player.role}</strong>. Each item features custom lore descriptions and generated iconography.
-              </p>
-            </div>
-
-            {/* The 3 Cards */}
-            {isGeneratingGear && systemGearOptions.length === 0 ? (
-              <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 bg-zinc-950/60 rounded-2xl border border-white/10 p-8">
-                <div className="w-14 h-14 rounded-2xl bg-rose-950/60 border border-rose-500/40 flex items-center justify-center animate-pulse shadow-lg">
-                  <Sparkles className="w-7 h-7 text-rose-400 animate-spin" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="font-mono text-sm font-bold text-white uppercase tracking-wider">
-                    [SYSTEM: Analyzing Class Archetype & Synthesizing 3 Gear Pieces...]
-                  </h3>
-                  <p className="text-xs font-mono text-zinc-400">
-                    Querying System Armament Architect for {player.role}... Generating lore descriptions and visual assets.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
-                {systemGearOptions.map((item, idx) => {
-                  const isWeapon = item.type === "weapon";
-                  const isArmor = item.type === "armor";
-                  const isGeneratingImage = generatingImageItemIds[item.id];
-
-                  return (
-                    <div
-                      key={item.id || idx}
-                      className="relative bg-zinc-950/90 border border-white/15 hover:border-rose-500/50 rounded-2xl p-4.5 flex flex-col justify-between transition-all duration-300 shadow-xl group overflow-hidden"
-                    >
-                      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/60 to-transparent" />
-
-                      <div className="space-y-3">
-                        {/* Slot badge & Rarity badge */}
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase tracking-wider ${
-                              isWeapon
-                                ? "bg-rose-950/80 border border-rose-500/50 text-rose-300"
-                                : isArmor
-                                ? "bg-sky-950/80 border border-sky-500/50 text-sky-300"
-                                : "bg-amber-950/80 border border-amber-500/50 text-amber-300"
-                            }`}
-                          >
-                            {isWeapon ? (
-                              <Sword className="w-3 h-3" />
-                            ) : isArmor ? (
-                              <Shield className="w-3 h-3" />
-                            ) : (
-                              <Sparkles className="w-3 h-3" />
-                            )}
-                            <span>{item.type}</span>
-                          </span>
-
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-md bg-black/70 border border-white/10 text-amber-300 font-bold">
-                            {item.rarity}
-                          </span>
-                        </div>
-
-                        {/* Image Container */}
-                        <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-black/70 border border-white/10 shadow-inner flex items-center justify-center group-hover:border-white/20 transition-all">
-                          {item.imageUrl ? (
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                            />
-                          ) : isGeneratingImage ? (
-                            <div className="flex flex-col items-center justify-center p-3 text-center space-y-2">
-                              <Sparkles className="w-6 h-6 text-rose-400 animate-spin" />
-                              <span className="text-[10px] font-mono text-zinc-400 animate-pulse">
-                                Synthesizing Asset via Nano Banana...
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col items-center justify-center p-3 text-center space-y-2">
-                              <div
-                                className={`w-12 h-12 rounded-xl flex items-center justify-center border shadow-lg ${
-                                  isWeapon
-                                    ? "bg-rose-950/60 border-rose-500/40 text-rose-300"
-                                    : isArmor
-                                    ? "bg-sky-950/60 border-sky-500/40 text-sky-300"
-                                    : "bg-amber-950/60 border-amber-500/40 text-amber-300"
-                                }`}
-                              >
-                                {isWeapon ? (
-                                  <Sword className="w-6 h-6" />
-                                ) : isArmor ? (
-                                  <Shield className="w-6 h-6" />
-                                ) : (
-                                  <Sparkles className="w-6 h-6" />
-                                )}
-                              </div>
-                              <span className="text-[10px] font-mono text-zinc-500">
-                                System Asset Manifested
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Name & Stat Modifier */}
-                        <div className="space-y-1.5">
-                          <h3 className="font-bold text-sm text-white font-mono leading-snug group-hover:text-rose-300 transition-colors">
-                            {item.name}
-                          </h3>
-                          <div className="inline-block px-2 py-0.5 rounded-lg bg-zinc-900 border border-white/10 text-[11px] font-mono text-amber-300 font-bold">
-                            {item.effect}
-                          </div>
-                        </div>
-
-                        {/* Description generated by the LLM */}
-                        <p className="text-xs text-zinc-300 font-sans leading-relaxed line-clamp-4 pt-1">
-                          {item.description}
-                        </p>
-                      </div>
-
-                      {/* Footer Card Status */}
-                      <div className="pt-3 mt-3 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-emerald-400 select-none">
-                        <span className="flex items-center gap-1 font-bold">
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Assigned to {item.type}</span>
-                        </span>
-                        <span className="text-[10px] text-zinc-500 uppercase">Starting Gear</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Bottom Confirmation Bar */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setCreationStep("character")}
-                className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-zinc-800/80 hover:bg-zinc-800 border border-white/10 text-zinc-300 hover:text-white font-mono text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <ArrowLeft className="w-4 h-4" /> Back to Character Setup
-              </button>
-
-              <button
-                type="button"
-                onClick={handleConfirmGearAndStart}
-                className="flex-1 w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 hover:from-rose-500 hover:to-pink-500 text-white font-mono text-sm font-bold shadow-xl flex items-center justify-center gap-2 cursor-pointer transition-all"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>Confirm Loadout & Enter {currentStory.worldContext?.settingName || currentStory.title || "Astra Continent"} →</span>
-              </button>
-            </div>
-          </div>
-
+        <GearManifestScreen
+          pageLoaded={pageLoaded}
+          isScreenTransitionOpen={screenTransition.isOpen}
+          defaultBg={DEFAULT_BG}
+          playerName={player.name}
+          playerRole={player.role || "Adventurer"}
+          settingName={currentStory.worldContext?.settingName || currentStory.title || "Astra Continent"}
+          isGeneratingGear={isGeneratingGear}
+          systemGearOptions={systemGearOptions}
+          generatingImageItemIds={generatingImageItemIds}
+          onBackToSetup={() => setCreationStep("character")}
+          onRerollGear={handleGenerateStartingGear}
+          onConfirmGearAndStart={handleConfirmGearAndStart}
+        >
           {renderSaveModal()}
           {renderAuthModal()}
           {renderTransitionOverlay()}
@@ -5078,7 +5281,7 @@ export default function VisualNovelGame() {
               saveStoredLlmConfig(newConfig);
             }}
           />
-        </div>
+        </GearManifestScreen>
       );
     }
 
@@ -6157,64 +6360,26 @@ export default function VisualNovelGame() {
           </div>
         </div>
 
-        {/* Pitch C: Integrated Sector Clash Tactical Combat Dock */}
+        {/* Pitch C & Upgrade 2A: Integrated Sector Clash Tactical Combat Dock with Universal 6-Stance Matrix */}
         {activeClash && activeClash.isActive && (
-          <div className="pointer-events-auto bg-gradient-to-b from-zinc-900/95 via-black/90 to-zinc-950/95 border border-red-500/40 rounded-2xl p-3 sm:p-4 backdrop-blur-xl shadow-[0_0_30px_rgba(239,68,68,0.2)] mb-2 select-none">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-500/20 pb-2 mb-2">
-              <div className="flex items-center gap-2">
-                <Swords className="w-4 h-4 text-red-400 animate-pulse" />
-                <span className="font-bold text-xs sm:text-sm text-red-200 tracking-wide">{activeClash.enemyName}</span>
-                <span className="text-[10px] font-mono text-zinc-400">Turn {activeClash.clashTurn} / {activeClash.maxClashTurns}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono text-red-300 font-bold">{activeClash.enemyHp} / {activeClash.enemyMaxHp} HP</span>
-                {activeClash.companionAssistingName && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/30 text-rose-300">
-                    Synergy: {activeClash.companionAssistingName}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="w-full bg-zinc-900/80 rounded-full h-2 overflow-hidden border border-red-950 mb-2.5">
-              <div
-                className="bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 h-full transition-all duration-300"
-                style={{ width: `${Math.max(0, Math.min(100, (activeClash.enemyHp / activeClash.enemyMaxHp) * 100))}%` }}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2">
-              {getStoryClashChoices(
-                player.role || "Voidstrider",
-                party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)),
-                player.stats.mp
-              ).map((clashChoice, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  disabled={isLoading || isExecutingClashAction || clashChoice.disabled}
-                  onClick={() => handleExecuteClashAction(clashChoice.actionType)}
-                  className={`group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                    clashChoice.disabled
-                      ? "bg-zinc-950/40 border-white/5 opacity-40 cursor-not-allowed"
-                      : "bg-zinc-900/90 hover:bg-zinc-800 border-red-500/30 hover:border-red-400 shadow-md active:scale-[0.99]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-mono text-xs font-bold text-red-200 group-hover:text-white">
-                      {clashChoice.actionName}
-                    </span>
-                    <span className="text-[10px] font-mono text-zinc-400">
-                      {clashChoice.mpCost > 0 ? `-${clashChoice.mpCost} MP` : "0 MP"}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-zinc-300 group-hover:text-zinc-100 line-clamp-2">
-                    {clashChoice.label}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
+          <SectorClashHud
+            activeClash={activeClash}
+            playerRole={player.role || "Voidstrider"}
+            playerMp={player.stats.mp}
+            activeStance={(player.activeStance as any) || "neutral"}
+            onSelectStance={(nextStance) => {
+              setPlayer((prev) => {
+                const updated = { ...prev, activeStance: nextStance };
+                playerRef.current = updated;
+                return updated;
+              });
+            }}
+            assistingCompanion={party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)) || null}
+            isLoading={isLoading}
+            isExecutingClashAction={isExecutingClashAction}
+            onExecuteClashAction={handleExecuteClashAction}
+            combatPopups={clashCombatPopups}
+          />
         )}
 
         {/* Pitch A: The Causal Covenant Reality Severance Trigger */}

@@ -351,6 +351,58 @@ export default function MultiverseCodexPage() {
     }, 320);
   };
 
+  const handleBranchTimelineFromScene = (scene: CodexSceneEntry) => {
+    soundEffects.playIntroBell();
+    try {
+      const payload = {
+        ...scene,
+        timelineSnapshot: scene.timelineSnapshot || {
+          location: scene.location,
+          speaker: scene.speaker || "Astra",
+          speakerRole: "Echo of the Akashic Record",
+          emotion: "focused",
+          dialogue: `The Akashic currents converge around ${scene.location}. From this preserved memory node, a new timeline awaits your command.`,
+          narrativeText: scene.prompt || `Reality fractures and re-stabilizes within ${scene.location} as you diverge the timeline from a recorded Multiverse Codex memory.`,
+          choices: [
+            {
+              id: "diverge-1",
+              text: `[Tactical] Seize the initiative in ${scene.location} and rewrite the outcome`,
+              tone: "Tactical",
+            },
+            {
+              id: "diverge-2",
+              text: `[Empathetic] Speak directly with ${scene.speaker || "your companion"} using foresight from the Codex`,
+              tone: "Empathetic",
+            },
+            {
+              id: "diverge-3",
+              text: `[Bold] Unleash your stance resonance and challenge the forces ahead`,
+              tone: "Bold",
+            },
+          ],
+          turnNumber: 1,
+          causalPlausibility: 92,
+        },
+      };
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("astra_codex_divergence_snapshot", JSON.stringify(payload));
+      }
+      const targetStory = scene.storyId || "astra-chronicles";
+      setScreenTransition({
+        isOpen: true,
+        title: "DIVERGING AKASHIC TIMELINE",
+        subtitle: `Branching Memory Node: ${scene.location} • Reconstructing Causal State...`,
+        theme: "amber",
+        icon: "sparkles",
+      });
+      setTimeout(() => {
+        router.push(`/play/${targetStory}?diverge=codex`);
+      }, 360);
+    } catch (err) {
+      console.error("Failed to branch timeline:", err);
+    }
+  };
+
   return (
     <main className={`relative min-h-screen w-full bg-black text-zinc-100 overflow-x-hidden select-none font-sans transition-all duration-300 ease-out ${
       pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
@@ -777,6 +829,30 @@ export default function MultiverseCodexPage() {
               <p className="text-xs text-zinc-300 font-mono bg-black/40 p-3 rounded-xl border border-white/5 leading-relaxed">
                 {activeScene.prompt}
               </p>
+            </div>
+
+            {/* Timeline Divergence ("What-If" Replay) Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/50 via-purple-950/40 to-rose-950/50 border border-amber-500/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-200">
+                    Akashic Timeline Divergence • &ldquo;What-If&rdquo; Replay
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-300 font-sans leading-relaxed">
+                  Jump directly back into <strong className="text-white">{activeScene.location}</strong> with{" "}
+                  <strong className="text-rose-300">{activeScene.speaker}</strong> and branch the narrative in a new direction without overwriting your primary saves.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleBranchTimelineFromScene(activeScene)}
+                className="shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-black font-mono text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.45)] cursor-pointer transition-all hover:scale-[1.02]"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Branch Timeline Here</span>
+              </button>
             </div>
 
             {/* Modal Actions */}
