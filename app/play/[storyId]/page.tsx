@@ -94,7 +94,8 @@ import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateIn
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
 import { extractProtagonistVisualDna } from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
-import { ActionInputBar } from "@/components/play/ActionInputBar";
+import { ActionInputBar, BufferedTextInput } from "@/components/play/ActionInputBar";
+import { ChatMessageItem } from "@/components/play/ChatMessageItem";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType, detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { decodeMultiverseSeed } from "@/lib/multiverseShare";
@@ -780,8 +781,22 @@ export default function VisualNovelGame() {
     }
     if (snap.party) setParty(snap.party);
     if (snap.player) {
-      setPlayer(snap.player);
-      playerRef.current = snap.player;
+      const currentInvMap = new Map(
+        (playerRef.current.inventory || []).map((item) => [item.id || item.name, item.imageUrl])
+      );
+      const restoredInventory = Array.isArray(snap.player.inventory)
+        ? snap.player.inventory.map((item: InventoryItem) => ({
+            ...item,
+            imageUrl: item.imageUrl || currentInvMap.get(item.id || item.name),
+          }))
+        : [];
+      const restoredPlayer = {
+        ...snap.player,
+        gearImages: snap.player.gearImages || playerRef.current.gearImages,
+        inventory: restoredInventory,
+      };
+      setPlayer(restoredPlayer);
+      playerRef.current = restoredPlayer;
     }
     if (snap.systemState) setSystemState(snap.systemState);
     if (snap.memories) setMemories(snap.memories);
@@ -3211,7 +3226,7 @@ export default function VisualNovelGame() {
     }
 
     // Stream smoothly in capped ticks to prevent React update depth recursion
-    const step = Math.max(3, Math.ceil(target.length / 40));
+    const step = Math.max(4, Math.ceil(target.length / 30));
     let index = 0;
     setDisplayedText("");
 
@@ -3228,30 +3243,46 @@ export default function VisualNovelGame() {
           soundEffects.playDialogueBlip();
         }
       }
-    }, 20);
+    }, 30);
 
     return () => clearInterval(interval);
   }, [gameState.dialogue]);
 
-  const handleStartEdit = (msg: ChatMessage) => {
+  const handleStartEdit = useCallback((msg: ChatMessage) => {
     setEditingMessageId(msg.id);
     setEditingText(msg.text);
-  };
+  }, []);
 
-  const handleSaveEdit = (id: string) => {
-    setChatLog((prev) =>
-      prev.map((msg) => (msg.id === id ? { ...msg, text: editingText } : msg))
-    );
+  const handleCancelEdit = useCallback(() => {
+    setEditingMessageId(null);
+    setEditingText("");
+  }, []);
 
-    const lastMsg = chatLog[chatLog.length - 1];
-    if (lastMsg && lastMsg.id === id && lastMsg.sender === "character") {
-      setGameState((prev) => ({ ...prev, dialogue: editingText }));
-      setDisplayedText(editingText);
-    }
+  const handleSaveEdit = useCallback((id: string, nextText?: string) => {
+    const resolvedText = nextText !== undefined ? nextText : editingText;
+    setChatLog((prev) => {
+      const lastMsg = prev[prev.length - 1];
+      if (lastMsg && lastMsg.id === id && lastMsg.sender === "character") {
+        setGameState((gs) => ({ ...gs, dialogue: resolvedText }));
+        setDisplayedText(resolvedText);
+      }
+      return prev.map((msg) => (msg.id === id ? { ...msg, text: resolvedText } : msg));
+    });
 
     setEditingMessageId(null);
     setEditingText("");
-  };
+  }, [editingText]);
+
+  const handleSkipTypewriter = useCallback((msg: ChatMessage, isLatestCharacterTurn: boolean) => {
+    if (isLatestCharacterTurn) {
+      setDisplayedText(gameState.dialogue);
+    }
+    if (msg.id === typingUserMsgId) {
+      clearUserTypewriter();
+      setDisplayedUserText(msg.text);
+      setTypingUserMsgId(null);
+    }
+  }, [gameState.dialogue, typingUserMsgId, clearUserTypewriter]);
 
   const handleRegenerateTurn = async () => {
     if (isLoading || chatLog.length < 2) return;
@@ -4267,6 +4298,20 @@ export default function VisualNovelGame() {
         resolvedChoices = validChoices;
       }
 
+      const snapshotPlayer = {
+        ...playerRef.current,
+        gearImages: undefined,
+        inventory: Array.isArray(playerRef.current.inventory)
+          ? playerRef.current.inventory.map((item) => {
+              if (item.imageUrl && item.imageUrl.length > 500) {
+                const { imageUrl, ...restItem } = item;
+                return restItem;
+              }
+              return item;
+            })
+          : [],
+      };
+
       const newTimelineAnchor: VisitedStoryNode = {
         id: turnNodeKey,
         nodeKey: turnNodeKey,
@@ -4286,16 +4331,26 @@ export default function VisualNovelGame() {
             presentCompanions: presentList,
           },
           party: party,
-          player: playerRef.current,
+          player: snapshotPlayer,
           systemState: systemState,
           memories: nextMemories,
-          chatLog: [...chatLog, playerMsg, companionMsg],
+          chatLog: [...chatLog, playerMsg, companionMsg].slice(-20),
           choices: resolvedChoices,
         },
         isAnchor: true,
         anchorLabel: `Turn Anchor: ${nextLocation}`,
       };
-      setVisitedStoryNodes((prev) => [...prev, newTimelineAnchor]);
+      setVisitedStoryNodes((prev) => {
+        const nextNodes = [...prev, newTimelineAnchor];
+        const snapshotKeepCutoff = Math.max(0, nextNodes.length - 15);
+        return nextNodes.map((node, idx) => {
+          if (idx < snapshotKeepCutoff && !node.isStartingPoint && node.gameStateSnapshot) {
+            const { gameStateSnapshot, ...lightNode } = node;
+            return lightNode;
+          }
+          return node;
+        });
+      });
 
       // Affection Milestones (25%, 50%, 75%, 100%) & Companion Quests (Task 3)
       if (typeof delta === "number" && delta > 0 && affectedComp) {
@@ -5168,14 +5223,15 @@ export default function VisualNovelGame() {
 
               <div className="space-y-2">
                 <div className="relative flex items-center">
-                  <input
+                  <BufferedTextInput
                     type={showKeySecret ? "text" : "password"}
                     placeholder="Enter realm access key..."
                     value={keyInput}
-                    onChange={(e) => setKeyInput(e.target.value)}
+                    onValueChange={setKeyInput}
+                    debounceMs={80}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        verifyKey(keyInput);
+                        verifyKey((e.currentTarget as HTMLInputElement).value);
                       }
                     }}
                     className="w-full bg-zinc-900 border border-white/15 rounded-xl pl-4 pr-11 py-2.5 text-base sm:text-sm font-mono text-white focus:outline-none focus:border-purple-500/80"
@@ -5944,20 +6000,20 @@ export default function VisualNovelGame() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-mono text-zinc-400 block mb-1">Character Name</label>
-                <input
+                <BufferedTextInput
                   type="text"
                   value={player.name}
-                  onChange={(e) => setPlayer({ ...player, name: e.target.value })}
+                  onValueChange={(val) => setPlayer((prev) => ({ ...prev, name: val }))}
                   className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none"
                 />
               </div>
               <div>
                 <label className="text-xs font-mono text-zinc-400 block mb-1">Custom Class / Archetype</label>
-                <input
+                <BufferedTextInput
                   type="text"
                   placeholder="e.g., Regressed Spellblade..."
                   value={player.role}
-                  onChange={(e) => setPlayer({ ...player, role: e.target.value })}
+                  onValueChange={(val) => setPlayer((prev) => ({ ...prev, role: val }))}
                   className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700"
                 />
               </div>
@@ -7058,213 +7114,58 @@ export default function VisualNovelGame() {
             <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
               <div 
                 ref={dialogueFeedRef}
-                className="flex-1 p-4 md:p-5 overflow-y-auto space-y-4 scroll-smooth select-text pb-14"
+                className="flex-1 p-4 md:p-5 overflow-y-auto space-y-4 select-text pb-14"
               >
               {chatLog.map((msg, idx) => {
                 const isLast = idx === chatLog.length - 1;
                 const isLatestCharacterTurn = isLast && msg.sender === "character";
+                const isTypingUser = msg.id === typingUserMsgId;
                 const isEditing = editingMessageId === msg.id;
 
+                const isMsgAmbient =
+                  msg.sender === "character" &&
+                  ["narrator", "system", "inner monologue"].some((s) =>
+                    msg.speakerName.toLowerCase().includes(s)
+                  );
+                const resolvedSpriteSrc =
+                  msg.sender === "character" && !isMsgAmbient
+                    ? (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                      getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) ||
+                      DEFAULT_FALLBACK_SPRITE
+                    : DEFAULT_FALLBACK_SPRITE;
+
                 return (
-                  <div 
-                    key={msg.id} 
-                    className={`flex flex-col group ${msg.sender === "user" ? "items-end" : "items-start"}`}
-                  >
-                    <div className="flex items-center gap-2 mb-1 px-1">
-                      {msg.sender === "user" ? (
-                        <>
-                          {!isEditing && (
-                            <button
-                              onClick={() => handleStartEdit(msg)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-zinc-500 hover:text-zinc-200 cursor-pointer"
-                              title="Edit action"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                          <span className="text-[11px] text-zinc-500 font-mono select-none">{msg.timestamp}</span>
-                          <span className="text-xs font-semibold text-zinc-200 select-none">{msg.speakerName}</span>
-                          <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0 select-none">
-                            {(msg.avatarSrc && msg.avatarSrc.trim()) || (playerAvatar && playerAvatar.trim()) ? (
-                              <img src={(msg.avatarSrc && msg.avatarSrc.trim()) || playerAvatar || DEFAULT_FALLBACK_SPRITE} alt="User" className="w-full h-full object-cover" />
-                            ) : (
-                              <User className="w-4 h-4 text-sky-300" />
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {(() => {
-                            const isMsgAmbient = ["narrator", "system", "inner monologue"].some((s) => msg.speakerName.toLowerCase().includes(s));
-                            if (isMsgAmbient) {
-                              return (
-                                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-950 shadow-md flex items-center justify-center shrink-0 select-none">
-                                  {msg.speakerName.toLowerCase().includes("system") ? (
-                                    <Terminal className="w-4 h-4 text-sky-400" />
-                                  ) : (
-                                    <BookOpen className="w-4 h-4 text-sky-400" />
-                                  )}
-                                </div>
-                              );
-                            }
-                            return (
-                              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none">
-                                <img 
-                                  src={(msg.avatarSrc && msg.avatarSrc.trim()) || getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) || DEFAULT_FALLBACK_SPRITE} 
-                                  alt={msg.speakerName} 
-                                  onError={(e) => { 
-                                    e.currentTarget.onerror = null;
-                                    e.currentTarget.src = DEFAULT_FALLBACK_SPRITE; 
-                                  }}
-                                  className="w-full h-full object-cover object-top" 
-                                />
-                              </div>
-                            );
-                          })()}
-                          <span className={`text-xs font-semibold select-none ${["narrator", "system", "inner monologue"].some((s) => msg.speakerName.toLowerCase().includes(s)) ? "text-sky-300" : "text-rose-300"}`}>
-                            {msg.speakerName}
-                          </span>
-                          <span className="text-[11px] text-zinc-500 font-mono select-none">{msg.timestamp}</span>
-
-                          {!isEditing && !msg.isPending && (
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ml-1 select-none">
-                              <button
-                                onClick={() => handleStartEdit(msg)}
-                                className="p-1 text-zinc-500 hover:text-zinc-200 cursor-pointer"
-                                title="Edit response"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                              {isLatestCharacterTurn && !isLoading && (
-                                <button
-                                  onClick={handleRegenerateTurn}
-                                  className="p-1 text-zinc-500 hover:text-rose-400 cursor-pointer"
-                                  title="Regenerate response"
-                                >
-                                  <RotateCcw className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    <div 
-                      className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm select-text transition-colors ${
-                        msg.sender === "user"
-                          ? "bg-gradient-to-br from-rose-600 to-pink-600 text-white rounded-tr-none"
-                          : "bg-zinc-900/95 border border-white/10 text-zinc-200 rounded-tl-none font-normal"
-                      }`}
-                      onClick={() => {
-                        if (isLatestCharacterTurn && displayedText.length < gameState.dialogue.length) {
-                          setDisplayedText(gameState.dialogue);
-                        }
-                        if (msg.id === typingUserMsgId) {
-                          clearUserTypewriter();
-                          setDisplayedUserText(msg.text);
-                          setTypingUserMsgId(null);
-                        }
-                      }}
-                    >
-                      {isEditing ? (
-                        <div className="flex flex-col gap-2 min-w-[260px] sm:min-w-[340px]">
-                          <textarea
-                            value={editingText}
-                            onChange={(e) => setEditingText(e.target.value)}
-                            className="w-full bg-black/60 border border-white/20 rounded-xl p-2.5 text-base sm:text-xs text-zinc-100 focus:outline-none focus:border-rose-400 font-sans resize-y min-h-[90px]"
-                          />
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[10px] text-zinc-500 font-mono">
-                              Supports markdown (*action*, **bold**, &gt; quote)
-                            </span>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setEditingMessageId(null)}
-                                className="px-2.5 py-1 text-xs text-zinc-400 hover:text-white rounded-lg border border-white/10 bg-zinc-800 cursor-pointer"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleSaveEdit(msg.id)}
-                                className="px-2.5 py-1 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg flex items-center gap-1 cursor-pointer"
-                              >
-                                <Check className="w-3 h-3" /> Save
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : msg.isPending ? (
-                        <div className="flex items-center gap-2.5 py-1 text-rose-100 font-sans select-none">
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-200 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-100"></span>
-                          </span>
-                          <span className="text-xs font-medium tracking-wide italic text-rose-100/90">
-                            {player.name} is taking action...
-                          </span>
-                        </div>
-                      ) : isLatestCharacterTurn ? (
-                        <MarkdownRenderer
-                          content={displayedText}
-                          mechanics={msg.mechanics}
-                          isUser={false}
-                          isStreaming={displayedText.length < gameState.dialogue.length}
-                        />
-                      ) : msg.id === typingUserMsgId ? (
-                        <MarkdownRenderer
-                          content={displayedUserText}
-                          isUser={true}
-                          isStreaming={displayedUserText.length < msg.text.length}
-                        />
-                      ) : (
-                        <MarkdownRenderer
-                          content={msg.text}
-                          mechanics={msg.mechanics}
-                          isUser={msg.sender === "user"}
-                        />
-                      )}
-
-                      {/* Inline Story Vitals Impact Pill (Damage Taken / Healed / Mana Expended) */}
-                      {msg.vitalsImpact && (msg.vitalsImpact.hpDelta !== 0 || msg.vitalsImpact.mpDelta !== 0) && (
-                        <div
-                          className={`mt-2.5 px-3 py-1.5 rounded-xl border font-mono text-xs flex flex-wrap items-center justify-between gap-2 ${
-                            msg.vitalsImpact.hpDelta < 0
-                              ? "bg-red-950/50 border-red-500/40 text-red-200"
-                              : msg.vitalsImpact.hpDelta > 0
-                              ? "bg-emerald-950/50 border-emerald-500/40 text-emerald-200"
-                              : "bg-sky-950/50 border-sky-500/40 text-sky-200"
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 font-bold">
-                            {msg.vitalsImpact.hpDelta !== 0 && (
-                              <span className="flex items-center gap-1">
-                                <Heart className="w-3.5 h-3.5 fill-current" />
-                                {msg.vitalsImpact.hpDelta > 0
-                                  ? `+${msg.vitalsImpact.hpDelta} HP Restored`
-                                  : `${msg.vitalsImpact.hpDelta} HP Damage Taken`}
-                              </span>
-                            )}
-                            {msg.vitalsImpact.mpDelta !== 0 && (
-                              <span className="flex items-center gap-1">
-                                <Zap className="w-3.5 h-3.5 fill-current" />
-                                {msg.vitalsImpact.mpDelta > 0
-                                  ? `+${msg.vitalsImpact.mpDelta} MP`
-                                  : `${msg.vitalsImpact.mpDelta} MP`}
-                              </span>
-                            )}
-                          </div>
-                          {msg.vitalsImpact.reason && (
-                            <span className="text-[10px] opacity-85">
-                              {msg.vitalsImpact.reason}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <ChatMessageItem
+                    key={msg.id}
+                    msg={msg}
+                    isLatestCharacterTurn={isLatestCharacterTurn}
+                    isTypingUser={isTypingUser}
+                    isEditing={isEditing}
+                    isLoading={isLoading}
+                    playerAvatar={playerAvatar}
+                    playerName={player.name}
+                    resolvedSpriteSrc={resolvedSpriteSrc}
+                    defaultFallbackSprite={DEFAULT_FALLBACK_SPRITE}
+                    streamedContent={
+                      isLatestCharacterTurn
+                        ? displayedText
+                        : isTypingUser
+                        ? displayedUserText
+                        : undefined
+                    }
+                    isStreaming={
+                      isLatestCharacterTurn
+                        ? displayedText.length < gameState.dialogue.length
+                        : isTypingUser
+                        ? displayedUserText.length < msg.text.length
+                        : false
+                    }
+                    onStartEdit={handleStartEdit}
+                    onCancelEdit={handleCancelEdit}
+                    onSaveEdit={handleSaveEdit}
+                    onRegenerateTurn={handleRegenerateTurn}
+                    onSkipTypewriter={handleSkipTypewriter}
+                  />
                 );
               })}
               </div>
@@ -8322,11 +8223,12 @@ export default function VisualNovelGame() {
               </div>
 
               <div className="pt-2">
-                <input
+                <BufferedTextInput
                   type="text"
                   placeholder="Or enter custom severance intent..."
                   value={covenantIntentText}
-                  onChange={(e) => setCovenantIntentText(e.target.value)}
+                  onValueChange={setCovenantIntentText}
+                  debounceMs={80}
                   className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
                 />
               </div>

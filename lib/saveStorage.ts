@@ -120,7 +120,7 @@ function openIndexedDB(): Promise<IDBDatabase> {
 }
 
 /**
- * Clean save payload to remove duplicate avatar copies from every user chat log message
+ * Clean save payload to remove duplicate avatar copies and prune quadratic visitedNodes snapshot bloat
  */
 function sanitizePayload(payload: SaveSlotPayload): SaveSlotPayload {
   const sanitizedChatLog = (payload.chatLog || []).map((msg) => {
@@ -132,14 +132,63 @@ function sanitizePayload(payload: SaveSlotPayload): SaveSlotPayload {
     return msg;
   });
 
+  const rawNodes = Array.isArray(payload.visitedNodes) ? payload.visitedNodes : undefined;
+  const sanitizedVisitedNodes = rawNodes
+    ? rawNodes.map((node, idx) => {
+        if (!node || !node.gameStateSnapshot) return node;
+        // Keep full snapshots only for starting anchors and the most recent 15 turn anchors
+        const isRecent = idx >= rawNodes.length - 15;
+        if (!isRecent && !node.isStartingPoint) {
+          const { gameStateSnapshot: _dropped, ...lightNode } = node;
+          return lightNode;
+        }
+
+        const snap = node.gameStateSnapshot;
+        let lightPlayer = snap.player;
+        if (lightPlayer) {
+          const { gearImages: _omittedGear, ...restPlayer } = lightPlayer;
+          const lightInventory = Array.isArray(restPlayer.inventory)
+            ? restPlayer.inventory.map((item: any) => {
+                if (item?.imageUrl && item.imageUrl.length > 500) {
+                  const { imageUrl: _omittedImg, ...restItem } = item;
+                  return restItem;
+                }
+                return item;
+              })
+            : restPlayer.inventory;
+          lightPlayer = { ...restPlayer, inventory: lightInventory };
+        }
+
+        const lightChatLog = Array.isArray(snap.chatLog)
+          ? snap.chatLog.slice(-20).map((msg: any) => {
+              if (msg?.avatarSrc && msg.avatarSrc.length > 500) {
+                const { avatarSrc: _omittedAvatar, ...restMsg } = msg;
+                return restMsg;
+              }
+              return msg;
+            })
+          : snap.chatLog;
+
+        return {
+          ...node,
+          gameStateSnapshot: {
+            ...snap,
+            player: lightPlayer,
+            chatLog: lightChatLog,
+          },
+        };
+      })
+    : undefined;
+
   return {
     ...payload,
     chatLog: sanitizedChatLog,
+    ...(sanitizedVisitedNodes ? { visitedNodes: sanitizedVisitedNodes } : {}),
   };
 }
 
 /**
- * Saves a chronicle slot to IndexedDB (unlimited quota) and mirrors to localStorage if within size limits.
+ * Saves a chronicle slot to IndexedDB (unlimited quota) and mirrors to localStorage during idle time.
  */
 export async function saveGameSlot(slotId: number, payload: SaveSlotPayload): Promise<void> {
   // Compress avatar if needed
@@ -157,6 +206,7 @@ export async function saveGameSlot(slotId: number, payload: SaveSlotPayload): Pr
   });
 
   // 1. Primary Save to IndexedDB (no 5MB quota restriction)
+  let idbSucceeded = false;
   try {
     const db = await openIndexedDB();
     await new Promise<void>((resolve, reject) => {
@@ -166,17 +216,28 @@ export async function saveGameSlot(slotId: number, payload: SaveSlotPayload): Pr
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);
     });
+    idbSucceeded = true;
   } catch (idbErr) {
     console.warn("IndexedDB save failed, trying localStorage:", idbErr);
   }
 
-  // 2. Mirror to localStorage if size allows (ignoring QuotaExceededError since IDB has it)
-  try {
-    if (typeof window !== "undefined" && window.localStorage) {
-      localStorage.setItem(`astra_save_slot_${slotId}`, JSON.stringify(cleanPayload));
+  // 2. Mirror to localStorage off the critical UI path so JSON.stringify never blocks frame rendering
+  const writeLocalStorageMirror = () => {
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        localStorage.setItem(`astra_save_slot_${slotId}`, JSON.stringify(cleanPayload));
+      }
+    } catch (lsErr: any) {
+      if (!idbSucceeded) {
+        console.warn("localStorage quota exceeded:", lsErr.message);
+      }
     }
-  } catch (lsErr: any) {
-    console.warn("localStorage quota exceeded; save safely preserved in IndexedDB:", lsErr.message);
+  };
+
+  if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+    (window as any).requestIdleCallback(writeLocalStorageMirror, { timeout: 1500 });
+  } else {
+    setTimeout(writeLocalStorageMirror, 50);
   }
 }
 

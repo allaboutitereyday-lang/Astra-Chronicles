@@ -1,7 +1,82 @@
 "use client";
 
-import React, { useState, memo } from "react";
+import React, { useState, useEffect, useRef, memo } from "react";
 import { Send, Gift, MessageSquareCode } from "lucide-react";
+
+export interface BufferedTextInputProps
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value"> {
+  value: string;
+  onValueChange: (val: string) => void;
+  debounceMs?: number;
+}
+
+/**
+ * Isolates keystroke state locally so typing never triggers re-renders of the parent tree.
+ * Flushes changes after a brief pause or immediately on blur / Enter key.
+ */
+export const BufferedTextInput = memo(function BufferedTextInput({
+  value,
+  onValueChange,
+  debounceMs = 150,
+  onBlur,
+  onKeyDown,
+  ...rest
+}: BufferedTextInputProps) {
+  const [localVal, setLocalVal] = useState(value);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onValueChangeRef = useRef(onValueChange);
+  onValueChangeRef.current = onValueChange;
+
+  useEffect(() => {
+    setLocalVal(value);
+  }, [value]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const next = e.target.value;
+    setLocalVal(next);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      onValueChangeRef.current(next);
+    }, debounceMs);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (localVal !== value) {
+      onValueChangeRef.current(localVal);
+    }
+    onBlur?.(e);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+      onValueChangeRef.current(localVal);
+    }
+    onKeyDown?.(e);
+  };
+
+  return (
+    <input
+      {...rest}
+      value={localVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+    />
+  );
+});
 
 export interface ActionInputBarProps {
   onSend: (text: string, isOOC: boolean) => void;
@@ -87,3 +162,4 @@ export const ActionInputBar = memo(function ActionInputBar({
     </form>
   );
 });
+
