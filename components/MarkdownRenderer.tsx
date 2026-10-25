@@ -38,7 +38,7 @@ function renderFormattedParagraph(paragraph: string, isUser: boolean) {
   });
 }
 
-export function MarkdownRenderer({
+export const MarkdownRenderer = React.memo(function MarkdownRenderer({
   content,
   mechanics = null,
   isUser = false,
@@ -104,6 +104,6 @@ export function MarkdownRenderer({
       )}
     </div>
   );
-}
+});
 
 export default MarkdownRenderer;

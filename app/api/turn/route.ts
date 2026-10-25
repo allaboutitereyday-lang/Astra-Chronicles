@@ -332,58 +332,38 @@ ${dynamicRomanceDirective}
 --- HEROINE DOSSIERS & VOICE PROFILES ---
 ${companionDossiers}
 
---- CURRENT CAMPAIGN STATE ---
-- Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
-- Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
-- Vitals & Pools: ${playerVitals.summaryLine}
-- Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
-- Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
-- Active Stance: [${activeStance.toUpperCase()}]
-- Abilities: ${Array.isArray(playerProfile.abilities) && playerProfile.abilities.length > 0 ? playerProfile.abilities.join(", ") : "None unlocked"}
-- Active Location: ${gameState.location}
-- Active Speaker Context: ${sanitizedContextSpeaker}
-- Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE (No companions present)" : `Accompanied by: ${presentHeroineNames.join(", ")}`}
-
-${playerVitals.directiveBlock}
-
-${knowledgeGateDirective}
-
-${scenePresenceDirective}
-
-${multiCompanionDirective}
-
-${giftingDirective}
-
-${timelineEchoDirective}
-
-${timelineScarDirective}
-
-${storyClashDirective}
-
-${covenantExecutionDirective}
-
---- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
-${partyMembers.map((c: any) => {
-  const encStatus = c.encountered ? "Previously Encountered & Active in Canon" : "Unmet in Current Arc";
-  const cap = getCompanionCap(c.name);
-  const isLocked = c.affection >= cap && cap < 100;
-  const lockStatus = isLocked 
-    ? `[LOCKED AT ${cap}% THRESHOLD - COMPANION QUEST PENDING]` 
-    : `Progression Cap: ${cap}%`;
-  const favorDesc = c.affection >= 75 ? "Deep Intimacy & Trust" : c.affection >= 50 ? "Solid Mutual Respect" : c.affection >= 25 ? "Cautious Wariness" : "Guarded Distrust";
-  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Favor: ${c.affection}% (${favorDesc}) | ${lockStatus} | Demeanor: ${c.expressionKey || "neutral"}]`;
-}).join("\n")}
-
---- CHRONOLOGICAL RECORD OF PREVIOUS INTERACTIONS & MEMORIES ---
-${
-  Array.isArray(plotMemories) && plotMemories.length > 0
-    ? plotMemories.map((m: string, idx: number) => `  [Chronicle Beat ${idx + 1}]: ${m}`).join("\n")
-    : "  * Journey commenced. First mutual encounter."
-}
-
-${inputHandlingInstruction}
-
-${visualInspectionInstruction}
+--- MECHANICAL RULES ---
+1. Speaker Attribution: "speaker" MUST NEVER BE the protagonist. If accompanied, set "speaker" to the canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). If alone, set to "Narrator", "Inner Monologue", or "System".
+2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive, multi-sentence passage (minimum 3-6 sentences across 1-2 paragraphs) featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
+3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
+4. Progression & Contextual Equipment/Loot Directive (MANDATORY & IMMEDIATE):
+   - CONTEXTUAL EQUIPMENT & WEAPON PICKUPS:
+     Whenever ${playerProfile.name} picks up, draws, finds, loots, scavenges, purchases, steals, is handed, or claims any weapon, armor piece, shield, relic, or tool in the narrative or by user action (e.g. picking up a sword from the ground, taking a dagger from a corpse, finding armor in a rack, drawing a blade):
+     a) YOU MUST IMMEDIATELY register the item in "player_progression.items_dropped":
+        Provide a complete object: id (unique slug), name (e.g. "Rusted Iron Broadsword"), type ("weapon" | "armor" | "relic" | "consumable" | "material"), rarity ("common" | "uncommon" | "rare" | "relic" | "cursed"), description, and effect.
+     b) YOU MUST ALSO IMMEDIATELY set it in "player_progression.gear_granted":
+        Set {"weapon": item_name}, {"armor": item_name}, or {"relic": item_name}.
+        This guarantees the player's equipment updates immediately and the item appears both in inventory and equipped in the active weapon/armor slot.
+   - NEVER leave a picked-up weapon or armor solely in prose. If the protagonist takes possession of an item in the story, you MUST emit both "items_dropped" and "gear_granted" in JSON.
+   - EXP REWARD: Grant 15-40 EXP on meaningful actions. If a fight, chest, or breakthrough occurs, award loot items or an ability in "player_progression".
+5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST strictly follow this format:
+   "[Tone/Action]: Short summary of character action/dialogue"
+   Examples:
+   - "[Combat/Aggressive]: Step forward and drive your broadsword toward the beast's exposed flank."
+   - "[Arcana/Analytical]: Channel ether into your palm to decipher the fluctuating rune sequence."
+   - "[Subterfuge/Cunning]: Slip into the perimeter shadows and pick the cargo vault lock."
+   - "[Inquire/Diplomatic]: Lower your weapon, meet her cold gaze, and demand to know House Abbandonato's stake here."
+   These tags serve as an explicit intent prompt for the AI to author a rich, thoughtful protagonist action and dialogue in subsequent turns.
+6. Narrative Prose, Grammar & Strict Plain-Text JSON Formatting:
+   - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
+   - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
+   - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
+   - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
+   - PARAGRAPHING: Structure "narrative_text" into 2 to 3 evocative paragraphs separated by clean line breaks. Avoid monolithic walls of text.
+7. Anti-Sycophancy & Tone Rigidity:
+   - Companions MUST NOT default to subservient, agreeable, or overly eager personalities.
+   - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer cynical reality checks according to their persona.
+   - Affection cannot be forced in a single turn. Retain guarded boundaries and respect their defined personality constraints.
 
 --- ABSOLUTE SYSTEM DIRECTIVE: NO PLAYER SAFEGUARDING & REAL MORTAL CONSEQUENCES ---
 DO NOT SAFEGUARD THE PROTAGONIST. Remove all artificial plot armor:
@@ -424,18 +404,6 @@ ${compatibilityDirective}
    - In "new_memory_unlocked", summarize key interactions, agreements, confessions, or tactical maneuvers that occurred this turn.
 
 --- SYSTEM ADMINISTRATOR & QUEST OBJECTIVE TRACKING DIRECTIVE ---
-You are the cold, omniscient LitRPG / Manhwa 'SYSTEM' Administrator overseeing ${playerProfile.name}.
-Current System State:
-- Causal Plausibility: ${systemState?.plausibility ?? 80}% (Tier: ${systemState?.plausibilityTier ?? "Stable"})
-- Active Quests & Objective Status:
-${
-  systemState?.activeQuests && systemState.activeQuests.length > 0
-    ? systemState.activeQuests.map((q: any) => 
-        `  * Quest ID: "${q.id}" | [${q.difficulty}-Rank ${q.type}] "${q.title}"\n    Objectives:\n${q.objectives.map((o: any, idx: number) => `      - [Index ${idx}]: "${o.text}" -> STATUS: ${o.completed ? 'COMPLETED' : 'PENDING'}`).join("\n")}`
-      ).join("\n\n")
-    : "  * None active."
-}
-
 MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
 1. QUEST OBJECTIVE EVALUATION:
    - Check the player's action against pending objectives in active quests.
@@ -447,43 +415,6 @@ MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
    - Volatile Plausibility (<40%) or Critical (<25%): Severe danger. Issue an [URGENT PENALTY QUEST] to restore causal order.
 3. SYSTEM ANNOUNCEMENTS:
    - ALWAYS output an authoritative LitRPG notification in "system_updates.system_announcement".
-
-${synergyDirective}
-
---- MECHANICAL RULES ---
-1. Speaker Attribution: "speaker" MUST NEVER BE "${playerProfile.name}". If accompanied, set "speaker" to the canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). If alone, set to "Narrator", "Inner Monologue", or "System".
-2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive, multi-sentence passage (minimum 3-6 sentences across 1-2 paragraphs) featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
-3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
-4. Progression & Contextual Equipment/Loot Directive (MANDATORY & IMMEDIATE):
-   - CONTEXTUAL EQUIPMENT & WEAPON PICKUPS:
-     Whenever ${playerProfile.name} picks up, draws, finds, loots, scavenges, purchases, steals, is handed, or claims any weapon, armor piece, shield, relic, or tool in the narrative or by user action (e.g. picking up a sword from the ground, taking a dagger from a corpse, finding armor in a rack, drawing a blade):
-     a) YOU MUST IMMEDIATELY register the item in "player_progression.items_dropped":
-        Provide a complete object: id (unique slug), name (e.g. "Rusted Iron Broadsword"), type ("weapon" | "armor" | "relic" | "consumable" | "material"), rarity ("common" | "uncommon" | "rare" | "relic" | "cursed"), description, and effect.
-     b) YOU MUST ALSO IMMEDIATELY set it in "player_progression.gear_granted":
-        Set {"weapon": item_name}, {"armor": item_name}, or {"relic": item_name}.
-        This guarantees the player's equipment updates immediately and the item appears both in inventory and equipped in the active weapon/armor slot.
-   - NEVER leave a picked-up weapon or armor solely in prose. If the protagonist takes possession of an item in the story, you MUST emit both "items_dropped" and "gear_granted" in JSON.
-   - EXP REWARD: Grant 15-40 EXP on meaningful actions. If a fight, chest, or breakthrough occurs, award loot items or an ability in "player_progression".
-5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST strictly follow this format:
-   "[Tone/Action]: Short summary of character action/dialogue"
-   Examples:
-   - "[Combat/Aggressive]: Step forward and drive your broadsword toward the beast's exposed flank."
-   - "[Arcana/Analytical]: Channel ether into your palm to decipher the fluctuating rune sequence."
-   - "[Subterfuge/Cunning]: Slip into the perimeter shadows and pick the cargo vault lock."
-   - "[Inquire/Diplomatic]: Lower your weapon, meet her cold gaze, and demand to know House Abbandonato's stake here."
-   These tags serve as an explicit intent prompt for the AI to author a rich, thoughtful protagonist action and dialogue in subsequent turns.
-6. Narrative Prose, Grammar & Strict Plain-Text JSON Formatting:
-   - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
-   - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
-   - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
-   - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
-   - PARAGRAPHING: Structure "narrative_text" into 2 to 3 evocative paragraphs separated by clean line breaks. Avoid monolithic walls of text.
-7. Anti-Sycophancy & Tone Rigidity:
-   - Companions MUST NOT default to subservient, agreeable, or overly eager personalities.
-   - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer cynical reality checks according to their persona.
-   - Affection cannot be forced in a single turn. Retain guarded boundaries and respect their defined personality constraints.
-
-${activeSpeakerLock}
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:
@@ -576,7 +507,75 @@ Respond strictly in valid JSON matching this schema:
   },
   "new_memory_unlocked": string | null,
   "suggested_choices": [string, string, string, string]
-}`;
+}
+
+--- CURRENT CAMPAIGN STATE & DYNAMIC TURN CONTEXT ---
+- Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
+- Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
+- Vitals & Pools: ${playerVitals.summaryLine}
+- Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
+- Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
+- Active Stance: [${activeStance.toUpperCase()}]
+- Abilities: ${Array.isArray(playerProfile.abilities) && playerProfile.abilities.length > 0 ? playerProfile.abilities.join(", ") : "None unlocked"}
+- Active Location: ${gameState.location}
+- Active Speaker Context: ${sanitizedContextSpeaker}
+- Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE (No companions present)" : `Accompanied by: ${presentHeroineNames.join(", ")}`}
+
+${playerVitals.directiveBlock}
+
+${knowledgeGateDirective}
+
+${scenePresenceDirective}
+
+${multiCompanionDirective}
+
+${giftingDirective}
+
+${timelineEchoDirective}
+
+${timelineScarDirective}
+
+${storyClashDirective}
+
+${covenantExecutionDirective}
+
+${synergyDirective}
+
+${activeSpeakerLock}
+
+--- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
+${partyMembers.map((c: any) => {
+  const encStatus = c.encountered ? "Previously Encountered & Active in Canon" : "Unmet in Current Arc";
+  const cap = getCompanionCap(c.name);
+  const isLocked = c.affection >= cap && cap < 100;
+  const lockStatus = isLocked 
+    ? `[LOCKED AT ${cap}% THRESHOLD - COMPANION QUEST PENDING]` 
+    : `Progression Cap: ${cap}%`;
+  const favorDesc = c.affection >= 75 ? "Deep Intimacy & Trust" : c.affection >= 50 ? "Solid Mutual Respect" : c.affection >= 25 ? "Cautious Wariness" : "Guarded Distrust";
+  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Favor: ${c.affection}% (${favorDesc}) | ${lockStatus} | Demeanor: ${c.expressionKey || "neutral"}]`;
+}).join("\n")}
+
+--- CHRONOLOGICAL RECORD OF PREVIOUS INTERACTIONS & MEMORIES ---
+${
+  Array.isArray(plotMemories) && plotMemories.length > 0
+    ? plotMemories.map((m: string, idx: number) => `  [Chronicle Beat ${idx + 1}]: ${m}`).join("\n")
+    : "  * Journey commenced. First mutual encounter."
+}
+
+--- CURRENT SYSTEM STATE ---
+- Causal Plausibility: ${systemState?.plausibility ?? 80}% (Tier: ${systemState?.plausibilityTier ?? "Stable"})
+- Active Quests & Objective Status:
+${
+  systemState?.activeQuests && systemState.activeQuests.length > 0
+    ? systemState.activeQuests.map((q: any) => 
+        `  * Quest ID: "${q.id}" | [${q.difficulty}-Rank ${q.type}] "${q.title}"\n    Objectives:\n${q.objectives.map((o: any, idx: number) => `      - [Index ${idx}]: "${o.text}" -> STATUS: ${o.completed ? 'COMPLETED' : 'PENDING'}`).join("\n")}`
+      ).join("\n\n")
+    : "  * None active."
+}
+
+${inputHandlingInstruction}
+
+${visualInspectionInstruction}`;
 
     const messages: any[] = [{ role: "system", content: systemPrompt }];
 
@@ -681,6 +680,7 @@ Respond strictly in valid JSON matching this schema:
             max_tokens: effectiveMaxTokens,
             repetition_penalty: effectiveRepetitionPenalty,
             response_format: { type: "json_object" },
+            ...(isLocal ? {} : { provider: { allow_fallbacks: true } }),
           }),
         });
 
@@ -711,6 +711,7 @@ Respond strictly in valid JSON matching this schema:
                 max_tokens: effectiveMaxTokens,
                 repetition_penalty: effectiveRepetitionPenalty,
                 response_format: { type: "json_object" },
+                ...(isLocal ? {} : { provider: { allow_fallbacks: true } }),
               }),
             });
           } else {

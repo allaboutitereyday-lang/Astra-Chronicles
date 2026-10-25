@@ -18,7 +18,7 @@ interface AtmosphericParticlesProps {
   intensity?: "gentle" | "intense";
 }
 
-export function AtmosphericParticles({
+export const AtmosphericParticles = React.memo(function AtmosphericParticles({
   location = "Imperial Capital Imperium",
   intensity = "gentle",
 }: AtmosphericParticlesProps) {
@@ -121,5 +121,5 @@ export function AtmosphericParticles({
       className="absolute inset-0 pointer-events-none z-10 opacity-70"
     />
   );
-}
+});
 

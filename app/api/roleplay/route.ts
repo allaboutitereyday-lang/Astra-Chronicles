@@ -114,6 +114,7 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
       temperature: Number(temperature),
       max_tokens: Number(max_tokens),
       repetition_penalty: Number(repetition_penalty),
+      ...(effectiveEnvironment === "cloud" ? { provider: { allow_fallbacks: true } } : {}),
     };
 
     const response = await fetch(endpointUrl, {

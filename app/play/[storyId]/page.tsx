@@ -72,13 +72,12 @@ import {
   ActiveStoryClashState
 } from "@/types/system";
 import { checkCovenantAvailability, executeCausalCovenant } from "@/lib/causalCovenant";
+import dynamic from "next/dynamic";
 import { evaluateInterpersonalFriction, resolveCampUltimatum, RIVALRY_PAIRS_CATALOG } from "@/lib/companionFriction";
 import { initiateStoryClash, getStoryClashChoices, resolveClashTurn, FormattedClashChoice } from "@/lib/storyClashEngine";
 import { SystemNotificationToast } from "@/components/SystemNotificationToast";
-import { SystemQuestModal } from "@/components/SystemQuestModal";
 import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
 import { GameNotificationStack, GameNotificationItem } from "@/components/GameNotificationStack";
-import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
 import { 
   saveGameSlot, 
   loadGameSlot, 
@@ -94,14 +93,9 @@ import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsea
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
 import { extractProtagonistVisualDna } from "@/lib/visionEncoder";
-import { GearManifestScreen } from "@/components/play/GearManifestScreen";
-import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType, detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
-import { FlowchartViewer } from "@/components/FlowchartViewer";
-import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
-import { WorldShareModal } from "@/components/WorldShareModal";
 import { decodeMultiverseSeed } from "@/lib/multiverseShare";
 import { getStoryById } from "@/lib/storyStorage";
 import { ASTRA_CHRONICLES_STORY } from "@/lib/defaultStory";
@@ -122,10 +116,43 @@ import {
   DEFAULT_LLM_CONFIG,
   getStoredLlmConfig,
   saveStoredLlmConfig,
-  LlmProviderModal,
   LlmQuickPill,
   CLOUD_MODELS,
 } from "@/components/LlmProviderSelector";
+
+// Dynamic code splitting for heavy modals and visualization graphs
+const FlowchartViewer = dynamic(
+  () => import("@/components/FlowchartViewer").then((m) => m.FlowchartViewer),
+  { ssr: false }
+);
+const RelicSynergyPanel = dynamic(
+  () => import("@/components/RelicSynergyPanel").then((m) => m.RelicSynergyPanel),
+  { ssr: false }
+);
+const WorldShareModal = dynamic(
+  () => import("@/components/WorldShareModal").then((m) => m.WorldShareModal),
+  { ssr: false }
+);
+const SystemQuestModal = dynamic(
+  () => import("@/components/SystemQuestModal").then((m) => m.SystemQuestModal),
+  { ssr: false }
+);
+const NotificationHistoryModal = dynamic(
+  () => import("@/components/NotificationHistoryModal").then((m) => m.NotificationHistoryModal),
+  { ssr: false }
+);
+const PortraitEditorModal = dynamic(
+  () => import("@/components/play/PortraitEditorModal").then((m) => m.PortraitEditorModal),
+  { ssr: false }
+);
+const GearManifestScreen = dynamic(
+  () => import("@/components/play/GearManifestScreen").then((m) => m.GearManifestScreen),
+  { ssr: false }
+);
+const LlmProviderModal = dynamic(
+  () => import("@/components/LlmProviderSelector").then((m) => m.LlmProviderModal),
+  { ssr: false }
+);
 
 export interface InventoryItem {
   id: string;
@@ -324,6 +351,37 @@ const LOCATION_BACKGROUNDS: Record<string, string> = {
 };
 
 const DEFAULT_BG = "/backgrounds/imperial_capital_imperium.jpg";
+
+/**
+ * Silently pre-caches companion expression sprites and key location backgrounds
+ * into the browser cache during idle time to prevent blank flashes or image pop-in during dialogue.
+ */
+function preloadStoryAssets(): void {
+  if (typeof window === "undefined") return;
+
+  const runPreload = () => {
+    const allUrls = [
+      ...Object.values(ARIA_EXPRESSIONS),
+      ...Object.values(EVELYN_EXPRESSIONS),
+      ...Object.values(SERENA_EXPRESSIONS),
+      ...Object.values(MORGANA_EXPRESSIONS),
+      ...Object.values(PERCI_EXPRESSIONS),
+      ...Object.values(LOCATION_BACKGROUNDS),
+    ];
+
+    const uniqueUrls = Array.from(new Set(allUrls.filter(Boolean)));
+    uniqueUrls.forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  };
+
+  if ("requestIdleCallback" in window) {
+    (window as any).requestIdleCallback(runPreload, { timeout: 2000 });
+  } else {
+    setTimeout(runPreload, 300);
+  }
+}
 
 // ------------------------------------------------------------------
 // CONTINENT REGIONS MAP
@@ -1113,6 +1171,11 @@ export default function VisualNovelGame() {
   const [notificationHistory, setNotificationHistory] = useState<GameNotificationItem[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
   const [showNotificationHistory, setShowNotificationHistory] = useState<boolean>(false);
+
+  // Pre-cache companion expression sprites during idle to ensure zero-flicker transitions
+  useEffect(() => {
+    preloadStoryAssets();
+  }, []);
 
   // Load notification history on mount
   useEffect(() => {
