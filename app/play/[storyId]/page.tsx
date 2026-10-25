@@ -89,9 +89,10 @@ import {
   loadPersistentRegressionHistory,
   appendPersistentDeathRegression
 } from "@/lib/saveStorage";
-import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm } from "@/types/story";
+import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA } from "@/types/story";
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
+import { extractProtagonistVisualDna } from "@/lib/visionEncoder";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType } from "@/lib/progressionMechanics";
@@ -192,6 +193,7 @@ interface PlayerProfile {
   activeStance?: CombatStanceType;
   narrationStyle?: string;
   visualDescription?: string;
+  visualDna?: CharacterVisualDNA;
 }
 
 interface RoleplayState {
@@ -1693,6 +1695,28 @@ export default function VisualNovelGame() {
       const raw = reader.result as string;
       const optimized = await compressAvatarImage(raw, 384);
       setPlayerAvatar(optimized);
+
+      // Asynchronously extract and anchor Visual DNA for image consistency
+      extractProtagonistVisualDna(
+        optimized,
+        playerRef.current.name,
+        playerRef.current.role,
+        playerRef.current.visualDescription,
+        accessKey
+      ).then((dna) => {
+        setPlayer((prev) => {
+          const next = {
+            ...prev,
+            visualDna: dna,
+            visualDescription: dna.fullPromptAnchor,
+          };
+          playerRef.current = next;
+          performAutoSave({ player: next, playerAvatar: optimized });
+          return next;
+        });
+      }).catch((err) => {
+        console.warn("[AvatarUpload] Visual DNA extraction skipped:", err);
+      });
     };
     reader.readAsDataURL(file);
   };
@@ -1867,11 +1891,14 @@ export default function VisualNovelGame() {
         relationshipStage: c.relationshipStage || "confidant",
       }));
 
-      // 3. Protagonist details
+      // 3. Protagonist details with full Visual DNA anchoring
       const protagonistData = {
         name: player.name || "Protagonist",
         role: player.role || "Voidstrider",
         weapon: player.gear?.weapon || "Blade",
+        visualDescription: player.visualDescription || undefined,
+        visualDna: player.visualDna || undefined,
+        avatarUrl: playerAvatar || undefined,
       };
 
       // 4. Romance & Emotional Stakes
@@ -7871,16 +7898,39 @@ export default function VisualNovelGame() {
         onSaveAvatar={(newAvatarUrl) => {
           setPlayerAvatar(newAvatarUrl);
           setPlayer((prev) => {
-            const next = { ...prev, visualDescription: undefined };
+            const next = { ...prev };
             playerRef.current = next;
             performAutoSave({ player: next, playerAvatar: newAvatarUrl });
             return next;
           });
+
+          // Asynchronously extract and anchor Visual DNA from the edited portrait
+          extractProtagonistVisualDna(
+            newAvatarUrl,
+            playerRef.current.name,
+            playerRef.current.role,
+            playerRef.current.visualDescription,
+            accessKey
+          ).then((dna) => {
+            setPlayer((prev) => {
+              const next = {
+                ...prev,
+                visualDna: dna,
+                visualDescription: dna.fullPromptAnchor,
+              };
+              playerRef.current = next;
+              performAutoSave({ player: next, playerAvatar: newAvatarUrl });
+              return next;
+            });
+          }).catch((err) => {
+            console.warn("[PortraitEditor] Visual DNA extraction skipped:", err);
+          });
+
           pushNotification({
             id: `avatar_updated_${Date.now()}`,
             type: "quest_assigned",
             title: "CHARACTER PORTRAIT UPDATED",
-            subtitle: "New protagonist portrait synchronized to HUD and save state.",
+            subtitle: "New protagonist portrait and Visual DNA synchronized to HUD and save state.",
           });
         }}
       />

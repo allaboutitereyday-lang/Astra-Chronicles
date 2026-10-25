@@ -19,6 +19,10 @@ import {
   inferFallbackVitalsDelta,
   resolveHostileEncounterEscalation,
 } from "@/lib/vitalsAndEncounters";
+import {
+  buildPersonaPromptDossier,
+  buildActiveSpeakerPersonaLock,
+} from "@/lib/characterPersonas";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -118,39 +122,10 @@ export async function POST(req: Request) {
       sanitizedContextSpeaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
     }
 
-    const companionDossiers = storyContext?.companions && storyContext.companions.length > 0
-      ? storyContext.companions.map((c: any, i: number) => `
-${i + 1}. ${c.name}:
-   - Role: ${c.title || c.role}.
-   - Persona: ${c.personality || "Guarded and observant."}
-   - Values: ${Array.isArray(c.values) ? c.values.join(", ") : "Honor, Loyalty"}
-   - Dislikes: ${Array.isArray(c.dislikes) ? c.dislikes.join(", ") : "Deceit, Cowardice"}
-   - Expressions: ${c.expressions ? Object.keys(c.expressions).join(", ") : "neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt"}
-`).join("\n")
-      : `1. Evelyn Abbandonato:
-   - Role: High Arcanist of House Abbandonato.
-   - Persona: Aristocratic, sharp-tongued, supremely confident, analytical, subtle manipulator. Smug yet fascinated by genuine cunning.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
-
-2. Aria Shadowthorn:
-   - Role: Rogue Infiltrator of the Veil Seekers.
-   - Persona: Cynical, hyper-vigilant, razor-sharp pragmatic operative. Speaks in clipped, guarded sentences. Respects competence and quiet stealth.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
-
-3. Serena:
-   - Role: Dutiful Demi-Human Combat Maid (sheep ears/horns, wields colossal spiked mace).
-   - Persona: Impeccably polite, formal, completely unfazed by carnage, lethal deadpan humor, unflinchingly loyal.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.
-
-4. Morgana:
-   - Role: Demon Realm Noblewoman (curved horns, bat wings, wine chalice).
-   - Persona: Hedonistic, detached, predatory curiosity, ancient planar insight. Amused by mortal struggle.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt, beckon.
-
-5. Perci:
-   - Role: Timid Kitsune Rogue (sarashi wrap, loose robe, fluffy fox ears).
-   - Persona: Highly anxious, jumpy, soft-spoken, deeply loyal once safety is assured. Uses stuttering or hesitant phrasing when startled.
-   - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.`;
+    const companionDossiers = buildPersonaPromptDossier(
+      storyContext?.companions || [],
+      sanitizedContextSpeaker
+    );
 
     // Dynamic player input directive
     const inputHandlingInstruction = isCustom
@@ -340,6 +315,13 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
       playerProfile?.name || "Wanderer"
     );
 
+    const activeSpeakerLock = buildActiveSpeakerPersonaLock(
+      sanitizedContextSpeaker,
+      companionAffection,
+      activeSpeakerKnowledge.knowsName,
+      playerProfile?.name || "Wanderer"
+    );
+
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
 ${getNarrationProseDirective(effectiveTone)}
@@ -486,6 +468,12 @@ ${synergyDirective}
    - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
    - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
    - PARAGRAPHING: Structure "narrative_text" into 2 to 3 evocative paragraphs separated by clean line breaks. Avoid monolithic walls of text.
+7. Anti-Sycophancy & Tone Rigidity:
+   - Companions MUST NOT default to subservient, agreeable, or overly eager personalities.
+   - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer cynical reality checks according to their persona.
+   - Affection cannot be forced in a single turn. Retain guarded boundaries and respect their defined personality constraints.
+
+${activeSpeakerLock}
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:

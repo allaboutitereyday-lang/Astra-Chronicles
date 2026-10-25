@@ -46,6 +46,13 @@ async function synthesizeFullScenePrompt(
   const genre = sceneContext?.genre || "High Fantasy / Grimdark";
   const storyTitle = sceneContext?.storyTitle || "Astra Chronicles";
   const protagonist = sceneContext?.protagonist || { name: "Protagonist", role: "Voidstrider" };
+  const visualDna = protagonist?.visualDna || sceneContext?.visualDna;
+  const visualDescription = protagonist?.visualDescription || sceneContext?.visualDescription;
+  const protagonistVisualAnchor =
+    visualDna?.fullPromptAnchor ||
+    visualDescription ||
+    `${protagonist.name}: ${protagonist.role || "Adventurer"} wearing ${protagonist.weapon || "blade"}`;
+
   const presentCharacters = sceneContext?.presentCharacters || [];
   const relationshipContext = sceneContext?.relationshipContext || "";
   const recentHistory = Array.isArray(sceneContext?.recentDialogueHistory)
@@ -60,15 +67,17 @@ Your task is to analyze the FULL scene context provided (the dialogue transcript
 Requirements for the output prompt:
 1. Format: A single dense, descriptive prompt paragraph (100 to 160 words).
 2. Composition: 16:9 widescreen anime visual novel event CG, dramatic cinematic framing (e.g. intimate close two-shot, dynamic mid-shot, or epic hero angle).
-3. Characters: Explicitly describe character physical traits (hair color, eye color, attire, expressions, posture, eye contact, and touch/interaction).
-4. Atmosphere & Environment: Describe specific lighting (volumetric god rays, golden hour, neon backlighting, soft starlight), particles (floating embers, cherry blossom petals, rain on glass, glowing arcane wisps), and depth of field.
-5. Aesthetic: High-end anime feature film quality (Makoto Shinkai & Ufotable style, clean line art, rich vibrant color grading).
-6. Return STRICTLY valid JSON: { "prompt": "..." } with no markdown code blocks outside JSON.`;
+3. Protagonist Accuracy (CRITICAL): The protagonist MUST match their exact Visual DNA and appearance traits specified below (exact hair color, hairstyle, eye color, physical build, and attire). Do NOT alter their hair or eye colors.
+4. Characters: Explicitly describe character physical traits (hair color, eye color, attire, expressions, posture, eye contact, and touch/interaction).
+5. Atmosphere & Environment: Describe specific lighting (volumetric god rays, golden hour, neon backlighting, soft starlight), particles (floating embers, cherry blossom petals, rain on glass, glowing arcane wisps), and depth of field.
+6. Aesthetic: High-end anime feature film quality (Makoto Shinkai & Ufotable style, clean line art, rich vibrant color grading).
+7. Return STRICTLY valid JSON: { "prompt": "..." } with no markdown code blocks outside JSON.`;
 
     const artDirectorUserPrompt = `Story: "${storyTitle}" (${genre})
 Location: ${location}
 Mood & Atmosphere: ${mood}
 Protagonist: ${protagonist.name} (Class: ${protagonist.role})
+PROTAGONIST MANDATORY VISUAL DNA: ${protagonistVisualAnchor}
 Current Speaker / Center Focus: ${speaker}
 Current Spoken Line: "${dialogue}"
 Active Characters in Scene: ${JSON.stringify(presentCharacters)}
@@ -116,8 +125,8 @@ ${recentHistory || fullNarrative || dialogue}`;
 
   // 2. Procedural Full-Context Fallback (Zero Truncation)
   const charDetails = Array.isArray(presentCharacters) && presentCharacters.length > 0
-    ? presentCharacters.map((c: any) => `${c.name} (${c.role || "Companion"}, ${c.visualPrompt || "expressive anime eyes and detailed attire"}, expression: ${c.expression || "deep emotional focus"})`).join("; ")
-    : `${speaker} and protagonist ${protagonist.name} (${protagonist.role})`;
+    ? `${protagonistVisualAnchor}; ` + presentCharacters.map((c: any) => `${c.name} (${c.role || "Companion"}, ${c.visualPrompt || "expressive anime eyes and detailed attire"}, expression: ${c.expression || "deep emotional focus"})`).join("; ")
+    : `${speaker} and ${protagonistVisualAnchor}`;
 
   const dialogueSummary = recentHistory
     ? recentHistory.replace(/[\n\r]+/g, " • ").slice(0, 400)
@@ -371,7 +380,9 @@ export async function POST(req: Request) {
     };
 
     const activeModifier = expressionModifiers[expressionKey] || expressionModifiers.neutral;
-    const fullVisualPrompt = `${prompt || "masterpiece anime portrait, highly detailed"}, ${activeModifier}, high resolution visual novel sprite, transparent or clean background`;
+    const charDnaAnchor = body.visualDna?.fullPromptAnchor || body.character?.visualDna?.fullPromptAnchor || body.visualDescription || body.character?.visualPrompt;
+    const baseVisualAnchor = charDnaAnchor ? `${charDnaAnchor}, ` : "";
+    const fullVisualPrompt = `${prompt || `${baseVisualAnchor}masterpiece anime portrait, highly detailed`}, ${activeModifier}, high resolution visual novel sprite, transparent or clean background`;
 
     const controlNetPipelineMetadata = {
       model: "sd-xl-turbo / flux-ipadapter",

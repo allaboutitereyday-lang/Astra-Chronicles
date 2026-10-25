@@ -282,6 +282,30 @@ export interface PlayerStats {
   int: number;
 }
 
+export interface CharacterVisualDNA {
+  gender: "male" | "female" | "androgynous";
+  ageAppearance?: string;
+  build?: string;
+  hair: {
+    color: string;
+    style: string;
+    length?: string;
+  };
+  eyes: {
+    color: string;
+    shape?: string;
+  };
+  complexion?: string;
+  facialFeatures?: string[];
+  primaryAttire?: {
+    upper?: string;
+    lower?: string;
+    palette?: string[];
+  };
+  signatureAccessories?: string[];
+  fullPromptAnchor: string; // Compact compiled prompt snippet for image models
+}
+
 export interface PlayerProfile {
   name: string;
   role: string;
@@ -301,6 +325,7 @@ export interface PlayerProfile {
   regressionCount?: number;
   narrationStyle?: string; // Active narration prose directive / atmosphere tone
   visualDescription?: string; // Persisted vision-encoded physical appearance description
+  visualDna?: CharacterVisualDNA; // Structured character visual DNA for consistent image synthesis
 }
 
 export interface VisitedStoryNode {
