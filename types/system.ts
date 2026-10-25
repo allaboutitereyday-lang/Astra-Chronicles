@@ -26,6 +26,8 @@ export interface SystemQuest {
   status: "active" | "completed" | "failed";
   progressNote?: string;
   failureConsequence?: string; // Severe narrative or stat penalty when failed
+  isClaimed?: boolean;
+  claimedAt?: number;
 }
 
 export type PlausibilityTier = "Stable" | "Strained" | "Volatile" | "Critical";

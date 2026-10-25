@@ -247,7 +247,7 @@ export function LlmProviderSelector({
         <select
           value={config.modelId}
           onChange={(e) => handleModelChange(e.target.value)}
-          className="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white font-sans focus:border-rose-500 focus:outline-none transition-colors cursor-pointer"
+          className="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2.5 text-base sm:text-xs text-white font-sans focus:border-rose-500 focus:outline-none transition-colors cursor-pointer"
         >
           {CLOUD_MODELS.map((m) => (
             <option key={m.id} value={m.id} className="bg-zinc-900 text-white">
@@ -406,7 +406,7 @@ export function LlmProviderModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200 max-h-[92vh] overflow-y-auto"
+        className="w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in zoom-in-95 duration-200 max-h-[90dvh] overflow-y-auto"
       >
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div className="flex items-center gap-2.5">

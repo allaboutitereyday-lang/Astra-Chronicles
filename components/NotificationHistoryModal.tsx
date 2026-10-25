@@ -241,7 +241,7 @@ export function NotificationHistoryModal({
         <span className="absolute bottom-1.5 right-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">┘</span>
 
         {/* Modal Header */}
-        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between bg-zinc-900/80 backdrop-blur-md">
+        <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-white/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 bg-zinc-900/80 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.25)] shrink-0">
               <Bell className="w-5 h-5 text-rose-400 animate-pulse" />
@@ -255,7 +255,7 @@ export function NotificationHistoryModal({
                   {history.length} {history.length === 1 ? "Broadcast" : "Broadcasts"}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 font-mono mt-0.5">
+              <p className="text-xs text-zinc-400 font-mono mt-0.5 hidden sm:block">
                 LitRPG Matrix Telemetry • Quest updates, unlocked skills & relic acquisitions
               </p>
             </div>
@@ -376,7 +376,7 @@ export function NotificationHistoryModal({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search notifications..."
-              className="w-full pl-8 pr-3 py-1.5 bg-zinc-900/80 border border-white/10 rounded-xl text-xs text-zinc-200 placeholder-zinc-500 font-mono focus:outline-none focus:border-rose-500/60"
+              className="w-full pl-8 pr-3 py-1.5 bg-zinc-900/80 border border-white/10 rounded-xl text-base sm:text-xs text-zinc-200 placeholder-zinc-500 font-mono focus:outline-none focus:border-rose-500/60"
             />
             {searchQuery && (
               <button

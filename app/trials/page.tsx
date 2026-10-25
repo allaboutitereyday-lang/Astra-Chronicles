@@ -1083,16 +1083,17 @@ function LitRPGTrialsContent() {
       )}
 
       {/* HEADER BAR */}
-      <header className="relative z-10 px-4 sm:px-8 py-4 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <header className="relative z-10 px-3 sm:px-8 py-3 sm:py-4 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={handleReturnToStory}
             disabled={isSyncingBack}
-            className="p-2 sm:px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center gap-2 text-xs font-mono disabled:opacity-50"
+            className="p-2 sm:px-3 min-h-[40px] rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-blue-400 text-zinc-300 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 text-xs font-mono disabled:opacity-50 active:scale-95"
             title="Return to Story and synchronize character stats & loot"
           >
             <ArrowLeft className="w-4 h-4 text-blue-400" />
-            <span>{isSyncingBack ? "Synchronizing Story..." : "Return to Story"}</span>
+            <span className="hidden xs:inline">{isSyncingBack ? "Syncing..." : "Story"}</span>
+            <span className="hidden sm:inline">{isSyncingBack ? "Synchronizing Story..." : "Return to Story"}</span>
           </button>
 
           <div className="flex items-center gap-2">
@@ -1100,8 +1101,8 @@ function LitRPGTrialsContent() {
               <Terminal className="w-4 h-4 animate-pulse" />
             </div>
             <div>
-              <h1 className="text-sm sm:text-base font-bold text-white font-mono tracking-wider flex items-center gap-2">
-                <span>SYSTEM ADMINISTRATOR: LITRPG TRIALS</span>
+              <h1 className="text-xs sm:text-base font-bold text-white font-mono tracking-wider flex items-center gap-2">
+                <span>LITRPG TRIALS</span>
                 <span className="hidden sm:inline px-2 py-0.5 rounded-full text-[10px] font-mono bg-blue-500/20 text-blue-300 border border-blue-500/40">
                   Daily Seed {todayDateString}
                 </span>
@@ -1111,7 +1112,7 @@ function LitRPGTrialsContent() {
         </div>
 
         {/* Causal Stability & LLM Engine Cluster */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <LlmQuickPill
             config={llmConfig}
             onClick={() => {

@@ -568,14 +568,14 @@ export function FlowchartViewer({
         <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500/80 to-transparent" />
 
         {/* MODAL HEADER */}
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-zinc-900/80 backdrop-blur-md">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-white/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 bg-zinc-900/80 backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.25)]">
               <GitBranch className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white font-serif tracking-wide">
+                <h3 className="text-base sm:text-lg font-bold text-white font-serif tracking-wide">
                   Interactive Narrative Flowchart
                 </h3>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
@@ -587,7 +587,7 @@ export function FlowchartViewer({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-zinc-400 font-mono mt-0.5">
+              <p className="text-xs text-zinc-400 font-mono mt-0.5 hidden sm:block">
                 Inspect opening vectors, timeline branches, or Jump to Anchor states instantly.
               </p>
             </div>

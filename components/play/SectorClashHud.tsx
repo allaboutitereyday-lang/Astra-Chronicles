@@ -244,7 +244,7 @@ export function SectorClashHud({
   return (
     <>
       <div
-        className={`relative pointer-events-auto bg-gradient-to-b from-zinc-900/95 via-black/95 to-zinc-950/95 border rounded-2xl p-3 sm:p-4 backdrop-blur-xl mb-2 select-none overflow-hidden transition-all duration-200 ${
+        className={`relative pointer-events-auto bg-gradient-to-b from-zinc-900/95 via-black/95 to-zinc-950/95 border rounded-2xl p-3 sm:p-4 backdrop-blur-xl mb-2 select-none overflow-hidden max-h-[52dvh] sm:max-h-none overflow-y-auto transition-all duration-200 ${
           playerHitFlash === "damage"
             ? "border-red-500 shadow-[0_0_45px_rgba(239,68,68,0.55)] translate-x-[2px]"
             : enemyHitFlash
@@ -537,7 +537,7 @@ export function SectorClashHud({
               value={customEnemyPrompt}
               onChange={(e) => setCustomEnemyPrompt(e.target.value)}
               placeholder="Describe enemy appearance for AI portrait synthesis..."
-              className="flex-1 bg-zinc-900/90 border border-white/15 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100 font-mono focus:outline-none focus:border-amber-400"
+              className="flex-1 bg-zinc-900/90 border border-white/15 rounded-lg px-2.5 py-1.5 text-base sm:text-xs text-zinc-100 font-mono focus:outline-none focus:border-amber-400"
             />
             <button
               type="button"
@@ -578,7 +578,7 @@ export function SectorClashHud({
                     soundEffects.playClick();
                     onSelectStance(stance.id);
                   }}
-                  className={`px-2 py-1.5 rounded-lg border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  className={`px-2 py-1.5 min-h-[36px] rounded-lg border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                     isSelected
                       ? stance.activeClass
                       : "bg-zinc-950/80 hover:bg-zinc-900 border-white/10 text-zinc-400 hover:text-zinc-200"
@@ -634,7 +634,7 @@ export function SectorClashHud({
               soundEffects.playClick();
               onExecuteClashAction("flee");
             }}
-            className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-amber-400/50 text-zinc-300 hover:text-amber-200 flex items-center gap-1 transition-all cursor-pointer shrink-0"
+            className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-amber-400/50 text-zinc-300 hover:text-amber-200 flex items-center gap-1 transition-all cursor-pointer shrink-0"
             title="Break combat engagement and retreat to cover (-10 MP or grazing hit)"
           >
             <Footprints className="w-3 h-3 text-amber-400" />

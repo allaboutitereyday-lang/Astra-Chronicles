@@ -118,7 +118,7 @@ export function PortraitEditorModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150"
+        className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-in zoom-in-95 duration-150"
       >
         <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
@@ -230,7 +230,7 @@ export function PortraitEditorModal({
               onChange={(e) => setPromptText(e.target.value)}
               rows={3}
               placeholder="Describe hair, eyes, armor, aura, expression..."
-              className="w-full bg-black/70 border border-white/15 rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 font-sans resize-none"
+              className="w-full bg-black/70 border border-white/15 rounded-xl p-3 text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 font-sans resize-none"
             />
             <button
               type="button"
@@ -257,7 +257,7 @@ export function PortraitEditorModal({
                 value={directUrl}
                 onChange={(e) => setDirectUrl(e.target.value)}
                 placeholder="https://example.com/portrait.png"
-                className="flex-1 bg-black/70 border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 font-mono"
+                className="flex-1 bg-black/70 border border-white/15 rounded-xl px-3 py-2.5 text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500 font-mono"
               />
               <button
                 type="button"

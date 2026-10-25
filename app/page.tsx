@@ -216,7 +216,7 @@ export default function StoryCataloguePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2 sm:gap-2.5 w-full sm:w-auto">
             {/* LLM Engine Quick Selector */}
             <LlmQuickPill
               config={llmConfig}
@@ -228,7 +228,7 @@ export default function StoryCataloguePage() {
 
             <button
               onClick={handleToggleAudio}
-              className="p-2.5 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white transition-all cursor-pointer backdrop-blur-md shadow-lg"
+              className="p-2.5 min-h-[44px] min-w-[44px] rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-white/30 text-zinc-400 hover:text-white transition-all cursor-pointer backdrop-blur-md shadow-lg flex items-center justify-center active:scale-95"
               title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
             >
               {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
@@ -239,7 +239,7 @@ export default function StoryCataloguePage() {
                 soundEffects.playClick();
                 setShowAuthModal(true);
               }}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-purple-500/50 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer shadow-lg"
+              className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-purple-500/50 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
             >
               <Key className="w-3.5 h-3.5 text-purple-400" />
               <span>{userAuth ? `${userAuth.name.split(" ")[0]} (${userAuth.remainingTurns === -1 ? "Unlimited" : `${userAuth.remainingTurns} turns`})` : "Access Key"}</span>
@@ -249,7 +249,7 @@ export default function StoryCataloguePage() {
             <Link
               href="/codex"
               onClick={() => soundEffects.playClick()}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-amber-500/50 text-xs font-mono text-amber-300 hover:text-white transition-all cursor-pointer shadow-lg"
+              className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-amber-500/50 text-xs font-mono text-amber-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
               title="Multiverse Codex - Scene CGs & Loot Reliquary"
             >
               <BookOpen className="w-3.5 h-3.5 text-amber-400" />
@@ -264,7 +264,7 @@ export default function StoryCataloguePage() {
             <Link
               href="/create/world"
               onClick={() => soundEffects.playClick()}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 hover:from-rose-500 hover:to-pink-500 text-white text-xs font-mono font-bold shadow-[0_0_25px_rgba(244,63,94,0.4)] transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-2xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 hover:from-rose-500 hover:to-pink-500 text-white text-xs font-mono font-bold shadow-[0_0_25px_rgba(244,63,94,0.4)] transition-all cursor-pointer active:scale-95"
             >
               <Plus className="w-4 h-4" /> Forge New World
             </Link>

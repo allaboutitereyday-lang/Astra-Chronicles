@@ -284,7 +284,7 @@ function NotificationCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
-      className={`pointer-events-auto relative overflow-hidden rounded-2xl p-3.5 sm:p-4 backdrop-blur-2xl border-2 shadow-2xl transition-all duration-400 ease-out transform max-w-sm sm:max-w-md w-full select-none ${
+      className={`pointer-events-auto relative overflow-hidden rounded-2xl p-3.5 sm:p-4 backdrop-blur-2xl border-2 shadow-2xl transition-all duration-400 ease-out transform max-w-[calc(100vw-24px)] sm:max-w-md w-full select-none ${
         isInteractive ? "cursor-pointer hover:scale-[1.01]" : ""
       } ${
         isVisible
@@ -530,7 +530,7 @@ export function GameNotificationStack({
   return (
     <div
       aria-live="polite"
-      className="fixed top-16 sm:top-20 right-3 sm:right-6 md:right-8 z-50 pointer-events-none flex flex-col items-end gap-3 max-w-sm sm:max-w-md w-full transition-all"
+      className="fixed top-16 sm:top-20 right-3 sm:right-6 md:right-8 z-50 pointer-events-none flex flex-col items-end gap-3 max-w-[calc(100vw-24px)] sm:max-w-md w-full transition-all"
     >
       {visibleItems.map((item) => (
         <NotificationCard

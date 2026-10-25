@@ -127,10 +127,10 @@ export function WorldShareModal({ isOpen, onClose, story }: WorldShareModalProps
         </div>
 
         {/* TAB BUTTONS */}
-        <div className="px-6 pt-4 flex gap-2 border-b border-white/5 bg-zinc-950">
+        <div className="px-4 sm:px-6 pt-3 sm:pt-4 flex gap-2 border-b border-white/5 bg-zinc-950 overflow-x-auto no-scrollbar whitespace-nowrap">
           <button
             onClick={() => setActiveTab("card")}
-            className={`pb-2.5 px-3 text-xs font-mono font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2.5 px-3 text-xs font-mono font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === "card"
                 ? "border-purple-500 text-purple-300"
                 : "border-transparent text-zinc-500 hover:text-zinc-300"
@@ -142,7 +142,7 @@ export function WorldShareModal({ isOpen, onClose, story }: WorldShareModalProps
 
           <button
             onClick={() => setActiveTab("link")}
-            className={`pb-2.5 px-3 text-xs font-mono font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2.5 px-3 text-xs font-mono font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === "link"
                 ? "border-purple-500 text-purple-300"
                 : "border-transparent text-zinc-500 hover:text-zinc-300"
@@ -154,7 +154,7 @@ export function WorldShareModal({ isOpen, onClose, story }: WorldShareModalProps
 
           <button
             onClick={() => setActiveTab("json")}
-            className={`pb-2.5 px-3 text-xs font-mono font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer ${
+            className={`pb-2.5 px-3 text-xs font-mono font-bold border-b-2 transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === "json"
                 ? "border-purple-500 text-purple-300"
                 : "border-transparent text-zinc-500 hover:text-zinc-300"

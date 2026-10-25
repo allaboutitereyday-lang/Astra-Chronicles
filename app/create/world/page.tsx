@@ -386,12 +386,12 @@ export default function CreateWorldPage() {
               value={aiPrompt}
               onChange={(e) => setAiPrompt(e.target.value)}
               placeholder="e.g. A dystopian underwater city ruled by bio-luminescent aristocrats and rogue sirens..."
-              className="flex-1 px-4 py-2.5 rounded-2xl bg-black/60 border border-white/10 focus:border-rose-500 text-xs text-white placeholder:text-zinc-500 font-mono"
+              className="flex-1 px-4 py-2.5 rounded-2xl bg-black/60 border border-white/10 focus:border-rose-500 text-base sm:text-xs text-white placeholder:text-zinc-500 font-mono"
             />
             <button
               onClick={handleAiAutoGenerate}
               disabled={isGenerating || !aiPrompt.trim()}
-              className="px-5 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-mono text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 min-h-[44px] rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 text-white font-mono text-xs font-bold transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
             >
               {isGenerating ? "Manifesting..." : "Generate World"}
             </button>
@@ -440,7 +440,7 @@ export default function CreateWorldPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Chronicles of the Shattered Void"
-                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-xs text-white font-mono"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-base sm:text-xs text-white font-mono"
               />
             </div>
 
@@ -451,7 +451,7 @@ export default function CreateWorldPage() {
                 value={settingName}
                 onChange={(e) => setSettingName(e.target.value)}
                 placeholder="e.g. Astra Continent, Neo-Veridia, Oakhaven"
-                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-xs text-white font-mono"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-base sm:text-xs text-white font-mono"
               />
             </div>
 
@@ -462,7 +462,7 @@ export default function CreateWorldPage() {
                 value={genre}
                 onChange={(e) => setGenre(e.target.value)}
                 placeholder="e.g. High Fantasy / Grimdark / LitRPG"
-                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-xs text-white font-mono"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-base sm:text-xs text-white font-mono"
               />
             </div>
 
@@ -473,7 +473,7 @@ export default function CreateWorldPage() {
                 value={narrationStyle}
                 onChange={(e) => setNarrationStyle(e.target.value)}
                 placeholder="e.g. Grimdark & Atmospheric, Sensory-rich, Poetic"
-                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-xs text-white font-mono"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-base sm:text-xs text-white font-mono"
               />
             </div>
 
@@ -484,7 +484,7 @@ export default function CreateWorldPage() {
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
                 placeholder="A one-sentence hook summarizing the stakes..."
-                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-xs text-white font-mono resize-none"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-base sm:text-xs text-white font-mono resize-none"
               />
             </div>
 
@@ -495,7 +495,7 @@ export default function CreateWorldPage() {
                 value={loreSummary}
                 onChange={(e) => setLoreSummary(e.target.value)}
                 placeholder="Describe the geopolitical conflicts, magic/tech systems, and historical crises..."
-                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-xs text-white font-mono resize-none leading-relaxed"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-rose-500 text-base sm:text-xs text-white font-mono resize-none leading-relaxed"
               />
             </div>
           </div>
@@ -512,7 +512,7 @@ export default function CreateWorldPage() {
                 value={systemName}
                 onChange={(e) => setSystemName(e.target.value)}
                 placeholder="e.g. LitRPG System Administrator, Neural Sync Core"
-                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-sky-500 text-xs text-white font-mono"
+                className="w-full px-4 py-2.5 rounded-xl bg-black/60 border border-white/10 focus:border-sky-500 text-base sm:text-xs text-white font-mono"
               />
             </div>
 

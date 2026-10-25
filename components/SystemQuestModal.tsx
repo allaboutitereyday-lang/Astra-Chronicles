@@ -12,7 +12,8 @@ import {
   Zap, 
   Activity, 
   Info,
-  Sparkles
+  Sparkles,
+  ArrowLeft
 } from "lucide-react";
 import { SystemState, QuestDifficulty, PlausibilityTier } from "@/types/system";
 
@@ -86,24 +87,27 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(
     activeQuests[0]?.id || completedQuests[0]?.id || null
   );
+  const [mobileDetailView, setMobileDetailView] = useState(false);
   const [showPlausibilityInfo, setShowPlausibilityInfo] = useState(false);
 
   if (!isOpen) return null;
 
   const currentQuests = activeTab === "active" ? activeQuests : completedQuests;
   const selectedQuest =
+    currentQuests.find((q) => q.id === selectedQuestId) ||
+    currentQuests[0] ||
     activeQuests.find((q) => q.id === selectedQuestId) ||
     completedQuests.find((q) => q.id === selectedQuestId) ||
-    currentQuests[0];
+    null;
 
   const plausibility = typeof systemState?.plausibility === "number" ? systemState.plausibility : 80;
   const tier = systemState?.plausibilityTier || "Stable";
   const tierInfo = TIER_COLORS[tier] || TIER_COLORS.Stable;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 select-none animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-5 select-none animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-4xl h-[90vh] max-h-[760px] bg-zinc-950/95 border-2 border-rose-500/50 rounded-3xl shadow-[0_0_60px_rgba(244,63,94,0.25)] flex flex-col overflow-hidden relative"
+        className="w-full max-w-4xl h-[92dvh] max-h-[760px] bg-zinc-950/95 border-2 border-rose-500/50 rounded-2xl sm:rounded-3xl shadow-[0_0_60px_rgba(244,63,94,0.25)] flex flex-col overflow-hidden relative"
         style={{
           boxShadow: "0 0 50px rgba(244,63,94,0.2), inset 0 0 30px rgba(244,63,94,0.05)",
         }}
@@ -201,11 +205,14 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
         </div>
 
         {/* TABS HEADER */}
-        <div className="px-4 sm:px-6 pt-3 border-b border-rose-500/20 flex gap-2 sm:gap-4 bg-rose-950/15">
+        <div className="px-4 sm:px-6 pt-3 border-b border-rose-500/20 flex gap-2 sm:gap-4 bg-rose-950/15 overflow-x-auto no-scrollbar whitespace-nowrap shrink-0">
           <button
             type="button"
-            onClick={() => setActiveTab("active")}
-            className={`pb-2.5 px-3 font-mono text-xs font-semibold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            onClick={() => {
+              setActiveTab("active");
+              setMobileDetailView(false);
+            }}
+            className={`pb-2.5 px-3 font-mono text-xs font-semibold flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
               activeTab === "active"
                 ? "border-rose-500 text-rose-300 drop-shadow-[0_0_8px_rgba(244,63,94,0.7)]"
                 : "border-transparent text-zinc-500 hover:text-zinc-300"
@@ -220,8 +227,11 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
 
           <button
             type="button"
-            onClick={() => setActiveTab("completed")}
-            className={`pb-2.5 px-3 font-mono text-xs font-semibold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            onClick={() => {
+              setActiveTab("completed");
+              setMobileDetailView(false);
+            }}
+            className={`pb-2.5 px-3 font-mono text-xs font-semibold flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
               activeTab === "completed"
                 ? "border-rose-500 text-rose-300 drop-shadow-[0_0_8px_rgba(244,63,94,0.7)]"
                 : "border-transparent text-zinc-500 hover:text-zinc-300"
@@ -236,8 +246,11 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
 
           <button
             type="button"
-            onClick={() => setActiveTab("directives")}
-            className={`pb-2.5 px-3 font-mono text-xs font-semibold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+            onClick={() => {
+              setActiveTab("directives");
+              setMobileDetailView(false);
+            }}
+            className={`pb-2.5 px-3 font-mono text-xs font-semibold flex items-center gap-2 border-b-2 transition-all cursor-pointer shrink-0 ${
               activeTab === "directives"
                 ? "border-rose-500 text-rose-300 drop-shadow-[0_0_8px_rgba(244,63,94,0.7)]"
                 : "border-transparent text-zinc-500 hover:text-zinc-300"
@@ -281,7 +294,11 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
           ) : (
             <>
               {/* QUEST LIST DRAWER */}
-              <div className="w-full md:w-5/12 overflow-y-auto space-y-2.5 pr-2 max-h-[240px] md:max-h-full">
+              <div
+                className={`w-full md:w-5/12 overflow-y-auto space-y-2.5 pr-1 sm:pr-2 flex-1 md:flex-initial ${
+                  mobileDetailView ? "hidden md:block" : "block"
+                }`}
+              >
                 {currentQuests.map((quest) => {
                   const diffStyle = DIFFICULTY_STYLES[quest.difficulty] || DIFFICULTY_STYLES.E;
                   const isSelected = selectedQuest?.id === quest.id;
@@ -291,7 +308,10 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
                   return (
                     <div
                       key={quest.id}
-                      onClick={() => setSelectedQuestId(quest.id)}
+                      onClick={() => {
+                        setSelectedQuestId(quest.id);
+                        setMobileDetailView(true);
+                      }}
                       className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 relative ${
                         isSelected
                           ? "bg-rose-950/40 border-rose-500 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)] ring-1 ring-rose-500/40"
@@ -299,14 +319,25 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span
-                          className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-bold ${diffStyle.badge}`}
-                        >
-                          {diffStyle.label}
-                        </span>
-                        <span className="text-[10px] font-mono text-rose-400/80 uppercase">
-                          {quest.type}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`text-[9px] font-mono px-2 py-0.5 rounded-full border font-bold ${diffStyle.badge}`}
+                          >
+                            {diffStyle.label}
+                          </span>
+                          <span className="text-[10px] font-mono text-rose-400/80 uppercase">
+                            {quest.type}
+                          </span>
+                        </div>
+                        {((quest.status === "completed" || (questObjs.length > 0 && completedObjectives === questObjs.length)) && !quest.isClaimed) ? (
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse font-bold">
+                            CLAIM READY
+                          </span>
+                        ) : quest.isClaimed ? (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400/80 border border-emerald-500/20">
+                            CLAIMED
+                          </span>
+                        ) : null}
                       </div>
 
                       <h4 className="font-bold text-sm text-zinc-100 line-clamp-1">{quest.title}</h4>
@@ -324,8 +355,22 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
 
               {/* QUEST DETAIL VIEW */}
               {selectedQuest && (
-                <div className="w-full md:w-7/12 flex-1 bg-zinc-900/90 border border-rose-500/25 rounded-2xl p-4 sm:p-5 flex flex-col justify-between overflow-y-auto">
+                <div
+                  className={`w-full md:w-7/12 flex-1 bg-zinc-900/90 border border-rose-500/25 rounded-2xl p-4 sm:p-5 flex flex-col justify-between overflow-y-auto ${
+                    mobileDetailView ? "flex" : "hidden md:flex"
+                  }`}
+                >
                   <div className="space-y-4">
+                    {/* Mobile Back Button to Quest List */}
+                    <button
+                      type="button"
+                      onClick={() => setMobileDetailView(false)}
+                      className="md:hidden flex items-center gap-1.5 text-xs font-mono text-rose-300 hover:text-white mb-2 py-1.5 px-3 rounded-xl bg-white/5 border border-white/10 self-start cursor-pointer active:scale-95"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>Back to Scenarios List</span>
+                    </button>
+
                     <div className="flex items-start justify-between gap-3 border-b border-rose-500/20 pb-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -435,22 +480,47 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
                     </div>
                   </div>
 
-                  {/* Interactive Claim Clearance Action for Completed Objectives */}
-                  {activeTab === "active" && 
-                   selectedQuest.objectives && 
-                   selectedQuest.objectives.length > 0 && 
-                   selectedQuest.objectives.every((o) => o.completed) && 
-                   onCompleteQuest && (
-                    <div className="pt-3 border-t border-rose-500/20">
-                      <button
-                        onClick={() => onCompleteQuest(selectedQuest.id)}
-                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-mono text-xs font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.45)] flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                      >
-                        <CheckCircle2 className="w-4 h-4 text-white" />
-                        <span>Claim Clearance & Unlock Resonance Cap</span>
-                      </button>
-                    </div>
-                  )}
+                  {/* Interactive Claim Clearance Action */}
+                  {(() => {
+                    const objs = selectedQuest.objectives || [];
+                    const allObjsDone = objs.length > 0 && objs.every((o) => o?.completed);
+                    const isEligible = selectedQuest.status === "completed" || allObjsDone;
+                    const isClaimed = Boolean(selectedQuest.isClaimed);
+
+                    if (isEligible && !isClaimed && onCompleteQuest) {
+                      return (
+                        <div className="pt-3 border-t border-rose-500/20">
+                          <button
+                            type="button"
+                            onClick={() => onCompleteQuest(selectedQuest.id)}
+                            className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-mono text-xs font-bold transition-all shadow-[0_0_25px_rgba(16,185,129,0.5)] flex items-center justify-center gap-2 cursor-pointer active:scale-98 animate-pulse hover:animate-none"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-white" />
+                            <span>Claim Clearance & Unlock Resonance Rewards</span>
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (isClaimed) {
+                      return (
+                        <div className="pt-3 border-t border-white/10 flex items-center justify-center gap-2 text-xs font-mono text-emerald-300 bg-emerald-950/30 py-2.5 rounded-xl border border-emerald-500/30">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>Clearance Claimed • System Rewards Synchronized</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-zinc-400 px-1 py-1">
+                        <span className="flex items-center gap-1.5 text-zinc-400">
+                          <Circle className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                          Objectives In Progress
+                        </span>
+                        <span className="text-zinc-500">Fulfill all objectives to claim clearance</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </>

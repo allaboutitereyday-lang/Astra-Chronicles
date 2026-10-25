@@ -490,13 +490,13 @@ export default function MultiverseCodexPage() {
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-zinc-950/70 backdrop-blur-xl p-4 rounded-3xl border border-white/10 shadow-2xl">
           
           {/* Main Tabs */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar whitespace-nowrap pb-1 lg:pb-0">
             <button
               onClick={() => {
                 soundEffects.playClick();
                 setActiveTab("scenes");
               }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-mono text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-2xl font-mono text-xs font-bold transition-all cursor-pointer shrink-0 active:scale-95 ${
                 activeTab === "scenes"
                   ? "bg-gradient-to-r from-rose-600 to-purple-600 text-white shadow-[0_0_20px_rgba(244,63,94,0.4)]"
                   : "bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white"
@@ -511,7 +511,7 @@ export default function MultiverseCodexPage() {
                 soundEffects.playClick();
                 setActiveTab("loot");
               }}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl font-mono text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-2xl font-mono text-xs font-bold transition-all cursor-pointer shrink-0 active:scale-95 ${
                 activeTab === "loot"
                   ? "bg-gradient-to-r from-amber-600 to-rose-600 text-white shadow-[0_0_20px_rgba(245,158,11,0.4)]"
                   : "bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white"
@@ -532,7 +532,7 @@ export default function MultiverseCodexPage() {
                 placeholder={activeTab === "scenes" ? "Search locations, speakers..." : "Search items, effects..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-black/60 border border-white/10 rounded-2xl pl-9 pr-3 py-2 text-xs font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500/50 transition-colors"
+                className="w-full bg-black/60 border border-white/10 rounded-2xl pl-9 pr-3 py-2 text-base sm:text-xs font-mono text-white placeholder-zinc-500 focus:outline-none focus:border-rose-500/50 transition-colors"
               />
               {searchQuery && (
                 <button
@@ -549,7 +549,7 @@ export default function MultiverseCodexPage() {
               <select
                 value={selectedStory}
                 onChange={(e) => setSelectedStory(e.target.value)}
-                className="bg-black/60 border border-white/10 rounded-2xl px-3 py-2 text-xs font-mono text-zinc-300 focus:outline-none focus:border-rose-500/50 cursor-pointer"
+                className="bg-black/60 border border-white/10 rounded-2xl px-3 py-2 text-base sm:text-xs font-mono text-zinc-300 focus:outline-none focus:border-rose-500/50 cursor-pointer"
               >
                 <option value="all">All Universes</option>
                 {universeList.map((u) => (
@@ -565,7 +565,7 @@ export default function MultiverseCodexPage() {
               <select
                 value={selectedRarity}
                 onChange={(e) => setSelectedRarity(e.target.value)}
-                className="bg-black/60 border border-white/10 rounded-2xl px-3 py-2 text-xs font-mono text-zinc-300 focus:outline-none focus:border-amber-500/50 cursor-pointer"
+                className="bg-black/60 border border-white/10 rounded-2xl px-3 py-2 text-base sm:text-xs font-mono text-zinc-300 focus:outline-none focus:border-amber-500/50 cursor-pointer"
               >
                 <option value="all">All Rarities</option>
                 <option value="cursed">Cursed</option>
@@ -763,8 +763,8 @@ export default function MultiverseCodexPage() {
       {/* SCENE LIGHTBOX MODAL */}
       {/* ------------------------------------------------------------- */}
       {activeScene && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          <div className="relative w-full max-w-4xl bg-zinc-950 border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="relative w-full max-w-4xl bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-6 max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
@@ -924,8 +924,8 @@ export default function MultiverseCodexPage() {
       {/* LOOT / RELIC INSPECTION MODAL */}
       {/* ------------------------------------------------------------- */}
       {activeLoot && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-4 overflow-y-auto">
-          <div className="relative w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="relative w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full border ${getRarityBadge(activeLoot.rarity)}`}>

@@ -50,10 +50,10 @@ export function SystemNotificationToast({
   const isCompleted = notification.type === "quest_completed";
 
   return (
-    <div className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none select-none">
+    <div className="fixed top-14 sm:top-5 inset-x-0 z-50 flex justify-center px-3 sm:px-4 pointer-events-none select-none">
       <div
         onClick={onOpenSystemWindow}
-        className={`pointer-events-auto max-w-md w-full relative overflow-hidden rounded-2xl p-4 cursor-pointer select-none transition-all duration-700 ease-out shadow-2xl backdrop-blur-2xl border-2 transform ${
+        className={`pointer-events-auto max-w-md w-full relative overflow-hidden rounded-2xl p-3.5 sm:p-4 cursor-pointer select-none transition-all duration-700 ease-out shadow-2xl backdrop-blur-2xl border-2 transform ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-4 scale-95"
         } ${
           isAlert

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
@@ -52,7 +52,8 @@ import {
   Skull,
   Cloud,
   Bell,
-  Settings2
+  Settings2,
+  LayoutGrid
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -95,6 +96,7 @@ import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/compone
 import { extractProtagonistVisualDna } from "@/lib/visionEncoder";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
+import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType } from "@/lib/progressionMechanics";
 import { FlowchartViewer } from "@/components/FlowchartViewer";
 import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
@@ -408,6 +410,71 @@ export default function VisualNovelGame() {
     playerRef.current = player;
   }, [player]);
   const isHydratingInventoryRef = useRef<boolean>(false);
+
+  // Live EXP Gain & Visual Feedback State
+  const [expFeedback, setExpFeedback] = useState<{ amount: number; id: number } | null>(null);
+  const expFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerExpFeedback = useCallback((amount: number) => {
+    if (amount <= 0) return;
+    if (expFeedbackTimeoutRef.current) {
+      clearTimeout(expFeedbackTimeoutRef.current);
+    }
+    setExpFeedback({ amount, id: Date.now() });
+    expFeedbackTimeoutRef.current = setTimeout(() => {
+      setExpFeedback(null);
+    }, 3200);
+  }, []);
+
+  const applyExpProgression = useCallback((
+    currentPlayer: PlayerProfile,
+    expGained: number
+  ): { updatedPlayer: PlayerProfile; levelsGained: number; newLevel: number } => {
+    let exp = currentPlayer.stats.exp + expGained;
+    let level = currentPlayer.level;
+    let maxExp = currentPlayer.stats.maxExp || (level * 100);
+    let maxHp = currentPlayer.stats.maxHp;
+    let maxMp = currentPlayer.stats.maxMp;
+    let hp = currentPlayer.stats.hp;
+    let mp = currentPlayer.stats.mp;
+    let str = currentPlayer.stats.str;
+    let dex = currentPlayer.stats.dex;
+    let int = currentPlayer.stats.int;
+
+    let levelsGained = 0;
+    while (exp >= maxExp) {
+      levelsGained += 1;
+      exp -= maxExp;
+      level += 1;
+      maxExp = level * 100;
+      maxHp += 20;
+      maxMp += 10;
+      hp = maxHp;
+      mp = maxMp;
+      str += 2;
+      dex += 2;
+      int += 2;
+    }
+
+    const updatedPlayer: PlayerProfile = {
+      ...currentPlayer,
+      level,
+      stats: {
+        ...currentPlayer.stats,
+        exp,
+        maxExp,
+        hp,
+        maxHp,
+        mp,
+        maxMp,
+        str,
+        dex,
+        int,
+      },
+    };
+
+    return { updatedPlayer, levelsGained, newLevel: level };
+  }, []);
 
   const [isRollingAbilities, setIsRollingAbilities] = useState(false);
   const [inspectedAbility, setInspectedAbility] = useState<AbilityDetail | null>(null);
@@ -1240,6 +1307,7 @@ export default function VisualNovelGame() {
   const [showChronicle, setShowChronicle] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showFlowchartModal, setShowFlowchartModal] = useState(false);
+  const [showMobileCommandSheet, setShowMobileCommandSheet] = useState(false);
   const [visitedStoryNodes, setVisitedStoryNodes] = useState<VisitedStoryNode[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [companionMilestones, setCompanionMilestones] = useState<Record<string, number[]>>({});
@@ -3573,6 +3641,7 @@ export default function VisualNovelGame() {
         }
 
         const expGained = prog.exp_gained || 20;
+        triggerExpFeedback(expGained);
         let newExp = playerRef.current.stats.exp + expGained;
         let newLevel = playerRef.current.level;
         let newMaxExp = playerRef.current.stats.maxExp;
@@ -3582,21 +3651,26 @@ export default function VisualNovelGame() {
         let newDex = playerRef.current.stats.dex;
         let newInt = playerRef.current.stats.int;
 
-        if (newExp >= playerRef.current.stats.maxExp) {
+        let levelsGained = 0;
+        while (newExp >= newMaxExp) {
+          levelsGained += 1;
           newLevel += 1;
-          newExp = newExp - playerRef.current.stats.maxExp;
+          newExp = newExp - newMaxExp;
           newMaxExp = newLevel * 100;
           newMaxHp += 20;
           newMaxMp += 10;
           newStr += 2;
           newDex += 2;
           newInt += 2;
+        }
+
+        if (levelsGained > 0) {
           soundEffects.playQuestComplete();
           setAcquisitionAlert({
             id: `level_${Date.now()}`,
             type: "level",
             title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
-            subtitle: "+20 HP • +10 MP • +2 STR / DEX / INT",
+            subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} STR / DEX / INT`,
           });
         }
 
@@ -3792,16 +3866,29 @@ export default function VisualNovelGame() {
                   }
 
                   // Grant quest rewards if any
+                  targetQuest.isClaimed = true;
+                  targetQuest.claimedAt = Date.now();
                   if (targetQuest.rewards) {
                     const rExp = targetQuest.rewards.exp || 0;
                     if (rExp > 0) {
-                      setPlayer((prevP) => ({
-                        ...prevP,
-                        stats: {
-                          ...prevP.stats,
-                          exp: prevP.stats.exp + rExp,
-                        },
-                      }));
+                      triggerExpFeedback(rExp);
+                      setPlayer((prevP) => {
+                        const { updatedPlayer, levelsGained, newLevel } = applyExpProgression(prevP, rExp);
+                        playerRef.current = updatedPlayer;
+                        if (levelsGained > 0) {
+                          soundEffects.playQuestComplete();
+                          setAcquisitionAlert({
+                            id: `level_quest_turn_${Date.now()}`,
+                            type: "level",
+                            title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
+                            subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} STR / DEX / INT`,
+                          });
+                        }
+                        return updatedPlayer;
+                      });
+                    }
+                    if (targetQuest.rewards.statPoints) {
+                      setStatPoints((prev) => prev + targetQuest.rewards.statPoints!);
                     }
                   }
 
@@ -4474,68 +4561,159 @@ export default function VisualNovelGame() {
   };
 
   const handleCompleteQuest = (questId: string) => {
-    setSystemState((prevSys) => {
-      const activeIdx = prevSys.activeQuests.findIndex((q) => q.id === questId);
-      if (activeIdx === -1) return prevSys;
+    let resolvedQuest: SystemQuest | null = null;
+    let expRewardToApply = 0;
+    let statRewardToApply = 0;
+    let goldRewardToApply = 0;
+    let itemsRewardToApply: string[] = [];
 
-      const targetQuest = { ...prevSys.activeQuests[activeIdx], status: "completed" as const };
-      targetQuest.objectives = targetQuest.objectives.map((o) => ({ ...o, completed: true }));
+    setSystemState((prevSys) => {
+      let activeIdx = prevSys.activeQuests.findIndex((q) => q.id === questId);
+      let completedIdx = prevSys.completedQuests.findIndex((q) => q.id === questId);
+
+      if (activeIdx === -1 && completedIdx === -1) {
+        activeIdx = prevSys.activeQuests.findIndex((q) => q.title.toLowerCase().includes(questId.toLowerCase()));
+        if (activeIdx === -1) {
+          completedIdx = prevSys.completedQuests.findIndex((q) => q.title.toLowerCase().includes(questId.toLowerCase()));
+        }
+      }
+
+      if (activeIdx === -1 && completedIdx === -1) {
+        console.warn(`[SystemQuest] Quest not found for completion: ${questId}`);
+        return prevSys;
+      }
+
+      const isFromActive = activeIdx !== -1;
+      const rawTarget = isFromActive ? prevSys.activeQuests[activeIdx] : prevSys.completedQuests[completedIdx];
+
+      if (rawTarget.isClaimed) {
+        return prevSys;
+      }
+
+      resolvedQuest = {
+        ...rawTarget,
+        status: "completed" as const,
+        isClaimed: true,
+        claimedAt: Date.now(),
+        objectives: (rawTarget.objectives || []).map((o) => ({ ...o, completed: true })),
+      };
+
+      expRewardToApply = Number(resolvedQuest.rewards?.exp || 0);
+      statRewardToApply = Number(resolvedQuest.rewards?.statPoints || 0);
+      goldRewardToApply = Number(resolvedQuest.rewards?.gold || 0);
+      itemsRewardToApply = Array.isArray(resolvedQuest.rewards?.items) ? resolvedQuest.rewards.items : [];
 
       const nextActive = [...prevSys.activeQuests];
-      nextActive.splice(activeIdx, 1);
-      const nextCompleted = [targetQuest, ...prevSys.completedQuests];
+      const nextCompleted = [...prevSys.completedQuests];
 
-      // Grant rewards if any
-      if (targetQuest.rewards?.exp) {
-        setPlayer((prevP) => ({
-          ...prevP,
-          stats: { ...prevP.stats, exp: prevP.stats.exp + targetQuest.rewards!.exp },
-        }));
-      }
-
-      // Check if targetQuest is a companion milestone quest
-      const milestoneMatch = targetQuest.id.match(/^milestone_([a-z0-9_]+)_(\d+)$/i);
-      let compKey = milestoneMatch && milestoneMatch[1] ? milestoneMatch[1] : null;
-      let thresholdNum = milestoneMatch && milestoneMatch[2] ? parseInt(milestoneMatch[2], 10) : null;
-
-      if (!compKey && targetQuest.title.includes("[COMPANION QUEST]")) {
-        const thresholdFound = [25, 50, 75, 100].find((t) => targetQuest.title.includes(`${t}%`));
-        thresholdNum = thresholdFound || 25;
-        const compFound = party.find((c) => targetQuest.title.toLowerCase().includes(c.name.toLowerCase()));
-        compKey = compFound ? compFound.name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "companion";
-      }
-
-      if (compKey && thresholdNum) {
-        const matchedComp = party.find(
-          (c) =>
-            c.name.toLowerCase().replace(/[^a-z0-9]/g, "_") === compKey ||
-            c.name.toLowerCase().includes(compKey)
-        );
-        const canonicalName = matchedComp?.name || compKey;
-        const nextCap = thresholdNum === 25 ? 50 : thresholdNum === 50 ? 75 : 100;
-
-        setCompanionCompletedMilestones((prev) => ({
-          ...prev,
-          [canonicalName.toLowerCase()]: [...(prev[canonicalName.toLowerCase()] || []), thresholdNum!],
-        }));
-
-        soundEffects.playQuestComplete();
-        pushNotification({
-          id: `manual_breakthrough_${Date.now()}`,
-          type: "quest_completed",
-          title: "HEART RESONANCE BREAKTHROUGH",
-          subtitle: `${canonicalName}'s emotional barrier shattered! Affection cap raised to ${nextCap}%.`,
-          difficulty: targetQuest.difficulty,
-        });
+      if (isFromActive) {
+        nextActive.splice(activeIdx, 1);
+        nextCompleted.unshift(resolvedQuest);
+      } else {
+        nextCompleted[completedIdx] = resolvedQuest;
       }
 
       return {
         ...prevSys,
         activeQuests: nextActive,
         completedQuests: nextCompleted,
-        systemDirectives: [`[SYSTEM: Scenario Cleared - '${targetQuest.title}']`, ...prevSys.systemDirectives],
+        systemDirectives: [`[SYSTEM: Clearance Verified - '${resolvedQuest.title}']`, ...prevSys.systemDirectives],
       };
     });
+
+    if (!resolvedQuest) return;
+
+    const targetQuest: SystemQuest = resolvedQuest;
+
+    // 1. Grant EXP rewards with live bar feedback & level-up checks
+    if (expRewardToApply > 0) {
+      triggerExpFeedback(expRewardToApply);
+      setPlayer((prevP) => {
+        const { updatedPlayer, levelsGained, newLevel } = applyExpProgression(prevP, expRewardToApply);
+        playerRef.current = updatedPlayer;
+
+        if (levelsGained > 0) {
+          soundEffects.playQuestComplete();
+          setAcquisitionAlert({
+            id: `level_quest_${Date.now()}`,
+            type: "level",
+            title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
+            subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} STR / DEX / INT • Core Restored`,
+          });
+        }
+        performAutoSave({ player: updatedPlayer });
+        return updatedPlayer;
+      });
+    }
+
+    // 2. Grant Stat Points
+    if (statRewardToApply > 0) {
+      setStatPoints((prev) => prev + statRewardToApply);
+    }
+
+    // 3. Grant Item Rewards if any
+    if (itemsRewardToApply.length > 0) {
+      setPlayer((prevP) => {
+        const newItems: InventoryItem[] = itemsRewardToApply.map((itemText, i) => ({
+          id: `reward_item_${Date.now()}_${i}`,
+          name: itemText,
+          type: "material" as const,
+          rarity: "rare" as const,
+          description: `Reward acquired from clearing system scenario: ${targetQuest.title}.`,
+          effect: "Resonance Catalyst",
+        }));
+        const nextInventory = [...prevP.inventory, ...newItems];
+        const updated = { ...prevP, inventory: nextInventory };
+        playerRef.current = updated;
+        performAutoSave({ player: updated });
+        return updated;
+      });
+    }
+
+    // 4. Milestone & Notification Logic
+    const milestoneMatch = targetQuest.id.match(/^milestone_([a-z0-9_]+)_(\d+)$/i);
+    let compKey = milestoneMatch && milestoneMatch[1] ? milestoneMatch[1] : null;
+    let thresholdNum = milestoneMatch && milestoneMatch[2] ? parseInt(milestoneMatch[2], 10) : null;
+
+    if (!compKey && targetQuest.title.includes("[COMPANION QUEST]")) {
+      const thresholdFound = [25, 50, 75, 100].find((t) => targetQuest.title.includes(`${t}%`));
+      thresholdNum = thresholdFound || 25;
+      const compFound = party.find((c) => targetQuest.title.toLowerCase().includes(c.name.toLowerCase()));
+      compKey = compFound ? compFound.name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "companion";
+    }
+
+    if (compKey && thresholdNum) {
+      const matchedComp = party.find(
+        (c) =>
+          c.name.toLowerCase().replace(/[^a-z0-9]/g, "_") === compKey ||
+          c.name.toLowerCase().includes(compKey)
+      );
+      const canonicalName = matchedComp?.name || compKey;
+      const nextCap = thresholdNum === 25 ? 50 : thresholdNum === 50 ? 75 : 100;
+
+      setCompanionCompletedMilestones((prev) => ({
+        ...prev,
+        [canonicalName.toLowerCase()]: [...(prev[canonicalName.toLowerCase()] || []), thresholdNum!],
+      }));
+
+      soundEffects.playQuestComplete();
+      pushNotification({
+        id: `manual_breakthrough_${Date.now()}`,
+        type: "quest_completed",
+        title: "HEART RESONANCE BREAKTHROUGH",
+        subtitle: `${canonicalName}'s emotional barrier shattered! Affection cap raised to ${nextCap}%.`,
+        difficulty: targetQuest.difficulty,
+      });
+    } else {
+      soundEffects.playQuestComplete();
+      pushNotification({
+        id: `quest_claimed_${Date.now()}`,
+        type: "quest_completed",
+        title: "SCENARIO CLEARANCE CLAIMED",
+        subtitle: `${targetQuest.title} clearance archived. +${expRewardToApply} EXP${statRewardToApply > 0 ? ` • +${statRewardToApply} Stat Points` : ""}${goldRewardToApply > 0 ? ` • +${goldRewardToApply} Gold` : ""}.`,
+        difficulty: targetQuest.difficulty,
+      });
+    }
   };
 
   const presentComps = party.filter((c) => c.isPresent);
@@ -4546,8 +4724,8 @@ export default function VisualNovelGame() {
 
   const renderSaveModal = () => (
     showSaveModal && (
-      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
               <FolderOpen className="w-4 h-4 text-sky-400" /> Character Save Slots
@@ -4586,12 +4764,12 @@ export default function VisualNovelGame() {
             </button>
           </div>
 
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="space-y-3 overflow-y-auto pr-1 flex-1">
             {/* AUTO-SAVE (SLOT 0) */}
             {(() => {
               const autoSave = savedSlots[0];
               return (
-                <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-2xl flex items-center justify-between gap-4 relative overflow-hidden shadow-lg">
+                <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative overflow-hidden shadow-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
@@ -4626,13 +4804,13 @@ export default function VisualNovelGame() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-2">
                     {autoSave && (
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => handleLoadSlot(0)}
-                          className="px-3.5 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/50 rounded-xl text-xs font-semibold text-emerald-200 cursor-pointer transition-all shadow-md"
+                          className="px-3.5 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/50 rounded-xl text-xs font-semibold text-emerald-200 cursor-pointer transition-all shadow-md active:scale-95"
                         >
                           Resume
                         </button>
@@ -4685,7 +4863,7 @@ export default function VisualNovelGame() {
             {[1, 2, 3].map((slot) => {
               const s = savedSlots[slot];
               return (
-                <div key={slot} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-2xl flex items-center justify-between gap-4">
+                <div key={slot} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div className="flex-1">
                     <span className="text-xs font-mono font-bold text-rose-400">SLOT 0{slot}</span>
                     {s ? (
@@ -4700,11 +4878,11 @@ export default function VisualNovelGame() {
                       <p className="text-xs text-zinc-500 mt-1 italic">Empty Save Slot</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-2">
                     {isConfigured && (
                       <button
                         onClick={() => handleSaveSlot(slot)}
-                        className="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 rounded-xl text-xs font-semibold text-amber-200 cursor-pointer transition-all"
+                        className="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 rounded-xl text-xs font-semibold text-amber-200 cursor-pointer transition-all active:scale-95"
                       >
                         Save
                       </button>
@@ -4713,7 +4891,7 @@ export default function VisualNovelGame() {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleLoadSlot(slot)}
-                          className="px-3 py-1.5 bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 rounded-xl text-xs font-semibold text-sky-200 cursor-pointer transition-all"
+                          className="px-3 py-1.5 bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 rounded-xl text-xs font-semibold text-sky-200 cursor-pointer transition-all active:scale-95"
                         >
                           Load
                         </button>
@@ -4764,8 +4942,8 @@ export default function VisualNovelGame() {
 
   const renderAuthModal = () => (
     showAuthModal && (
-      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-4">
+      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+        <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-y-auto">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
               <Key className="w-4 h-4 text-purple-400" /> Guild Gate & Access Control
@@ -4866,7 +5044,7 @@ export default function VisualNovelGame() {
                         verifyKey(keyInput);
                       }
                     }}
-                    className="w-full bg-zinc-900 border border-white/15 rounded-xl pl-4 pr-11 py-2.5 text-sm font-mono text-white focus:outline-none focus:border-purple-500/80"
+                    className="w-full bg-zinc-900 border border-white/15 rounded-xl pl-4 pr-11 py-2.5 text-base sm:text-sm font-mono text-white focus:outline-none focus:border-purple-500/80"
                   />
                   <button
                     type="button"
@@ -4980,7 +5158,7 @@ export default function VisualNovelGame() {
           }}
         />
 
-        <div className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-rose-400" />
@@ -5112,7 +5290,7 @@ export default function VisualNovelGame() {
           }}
         />
 
-        <div className="w-full max-w-sm bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-full max-w-sm bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <span className="text-xs font-mono uppercase text-amber-400 tracking-wider flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5" /> Artifact Inspection
@@ -5295,7 +5473,7 @@ export default function VisualNovelGame() {
       >
         <div 
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 animate-in zoom-in-95 duration-150"
+          className="relative w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-y-auto animate-in zoom-in-95 duration-150"
         >
           <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/70 to-transparent" />
           
@@ -5964,7 +6142,7 @@ export default function VisualNovelGame() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleNavigateToCatalogue}
-            className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-2 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3 py-2 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer shrink-0"
             title="Return to Story Catalogue"
           >
             <ArrowLeft className="w-4 h-4 text-zinc-400" />
@@ -5974,7 +6152,7 @@ export default function VisualNovelGame() {
           {/* Character Identity & Status Card with Live Vitals Bars & Hit Feedback */}
           <button
             onClick={() => setShowPlayerSheet(true)}
-            className={`relative flex items-center gap-2.5 bg-black/85 hover:bg-black/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group ${
+            className={`relative flex items-center gap-1.5 sm:gap-2.5 bg-black/85 hover:bg-black/95 backdrop-blur-md px-2 sm:px-3 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group shrink-0 ${
               vitalsFeedback && vitalsFeedback.hpDelta < 0
                 ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
                 : vitalsFeedback && vitalsFeedback.hpDelta > 0
@@ -6016,7 +6194,7 @@ export default function VisualNovelGame() {
               </p>
               <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.role}</p>
             </div>
-            <div className="flex flex-col gap-1 pl-1 min-w-[86px] sm:min-w-[104px]">
+            <div className="flex flex-col gap-1 pl-1 min-w-[76px] sm:min-w-[104px]">
               <div className="space-y-0.5">
                 <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
                   <span className="flex items-center gap-1 text-rose-400 font-bold">
@@ -6059,6 +6237,36 @@ export default function VisualNovelGame() {
                   />
                 </div>
               </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                  <span className="flex items-center gap-1 text-amber-400 font-bold">
+                    <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                    {player.stats.exp}/{player.stats.maxExp}
+                  </span>
+                  {expFeedback && (
+                    <span className="text-[9px] font-mono font-bold text-amber-300 animate-bounce drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]">
+                      +{expFeedback.amount} EXP
+                    </span>
+                  )}
+                </div>
+                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
+                  <div
+                    className={`h-full transition-all duration-1000 ease-out relative ${
+                      expFeedback
+                        ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.8)]"
+                        : "bg-gradient-to-r from-amber-600 to-yellow-500"
+                    }`}
+                    style={{
+                      width: `${Math.max(
+                        0,
+                        Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100)
+                      )}%`,
+                    }}
+                  >
+                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#f59e0b] rounded-full" />
+                  </div>
+                </div>
+              </div>
             </div>
           </button>
 
@@ -6083,19 +6291,27 @@ export default function VisualNovelGame() {
                 {systemState.activeQuests.length}
               </span>
             )}
+            {/* Unclaimed Clearance Notification Beacon */}
+            {(systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
+              systemState.completedQuests.some((q) => !q.isClaimed)) && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3" title="Clearance Ready to Claim">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-black shadow-[0_0_10px_#10b981]" />
+              </span>
+            )}
           </button>
         </div>
 
         {/* CENTER CLUSTER: Spatial Location / Realm Anchor */}
-        <div className="flex-1 flex justify-center max-w-sm md:max-w-md lg:max-w-lg min-w-0">
+        <div className="flex-1 flex justify-center max-w-[120px] sm:max-w-sm md:max-w-md lg:max-w-lg min-w-0">
           <button
             onClick={() => setShowMap(true)}
-            className="flex items-center gap-2 bg-black/80 hover:bg-black/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/10 hover:border-emerald-500/50 shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group min-w-0 max-w-full"
+            className="flex items-center gap-1.5 sm:gap-2 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3.5 py-2 rounded-2xl border border-white/10 hover:border-emerald-500/50 shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group min-w-0 max-w-full"
             title="View Area Map & Sectors"
           >
             <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-            <span className="font-mono text-[11px] md:text-xs text-emerald-300 truncate">{gameState.location}</span>
-            <Compass className="w-3 h-3 text-zinc-500 shrink-0 group-hover:text-white transition-colors" />
+            <span className="font-mono text-[10px] sm:text-[11px] md:text-xs text-emerald-300 truncate max-w-[65px] sm:max-w-none">{gameState.location}</span>
+            <Compass className="w-3 h-3 text-zinc-500 shrink-0 group-hover:text-white transition-colors hidden sm:inline" />
           </button>
         </div>
 
@@ -6103,6 +6319,7 @@ export default function VisualNovelGame() {
         <div className="flex items-center gap-2 shrink-0">
           <LlmQuickPill
             config={llmConfig}
+            className="hidden sm:flex"
             onClick={() => {
               soundEffects.playClick();
               setShowLlmModal(true);
@@ -6116,7 +6333,30 @@ export default function VisualNovelGame() {
             </div>
           )}
 
-          <div className="flex items-center bg-black/80 backdrop-blur-md border border-white/10 p-1 rounded-2xl shadow-lg shrink-0 gap-0.5">
+          {/* Mobile Command Menu Button (< lg) */}
+          <button
+            type="button"
+            onClick={() => {
+              soundEffects.playClick();
+              setShowMobileCommandSheet(true);
+            }}
+            className="lg:hidden p-2.5 rounded-2xl bg-black/85 hover:bg-black/95 border border-rose-500/40 text-rose-300 hover:text-white backdrop-blur-md shadow-lg flex items-center justify-center relative cursor-pointer active:scale-95"
+            title="Open Mobile Command Dock"
+          >
+            <LayoutGrid className="w-4 h-4 text-rose-400" />
+            {/* Notification / Unclaimed Beacon */}
+            {(unreadNotificationCount > 0 ||
+              systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
+              systemState.completedQuests.some((q) => !q.isClaimed)) && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+              </span>
+            )}
+          </button>
+
+          {/* Desktop Glass Command Dock (>= lg) */}
+          <div className="hidden lg:flex items-center bg-black/80 backdrop-blur-md border border-white/10 p-1 rounded-2xl shadow-lg shrink-0 gap-0.5">
             {/* Interactive Flowchart Button (Task 2) */}
             <button
               onClick={() => {
@@ -6613,7 +6853,7 @@ export default function VisualNovelGame() {
                           <textarea
                             value={editingText}
                             onChange={(e) => setEditingText(e.target.value)}
-                            className="w-full bg-black/60 border border-white/20 rounded-xl p-2.5 text-xs text-zinc-100 focus:outline-none focus:border-rose-400 font-sans resize-y min-h-[90px]"
+                            className="w-full bg-black/60 border border-white/20 rounded-xl p-2.5 text-base sm:text-xs text-zinc-100 focus:outline-none focus:border-rose-400 font-sans resize-y min-h-[90px]"
                           />
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-[10px] text-zinc-500 font-mono">
@@ -6819,7 +7059,7 @@ export default function VisualNovelGame() {
                 }
                 setShowGiftingModal(true);
               }}
-              className="px-3.5 py-2.5 rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-rose-400"
+              className="px-3 py-2.5 min-h-[44px] rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-rose-400 active:scale-95"
               title="Camp Gifting: Present an item to a companion"
             >
               <Gift className="w-4 h-4 text-rose-400" />
@@ -6830,7 +7070,7 @@ export default function VisualNovelGame() {
           <button
             type="button"
             onClick={() => setIsOOCMode(!isOOCMode)}
-            className={`px-3.5 py-2.5 rounded-xl border font-mono text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`px-3 py-2.5 min-h-[44px] rounded-xl border font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
               isOOCMode 
                 ? "bg-amber-500/20 border-amber-500 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]" 
                 : "bg-zinc-900/90 border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
@@ -6846,7 +7086,7 @@ export default function VisualNovelGame() {
             onChange={(e) => setInputAction(e.target.value)}
             placeholder={isOOCMode ? "OOC Directive..." : `What will ${player.name} do or say? (Markdown supported)`}
             disabled={isLoading}
-            className={`flex-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-4 py-2.5 text-sm text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-all select-text ${
+            className={`flex-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-4 py-2.5 min-h-[44px] text-base sm:text-sm text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-all select-text ${
               isOOCMode
                 ? "border-amber-500/40 focus:border-amber-400 ring-1 ring-amber-500/20"
                 : "border-white/15 focus:border-rose-500/60 ring-1 ring-rose-500/20"
@@ -6856,7 +7096,7 @@ export default function VisualNovelGame() {
           <button
             type="submit"
             disabled={isLoading || !inputAction.trim()}
-            className="px-5 py-2.5 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg flex items-center justify-center transition-all cursor-pointer"
+            className="px-4 sm:px-5 py-2.5 min-h-[44px] min-w-[48px] bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg flex items-center justify-center transition-all cursor-pointer active:scale-95"
           >
             {isLoading ? (
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -6893,16 +7133,53 @@ export default function VisualNovelGame() {
         onInspectItem={(item) => handleInspectItem(item)}
       />
 
+      {/* Mobile Command Dock Sheet */}
+      <MobileCommandSheet
+        isOpen={showMobileCommandSheet}
+        onClose={() => setShowMobileCommandSheet(false)}
+        onGenerateSceneCG={() => handleGenerateSceneCG(false)}
+        isGeneratingScene={isGeneratingScene}
+        onOpenFlowchart={() => setShowFlowchartModal(true)}
+        onOpenScarsModal={() => setShowScarsModal(true)}
+        timelineScarsCount={timelineScars.length}
+        onOpenPlayerSheet={() => setShowPlayerSheet(true)}
+        onOpenPartyDrawer={() => setShowPartyDrawer(true)}
+        partyCount={party.filter((p) => p.isPresent).length}
+        onOpenSystemModal={() => setShowSystemModal(true)}
+        hasUnclaimedClearance={
+          systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
+          systemState.completedQuests.some((q) => !q.isClaimed)
+        }
+        onOpenCodex={handleNavigateToCodex}
+        onNavigateToTrials={handleNavigateToTrials}
+        onOpenShareModal={() => setShowShareModal(true)}
+        onOpenSaveModal={() => setShowSaveModal(true)}
+        isAutoSaved={showAutoSaveIndicator}
+        onOpenChronicle={() => setShowChronicle(true)}
+        memoriesCount={memories.length}
+        onOpenLlmModal={() => setShowLlmModal(true)}
+        llmConfigName={llmConfig.modelId.split("/").pop() || llmConfig.modelId}
+        onOpenNotifications={() => {
+          setShowNotificationHistory(true);
+          setUnreadNotificationCount(0);
+        }}
+        unreadNotificationsCount={unreadNotificationCount}
+        isAudioMuted={isAudioMuted}
+        onToggleAudio={handleToggleAudio}
+      />
+
       {/* PARTY ROSTER DRAWER */}
       {showPartyDrawer && (
         <div 
           onClick={() => setShowPartyDrawer(false)}
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end max-sm:justify-end max-sm:flex-col select-none animate-in fade-in duration-200"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4 animate-in slide-in-from-right duration-300 ease-out shadow-2xl"
+            className="w-full sm:max-w-md bg-zinc-950/95 sm:border-l border-white/10 sm:h-full max-sm:h-[88dvh] max-sm:rounded-t-3xl max-sm:border-t border-rose-500/30 flex flex-col p-6 overflow-y-auto space-y-4 animate-in sm:slide-in-from-right max-sm:slide-in-from-bottom duration-300 ease-out shadow-2xl"
           >
+            {/* Mobile Drag Handle */}
+            <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 self-center -mt-2 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-rose-400" />
@@ -7021,12 +7298,14 @@ export default function VisualNovelGame() {
       {showMap && (
         <div 
           onClick={() => setShowMap(false)}
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 select-none animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center max-sm:items-end justify-center sm:p-4 select-none animate-in fade-in duration-200"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl p-6 shadow-2xl flex flex-col gap-5 animate-in zoom-in-95 duration-300 ease-out"
+            className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:border-emerald-500/30 p-5 sm:p-6 shadow-2xl flex flex-col gap-4 sm:gap-5 max-h-[88dvh] overflow-y-auto animate-in sm:zoom-in-95 max-sm:slide-in-from-bottom duration-300 ease-out"
           >
+            {/* Mobile Drag Handle */}
+            <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 self-center -mt-2 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <MapIcon className="w-5 h-5 text-emerald-400" />
@@ -7086,12 +7365,14 @@ export default function VisualNovelGame() {
       {showPlayerSheet && (
         <div 
           onClick={() => setShowPlayerSheet(false)}
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-start select-none animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-start max-sm:justify-end max-sm:flex-col select-none animate-in fade-in duration-200"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-zinc-950/95 border-r border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-6 animate-in slide-in-from-left duration-300 ease-out shadow-2xl"
+            className="w-full sm:max-w-md bg-zinc-950/95 sm:border-r border-white/10 sm:h-full max-sm:h-[88dvh] max-sm:rounded-t-3xl max-sm:border-t border-rose-500/30 flex flex-col p-6 overflow-y-auto space-y-6 animate-in sm:slide-in-from-left max-sm:slide-in-from-bottom duration-300 ease-out shadow-2xl"
           >
+            {/* Mobile Drag Handle */}
+            <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 self-center -mt-2 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-3">
                 <button
@@ -7159,13 +7440,40 @@ export default function VisualNovelGame() {
                 </div>
               </div>
 
-              <div>
-                <div className="flex justify-between text-xs font-mono mb-1 text-amber-300">
-                  <span>EXPERIENCE (EXP)</span>
-                  <span>{player.stats.exp} / {player.stats.maxExp}</span>
+              <div className="space-y-1.5 p-3 rounded-xl bg-amber-950/20 border border-amber-500/20 relative overflow-hidden">
+                <div className="flex justify-between items-center text-xs font-mono text-amber-300">
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    EXPERIENCE (EXP)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {expFeedback && (
+                      <span className="text-[11px] font-mono font-bold text-amber-300 animate-bounce bg-amber-500/30 px-2 py-0.5 rounded-full border border-amber-400/50 shadow-[0_0_10px_rgba(245,158,11,0.6)]">
+                        +{expFeedback.amount} EXP
+                      </span>
+                    )}
+                    <span className="font-mono text-amber-200">
+                      {player.stats.exp} / {player.stats.maxExp} ({Math.round((player.stats.exp / Math.max(1, player.stats.maxExp)) * 100)}%)
+                    </span>
+                  </div>
                 </div>
-                <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full transition-all" style={{ width: `${(player.stats.exp / player.stats.maxExp) * 100}%` }} />
+                <div className="h-2.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative shadow-inner">
+                  <div
+                    className={`h-full transition-all duration-1000 ease-out relative ${
+                      expFeedback
+                        ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.9)] animate-pulse"
+                        : "bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-400"
+                    }`}
+                    style={{
+                      width: `${Math.max(
+                        0,
+                        Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100)
+                      )}%`,
+                    }}
+                  >
+                    {/* Glowing Leading Edge Spark Indicator */}
+                    <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-white shadow-[0_0_8px_#fbbf24] rounded-full" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -7444,12 +7752,14 @@ export default function VisualNovelGame() {
       {showChronicle && (
         <div 
           onClick={() => setShowChronicle(false)}
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end select-none animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end max-sm:justify-end max-sm:flex-col select-none animate-in fade-in duration-200"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md bg-zinc-950/95 border-l border-white/10 h-full flex flex-col p-6 overflow-y-auto space-y-4 animate-in slide-in-from-right duration-300 ease-out shadow-2xl"
+            className="w-full sm:max-w-md bg-zinc-950/95 sm:border-l border-white/10 sm:h-full max-sm:h-[88dvh] max-sm:rounded-t-3xl max-sm:border-t border-sky-500/30 flex flex-col p-6 overflow-y-auto space-y-4 animate-in sm:slide-in-from-right max-sm:slide-in-from-bottom duration-300 ease-out shadow-2xl"
           >
+            {/* Mobile Drag Handle */}
+            <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 self-center -mt-2 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
                 <Scroll className="w-5 h-5 text-sky-400" />
@@ -7478,8 +7788,8 @@ export default function VisualNovelGame() {
 
       {/* NO-SAFEGUARD: FATAL DEATH & SANCTIONED REGRESSION MODAL */}
       {showDeathModal && deathRegressionRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-500">
-          <div className="relative w-full max-w-xl bg-zinc-950 border-2 border-red-600/70 rounded-3xl shadow-[0_0_50px_rgba(220,38,38,0.35)] p-6 md:p-8 text-center space-y-6 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-500">
+          <div className="relative w-full max-w-xl bg-zinc-950 border-2 border-red-600/70 rounded-3xl shadow-[0_0_50px_rgba(220,38,38,0.35)] p-4 sm:p-6 md:p-8 text-center space-y-4 sm:space-y-6 max-h-[90dvh] overflow-y-auto">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse" />
 
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-950/80 border border-red-500/50 text-red-300 font-mono text-xs uppercase tracking-widest">
@@ -7557,8 +7867,8 @@ export default function VisualNovelGame() {
 
       {/* PILLAR 5: CAMP GIFTING MODAL */}
       {showGiftingModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-300">
-          <div className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/40 rounded-3xl shadow-2xl p-6 space-y-5 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/40 rounded-3xl shadow-2xl p-4 sm:p-6 space-y-4 sm:space-y-5 max-h-[90dvh] overflow-y-auto">
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-transparent via-rose-500 to-transparent" />
 
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -7688,8 +7998,8 @@ export default function VisualNovelGame() {
 
       {/* Pitch A: The Causal Covenant Confirmation Modal */}
       {showCovenantModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-zinc-950 border border-purple-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(168,85,247,0.3)] text-zinc-200 select-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-zinc-950 border border-purple-500/50 rounded-2xl p-4 sm:p-6 shadow-[0_0_50px_rgba(168,85,247,0.3)] text-zinc-200 select-none max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-purple-500/20 mb-4">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-purple-400 animate-pulse" />
@@ -7740,7 +8050,7 @@ export default function VisualNovelGame() {
                   placeholder="Or enter custom severance intent..."
                   value={covenantIntentText}
                   onChange={(e) => setCovenantIntentText(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
                 />
               </div>
             </div>
@@ -7768,8 +8078,8 @@ export default function VisualNovelGame() {
 
       {/* Pitch B: Camp Ultimatum Ideological Conflict Modal */}
       {showCampUltimatumModal && activeUltimatumRivalry && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(244,63,94,0.3)] text-zinc-200 select-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/50 rounded-2xl p-4 sm:p-6 shadow-[0_0_50px_rgba(244,63,94,0.3)] text-zinc-200 select-none max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-rose-500/20 mb-4">
               <div className="flex items-center gap-2">
                 <Swords className="w-5 h-5 text-rose-400 animate-pulse" />
@@ -7830,8 +8140,8 @@ export default function VisualNovelGame() {
 
       {/* Timeline Scars Inspector Modal */}
       {showScarsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-zinc-950 border border-purple-500/50 rounded-2xl p-6 shadow-[0_0_50px_rgba(168,85,247,0.2)] text-zinc-200 select-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="relative w-full max-w-lg bg-zinc-950 border border-purple-500/50 rounded-2xl p-4 sm:p-6 shadow-[0_0_50px_rgba(168,85,247,0.2)] text-zinc-200 select-none max-h-[90dvh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-purple-500/20 mb-4">
               <div className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-purple-400" />
