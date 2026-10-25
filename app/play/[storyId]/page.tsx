@@ -218,6 +218,7 @@ interface PlayerProfile {
   abilities: string[];
   abilityDetails?: Record<string, AbilityDetail>;
   inventory: InventoryItem[];
+  gold?: number;
   deathCount?: number;
   activeStance?: CombatStanceType;
   narrationStyle?: string;
@@ -4030,88 +4031,25 @@ export default function VisualNovelGame() {
                 if (isNowCompleted) {
                   targetQuest.status = "completed";
                   targetQuest.objectives = targetQuest.objectives.map((o) => ({ ...o, completed: true }));
+                  targetQuest.isClaimed = false;
 
                   // Move to completed
                   updatedActive.splice(qIndex, 1);
                   updatedCompleted.unshift(targetQuest);
 
-                  // Check if targetQuest is a companion milestone quest
-                  const milestoneMatch = targetQuest.id.match(/^milestone_([a-z0-9_]+)_(\d+)$/i);
-                  let compKey = milestoneMatch && milestoneMatch[1] ? milestoneMatch[1] : null;
-                  let thresholdNum = milestoneMatch && milestoneMatch[2] ? parseInt(milestoneMatch[2], 10) : null;
-
-                  if (!compKey && targetQuest.title.includes("[COMPANION QUEST]")) {
-                    const thresholdFound = [25, 50, 75, 100].find((t) => targetQuest.title.includes(`${t}%`));
-                    thresholdNum = thresholdFound || 25;
-                    const compFound = party.find((c) => targetQuest.title.toLowerCase().includes(c.name.toLowerCase()));
-                    compKey = compFound ? compFound.name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "companion";
-                  }
-
-                  if (compKey && thresholdNum) {
-                    const matchedComp = party.find(
-                      (c) =>
-                        c.name.toLowerCase().replace(/[^a-z0-9]/g, "_") === compKey ||
-                        c.name.toLowerCase().includes(compKey)
-                    );
-                    const canonicalName = matchedComp?.name || compKey;
-                    const nextCap = thresholdNum === 25 ? 50 : thresholdNum === 50 ? 75 : 100;
-
-                    setCompanionCompletedMilestones((prev) => ({
-                      ...prev,
-                      [canonicalName.toLowerCase()]: [...(prev[canonicalName.toLowerCase()] || []), thresholdNum!],
-                    }));
-
-                    soundEffects.playQuestComplete();
-                    pushNotification({
-                      id: `breakthrough_${Date.now()}`,
-                      type: "quest_completed",
-                      title: "HEART RESONANCE BREAKTHROUGH",
-                      subtitle: `${canonicalName}'s emotional barrier shattered! Affection cap raised from ${thresholdNum}% to ${nextCap}%.`,
-                      difficulty: targetQuest.difficulty,
-                    });
-                    updatedDirectives.unshift(`[SYSTEM: Heart Resonance Breakthrough - ${canonicalName} Cap Raised to ${nextCap}%]`);
-                  }
-
-                  // Grant quest rewards if any
-                  targetQuest.isClaimed = true;
-                  targetQuest.claimedAt = Date.now();
-                  if (targetQuest.rewards) {
-                    const rExp = targetQuest.rewards.exp || 0;
-                    if (rExp > 0) {
-                      triggerExpFeedback(rExp);
-                      setPlayer((prevP) => {
-                        const { updatedPlayer, levelsGained, newLevel } = applyExpProgression(prevP, rExp);
-                        playerRef.current = updatedPlayer;
-                        if (levelsGained > 0) {
-                          soundEffects.playQuestComplete();
-                          setAcquisitionAlert({
-                            id: `level_quest_turn_${Date.now()}`,
-                            type: "level",
-                            title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
-                            subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} STR / DEX / INT`,
-                          });
-                        }
-                        return updatedPlayer;
-                      });
-                    }
-                    if (targetQuest.rewards.statPoints) {
-                      setStatPoints((prev) => prev + targetQuest.rewards.statPoints!);
-                    }
-                  }
-
                   soundEffects.playQuestComplete();
                   setSystemToast({
-                    id: `quest_complete_${Date.now()}`,
+                    id: `quest_ready_${Date.now()}`,
                     type: "quest_completed",
-                    title: `QUEST CLEARED: ${targetQuest.title}`,
+                    title: `CLEARANCE READY: ${targetQuest.title}`,
                     subtitle:
                       targetQuest.progressNote ||
-                      "All objective parameters verified. Clearance rewards archived.",
+                      "Scenario objectives fulfilled! Access SYSTEM interface to claim resonance rewards.",
                     difficulty: targetQuest.difficulty,
                     timestamp: "Just now",
                   });
                   questNotificationShown = true;
-                  updatedDirectives.unshift(`[SYSTEM: Scenario Cleared - '${targetQuest.title}']`);
+                  updatedDirectives.unshift(`[SYSTEM: Scenario Cleared - '${targetQuest.title}' (Clearance Ready to Claim)]`);
                 } else {
                   updatedActive[qIndex] = targetQuest;
 
@@ -4768,116 +4706,118 @@ export default function VisualNovelGame() {
   };
 
   const handleCompleteQuest = (questId: string) => {
-    let resolvedQuest: SystemQuest | null = null;
-    let expRewardToApply = 0;
-    let statRewardToApply = 0;
-    let goldRewardToApply = 0;
-    let itemsRewardToApply: string[] = [];
+    // 1. Synchronously find the target quest from current systemState
+    let activeIdx = systemState.activeQuests.findIndex((q) => q.id === questId);
+    let completedIdx = systemState.completedQuests.findIndex((q) => q.id === questId);
 
-    setSystemState((prevSys) => {
-      let activeIdx = prevSys.activeQuests.findIndex((q) => q.id === questId);
-      let completedIdx = prevSys.completedQuests.findIndex((q) => q.id === questId);
-
-      if (activeIdx === -1 && completedIdx === -1) {
-        activeIdx = prevSys.activeQuests.findIndex((q) => q.title.toLowerCase().includes(questId.toLowerCase()));
-        if (activeIdx === -1) {
-          completedIdx = prevSys.completedQuests.findIndex((q) => q.title.toLowerCase().includes(questId.toLowerCase()));
-        }
+    if (activeIdx === -1 && completedIdx === -1) {
+      activeIdx = systemState.activeQuests.findIndex((q) => q.title.toLowerCase().includes(questId.toLowerCase()));
+      if (activeIdx === -1) {
+        completedIdx = systemState.completedQuests.findIndex((q) => q.title.toLowerCase().includes(questId.toLowerCase()));
       }
-
-      if (activeIdx === -1 && completedIdx === -1) {
-        console.warn(`[SystemQuest] Quest not found for completion: ${questId}`);
-        return prevSys;
-      }
-
-      const isFromActive = activeIdx !== -1;
-      const rawTarget = isFromActive ? prevSys.activeQuests[activeIdx] : prevSys.completedQuests[completedIdx];
-
-      if (rawTarget.isClaimed) {
-        return prevSys;
-      }
-
-      resolvedQuest = {
-        ...rawTarget,
-        status: "completed" as const,
-        isClaimed: true,
-        claimedAt: Date.now(),
-        objectives: (rawTarget.objectives || []).map((o) => ({ ...o, completed: true })),
-      };
-
-      expRewardToApply = Number(resolvedQuest.rewards?.exp || 0);
-      statRewardToApply = Number(resolvedQuest.rewards?.statPoints || 0);
-      goldRewardToApply = Number(resolvedQuest.rewards?.gold || 0);
-      itemsRewardToApply = Array.isArray(resolvedQuest.rewards?.items) ? resolvedQuest.rewards.items : [];
-
-      const nextActive = [...prevSys.activeQuests];
-      const nextCompleted = [...prevSys.completedQuests];
-
-      if (isFromActive) {
-        nextActive.splice(activeIdx, 1);
-        nextCompleted.unshift(resolvedQuest);
-      } else {
-        nextCompleted[completedIdx] = resolvedQuest;
-      }
-
-      return {
-        ...prevSys,
-        activeQuests: nextActive,
-        completedQuests: nextCompleted,
-        systemDirectives: [`[SYSTEM: Clearance Verified - '${resolvedQuest.title}']`, ...prevSys.systemDirectives],
-      };
-    });
-
-    if (!resolvedQuest) return;
-
-    const targetQuest: SystemQuest = resolvedQuest;
-
-    // 1. Grant EXP rewards with live bar feedback & level-up checks
-    if (expRewardToApply > 0) {
-      triggerExpFeedback(expRewardToApply);
-      setPlayer((prevP) => {
-        const { updatedPlayer, levelsGained, newLevel } = applyExpProgression(prevP, expRewardToApply);
-        playerRef.current = updatedPlayer;
-
-        if (levelsGained > 0) {
-          soundEffects.playQuestComplete();
-          setAcquisitionAlert({
-            id: `level_quest_${Date.now()}`,
-            type: "level",
-            title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
-            subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} STR / DEX / INT • Core Restored`,
-          });
-        }
-        performAutoSave({ player: updatedPlayer });
-        return updatedPlayer;
-      });
     }
 
-    // 2. Grant Stat Points
+    if (activeIdx === -1 && completedIdx === -1) {
+      console.warn(`[SystemQuest] Quest not found for completion: ${questId}`);
+      return;
+    }
+
+    const isFromActive = activeIdx !== -1;
+    const rawTarget = isFromActive ? systemState.activeQuests[activeIdx] : systemState.completedQuests[completedIdx];
+
+    if (rawTarget.isClaimed) {
+      return;
+    }
+
+    const targetQuest: SystemQuest = {
+      ...rawTarget,
+      status: "completed" as const,
+      isClaimed: true,
+      claimedAt: Date.now(),
+      objectives: (rawTarget.objectives || []).map((o) => ({ ...o, completed: true })),
+    };
+
+    const expRewardToApply = Number(targetQuest.rewards?.exp || 0);
+    const statRewardToApply = Number(targetQuest.rewards?.statPoints || 0);
+    const goldRewardToApply = Number(targetQuest.rewards?.gold || 0);
+    const itemsRewardToApply = Array.isArray(targetQuest.rewards?.items) ? targetQuest.rewards.items : [];
+
+    // 2. Synchronously create the new systemState
+    const nextActive = systemState.activeQuests.filter((q) => q.id !== targetQuest.id);
+    let nextCompleted = [...systemState.completedQuests];
+    const existingCompIdx = nextCompleted.findIndex((q) => q.id === targetQuest.id);
+    if (existingCompIdx !== -1) {
+      nextCompleted[existingCompIdx] = targetQuest;
+    } else {
+      nextCompleted.unshift(targetQuest);
+    }
+
+    const nextSystemState: SystemState = {
+      ...systemState,
+      activeQuests: nextActive,
+      completedQuests: nextCompleted,
+      systemDirectives: [`[SYSTEM: Clearance Verified - '${targetQuest.title}']`, ...systemState.systemDirectives],
+    };
+
+    setSystemState(nextSystemState);
+
+    // 3. Grant EXP rewards with live bar feedback & level-up checks
+    let latestPlayer = { ...(playerRef.current || player) };
+    if (expRewardToApply > 0) {
+      triggerExpFeedback(expRewardToApply);
+      const { updatedPlayer, levelsGained, newLevel } = applyExpProgression(latestPlayer, expRewardToApply);
+      latestPlayer = updatedPlayer;
+      playerRef.current = updatedPlayer;
+      setPlayer(updatedPlayer);
+
+      if (levelsGained > 0) {
+        soundEffects.playQuestComplete();
+        setAcquisitionAlert({
+          id: `level_quest_${Date.now()}`,
+          type: "level",
+          title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
+          subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} STR / DEX / INT • Core Restored`,
+        });
+      }
+    }
+
+    // 4. Grant Stat Points
     if (statRewardToApply > 0) {
       setStatPoints((prev) => prev + statRewardToApply);
     }
 
-    // 3. Grant Item Rewards if any
-    if (itemsRewardToApply.length > 0) {
-      setPlayer((prevP) => {
-        const newItems: InventoryItem[] = itemsRewardToApply.map((itemText, i) => ({
-          id: `reward_item_${Date.now()}_${i}`,
-          name: itemText,
-          type: "material" as const,
-          rarity: "rare" as const,
-          description: `Reward acquired from clearing system scenario: ${targetQuest.title}.`,
-          effect: "Resonance Catalyst",
-        }));
-        const nextInventory = [...prevP.inventory, ...newItems];
-        const updated = { ...prevP, inventory: nextInventory };
-        playerRef.current = updated;
-        performAutoSave({ player: updated });
-        return updated;
-      });
+    // 5. Grant Gold
+    if (goldRewardToApply > 0) {
+      latestPlayer = {
+        ...latestPlayer,
+        gold: (latestPlayer.gold || 0) + goldRewardToApply,
+      };
+      playerRef.current = latestPlayer;
+      setPlayer(latestPlayer);
     }
 
-    // 4. Milestone & Notification Logic
+    // 6. Grant Item Rewards if any
+    if (itemsRewardToApply.length > 0) {
+      const newItems: InventoryItem[] = itemsRewardToApply.map((itemText, i) => ({
+        id: `reward_item_${Date.now()}_${i}`,
+        name: itemText,
+        type: "material" as const,
+        rarity: "rare" as const,
+        description: `Reward acquired from clearing system scenario: ${targetQuest.title}.`,
+        effect: "Resonance Catalyst",
+      }));
+      latestPlayer = {
+        ...latestPlayer,
+        inventory: [...latestPlayer.inventory, ...newItems],
+      };
+      playerRef.current = latestPlayer;
+      setPlayer(latestPlayer);
+    }
+
+    // 7. Persist to Auto-Save
+    performAutoSave({ player: latestPlayer, systemState: nextSystemState });
+
+    // 8. Companion Milestone & Notification Logic
     const milestoneMatch = targetQuest.id.match(/^milestone_([a-z0-9_]+)_(\d+)$/i);
     let compKey = milestoneMatch && milestoneMatch[1] ? milestoneMatch[1] : null;
     let thresholdNum = milestoneMatch && milestoneMatch[2] ? parseInt(milestoneMatch[2], 10) : null;
@@ -4922,6 +4862,18 @@ export default function VisualNovelGame() {
       });
     }
   };
+
+  const hasUnclaimedClearance = useMemo(() => {
+    if (!systemState) return false;
+    const activeReady = (systemState.activeQuests || []).some(
+      (q) =>
+        (q.status === "completed" ||
+          ((q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed))) &&
+        !q.isClaimed
+    );
+    const completedReady = (systemState.completedQuests || []).some((q) => !q.isClaimed);
+    return activeReady || completedReady;
+  }, [systemState]);
 
   const presentComps = party.filter((c) => c.isPresent);
   const isProtagonistAlone = presentComps.length === 0;
@@ -6509,8 +6461,7 @@ export default function VisualNovelGame() {
           >
             <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
             {/* Unclaimed Clearance Beacon */}
-            {(systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
-              systemState.completedQuests.some((q) => !q.isClaimed)) && (
+            {hasUnclaimedClearance && (
               <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5" title="Clearance Ready to Claim">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-black shadow-[0_0_8px_#10b981]" />
@@ -6530,9 +6481,7 @@ export default function VisualNovelGame() {
           >
             <LayoutGrid className="w-4 h-4 text-rose-400" />
             {/* Notification / Unclaimed Beacon */}
-            {(unreadNotificationCount > 0 ||
-              systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
-              systemState.completedQuests.some((q) => !q.isClaimed)) && (
+            {(unreadNotificationCount > 0 || hasUnclaimedClearance) && (
               <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
@@ -6699,8 +6648,7 @@ export default function VisualNovelGame() {
                 </span>
               )}
               {/* Unclaimed Clearance Notification Beacon */}
-              {(systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
-                systemState.completedQuests.some((q) => !q.isClaimed)) && (
+              {hasUnclaimedClearance && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3" title="Clearance Ready to Claim">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-black shadow-[0_0_10px_#10b981]" />
@@ -6752,9 +6700,7 @@ export default function VisualNovelGame() {
             >
               <LayoutGrid className="w-4 h-4 text-rose-400" />
               {/* Notification / Unclaimed Beacon */}
-              {(unreadNotificationCount > 0 ||
-                systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
-                systemState.completedQuests.some((q) => !q.isClaimed)) && (
+              {(unreadNotificationCount > 0 || hasUnclaimedClearance) && (
                 <span className="absolute -top-1 -right-1 flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
@@ -7544,10 +7490,7 @@ export default function VisualNovelGame() {
         onOpenPartyDrawer={() => setShowPartyDrawer(true)}
         partyCount={party.filter((p) => p.isPresent).length}
         onOpenSystemModal={() => setShowSystemModal(true)}
-        hasUnclaimedClearance={
-          systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
-          systemState.completedQuests.some((q) => !q.isClaimed)
-        }
+        hasUnclaimedClearance={hasUnclaimedClearance}
         onOpenCodex={handleNavigateToCodex}
         onNavigateToTrials={handleNavigateToTrials}
         onOpenShareModal={() => setShowShareModal(true)}

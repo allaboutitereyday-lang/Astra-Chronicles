@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   X, 
   Terminal, 
@@ -90,14 +90,43 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
   const [mobileDetailView, setMobileDetailView] = useState(false);
   const [showPlausibilityInfo, setShowPlausibilityInfo] = useState(false);
 
+  // Auto-focus on claim-ready quests whenever the modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    const activeClaimable = activeQuests.find(
+      (q) =>
+        (q.status === "completed" ||
+          ((q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed))) &&
+        !q.isClaimed
+    );
+    if (activeClaimable) {
+      setActiveTab("active");
+      setSelectedQuestId(activeClaimable.id);
+      return;
+    }
+    const completedClaimable = completedQuests.find((q) => !q.isClaimed);
+    if (completedClaimable) {
+      setActiveTab("completed");
+      setSelectedQuestId(completedClaimable.id);
+      return;
+    }
+    if (activeQuests.length > 0) {
+      setActiveTab("active");
+      setSelectedQuestId(activeQuests[0].id);
+    } else if (completedQuests.length > 0) {
+      setActiveTab("completed");
+      setSelectedQuestId(completedQuests[0].id);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const currentQuests = activeTab === "active" ? activeQuests : completedQuests;
   const selectedQuest =
     currentQuests.find((q) => q.id === selectedQuestId) ||
-    currentQuests[0] ||
     activeQuests.find((q) => q.id === selectedQuestId) ||
     completedQuests.find((q) => q.id === selectedQuestId) ||
+    currentQuests[0] ||
     null;
 
   const plausibility = typeof systemState?.plausibility === "number" ? systemState.plausibility : 80;
@@ -223,6 +252,16 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-950/60 text-rose-300 border border-rose-500/40">
               {activeQuests.length}
             </span>
+            {activeQuests.some(
+              (q) =>
+                (q.status === "completed" ||
+                  ((q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed))) &&
+                !q.isClaimed
+            ) && (
+              <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-black animate-pulse">
+                CLAIM READY
+              </span>
+            )}
           </button>
 
           <button
@@ -242,6 +281,11 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400">
               {completedQuests.length}
             </span>
+            {completedQuests.some((q) => !q.isClaimed) && (
+              <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-black animate-pulse">
+                CLAIM READY
+              </span>
+            )}
           </button>
 
           <button

@@ -316,6 +316,7 @@ export interface PlayerProfile {
   abilities: string[];
   abilityDetails?: Record<string, AbilityDetail>;
   inventory: InventoryItem[];
+  gold?: number;
 
   // Tactical & Progression Expansions
   unlockedStances?: CombatStanceType[];
