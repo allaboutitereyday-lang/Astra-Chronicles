@@ -6668,7 +6668,9 @@ export default function VisualNovelGame() {
                         )}%`,
                       }}
                     >
-                      <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#f59e0b] rounded-full" />
+                      {expFeedback && (
+                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#f59e0b] rounded-full animate-pulse" />
+                      )}
                     </div>
                   </div>
                 </div>
@@ -7871,8 +7873,10 @@ export default function VisualNovelGame() {
                       )}%`,
                     }}
                   >
-                    {/* Glowing Leading Edge Spark Indicator */}
-                    <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-white shadow-[0_0_8px_#fbbf24] rounded-full" />
+                    {/* Glowing Leading Edge Spark Indicator - only rendered during active EXP gain */}
+                    {expFeedback && (
+                      <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-white shadow-[0_0_8px_#fbbf24] rounded-full animate-pulse" />
+                    )}
                   </div>
                 </div>
               </div>
