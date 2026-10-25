@@ -236,6 +236,38 @@ class AudioEngine {
   }
 
   /**
+   * Equipment equip / weapon unsheathe resonant metallic chime
+   */
+  public playEquipChime() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      // Resonant harmonic steel ping
+      const pitches = [784, 1174.66, 1567.98]; // G5 -> D6 -> G6
+      pitches.forEach((p, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(p, now + i * 0.04);
+        osc.frequency.exponentialRampToValueAtTime(p * 0.98, now + i * 0.04 + 0.2);
+
+        gain.gain.setValueAtTime(0.001, now + i * 0.04);
+        gain.gain.linearRampToValueAtTime(0.14, now + i * 0.04 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.04 + 0.45);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+
+        osc.start(now + i * 0.04);
+        osc.stop(now + i * 0.04 + 0.5);
+      });
+    } catch {}
+  }
+
+  /**
    * Futuristic holographic System Administrator chime (Isekai / Manhwa quest ping)
    */
   public playSystemNotification() {

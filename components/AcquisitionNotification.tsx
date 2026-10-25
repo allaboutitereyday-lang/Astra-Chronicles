@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Sparkles, Award, Package, Shield, Zap } from "lucide-react";
+import { Sparkles, Award, Package, Shield, Zap, Sword } from "lucide-react";
 
 export interface AcquisitionAlertData {
   id: string;
-  type: "skill" | "level" | "loot";
+  type: "skill" | "level" | "loot" | "gear";
   title: string;
   subtitle: string;
   imageUrl?: string;
@@ -42,6 +42,7 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
 
   const isSkill = alert.type === "skill";
   const isLevel = alert.type === "level";
+  const isGear = alert.type === "gear";
 
   return (
     <div className="fixed top-16 inset-x-0 z-50 flex justify-center pointer-events-none px-4 select-none">
@@ -49,7 +50,9 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
         className={`pointer-events-auto relative overflow-hidden rounded-2xl p-4 sm:px-6 sm:py-3.5 backdrop-blur-2xl border-2 transition-all duration-700 ease-out transform shadow-2xl flex items-center gap-4 max-w-lg w-full ${
           isVisible ? "opacity-100 translate-y-0 scale-100" : "opacity-0 -translate-y-4 scale-95"
         } ${
-          isSkill
+          isGear
+            ? "bg-zinc-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_40px_rgba(245,158,11,0.45)] ring-1 ring-amber-400/40"
+            : isSkill
             ? "bg-zinc-950/95 border-rose-500/70 text-rose-100 shadow-[0_0_40px_rgba(244,63,94,0.35)] ring-1 ring-rose-500/30"
             : isLevel
             ? "bg-zinc-950/95 border-amber-500/70 text-amber-100 shadow-[0_0_40px_rgba(245,158,11,0.35)] ring-1 ring-amber-500/30"
@@ -60,7 +63,9 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
         <div
           className="absolute -inset-4 rounded-full blur-2xl opacity-30 pointer-events-none transition-all duration-700"
           style={{
-            background: isSkill
+            background: isGear
+              ? "radial-gradient(circle, rgba(245,158,11,0.7) 0%, transparent 70%)"
+              : isSkill
               ? "radial-gradient(circle, rgba(244,63,94,0.6) 0%, transparent 70%)"
               : isLevel
               ? "radial-gradient(circle, rgba(245,158,11,0.6) 0%, transparent 70%)"
@@ -79,6 +84,8 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
           className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border relative z-10 overflow-hidden ${
             alert.imageUrl
               ? "border-amber-400/80 shadow-[0_0_20px_rgba(245,158,11,0.5)] bg-black/80"
+              : isGear
+              ? "bg-amber-950/90 border-amber-400/80 text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.6)]"
               : isSkill
               ? "bg-rose-950/80 border-rose-400/60 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.5)]"
               : isLevel
@@ -92,6 +99,8 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
               alt={alert.title}
               className="w-full h-full object-cover rounded-lg"
             />
+          ) : isGear ? (
+            <Sword className="w-5 h-5 text-amber-300 animate-pulse" />
           ) : isSkill ? (
             <Sparkles className="w-5 h-5 animate-pulse text-rose-300" />
           ) : isLevel ? (
@@ -106,7 +115,9 @@ export function AcquisitionNotification({ alert, onDismiss }: AcquisitionNotific
           <div className="flex items-center gap-2 mb-0.5">
             <span
               className={`text-[10px] font-mono tracking-widest uppercase font-bold ${
-                isSkill
+                isGear
+                  ? "text-amber-400 drop-shadow-[0_0_10px_rgba(245,158,11,0.9)]"
+                  : isSkill
                   ? "text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.8)]"
                   : isLevel
                   ? "text-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.8)]"

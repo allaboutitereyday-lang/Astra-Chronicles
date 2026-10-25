@@ -23,6 +23,7 @@ import {
   buildPersonaPromptDossier,
   buildActiveSpeakerPersonaLock,
 } from "@/lib/characterPersonas";
+import { detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -453,7 +454,16 @@ ${synergyDirective}
 1. Speaker Attribution: "speaker" MUST NEVER BE "${playerProfile.name}". If accompanied, set "speaker" to the canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). If alone, set to "Narrator", "Inner Monologue", or "System".
 2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive, multi-sentence passage (minimum 3-6 sentences across 1-2 paragraphs) featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
 3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
-4. Progression: Grant 15-40 EXP on meaningful actions. If a fight or chest occurs, award loot items or an ability in "player_progression".
+4. Progression & Contextual Equipment/Loot Directive (MANDATORY & IMMEDIATE):
+   - CONTEXTUAL EQUIPMENT & WEAPON PICKUPS:
+     Whenever ${playerProfile.name} picks up, draws, finds, loots, scavenges, purchases, steals, is handed, or claims any weapon, armor piece, shield, relic, or tool in the narrative or by user action (e.g. picking up a sword from the ground, taking a dagger from a corpse, finding armor in a rack, drawing a blade):
+     a) YOU MUST IMMEDIATELY register the item in "player_progression.items_dropped":
+        Provide a complete object: id (unique slug), name (e.g. "Rusted Iron Broadsword"), type ("weapon" | "armor" | "relic" | "consumable" | "material"), rarity ("common" | "uncommon" | "rare" | "relic" | "cursed"), description, and effect.
+     b) YOU MUST ALSO IMMEDIATELY set it in "player_progression.gear_granted":
+        Set {"weapon": item_name}, {"armor": item_name}, or {"relic": item_name}.
+        This guarantees the player's equipment updates immediately and the item appears both in inventory and equipped in the active weapon/armor slot.
+   - NEVER leave a picked-up weapon or armor solely in prose. If the protagonist takes possession of an item in the story, you MUST emit both "items_dropped" and "gear_granted" in JSON.
+   - EXP REWARD: Grant 15-40 EXP on meaningful actions. If a fight, chest, or breakthrough occurs, award loot items or an ability in "player_progression".
 5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST strictly follow this format:
    "[Tone/Action]: Short summary of character action/dialogue"
    Examples:
@@ -784,6 +794,48 @@ Respond strictly in valid JSON matching this schema:
         responseData.player_progression.hp_change = vitalsEval.hpChange;
         responseData.player_progression.mp_change = vitalsEval.mpChange;
         responseData.player_progression.vitals_reason = vitalsEval.vitalsReason;
+
+        // Evaluate contextual equipment acquisition fallback
+        const contextualEquip = detectContextualEquipmentAcquisition({
+          action: action || "",
+          storyText: cleanedProse,
+          currentGear: playerProfile?.gear,
+        });
+
+        if (contextualEquip) {
+          if (!responseData.player_progression.items_dropped) {
+            responseData.player_progression.items_dropped = [];
+          }
+          const alreadyHasItem = responseData.player_progression.items_dropped.some(
+            (i: any) => i && i.name && i.name.toLowerCase() === contextualEquip.name.toLowerCase()
+          );
+          if (!alreadyHasItem) {
+            responseData.player_progression.items_dropped.push(contextualEquip);
+          }
+          if (!responseData.player_progression.gear_granted) {
+            responseData.player_progression.gear_granted = {};
+          }
+          if (!responseData.player_progression.gear_granted[contextualEquip.slot]) {
+            responseData.player_progression.gear_granted[contextualEquip.slot] = contextualEquip.name;
+          }
+        } else if (
+          responseData.player_progression.items_dropped &&
+          Array.isArray(responseData.player_progression.items_dropped)
+        ) {
+          // If the model dropped an item of type weapon/armor/relic but forgot gear_granted, auto-assign
+          const droppedEquip = responseData.player_progression.items_dropped.find(
+            (i: any) => i && (i.type === "weapon" || i.type === "armor" || i.type === "relic")
+          );
+          if (droppedEquip) {
+            if (!responseData.player_progression.gear_granted) {
+              responseData.player_progression.gear_granted = {};
+            }
+            const slot = droppedEquip.type;
+            if (!responseData.player_progression.gear_granted[slot]) {
+              responseData.player_progression.gear_granted[slot] = droppedEquip.name;
+            }
+          }
+        }
 
         // Evaluate hostile encounter escalation ONLY when LLM escalates a hostile story moment
         const resolvedEncounter = resolveHostileEncounterEscalation({

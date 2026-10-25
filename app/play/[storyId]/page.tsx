@@ -97,7 +97,7 @@ import { extractProtagonistVisualDna } from "@/lib/visionEncoder";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
-import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType } from "@/lib/progressionMechanics";
+import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType, detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
 import { FlowchartViewer } from "@/components/FlowchartViewer";
 import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
@@ -1800,13 +1800,46 @@ export default function VisualNovelGame() {
     }
   };
 
-  const handleEquipItem = (item: InventoryItem) => {
-    if (item.type === "weapon") {
-      setPlayer((prev) => ({ ...prev, gear: { ...prev.gear, weapon: item.name } }));
-    } else if (item.type === "armor") {
-      setPlayer((prev) => ({ ...prev, gear: { ...prev.gear, armor: item.name } }));
-    } else if (item.type === "relic") {
-      setPlayer((prev) => ({ ...prev, gear: { ...prev.gear, relic: item.name } }));
+  const handleEquipItem = (item: InventoryItem, silent: boolean = false) => {
+    let slotName: "weapon" | "armor" | "relic" | null = null;
+    if (item.type === "weapon") slotName = "weapon";
+    else if (item.type === "armor") slotName = "armor";
+    else if (item.type === "relic") slotName = "relic";
+
+    if (!slotName) return;
+
+    soundEffects.playEquipChime();
+
+    setPlayer((prev) => {
+      const nextGear = { ...prev.gear, [slotName!]: item.name };
+      const nextGearImages = {
+        ...(prev.gearImages || {}),
+        [item.name]: item.imageUrl || prev.gearImages?.[item.name] || "",
+        ...(item.id ? { [item.id]: item.imageUrl || "" } : {}),
+      };
+      const nextPlayer = { ...prev, gear: nextGear, gearImages: nextGearImages };
+      playerRef.current = nextPlayer;
+      performAutoSave({ player: nextPlayer });
+      return nextPlayer;
+    });
+
+    if (!silent) {
+      pushNotification({
+        id: `equip_${Date.now()}`,
+        type: "loot",
+        title: `${slotName.toUpperCase()} EQUIPPED`,
+        subtitle: `${item.name} is now your active ${slotName}.`,
+        rarity: item.rarity || "common",
+        imageUrl: item.imageUrl,
+        metadata: item,
+      });
+      setAcquisitionAlert({
+        id: `equip_alert_${Date.now()}`,
+        type: "gear",
+        title: "EQUIPMENT EQUIPPED",
+        subtitle: `${item.name} (${slotName.toUpperCase()})`,
+        imageUrl: item.imageUrl,
+      });
     }
   };
 
@@ -3516,6 +3549,36 @@ export default function VisualNovelGame() {
         const prog = data.player_progression;
         let updatedInventory = [...playerRef.current.inventory];
 
+        // 0. Contextual Equipment Acquisition detection (immediate client-side assurance)
+        // If the player picked up / looted / claimed equipment in action or narrative,
+        // guarantee it's injected into prog.items_dropped and prog.gear_granted.
+        const combinedActionContext = `${formattedPayload || ""} ${playerText || ""}`.trim();
+        const contextualEquip = detectContextualEquipmentAcquisition({
+          action: combinedActionContext,
+          storyText: narrative || "",
+          currentGear: playerRef.current.gear,
+        });
+
+        if (contextualEquip) {
+          if (!prog.items_dropped) {
+            prog.items_dropped = [];
+          }
+          const alreadyInDrops = prog.items_dropped.some(
+            (i: any) => i && i.name && i.name.toLowerCase() === contextualEquip.name.toLowerCase()
+          );
+          if (!alreadyInDrops) {
+            prog.items_dropped.push(contextualEquip);
+          }
+          if (!prog.gear_granted) {
+            prog.gear_granted = {};
+          }
+          if (!prog.gear_granted[contextualEquip.slot]) {
+            prog.gear_granted[contextualEquip.slot] = contextualEquip.name;
+          }
+        }
+
+        let newlyEquippedItems: { name: string; slot: "weapon" | "armor" | "relic"; item: InventoryItem }[] = [];
+
         if (prog.items_dropped && Array.isArray(prog.items_dropped) && prog.items_dropped.length > 0) {
           const rawDroppedList: InventoryItem[] = prog.items_dropped.map((item: any, idx: number) => ({
             ...item,
@@ -3541,6 +3604,25 @@ export default function VisualNovelGame() {
             rarity: primaryItem?.rarity || "rare",
             imageUrl: primaryItem?.imageUrl,
             metadata: primaryItem,
+          });
+
+          // Check if any dropped equipment should auto-equip
+          const defaultGearNames = ["bare hands", "unarmed", "rags", "none", "[system pending]", ""];
+          initialHydratedDrops.forEach((drop) => {
+            if (drop.type === "weapon" || drop.type === "armor" || drop.type === "relic") {
+              const slot = drop.type as "weapon" | "armor" | "relic";
+              const currentSlotVal = (playerRef.current.gear?.[slot] || "").trim().toLowerCase();
+              const isDefaultGear = defaultGearNames.includes(currentSlotVal);
+              const isExplicitlyGranted =
+                prog.gear_granted &&
+                prog.gear_granted[slot]?.trim().toLowerCase() === drop.name.trim().toLowerCase();
+
+              if (isDefaultGear || isExplicitlyGranted) {
+                if (!newlyEquippedItems.some((e) => e.name.toLowerCase() === drop.name.toLowerCase())) {
+                  newlyEquippedItems.push({ name: drop.name, slot, item: drop });
+                }
+              }
+            }
           });
 
           // 2. Synthesize artwork with Nano Banana 2.1 for items that don't have an image in Codex yet
@@ -3612,8 +3694,70 @@ export default function VisualNovelGame() {
         }
 
         let updatedGear = { ...playerRef.current.gear };
-        if (prog.gear_granted && (prog.gear_granted.weapon || prog.gear_granted.armor)) {
-          updatedGear = { ...updatedGear, ...prog.gear_granted };
+        if (prog.gear_granted) {
+          if (prog.gear_granted.weapon) updatedGear.weapon = prog.gear_granted.weapon;
+          if (prog.gear_granted.armor) updatedGear.armor = prog.gear_granted.armor;
+          if (prog.gear_granted.relic) updatedGear.relic = prog.gear_granted.relic;
+
+          // Ensure granted gear is registered in inventory if not already present
+          const slots: ("weapon" | "armor" | "relic")[] = ["weapon", "armor", "relic"];
+          for (const slot of slots) {
+            const grantedName = prog.gear_granted[slot];
+            if (grantedName && typeof grantedName === "string" && grantedName.trim()) {
+              const cleanGranted = grantedName.trim();
+              const exists = updatedInventory.some(
+                (inv) => inv.name.trim().toLowerCase() === cleanGranted.toLowerCase()
+              );
+              if (!exists) {
+                const syntheticItem: InventoryItem = {
+                  id: `gear_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                  name: cleanGranted,
+                  type: slot,
+                  rarity: "common",
+                  description: `Equipment contextually acquired and equipped to ${slot.toUpperCase()} slot.`,
+                  effect:
+                    slot === "weapon"
+                      ? "+8 ATK • Equipped Weapon"
+                      : slot === "armor"
+                      ? "+6 DEF • Equipped Armor"
+                      : "+10 MP • Equipped Relic",
+                };
+                updatedInventory.push(syntheticItem);
+                if (!newlyEquippedItems.some((e) => e.name.toLowerCase() === cleanGranted.toLowerCase())) {
+                  newlyEquippedItems.push({ name: cleanGranted, slot, item: syntheticItem });
+                }
+              }
+            }
+          }
+        }
+
+        // Apply newly equipped items to updatedGear
+        newlyEquippedItems.forEach((eq) => {
+          updatedGear[eq.slot] = eq.name;
+        });
+
+        // Fire audio and visual feedback for newly equipped equipment
+        if (newlyEquippedItems.length > 0) {
+          soundEffects.playEquipChime();
+          const firstEquipped = newlyEquippedItems[0];
+          setAcquisitionAlert({
+            id: `equip_${Date.now()}`,
+            type: "gear",
+            title: "EQUIPMENT EQUIPPED",
+            subtitle: `${firstEquipped.name} (${firstEquipped.slot.toUpperCase()})`,
+            imageUrl:
+              firstEquipped.item.imageUrl ||
+              (playerRef.current.gearImages && playerRef.current.gearImages[firstEquipped.name]),
+          });
+          pushNotification({
+            id: `equip_notif_${Date.now()}`,
+            type: "gear",
+            title: "EQUIPMENT EQUIPPED",
+            subtitle: `${firstEquipped.name} is now active in your ${firstEquipped.slot.toUpperCase()} slot.`,
+            imageUrl: firstEquipped.item.imageUrl,
+            rarity: firstEquipped.item.rarity || "uncommon",
+            metadata: firstEquipped.item,
+          });
         }
 
         let updatedAbilities = [...playerRef.current.abilities];
@@ -5700,25 +5844,64 @@ export default function VisualNovelGame() {
         </div>
 
         <div className="relative z-10 w-full max-w-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-6 my-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            {/* Top row on mobile: Navigation on left, Quick Actions on right */}
+            <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
               <button
                 onClick={handleNavigateToCatalogue}
-                className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-all cursor-pointer font-mono shrink-0"
+                className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer font-mono shrink-0"
                 title="Return to Story Catalogue"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Catalogue</span>
+                <span className="font-mono text-xs">Catalogue</span>
               </button>
+
+              {/* Mobile Actions Cluster (< sm) */}
+              <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+                <button
+                  onClick={handleToggleAudio}
+                  className="p-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
+                >
+                  {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
+                </button>
+                <button
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setShowAuthModal(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1 transition-all cursor-pointer"
+                  title="Realm Access Key"
+                >
+                  <Key className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="font-mono text-xs">{userAuth ? userAuth.name.split(" ")[0] : "Key"}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setShowSaveModal(true);
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1 transition-all cursor-pointer"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="font-mono text-xs">Load</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="flex items-center gap-2 min-w-0">
               <h1 className="text-base sm:text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-1.5 sm:gap-2 truncate">
                 <Sparkles className="text-rose-400 w-4 h-4 sm:w-5 sm:h-5 animate-pulse shrink-0" />
                 <span className="truncate">{currentStory.title.toUpperCase()}</span>
               </h1>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 self-end sm:self-auto">
+
+            {/* Desktop Actions Cluster (>= sm) */}
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
               <button
                 onClick={handleToggleAudio}
-                className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
                 title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
               >
                 {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
@@ -5728,7 +5911,7 @@ export default function VisualNovelGame() {
                   soundEffects.playClick();
                   setShowAuthModal(true);
                 }}
-                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
                 title="Realm Access Key"
               >
                 <Key className="w-3.5 h-3.5 text-purple-400" />
@@ -5739,11 +5922,10 @@ export default function VisualNovelGame() {
                   soundEffects.playClick();
                   setShowSaveModal(true);
                 }}
-                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 <FolderOpen className="w-4 h-4 text-sky-400" />
-                <span className="hidden sm:inline">Load Game</span>
-                <span className="sm:hidden text-xs">Load</span>
+                <span>Load Game</span>
               </button>
             </div>
           </div>

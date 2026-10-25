@@ -546,3 +546,157 @@ export function evaluateDeathAndRegression(params: {
     systemVerdictNote,
   };
 }
+
+// ============================================================================
+// 7. CONTEXTUAL EQUIPMENT & WEAPON ACQUISITION DETECTOR
+// ============================================================================
+
+export interface ContextualDetectedEquipment {
+  id: string;
+  name: string;
+  type: "weapon" | "armor" | "relic";
+  rarity: "common" | "uncommon" | "rare" | "relic" | "cursed";
+  description: string;
+  effect: string;
+  slot: "weapon" | "armor" | "relic";
+}
+
+const WEAPON_KEYWORDS = [
+  "broadsword", "greatsword", "longsword", "shortsword", "claymore", "katana",
+  "scimitar", "falchion", "saber", "rapier", "estoc", "blade", "sword",
+  "dagger", "knife", "stiletto", "dirk",
+  "halberd", "glaive", "spear", "lance", "pike", "trident",
+  "battleaxe", "waraxe", "hatchet", "axe",
+  "warhammer", "hammer", "mace", "morningstar", "flail", "club",
+  "crossbow", "longbow", "shortbow", "bow",
+  "staff", "wand", "scepter", "scythe", "grimoire"
+];
+
+const ARMOR_KEYWORDS = [
+  "breastplate", "cuirass", "plate", "chainmail", "mail", "armor", "armour",
+  "shield", "buckler", "aegis", "pavise",
+  "helmet", "helm", "cowl", "hood",
+  "gauntlets", "gloves", "bracers", "vambraces",
+  "greaves", "boots", "tasset",
+  "cloak", "robe", "tunic", "vest", "gambeson"
+];
+
+const RELIC_KEYWORDS = [
+  "amulet", "ring", "talisman", "pendant", "necklace", "locket", "orb",
+  "chalice", "crown", "circlet", "phylactery", "signet", "relic"
+];
+
+const ACQUISITION_VERBS_REGEX =
+  /(?:pick(?:ing|s|ed)?\s+up|take(?:s|n|ing)?|took|retrieve(?:s|d|ing)?|scavenge(?:s|d|ing)?|loot(?:s|ed|ing)?|grab(?:s|bed|bing)?|equip(?:s|ped|ping)?|wield(?:s|ed|ing)?|claim(?:s|ed|ing)?|draw(?:s|ing)?|drew|unsheathe(?:s|d|ing)?|pry(?:ing|s|ied)?|lift(?:s|ed|ing)?|don(?:s|ned|ning)?|find(?:s|ing)?|found|hand(?:s|ed|ing)?\s+(?:you|him|her|them)|give(?:s|n|ing)?\s+(?:you|him|her|them)|gave\s+(?:you|him|her|them)|receive(?:s|d|ing)?)/i;
+
+function toTitleCase(str: string): string {
+  return str
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/**
+ * Inspects player action and narrative prose to contextually extract newly acquired weapons, armor, or relics.
+ * Guarantees that actions like "Pick up the sword off the ground" immediately register in inventory and auto-equip.
+ */
+export function detectContextualEquipmentAcquisition(params: {
+  action?: string;
+  storyText?: string;
+  currentGear?: { weapon?: string; armor?: string; relic?: string };
+}): ContextualDetectedEquipment | null {
+  const combinedText = `${params.action || ""} \n ${params.storyText || ""}`.trim();
+  if (!combinedText) return null;
+
+  // 1. Check if any acquisition verb is present
+  const verbMatch = combinedText.match(ACQUISITION_VERBS_REGEX);
+  if (!verbMatch) return null;
+
+  const allKeywords = [
+    ...WEAPON_KEYWORDS.map((k) => ({ keyword: k, slot: "weapon" as const })),
+    ...ARMOR_KEYWORDS.map((k) => ({ keyword: k, slot: "armor" as const })),
+    ...RELIC_KEYWORDS.map((k) => ({ keyword: k, slot: "relic" as const })),
+  ];
+
+  // Search for the closest equipment noun following or preceding the acquisition verb
+  for (const { keyword, slot } of allKeywords) {
+    // Matches patterns like:
+    // "pick up the rusted broadsword"
+    // "takes the fallen guard's steel blade"
+    // "retrieve a cracked leather cuirass"
+    const pattern = new RegExp(
+      `(?:pick(?:ing|s|ed)?\\s+up|take(?:s|n|ing)?|took|retrieve(?:s|d|ing)?|scavenge(?:s|d|ing)?|loot(?:s|ed|ing)?|grab(?:s|bed|bing)?|equip(?:s|ped|ping)?|wield(?:s|ed|ing)?|claim(?:s|ed|ing)?|draw(?:s|ing)?|drew|unsheathe(?:s|d|ing)?|pry(?:ing|s|ied)?|lift(?:s|ed|ing)?|don(?:s|ned|ning)?|find(?:s|ing)?|found|hand(?:s|ed|ing)?\\s+(?:you|him|her|them)|give(?:s|n|ing)?\\s+(?:you|him|her|them)|gave\\s+(?:you|him|her|them)|receive(?:s|d|ing)?)\\s+(?:the|a|an|his|her|their|some|one)?\\s*([a-zA-Z'’\\-\\s]{0,24}\\b${keyword}\\b)`,
+      "i"
+    );
+
+    const match = combinedText.match(pattern);
+    if (match && match[1]) {
+      let rawName = match[1].trim();
+
+      // Clean up leading filler words
+      rawName = rawName
+        .replace(/^(the|a|an|his|her|their|some|one|from|off|of)\s+/i, "")
+        .replace(/\s+(off|from|lying|on|in|near|beside|at)\b.*$/i, "")
+        .trim();
+
+      if (!rawName || rawName.length < 3) {
+        rawName = keyword;
+      }
+
+      // If name is just the bare keyword (e.g. "sword"), give it an atmospheric descriptor based on text
+      let cleanedTitle = toTitleCase(rawName);
+      if (cleanedTitle.toLowerCase() === keyword) {
+        if (/iron|rusted|weathered|ground|floor|flagstone|dirt/i.test(combinedText)) {
+          cleanedTitle = `Iron ${toTitleCase(keyword)}`;
+        } else if (/steel|guard|soldier|patrol/i.test(combinedText)) {
+          cleanedTitle = `Steel ${toTitleCase(keyword)}`;
+        } else if (/shadow|dark|abyssal|void/i.test(combinedText)) {
+          cleanedTitle = `Shadow ${toTitleCase(keyword)}`;
+        } else if (/rune|arcane|magic|ether/i.test(combinedText)) {
+          cleanedTitle = `Arcane ${toTitleCase(keyword)}`;
+        }
+      }
+
+      // Check if player already has this exact item equipped to prevent endless re-detection loops
+      const currentEquipped = params.currentGear?.[slot]?.toLowerCase().trim();
+      if (currentEquipped && currentEquipped === cleanedTitle.toLowerCase()) {
+        continue;
+      }
+
+      // Infer rarity
+      let rarity: "common" | "uncommon" | "rare" | "relic" | "cursed" = "common";
+      const lowerTitle = cleanedTitle.toLowerCase();
+      if (/abyssal|cursed|forbidden|blood/i.test(lowerTitle)) {
+        rarity = "cursed";
+      } else if (/celestial|mythic|ancient|astral|divine|draconic/i.test(lowerTitle)) {
+        rarity = "rare";
+      } else if (/steel|silver|tempered|enchanted|imperial|shadow|rune|arcane/i.test(lowerTitle)) {
+        rarity = "uncommon";
+      }
+
+      const effect =
+        slot === "weapon"
+          ? `+${rarity === "rare" ? 18 : rarity === "uncommon" ? 10 : 5} ATK • Contextual Equipment`
+          : slot === "armor"
+          ? `+${rarity === "rare" ? 15 : rarity === "uncommon" ? 8 : 4} DEF • Contextual Equipment`
+          : `+${rarity === "rare" ? 25 : rarity === "uncommon" ? 15 : 8} MP • Contextual Relic`;
+
+      const description = `Equipment contextually acquired during the chronicle. Forged for active combat in ${slot.toUpperCase()} slot.`;
+
+      const id = `item_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+      return {
+        id,
+        name: cleanedTitle,
+        type: slot,
+        rarity,
+        description,
+        effect,
+        slot,
+      };
+    }
+  }
+
+  return null;
+}

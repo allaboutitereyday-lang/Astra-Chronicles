@@ -15,6 +15,7 @@ import {
   Skull,
   Flame,
   Bell,
+  Sword,
 } from "lucide-react";
 import { QuestDifficulty } from "@/types/system";
 import { soundEffects } from "@/lib/audioEngine";
@@ -28,6 +29,7 @@ export type NotificationType =
   | "regression_trigger"
   | "system_alert"
   | "loot"
+  | "gear"
   | "skill"
   | "level"
   | "codex"
@@ -227,6 +229,12 @@ function NotificationCard({
           iconBg: "bg-amber-900 border-amber-400 text-amber-200",
           accentColor: "#f59e0b",
         };
+      case "gear":
+        return {
+          card: "bg-zinc-950/95 border-amber-400/80 text-amber-100 shadow-[0_0_40px_rgba(245,158,11,0.4)] ring-1 ring-amber-400/40",
+          iconBg: "bg-amber-950/80 border-amber-400 text-amber-300",
+          accentColor: "#fbbf24",
+        };
       case "loot": {
         const rarity = item.rarity || "rare";
         if (rarity === "cursed") {
@@ -335,6 +343,8 @@ function NotificationCard({
             <Flame className="w-5 h-5 text-rose-400 animate-pulse" />
           ) : item.type === "companion_friction" ? (
             <Zap className="w-5 h-5 text-amber-400" />
+          ) : item.type === "gear" ? (
+            <Sword className="w-5 h-5 animate-pulse text-amber-300" />
           ) : item.type === "loot" ? (
             <Package className="w-5 h-5" />
           ) : (
