@@ -29,6 +29,18 @@ function createWindow() {
   });
 
   if (isDev) {
+    // Clear stale dev caches on startup to prevent Turbopack module factory desync
+    mainWindow.webContents.session.clearCache();
+
+    // Enable F5 / Ctrl+R hard reload in dev
+    mainWindow.webContents.on("before-input-event", (event, input) => {
+      if (input.key === "F5" || (input.control && input.key.toLowerCase() === "r")) {
+        mainWindow.webContents.session.clearCache().then(() => {
+          mainWindow.webContents.reloadIgnoringCache();
+        });
+      }
+    });
+
     // Development mode: Connect to local Next.js dev server
     mainWindow.loadURL("http://localhost:3000");
     mainWindow.webContents.openDevTools({ mode: "detach" });

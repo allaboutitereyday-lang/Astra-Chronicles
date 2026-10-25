@@ -118,39 +118,18 @@ import {
   saveStoredLlmConfig,
   LlmQuickPill,
   CLOUD_MODELS,
+  LlmProviderModal,
 } from "@/components/LlmProviderSelector";
+import { SystemQuestModal } from "@/components/SystemQuestModal";
+import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
+import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
+import { WorldShareModal } from "@/components/WorldShareModal";
+import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
+import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 
-// Dynamic code splitting for heavy modals and visualization graphs
+// Dynamic code splitting for heavy interactive canvas graph
 const FlowchartViewer = dynamic(
   () => import("@/components/FlowchartViewer").then((m) => m.FlowchartViewer),
-  { ssr: false }
-);
-const RelicSynergyPanel = dynamic(
-  () => import("@/components/RelicSynergyPanel").then((m) => m.RelicSynergyPanel),
-  { ssr: false }
-);
-const WorldShareModal = dynamic(
-  () => import("@/components/WorldShareModal").then((m) => m.WorldShareModal),
-  { ssr: false }
-);
-const SystemQuestModal = dynamic(
-  () => import("@/components/SystemQuestModal").then((m) => m.SystemQuestModal),
-  { ssr: false }
-);
-const NotificationHistoryModal = dynamic(
-  () => import("@/components/NotificationHistoryModal").then((m) => m.NotificationHistoryModal),
-  { ssr: false }
-);
-const PortraitEditorModal = dynamic(
-  () => import("@/components/play/PortraitEditorModal").then((m) => m.PortraitEditorModal),
-  { ssr: false }
-);
-const GearManifestScreen = dynamic(
-  () => import("@/components/play/GearManifestScreen").then((m) => m.GearManifestScreen),
-  { ssr: false }
-);
-const LlmProviderModal = dynamic(
-  () => import("@/components/LlmProviderSelector").then((m) => m.LlmProviderModal),
   { ssr: false }
 );
 
