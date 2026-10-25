@@ -5699,25 +5699,26 @@ export default function VisualNovelGame() {
           <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
         </div>
 
-        <div className="relative z-10 w-full max-w-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-6 md:p-8 shadow-2xl space-y-6 my-auto">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div className="relative z-10 w-full max-w-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-6 my-auto">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 onClick={handleNavigateToCatalogue}
-                className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-all cursor-pointer font-mono"
+                className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-all cursor-pointer font-mono shrink-0"
                 title="Return to Story Catalogue"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Catalogue</span>
               </button>
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-2">
-                <Sparkles className="text-rose-400 w-5 h-5 animate-pulse" /> {currentStory.title.toUpperCase()}
+              <h1 className="text-base sm:text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-1.5 sm:gap-2 truncate">
+                <Sparkles className="text-rose-400 w-4 h-4 sm:w-5 sm:h-5 animate-pulse shrink-0" />
+                <span className="truncate">{currentStory.title.toUpperCase()}</span>
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 self-end sm:self-auto">
               <button
                 onClick={handleToggleAudio}
-                className="px-3 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
+                className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
                 title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
               >
                 {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
@@ -5727,19 +5728,22 @@ export default function VisualNovelGame() {
                   soundEffects.playClick();
                   setShowAuthModal(true);
                 }}
-                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Realm Access Key"
               >
                 <Key className="w-3.5 h-3.5 text-purple-400" />
-                <span>{userAuth ? userAuth.name.split(" ")[0] : "Access Key"}</span>
+                <span>{userAuth ? userAuth.name.split(" ")[0] : "Key"}</span>
               </button>
               <button
                 onClick={() => {
                   soundEffects.playClick();
                   setShowSaveModal(true);
                 }}
-                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
               >
-                <FolderOpen className="w-4 h-4 text-sky-400" /> Load Game
+                <FolderOpen className="w-4 h-4 text-sky-400" />
+                <span className="hidden sm:inline">Load Game</span>
+                <span className="sm:hidden text-xs">Load</span>
               </button>
             </div>
           </div>
@@ -5787,19 +5791,38 @@ export default function VisualNovelGame() {
               </div>
             </div>
 
-            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4">
-              <div className="flex justify-between items-center mb-3">
+            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
+              <div className="flex justify-between items-center mb-2.5">
                 <label className="text-xs font-mono text-zinc-400">Attribute Allocation</label>
                 <span className="text-xs font-mono font-bold text-sky-400">Points: {statPoints}</span>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                 {["str", "dex", "int"].map((stat) => (
-                  <div key={stat} className="flex items-center justify-between bg-zinc-900 rounded-xl p-2 border border-white/5">
-                    <span className="text-xs font-mono text-zinc-300 uppercase">{stat}</span>
+                  <div key={stat} className="flex items-center justify-between bg-zinc-900/90 rounded-xl px-3 py-2 border border-white/5">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => handleStatChange(stat as any, -1)} className="w-5 h-5 flex items-center justify-center bg-zinc-800 rounded hover:bg-zinc-700 text-white cursor-pointer">-</button>
-                      <span className="text-sm font-bold text-white w-4 text-center">{player.stats[stat as keyof PlayerStats]}</span>
-                      <button onClick={() => handleStatChange(stat as any, 1)} className="w-5 h-5 flex items-center justify-center bg-zinc-800 rounded hover:bg-zinc-700 text-white cursor-pointer">+</button>
+                      <span className="text-xs font-mono font-bold text-zinc-200 uppercase">{stat}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono hidden xs:inline sm:hidden md:inline">
+                        {stat === "str" ? "Strength" : stat === "dex" ? "Dexterity" : "Intelligence"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleStatChange(stat as any, -1)}
+                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm"
+                      >
+                        -
+                      </button>
+                      <span className="text-sm font-bold text-white w-6 text-center font-mono">
+                        {player.stats[stat as keyof PlayerStats]}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleStatChange(stat as any, 1)}
+                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm"
+                      >
+                        +
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -5808,11 +5831,11 @@ export default function VisualNovelGame() {
 
             <div>
               <label className="text-xs font-mono text-zinc-400 block mb-2">Starting Loadout</label>
-              <div className="flex gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => setGearPreference("system")}
-                  className={`flex-1 py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                  className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
                     gearPreference === "system"
                       ? "bg-rose-900/40 border-rose-500 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
                       : "bg-zinc-950 border-white/10 text-zinc-500 hover:border-white/30"
@@ -5824,7 +5847,7 @@ export default function VisualNovelGame() {
                 <button
                   type="button"
                   onClick={() => setGearPreference("none")}
-                  className={`flex-1 py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                  className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
                     gearPreference === "none"
                       ? "bg-amber-900/40 border-amber-500 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
                       : "bg-zinc-950 border-white/10 text-zinc-500 hover:border-white/30"
@@ -6057,7 +6080,7 @@ export default function VisualNovelGame() {
   }
 
   return (
-    <div className={`relative h-screen w-screen overflow-hidden bg-zinc-950 font-sans transition-all duration-300 ease-out ${
+    <div className={`relative h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-zinc-950 font-sans transition-all duration-300 ease-out ${
       pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
     }`}>
       
@@ -6136,38 +6159,37 @@ export default function VisualNovelGame() {
       />
 
       {/* TOP HUD */}
-      <header className="absolute top-3 inset-x-3 sm:inset-x-6 md:inset-x-8 z-20 flex items-center justify-between gap-3 pointer-events-auto select-none">
-        
-        {/* LEFT CLUSTER: Navigation, Player Anchor & LitRPG System */}
-        <div className="flex items-center gap-2 shrink-0">
+      <header className="absolute top-2 sm:top-3 inset-x-2 sm:inset-x-6 md:inset-x-8 z-20 pointer-events-auto select-none">
+        {/* MOBILE TOP HUD (< sm) */}
+        <div className="flex sm:hidden items-center justify-between gap-1.5 w-full">
+          {/* Back Button */}
           <button
             onClick={handleNavigateToCatalogue}
-            className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3 py-2 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-white/10 hover:border-white/30 flex items-center justify-center text-zinc-300 shadow-lg cursor-pointer shrink-0 active:scale-95"
             title="Return to Story Catalogue"
           >
             <ArrowLeft className="w-4 h-4 text-zinc-400" />
-            <span className="hidden md:inline font-mono text-[11px]">Catalogue</span>
           </button>
 
-          {/* Character Identity & Status Card with Live Vitals Bars & Hit Feedback */}
+          {/* Compact Mobile Player Pill */}
           <button
             onClick={() => setShowPlayerSheet(true)}
-            className={`relative flex items-center gap-1.5 sm:gap-2.5 bg-black/85 hover:bg-black/95 backdrop-blur-md px-2 sm:px-3 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group shrink-0 ${
+            className={`relative h-9 px-2 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border shadow-lg flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
               vitalsFeedback && vitalsFeedback.hpDelta < 0
-                ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
+                ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
                 : vitalsFeedback && vitalsFeedback.hpDelta > 0
-                ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
+                ? "border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                 : player.stats.hp <= player.stats.maxHp * 0.35
-                ? "border-red-500/70 shadow-[0_0_16px_rgba(239,68,68,0.3)]"
+                ? "border-red-500/70 shadow-[0_0_12px_rgba(239,68,68,0.3)]"
                 : "border-white/10 hover:border-rose-500/50"
             }`}
-            title="Open Character Sheet & Inventory"
+            title="Open Character Sheet"
           >
-            {/* Floating Delta Badge on Top HUD Player Card */}
+            {/* Floating Delta Badge */}
             {vitalsFeedback && (
               <div
-                key={`hud_delta_${vitalsFeedback.id}`}
-                className={`pointer-events-none absolute -bottom-6 left-2 z-30 px-2 py-0.5 rounded-lg border font-mono text-[10px] font-black shadow-xl animate-bounce ${
+                key={`mobile_hud_delta_${vitalsFeedback.id}`}
+                className={`pointer-events-none absolute -bottom-6 left-1 z-30 px-1.5 py-0.5 rounded-md border font-mono text-[9px] font-black shadow-xl animate-bounce ${
                   vitalsFeedback.hpDelta < 0
                     ? "bg-red-950 border-red-400 text-red-200"
                     : vitalsFeedback.hpDelta > 0
@@ -6181,93 +6203,49 @@ export default function VisualNovelGame() {
               </div>
             )}
 
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-rose-300 shrink-0">
+            <div className="w-6 h-6 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-[10px] text-rose-300 shrink-0">
               {playerAvatar && playerAvatar.trim() ? (
                 <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
               ) : (
                 player.name.charAt(0)
               )}
             </div>
-            <div className="text-left hidden sm:block">
-              <p className="font-semibold leading-tight text-white group-hover:text-rose-300 transition-colors">
-                {player.name}
-              </p>
-              <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.role}</p>
-            </div>
-            <div className="flex flex-col gap-1 pl-1 min-w-[76px] sm:min-w-[104px]">
-              <div className="space-y-0.5">
-                <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
-                  <span className="flex items-center gap-1 text-rose-400 font-bold">
-                    <Heart className="w-2.5 h-2.5 fill-rose-500" />
-                    {player.stats.hp}/{player.stats.maxHp}
-                  </span>
-                </div>
-                <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className={`h-full transition-all duration-300 ${
-                      player.stats.hp <= player.stats.maxHp * 0.35
-                        ? "bg-gradient-to-r from-red-600 to-rose-400 animate-pulse"
-                        : "bg-gradient-to-r from-rose-600 to-emerald-400"
-                    }`}
-                    style={{
-                      width: `${Math.max(
-                        0,
-                        Math.min(100, (player.stats.hp / Math.max(1, player.stats.maxHp)) * 100)
-                      )}%`,
-                    }}
-                  />
-                </div>
+
+            <div className="flex flex-col justify-center gap-0.5">
+              <div className="flex items-center gap-1.5 text-[9px] font-mono font-bold leading-none">
+                <span className="text-rose-400 flex items-center gap-0.5">
+                  <Heart className="w-2.5 h-2.5 fill-rose-500" />
+                  {player.stats.hp}
+                </span>
+                <span className="text-sky-400 flex items-center gap-0.5">
+                  <Zap className="w-2.5 h-2.5 fill-sky-500" />
+                  {player.stats.mp}
+                </span>
               </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
-                  <span className="flex items-center gap-1 text-sky-400 font-bold">
-                    <Zap className="w-2.5 h-2.5 fill-sky-500" />
-                    {player.stats.mp}/{player.stats.maxMp}
-                  </span>
-                </div>
-                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                  <div
-                    className="h-full bg-gradient-to-r from-sky-600 to-cyan-400 transition-all duration-300"
-                    style={{
-                      width: `${Math.max(
-                        0,
-                        Math.min(100, (player.stats.mp / Math.max(1, player.stats.maxMp)) * 100)
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="space-y-0.5">
-                <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
-                  <span className="flex items-center gap-1 text-amber-400 font-bold">
-                    <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                    {player.stats.exp}/{player.stats.maxExp}
-                  </span>
-                  {expFeedback && (
-                    <span className="text-[9px] font-mono font-bold text-amber-300 animate-bounce drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]">
-                      +{expFeedback.amount} EXP
-                    </span>
-                  )}
-                </div>
-                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
-                  <div
-                    className={`h-full transition-all duration-1000 ease-out relative ${
-                      expFeedback
-                        ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.8)]"
-                        : "bg-gradient-to-r from-amber-600 to-yellow-500"
-                    }`}
-                    style={{
-                      width: `${Math.max(
-                        0,
-                        Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100)
-                      )}%`,
-                    }}
-                  >
-                    <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#f59e0b] rounded-full" />
-                  </div>
-                </div>
+              {/* Mini EXP progress track */}
+              <div className="w-12 h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
+                <div
+                  className={`h-full transition-all duration-700 ${
+                    expFeedback
+                      ? "bg-gradient-to-r from-amber-400 to-yellow-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+                      : "bg-gradient-to-r from-amber-600 to-yellow-500"
+                  }`}
+                  style={{
+                    width: `${Math.max(0, Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100))}%`,
+                  }}
+                />
               </div>
             </div>
+          </button>
+
+          {/* Location Chip (Centered & Flex) */}
+          <button
+            onClick={() => setShowMap(true)}
+            className="h-9 px-2.5 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-white/10 hover:border-emerald-500/50 shadow-lg flex items-center gap-1 flex-1 min-w-0 justify-center cursor-pointer active:scale-95"
+            title="View Area Map & Sectors"
+          >
+            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="font-mono text-xs font-semibold text-emerald-300 truncate">{gameState.location}</span>
           </button>
 
           {/* SYSTEM Button */}
@@ -6277,70 +6255,32 @@ export default function VisualNovelGame() {
               soundEffects.playClick();
               setShowSystemModal(true);
             }}
-            className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-2 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg ${
+            className={`w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative ${
               systemState.activeQuests.length > 0
-                ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
-                : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
+                ? "border-rose-500/60 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                : "border-white/10 text-zinc-300"
             }`}
             title="Open System Administrator Interface & Quests"
           >
             <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-            <span className="text-[11px] font-mono font-bold tracking-wider hidden sm:inline">SYSTEM</span>
-            {systemState.activeQuests.length > 0 && (
-              <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]">
-                {systemState.activeQuests.length}
-              </span>
-            )}
-            {/* Unclaimed Clearance Notification Beacon */}
+            {/* Unclaimed Clearance Beacon */}
             {(systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
               systemState.completedQuests.some((q) => !q.isClaimed)) && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3" title="Clearance Ready to Claim">
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5" title="Clearance Ready to Claim">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-black shadow-[0_0_10px_#10b981]" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-black shadow-[0_0_8px_#10b981]" />
               </span>
             )}
           </button>
-        </div>
 
-        {/* CENTER CLUSTER: Spatial Location / Realm Anchor */}
-        <div className="flex-1 flex justify-center max-w-[120px] sm:max-w-sm md:max-w-md lg:max-w-lg min-w-0">
-          <button
-            onClick={() => setShowMap(true)}
-            className="flex items-center gap-1.5 sm:gap-2 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3.5 py-2 rounded-2xl border border-white/10 hover:border-emerald-500/50 shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group min-w-0 max-w-full"
-            title="View Area Map & Sectors"
-          >
-            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-            <span className="font-mono text-[10px] sm:text-[11px] md:text-xs text-emerald-300 truncate max-w-[65px] sm:max-w-none">{gameState.location}</span>
-            <Compass className="w-3 h-3 text-zinc-500 shrink-0 group-hover:text-white transition-colors hidden sm:inline" />
-          </button>
-        </div>
-
-        {/* RIGHT CLUSTER: Auto-Save Pulse, LLM Engine Pill & Unified Glass Command Dock */}
-        <div className="flex items-center gap-2 shrink-0">
-          <LlmQuickPill
-            config={llmConfig}
-            className="hidden sm:flex"
-            onClick={() => {
-              soundEffects.playClick();
-              setShowLlmModal(true);
-            }}
-          />
-
-          {showAutoSaveIndicator && (
-            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_15px_rgba(52,211,153,0.3)] backdrop-blur-md">
-              <Zap className="w-3 h-3 text-emerald-400 animate-pulse" />
-              <span>Auto-saved</span>
-            </div>
-          )}
-
-          {/* Mobile Command Menu Button (< lg) */}
+          {/* Mobile Command Menu Button */}
           <button
             type="button"
             onClick={() => {
               soundEffects.playClick();
               setShowMobileCommandSheet(true);
             }}
-            className="lg:hidden p-2.5 rounded-2xl bg-black/85 hover:bg-black/95 border border-rose-500/40 text-rose-300 hover:text-white backdrop-blur-md shadow-lg flex items-center justify-center relative cursor-pointer active:scale-95"
+            className="w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-rose-500/40 text-rose-300 hover:text-white flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative"
             title="Open Mobile Command Dock"
           >
             <LayoutGrid className="w-4 h-4 text-rose-400" />
@@ -6348,161 +6288,381 @@ export default function VisualNovelGame() {
             {(unreadNotificationCount > 0 ||
               systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
               systemState.completedQuests.some((q) => !q.isClaimed)) && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
               </span>
             )}
           </button>
+        </div>
 
-          {/* Desktop Glass Command Dock (>= lg) */}
-          <div className="hidden lg:flex items-center bg-black/80 backdrop-blur-md border border-white/10 p-1 rounded-2xl shadow-lg shrink-0 gap-0.5">
-            {/* Interactive Flowchart Button (Task 2) */}
+        {/* DESKTOP TOP HUD (>= sm) */}
+        <div className="hidden sm:flex items-center justify-between gap-3 w-full">
+          {/* LEFT CLUSTER: Navigation, Player Anchor & LitRPG System */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
+              onClick={handleNavigateToCatalogue}
+              className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3 py-2 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer shrink-0"
+              title="Return to Story Catalogue"
+            >
+              <ArrowLeft className="w-4 h-4 text-zinc-400" />
+              <span className="hidden md:inline font-mono text-[11px]">Catalogue</span>
+            </button>
+
+            {/* Character Identity & Status Card with Live Vitals Bars & Hit Feedback */}
+            <button
+              onClick={() => setShowPlayerSheet(true)}
+              className={`relative flex items-center gap-1.5 sm:gap-2.5 bg-black/85 hover:bg-black/95 backdrop-blur-md px-2 sm:px-3 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group shrink-0 ${
+                vitalsFeedback && vitalsFeedback.hpDelta < 0
+                  ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
+                  : vitalsFeedback && vitalsFeedback.hpDelta > 0
+                  ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
+                  : player.stats.hp <= player.stats.maxHp * 0.35
+                  ? "border-red-500/70 shadow-[0_0_16px_rgba(239,68,68,0.3)]"
+                  : "border-white/10 hover:border-rose-500/50"
+              }`}
+              title="Open Character Sheet & Inventory"
+            >
+              {/* Floating Delta Badge on Top HUD Player Card */}
+              {vitalsFeedback && (
+                <div
+                  key={`hud_delta_${vitalsFeedback.id}`}
+                  className={`pointer-events-none absolute -bottom-6 left-2 z-30 px-2 py-0.5 rounded-lg border font-mono text-[10px] font-black shadow-xl animate-bounce ${
+                    vitalsFeedback.hpDelta < 0
+                      ? "bg-red-950 border-red-400 text-red-200"
+                      : vitalsFeedback.hpDelta > 0
+                      ? "bg-emerald-950 border-emerald-400 text-emerald-200"
+                      : "bg-sky-950 border-sky-400 text-sky-200"
+                  }`}
+                >
+                  {vitalsFeedback.hpDelta !== 0
+                    ? `${vitalsFeedback.hpDelta > 0 ? "+" : ""}${vitalsFeedback.hpDelta} HP`
+                    : `${vitalsFeedback.mpDelta > 0 ? "+" : ""}${vitalsFeedback.mpDelta} MP`}
+                </div>
+              )}
+
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-rose-300 shrink-0">
+                {playerAvatar && playerAvatar.trim() ? (
+                  <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
+                ) : (
+                  player.name.charAt(0)
+                )}
+              </div>
+              <div className="text-left hidden sm:block">
+                <p className="font-semibold leading-tight text-white group-hover:text-rose-300 transition-colors">
+                  {player.name}
+                </p>
+                <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.role}</p>
+              </div>
+              <div className="flex flex-col gap-1 pl-1 min-w-[76px] sm:min-w-[104px]">
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                    <span className="flex items-center gap-1 text-rose-400 font-bold">
+                      <Heart className="w-2.5 h-2.5 fill-rose-500" />
+                      {player.stats.hp}/{player.stats.maxHp}
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        player.stats.hp <= player.stats.maxHp * 0.35
+                          ? "bg-gradient-to-r from-red-600 to-rose-400 animate-pulse"
+                          : "bg-gradient-to-r from-rose-600 to-emerald-400"
+                      }`}
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(100, (player.stats.hp / Math.max(1, player.stats.maxHp)) * 100)
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                    <span className="flex items-center gap-1 text-sky-400 font-bold">
+                      <Zap className="w-2.5 h-2.5 fill-sky-500" />
+                      {player.stats.mp}/{player.stats.maxMp}
+                    </span>
+                  </div>
+                  <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                    <div
+                      className="h-full bg-gradient-to-r from-sky-600 to-cyan-400 transition-all duration-300"
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(100, (player.stats.mp / Math.max(1, player.stats.maxMp)) * 100)
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                    <span className="flex items-center gap-1 text-amber-400 font-bold">
+                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                      {player.stats.exp}/{player.stats.maxExp}
+                    </span>
+                    {expFeedback && (
+                      <span className="text-[9px] font-mono font-bold text-amber-300 animate-bounce drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]">
+                        +{expFeedback.amount} EXP
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
+                    <div
+                      className={`h-full transition-all duration-1000 ease-out relative ${
+                        expFeedback
+                          ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.8)]"
+                          : "bg-gradient-to-r from-amber-600 to-yellow-500"
+                      }`}
+                      style={{
+                        width: `${Math.max(
+                          0,
+                          Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100)
+                        )}%`,
+                      }}
+                    >
+                      <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#f59e0b] rounded-full" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {/* SYSTEM Button */}
+            <button
+              type="button"
               onClick={() => {
                 soundEffects.playClick();
-                setShowFlowchartModal(true);
+                setShowSystemModal(true);
               }}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer flex items-center gap-1.5"
-              title="Interactive Flowchart & Timeline Anchors"
+              className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-2 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg ${
+                systemState.activeQuests.length > 0
+                  ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
+                  : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
+              }`}
+              title="Open System Administrator Interface & Quests"
             >
-              <GitBranch className="w-4 h-4 text-cyan-400" />
-              <span className="hidden xl:inline text-[10px] font-mono">Flowchart</span>
+              <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              <span className="text-[11px] font-mono font-bold tracking-wider hidden sm:inline">SYSTEM</span>
+              {systemState.activeQuests.length > 0 && (
+                <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]">
+                  {systemState.activeQuests.length}
+                </span>
+              )}
+              {/* Unclaimed Clearance Notification Beacon */}
+              {(systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
+                systemState.completedQuests.some((q) => !q.isClaimed)) && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3" title="Clearance Ready to Claim">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-black shadow-[0_0_10px_#10b981]" />
+                </span>
+              )}
             </button>
+          </div>
 
-            {/* LitRPG Trials Link (Task 4) */}
+          {/* CENTER CLUSTER: Spatial Location / Realm Anchor */}
+          <div className="flex-1 flex justify-center max-w-[120px] sm:max-w-sm md:max-w-md lg:max-w-lg min-w-0">
             <button
-              onClick={handleNavigateToTrials}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1.5"
-              title="LitRPG Daily Roguelite Trials (Auto-saves story progress)"
+              onClick={() => setShowMap(true)}
+              className="flex items-center gap-1.5 sm:gap-2 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3.5 py-2 rounded-2xl border border-white/10 hover:border-emerald-500/50 shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group min-w-0 max-w-full"
+              title="View Area Map & Sectors"
             >
-              <Swords className="w-4 h-4 text-blue-400" />
-              <span className="hidden xl:inline text-[10px] font-mono">Trials</span>
+              <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="font-mono text-[10px] sm:text-[11px] md:text-xs text-emerald-300 truncate max-w-[65px] sm:max-w-none">{gameState.location}</span>
+              <Compass className="w-3 h-3 text-zinc-500 shrink-0 group-hover:text-white transition-colors hidden sm:inline" />
             </button>
+          </div>
 
-            {/* Share World & Seed (Task 5) */}
-            <button
+          {/* RIGHT CLUSTER: Auto-Save Pulse, LLM Engine Pill & Unified Glass Command Dock */}
+          <div className="flex items-center gap-2 shrink-0">
+            <LlmQuickPill
+              config={llmConfig}
+              className="hidden sm:flex"
               onClick={() => {
                 soundEffects.playClick();
-                setShowShareModal(true);
+                setShowLlmModal(true);
               }}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-400 hover:text-purple-300 transition-all cursor-pointer flex items-center gap-1.5"
-              title="Share Multiverse Setup & Card"
-            >
-              <Share2 className="w-4 h-4 text-purple-400" />
-              <span className="hidden xl:inline text-[10px] font-mono">Share</span>
-            </button>
+            />
 
-            {/* Timeline Scars Inspector (Pitch A) */}
-            {timelineScars.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  soundEffects.playClick();
-                  setShowScarsModal(true);
-                }}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse"
-                title="View Timeline Scars incurred from Causal Covenants"
-              >
-                <Zap className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden xl:inline text-[10px] font-mono font-bold">{timelineScars.length} Scars</span>
-              </button>
+            {showAutoSaveIndicator && (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_15px_rgba(52,211,153,0.3)] backdrop-blur-md">
+                <Zap className="w-3 h-3 text-emerald-400 animate-pulse" />
+                <span>Auto-saved</span>
+              </div>
             )}
 
-            {/* Illustrate Scene (Nano Banana 2.1) */}
+            {/* Mobile Command Menu Button (for tablets: sm to lg) */}
             <button
-              onClick={() => handleGenerateSceneCG(false)}
-              disabled={isGeneratingScene}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-rose-300 hover:text-rose-200 transition-all cursor-pointer flex items-center gap-1.5 group disabled:opacity-50"
-              title="Generate Cinematic Scene CG (Nano Banana 2.1)"
-            >
-              <Sparkles className="w-4 h-4 text-rose-400 group-hover:rotate-12 transition-transform" />
-              <span className="hidden xl:inline text-[11px] font-mono font-bold">Illustrate</span>
-            </button>
-
-            <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
-
-            {/* Party */}
-            <button
-              onClick={() => setShowPartyDrawer(true)}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
-              title="Party Roster"
-            >
-              <Users className="w-4 h-4 text-rose-400" />
-              <span className="text-[10px] font-mono font-bold text-zinc-300">
-                {party.filter((p) => p.isPresent).length}
-              </span>
-            </button>
-
-            {/* Log / Memories */}
-            <button
-              onClick={() => setShowChronicle(true)}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
-              title="Chronicle Memories"
-            >
-              <Scroll className="w-4 h-4 text-sky-400" />
-              <span className="text-[10px] font-mono font-bold text-zinc-300">
-                {memories.length}
-              </span>
-            </button>
-
-            {/* Save Game */}
-            <button
-              onClick={() => setShowSaveModal(true)}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1"
-              title="Save or Load Game"
-            >
-              <Save className="w-4 h-4" />
-            </button>
-
-            {/* Notification History Bell */}
-            <button
+              type="button"
               onClick={() => {
                 soundEffects.playClick();
-                setShowNotificationHistory(true);
-                setUnreadNotificationCount(0);
+                setShowMobileCommandSheet(true);
               }}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-zinc-400 hover:text-white transition-all cursor-pointer relative flex items-center gap-1.5"
-              title="Notification Archive & System Broadcasts"
+              className="hidden sm:flex lg:hidden p-2.5 rounded-2xl bg-black/85 hover:bg-black/95 border border-rose-500/40 text-rose-300 hover:text-white backdrop-blur-md shadow-lg items-center justify-center relative cursor-pointer active:scale-95"
+              title="Open Mobile Command Dock"
             >
-              <Bell className="w-4 h-4 text-rose-400" />
-              {unreadNotificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.7)] animate-pulse">
-                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+              <LayoutGrid className="w-4 h-4 text-rose-400" />
+              {/* Notification / Unclaimed Beacon */}
+              {(unreadNotificationCount > 0 ||
+                systemState.activeQuests.some((q) => (q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed) && !q.isClaimed) ||
+                systemState.completedQuests.some((q) => !q.isClaimed)) && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
                 </span>
               )}
             </button>
 
-            <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+            {/* Desktop Glass Command Dock (>= lg) */}
+            <div className="hidden lg:flex items-center bg-black/80 backdrop-blur-md border border-white/10 p-1 rounded-2xl shadow-lg shrink-0 gap-0.5">
+              {/* Interactive Flowchart Button (Task 2) */}
+              <button
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowFlowchartModal(true);
+                }}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer flex items-center gap-1.5"
+                title="Interactive Flowchart & Timeline Anchors"
+              >
+                <GitBranch className="w-4 h-4 text-cyan-400" />
+                <span className="hidden xl:inline text-[10px] font-mono">Flowchart</span>
+              </button>
 
-            {/* Realm Access Key & Quota */}
-            <button
-              onClick={() => setShowAuthModal(true)}
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer flex items-center gap-1"
-              title={userAuth ? `Active Realm Key: ${userAuth.name} (${userAuth.remainingTurns === -1 ? "∞" : `${userAuth.remainingTurns} turns remaining`})` : "Configure Access Key"}
-            >
-              <Key className="w-3.5 h-3.5 text-purple-400" />
-              <span className="hidden lg:inline text-[10px] font-mono">
-                {userAuth ? (userAuth.remainingTurns === -1 ? "∞" : userAuth.remainingTurns) : "Key"}
-              </span>
-            </button>
+              {/* LitRPG Trials Link (Task 4) */}
+              <button
+                onClick={handleNavigateToTrials}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1.5"
+                title="LitRPG Daily Roguelite Trials (Auto-saves story progress)"
+              >
+                <Swords className="w-4 h-4 text-blue-400" />
+                <span className="hidden xl:inline text-[10px] font-mono">Trials</span>
+              </button>
 
-            {/* Audio Mute Toggle */}
-            <button
-              onClick={handleToggleAudio}
-              className="p-2 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
-              title={isAudioMuted ? "Unmute Audio" : "Mute Audio"}
-            >
-              {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
-            </button>
+              {/* Share World & Seed (Task 5) */}
+              <button
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowShareModal(true);
+                }}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-400 hover:text-purple-300 transition-all cursor-pointer flex items-center gap-1.5"
+                title="Share Multiverse Setup & Card"
+              >
+                <Share2 className="w-4 h-4 text-purple-400" />
+                <span className="hidden xl:inline text-[10px] font-mono">Share</span>
+              </button>
+
+              {/* Timeline Scars Inspector (Pitch A) */}
+              {timelineScars.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setShowScarsModal(true);
+                  }}
+                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse"
+                  title="View Timeline Scars incurred from Causal Covenants"
+                >
+                  <Zap className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="hidden xl:inline text-[10px] font-mono font-bold">{timelineScars.length} Scars</span>
+                </button>
+              )}
+
+              {/* Illustrate Scene (Nano Banana 2.1) */}
+              <button
+                onClick={() => handleGenerateSceneCG(false)}
+                disabled={isGeneratingScene}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-rose-300 hover:text-rose-200 transition-all cursor-pointer flex items-center gap-1.5 group disabled:opacity-50"
+                title="Generate Cinematic Scene CG (Nano Banana 2.1)"
+              >
+                <Sparkles className="w-4 h-4 text-rose-400 group-hover:rotate-12 transition-transform" />
+                <span className="hidden xl:inline text-[11px] font-mono font-bold">Illustrate</span>
+              </button>
+
+              <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
+              {/* Party */}
+              <button
+                onClick={() => setShowPartyDrawer(true)}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
+                title="Party Roster"
+              >
+                <Users className="w-4 h-4 text-rose-400" />
+                <span className="text-[10px] font-mono font-bold text-zinc-300">
+                  {party.filter((p) => p.isPresent).length}
+                </span>
+              </button>
+
+              {/* Log / Memories */}
+              <button
+                onClick={() => setShowChronicle(true)}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
+                title="Chronicle Memories"
+              >
+                <Scroll className="w-4 h-4 text-sky-400" />
+                <span className="text-[10px] font-mono font-bold text-zinc-300">
+                  {memories.length}
+                </span>
+              </button>
+
+              {/* Save Game */}
+              <button
+                onClick={() => setShowSaveModal(true)}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1"
+                title="Save or Load Game"
+              >
+                <Save className="w-4 h-4" />
+              </button>
+
+              {/* Notification History Bell */}
+              <button
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowNotificationHistory(true);
+                  setUnreadNotificationCount(0);
+                }}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-zinc-400 hover:text-white transition-all cursor-pointer relative flex items-center gap-1.5"
+                title="Notification Archive & System Broadcasts"
+              >
+                <Bell className="w-4 h-4 text-rose-400" />
+                {unreadNotificationCount > 0 && (
+                  <span className="absolute -top-1 -right-1 px-1.5 py-0.2 min-w-[16px] h-4 flex items-center justify-center text-[9px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.7)] animate-pulse">
+                    {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+
+              <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
+
+              {/* Realm Access Key & Quota */}
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer flex items-center gap-1"
+                title={userAuth ? `Active Realm Key: ${userAuth.name} (${userAuth.remainingTurns === -1 ? "∞" : `${userAuth.remainingTurns} turns remaining`})` : "Configure Access Key"}
+              >
+                <Key className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden lg:inline text-[10px] font-mono">
+                  {userAuth ? (userAuth.remainingTurns === -1 ? "∞" : userAuth.remainingTurns) : "Key"}
+                </span>
+              </button>
+
+              {/* Audio Mute Toggle */}
+              <button
+                onClick={handleToggleAudio}
+                className="p-2 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                title={isAudioMuted ? "Unmute Audio" : "Mute Audio"}
+              >
+                {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
+              </button>
+            </div>
           </div>
         </div>
-
       </header>
 
       {/* DIALOGUE & SPRITE TERMINAL */}
-      <div className="absolute top-20 bottom-3 inset-x-3 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-2 pointer-events-none">
-        <div className="pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-[160px] max-h-[46vh] sm:max-h-[50vh] md:max-h-[54vh]">
+      <div className="absolute top-14 sm:top-20 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
+        <div className="pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 max-h-[42dvh] sm:max-h-[50vh] md:max-h-[54vh]">
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
           {/* Pillar 3: Penalty Scenario Warning Banner */}
@@ -6528,27 +6688,27 @@ export default function VisualNovelGame() {
             </div>
           )}
 
-          <div className="shrink-0 px-4 py-2 sm:px-5 sm:py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
-            <div className="flex items-center gap-2.5">
+          <div className="shrink-0 px-3 py-2 sm:px-5 sm:py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
               {/* Speaker Badge */}
               {isSpeakingHeroine ? (
-                <div className="inline-flex items-center gap-2 bg-rose-600/25 border border-rose-500/40 px-3 py-1 rounded-xl shadow-sm">
-                  <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="text-xs md:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono">
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-rose-600/25 border border-rose-500/40 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0 max-w-[130px] sm:max-w-none">
+                  <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono truncate">
                     {isSpeakingHeroine.name}
                   </span>
                 </div>
               ) : isProtagonistAlone ? (
-                <div className="inline-flex items-center gap-2 bg-sky-950/60 border border-sky-500/40 px-3 py-1 rounded-xl shadow-sm">
-                  <User className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="text-xs md:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono">
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-sky-950/60 border border-sky-500/40 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0">
+                  <User className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono truncate">
                     {gameState.speaker || "Narrator"}
                   </span>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-2 bg-sky-950/60 border border-sky-500/30 px-3 py-1 rounded-xl shadow-sm">
-                  <BookOpen className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="text-xs md:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono">
+                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-sky-950/60 border border-sky-500/30 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0">
+                  <BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span className="text-xs sm:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono truncate">
                     {gameState.speaker || "Narrator"}
                   </span>
                 </div>
@@ -6556,7 +6716,7 @@ export default function VisualNovelGame() {
 
               {/* Status / Presence Indicator */}
               {isSpeakingHeroine ? (
-                <div className="relative inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1 rounded-xl shadow-inner">
+                <div className="relative inline-flex items-center gap-1 sm:gap-1.5 bg-black/60 border border-white/10 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
                   {lastAffectionDelta !== null && lastAffectionDelta.companion.toLowerCase().includes(isSpeakingHeroine.name.toLowerCase()) && (
                     <div 
                       className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 flex items-center gap-1 whitespace-nowrap ${
@@ -6570,7 +6730,7 @@ export default function VisualNovelGame() {
                       {lastAffectionDelta.isCapped ? (
                         <>
                           <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-                          <span>Locked at {lastAffectionDelta.cap}% [Quest Pending]</span>
+                          <span>Locked at {lastAffectionDelta.cap}%</span>
                         </>
                       ) : lastAffectionDelta.delta > 0 ? (
                         `+${lastAffectionDelta.delta} Favor`
@@ -6579,77 +6739,68 @@ export default function VisualNovelGame() {
                       )}
                     </div>
                   )}
-                  <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500/80" />
-                  <span className="text-[10px] font-mono font-medium text-rose-300 hidden sm:inline">{isSpeakingHeroine.name}:</span>
+                  <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500 fill-rose-500/80 shrink-0" />
+                  <span className="text-[10px] font-mono font-medium text-rose-300 hidden md:inline">{isSpeakingHeroine.name}:</span>
                   {isSpeakingHeroine.encountered ? (
                     <>
-                      <div className="w-14 sm:w-20 bg-zinc-800 rounded-full h-1.5 overflow-hidden border border-white/5">
+                      <div className="w-10 sm:w-16 md:w-20 bg-zinc-800 rounded-full h-1.5 overflow-hidden border border-white/5">
                         <div 
                           className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500" 
                           style={{ width: `${isSpeakingHeroine.affection}%` }}
                         />
                       </div>
-                      <span className="text-[11px] font-mono font-bold text-rose-300 flex items-center gap-1">
+                      <span className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 flex items-center gap-0.5">
                         {isSpeakingHeroine.affection}%
                         {(() => {
                           const cap = getCompanionCap(isSpeakingHeroine.name);
                           return isSpeakingHeroine.affection >= cap && cap < 100 ? (
                             <span title={`Favor locked at ${cap}%. Complete her Companion Quest to break through.`}>
-                              <Lock className="w-3 h-3 text-amber-400 inline" />
+                              <Lock className="w-2.5 h-2.5 text-amber-400 inline" />
                             </span>
                           ) : null;
                         })()}
                       </span>
                     </>
                   ) : (
-                    <span className="text-[10px] font-mono text-zinc-500 italic px-1">??? Favor</span>
+                    <span className="text-[10px] font-mono text-zinc-500 italic px-1">???</span>
                   )}
                 </div>
               ) : isProtagonistAlone ? (
-                <div className="inline-flex items-center gap-1.5 bg-sky-950/40 border border-sky-500/30 px-2.5 py-1 rounded-xl shadow-inner">
-                  <Shield className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="text-[10px] font-mono font-bold text-sky-300">Solo Exploration</span>
+                <div className="inline-flex items-center gap-1.5 bg-sky-950/40 border border-sky-500/30 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
+                  <Shield className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span className="text-[10px] font-mono font-bold text-sky-300">Solo</span>
                 </div>
               ) : (
-                <div className="inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2.5 py-1 rounded-xl shadow-inner">
-                  <Users className="w-3.5 h-3.5 text-rose-400" />
-                  <span className="text-[10px] font-mono text-zinc-400 hidden sm:inline">With:</span>
-                  <span className="text-[11px] font-mono font-bold text-rose-300">
+                <div className="inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
+                  <Users className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  <span className="text-[10px] font-mono font-medium text-rose-300 hidden md:inline">With:</span>
+                  <span className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 truncate max-w-[100px] sm:max-w-none">
                     {presentComps.map((c) => c.name).join(", ")}
                   </span>
-                  <span className="text-zinc-600 mx-0.5">•</span>
-                  <Heart className="w-3 h-3 text-rose-500 fill-rose-500/80" />
-                  <span className="text-[10px] font-mono text-rose-300 font-bold">{presentComps[0].affection}%</span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {isSpeakingHeroine && (
-                <>
-                  <span className="text-xs font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-md border border-white/5">
-                    {isSpeakingHeroine.expressionKey}
-                  </span>
-                  <span className="text-zinc-600">•</span>
-                </>
+                <span className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                  {isSpeakingHeroine.expressionKey}
+                </span>
               )}
               {isProtagonistAlone && (
-                <>
-                  <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-500/20">
-                    Solitary Arc
-                  </span>
-                  <span className="text-zinc-600">•</span>
-                </>
+                <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-500/20 hidden xs:inline-block">
+                  Solitary Arc
+                </span>
               )}
-              <span className="text-xs text-amber-400 font-mono">Mood: {gameState.mood}</span>
+              <span className="text-xs text-amber-400 font-mono hidden md:inline">• Mood: {gameState.mood}</span>
               <button
                 type="button"
                 onClick={() => handleGenerateSceneCG(false)}
-                className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 text-[10px] font-mono font-bold transition-all cursor-pointer shadow-sm hover:border-rose-400"
+                className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 text-[10px] font-mono font-bold transition-all cursor-pointer shadow-sm hover:border-rose-400"
                 title="Illustrate this scene in real-time with Nano Banana 2.1"
               >
                 <Camera className="w-3 h-3 text-rose-400" />
-                <span className="hidden sm:inline">Illustrate CG</span>
+                <span>Illustrate CG</span>
               </button>
             </div>
           </div>
@@ -7028,14 +7179,14 @@ export default function VisualNovelGame() {
         )}
 
         {choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive) && (
-          <div className="pointer-events-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 select-none shrink-0 max-h-32 sm:max-h-36 overflow-y-auto pr-0.5">
+          <div className="pointer-events-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 select-none shrink-0 max-h-24 sm:max-h-36 overflow-y-auto pr-0.5">
             {choices.map((choice, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => sendAction(choice, false)}
                 disabled={isLoading}
-                className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
               >
                 <span className="text-xs sm:text-sm text-zinc-200 group-hover:text-white line-clamp-2 pr-2">
                   {choice}
@@ -7048,7 +7199,7 @@ export default function VisualNovelGame() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="pointer-events-auto flex gap-2 select-none shrink-0">
+        <form onSubmit={handleSubmit} className="pointer-events-auto flex gap-1.5 sm:gap-2 select-none shrink-0">
           {/* Pillar 5: Camp Gifting Trigger */}
           {party.length > 0 && (
             <button
@@ -7059,7 +7210,7 @@ export default function VisualNovelGame() {
                 }
                 setShowGiftingModal(true);
               }}
-              className="px-3 py-2.5 min-h-[44px] rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-rose-400 active:scale-95"
+              className="px-2.5 sm:px-3 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-rose-400 active:scale-95"
               title="Camp Gifting: Present an item to a companion"
             >
               <Gift className="w-4 h-4 text-rose-400" />
@@ -7070,7 +7221,7 @@ export default function VisualNovelGame() {
           <button
             type="button"
             onClick={() => setIsOOCMode(!isOOCMode)}
-            className={`px-3 py-2.5 min-h-[44px] rounded-xl border font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+            className={`px-2.5 sm:px-3 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl border font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
               isOOCMode 
                 ? "bg-amber-500/20 border-amber-500 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]" 
                 : "bg-zinc-900/90 border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
@@ -7086,7 +7237,7 @@ export default function VisualNovelGame() {
             onChange={(e) => setInputAction(e.target.value)}
             placeholder={isOOCMode ? "OOC Directive..." : `What will ${player.name} do or say? (Markdown supported)`}
             disabled={isLoading}
-            className={`flex-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-4 py-2.5 min-h-[44px] text-base sm:text-sm text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-all select-text ${
+            className={`flex-1 bg-zinc-900/90 backdrop-blur-md rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] text-base sm:text-sm text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-all select-text min-w-0 ${
               isOOCMode
                 ? "border-amber-500/40 focus:border-amber-400 ring-1 ring-amber-500/20"
                 : "border-white/15 focus:border-rose-500/60 ring-1 ring-rose-500/20"
@@ -7096,7 +7247,7 @@ export default function VisualNovelGame() {
           <button
             type="submit"
             disabled={isLoading || !inputAction.trim()}
-            className="px-4 sm:px-5 py-2.5 min-h-[44px] min-w-[48px] bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg flex items-center justify-center transition-all cursor-pointer active:scale-95"
+            className="px-3.5 sm:px-5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] min-w-[40px] sm:min-w-[48px] bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
           >
             {isLoading ? (
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -7166,6 +7317,10 @@ export default function VisualNovelGame() {
         unreadNotificationsCount={unreadNotificationCount}
         isAudioMuted={isAudioMuted}
         onToggleAudio={handleToggleAudio}
+        onOpenMap={() => setShowMap(true)}
+        locationName={gameState.location}
+        onOpenAuthModal={() => setShowAuthModal(true)}
+        userAuthName={userAuth ? userAuth.name.split(" ")[0] : undefined}
       />
 
       {/* PARTY ROSTER DRAWER */}

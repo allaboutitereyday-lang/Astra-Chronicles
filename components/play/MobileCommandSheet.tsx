@@ -19,6 +19,8 @@ import {
   Cpu,
   User,
   CheckCircle2,
+  MapPin,
+  Key,
 } from "lucide-react";
 
 export interface MobileCommandSheetProps {
@@ -37,6 +39,8 @@ export interface MobileCommandSheetProps {
   onOpenSystemModal: () => void;
   hasUnclaimedClearance: boolean;
   onOpenCodex: () => void;
+  onOpenMap?: () => void;
+  locationName?: string;
   // Progression & Multiverse
   onNavigateToTrials: () => void;
   onOpenShareModal: () => void;
@@ -51,6 +55,8 @@ export interface MobileCommandSheetProps {
   unreadNotificationsCount: number;
   isAudioMuted: boolean;
   onToggleAudio: () => void;
+  onOpenAuthModal?: () => void;
+  userAuthName?: string;
 }
 
 export function MobileCommandSheet({
@@ -67,6 +73,8 @@ export function MobileCommandSheet({
   onOpenSystemModal,
   hasUnclaimedClearance,
   onOpenCodex,
+  onOpenMap,
+  locationName,
   onNavigateToTrials,
   onOpenShareModal,
   onOpenSaveModal,
@@ -79,6 +87,8 @@ export function MobileCommandSheet({
   unreadNotificationsCount,
   isAudioMuted,
   onToggleAudio,
+  onOpenAuthModal,
+  userAuthName,
 }: MobileCommandSheetProps) {
   if (!isOpen) return null;
 
@@ -277,6 +287,26 @@ export function MobileCommandSheet({
                   </span>
                 </div>
               </button>
+
+              {onOpenMap && (
+                <button
+                  type="button"
+                  onClick={() => handleAction(onOpenMap)}
+                  className="p-3 rounded-2xl bg-zinc-900/90 border border-teal-500/30 hover:border-teal-400 hover:bg-teal-950/30 flex items-center gap-3 transition-all cursor-pointer text-left group shadow-sm"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-teal-950/60 border border-teal-500/40 flex items-center justify-center text-teal-400 group-hover:scale-105 transition-transform shrink-0">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-teal-200">
+                      Area Map
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono block truncate">
+                      {locationName || "Sectors & Realm"}
+                    </span>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 
@@ -413,6 +443,26 @@ export function MobileCommandSheet({
                   </span>
                 </div>
               </button>
+
+              {onOpenAuthModal && (
+                <button
+                  type="button"
+                  onClick={() => handleAction(onOpenAuthModal)}
+                  className="p-3 rounded-2xl bg-zinc-900/90 border border-purple-500/30 hover:border-purple-400 hover:bg-purple-950/30 flex items-center gap-3 transition-all cursor-pointer text-left group shadow-sm"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-purple-950/60 border border-purple-500/40 flex items-center justify-center text-purple-400 group-hover:scale-105 transition-transform shrink-0">
+                    <Key className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-purple-200">
+                      Realm Key
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono block truncate">
+                      {userAuthName || "Quota & Access"}
+                    </span>
+                  </div>
+                </button>
+              )}
 
               <button
                 type="button"
