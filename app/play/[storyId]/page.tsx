@@ -6404,7 +6404,7 @@ export default function VisualNovelGame() {
       />
 
       {/* TOP HUD */}
-      <header className="absolute top-2 sm:top-3 inset-x-2 sm:inset-x-6 md:inset-x-8 z-20 pointer-events-auto select-none">
+      <header className="absolute top-2 sm:top-3 inset-x-2 sm:inset-x-6 md:inset-x-8 z-40 pointer-events-auto select-none">
         {/* MOBILE TOP HUD (< sm) */}
         <div className="flex sm:hidden items-center justify-between gap-1.5 w-full">
           {/* Back Button */}
@@ -6599,15 +6599,15 @@ export default function VisualNovelGame() {
                 </p>
                 <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.role}</p>
               </div>
-              <div className="flex flex-col gap-1 pl-1 min-w-[76px] sm:min-w-[104px]">
+              <div className="flex flex-col gap-0.5 pl-1 min-w-[76px] sm:min-w-[104px]">
                 <div className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                  <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
                     <span className="flex items-center gap-1 text-rose-400 font-bold">
                       <Heart className="w-2.5 h-2.5 fill-rose-500" />
                       {player.stats.hp}/{player.stats.maxHp}
                     </span>
                   </div>
-                  <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
                     <div
                       className={`h-full transition-all duration-300 ${
                         player.stats.hp <= player.stats.maxHp * 0.35
@@ -6624,7 +6624,7 @@ export default function VisualNovelGame() {
                   </div>
                 </div>
                 <div className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                  <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
                     <span className="flex items-center gap-1 text-sky-400 font-bold">
                       <Zap className="w-2.5 h-2.5 fill-sky-500" />
                       {player.stats.mp}/{player.stats.maxMp}
@@ -6643,7 +6643,7 @@ export default function VisualNovelGame() {
                   </div>
                 </div>
                 <div className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                  <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
                     <span className="flex items-center gap-1 text-amber-400 font-bold">
                       <Sparkles className="w-2.5 h-2.5 text-amber-400" />
                       {player.stats.exp}/{player.stats.maxExp}
@@ -6906,7 +6906,7 @@ export default function VisualNovelGame() {
       </header>
 
       {/* DIALOGUE & SPRITE TERMINAL */}
-      <div className="absolute top-14 sm:top-20 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
+      <div className="absolute top-14 sm:top-24 md:top-24 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
         <div className="pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 max-h-[42dvh] sm:max-h-[50vh] md:max-h-[54vh]">
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
