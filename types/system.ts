@@ -124,7 +124,14 @@ export interface CompanionFrictionState {
   } | null;
 }
 
-// --- PITCH C: INTEGRATED INFILTRATION & SECTOR CLASHES ---
+// --- PITCH C: INTEGRATED INFILTRATION, RANDOM ENCOUNTERS & SECTOR CLASHES ---
+export interface EnemyCombatIntent {
+  label: string;
+  estimatedDamage: number;
+  type: "strike" | "heavy" | "arcane" | "debuff";
+  counterStanceHint: string;
+}
+
 export interface ActiveStoryClashState {
   isActive: boolean;
   enemyName: string;
@@ -132,8 +139,14 @@ export interface ActiveStoryClashState {
   enemyMaxHp: number;
   enemyDesc?: string;
   enemyAttackPower?: number; // e.g. 15
+  enemyImageUrl?: string; // Generated or procedural portrait of the enemy
+  enemyVisualPrompt?: string; // Visual description for Nano Banana 2.1 monster synthesis
+  threatRank?: QuestDifficulty; // E, D, C, B, A, S
+  enemyArchetype?: string; // e.g. "Inquisition Hound-Pack", "Abyssal Construct"
+  enemyIntent?: EnemyCombatIntent;
+  isRandomEncounter?: boolean;
   clashTurn: number;
-  maxClashTurns?: number; // e.g. 5
+  maxClashTurns?: number; // e.g. 6
   tacticalObjective: string;
   status: "ongoing" | "victory" | "retreat" | "intervention";
   companionAssistingName?: string;

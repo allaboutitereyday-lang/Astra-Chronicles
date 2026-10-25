@@ -4,6 +4,7 @@ import {
   CausalCovenantState,
   CompanionFrictionState,
   ActiveStoryClashState,
+  EnemyCombatIntent,
 } from "./system";
 
 export type {
@@ -11,6 +12,7 @@ export type {
   CausalCovenantState,
   CompanionFrictionState,
   ActiveStoryClashState,
+  EnemyCombatIntent,
 };
 
 export type CompanionExpressionKey =

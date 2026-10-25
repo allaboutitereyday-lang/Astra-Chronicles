@@ -1,20 +1,22 @@
 /**
- * Integrated Infiltration & Story Clashes Engine (Pitch C + Universal 6-Stance Matrix)
+ * Integrated Infiltration, Random Encounters & Story Clashes Engine (Pitch C + Universal 6-Stance Matrix)
  * for Astra Chronicles
  * 
  * Seamlessly integrates turn-based tactical combat directly inside the
  * Visual Novel gameplay interface without page redirects. Powers the
  * in-scene Tactical Arsenal Dock, Universal 6-Stance Matrix, dual telemetry,
- * and narrative combat choreography.
+ * enemy portrait synthesis, and narrative combat choreography.
  */
 
-import { ActiveStoryClashState } from "@/types/system";
+import { ActiveStoryClashState, QuestDifficulty } from "@/types/system";
 import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "./trialsClassArsenals";
 import { StoryCompanion, CombatStanceType } from "@/types/story";
 import { COMBAT_STANCES } from "./progressionMechanics";
+import { generateProceduralMonsterSvg } from "./proceduralArt";
+import { generateEnemyIntent } from "./vitalsAndEncounters";
 
 /**
- * Initializes a new in-scene Story Clash.
+ * Initializes a new in-scene Story Clash / Hostile Encounter.
  */
 export function initiateStoryClash(params: {
   enemyName: string;
@@ -23,18 +25,50 @@ export function initiateStoryClash(params: {
   tacticalObjective: string;
   companionAssistingName?: string;
   enemyAttackPower?: number;
+  enemyImageUrl?: string;
+  enemyVisualPrompt?: string;
+  threatRank?: QuestDifficulty;
+  enemyArchetype?: string;
+  isRandomEncounter?: boolean;
+  genre?: string;
 }): ActiveStoryClashState {
   const hp = Math.max(30, params.enemyHp);
+  const atk = params.enemyAttackPower || 18;
+  const rank: QuestDifficulty =
+    params.threatRank || (hp >= 130 ? "A" : hp >= 95 ? "B" : "C");
+  const archetype = params.enemyArchetype || "Hostile Adversary";
+  const desc =
+    params.enemyDesc ||
+    "A formidable adversary standing between you and the objective.";
+
+  const fallbackSvg =
+    params.enemyImageUrl ||
+    generateProceduralMonsterSvg({
+      name: params.enemyName || "Anomaly Sovereign",
+      rank,
+      genre: params.genre || "Dark Fantasy LitRPG",
+      modifier: archetype,
+    });
+
   return {
     isActive: true,
     enemyName: params.enemyName || "Anomaly Sovereign",
     enemyHp: hp,
     enemyMaxHp: hp,
-    enemyDesc: params.enemyDesc || "A formidable adversary standing between you and the objective.",
-    enemyAttackPower: params.enemyAttackPower || 18,
+    enemyDesc: desc,
+    enemyAttackPower: atk,
+    enemyImageUrl: fallbackSvg,
+    enemyVisualPrompt:
+      params.enemyVisualPrompt ||
+      `Epic anime visual novel boss monster portrait: "${params.enemyName || "Anomaly Sovereign"}". ${desc}. Menacing combat stance, dark glowing runes, volumetric lighting, masterpiece asset.`,
+    threatRank: rank,
+    enemyArchetype: archetype,
+    enemyIntent: generateEnemyIntent(params.enemyName || "Anomaly Sovereign", atk, 1, rank),
+    isRandomEncounter: params.isRandomEncounter ?? true,
     clashTurn: 1,
     maxClashTurns: 6,
-    tacticalObjective: params.tacticalObjective || "Neutralize the threat before causal collapse.",
+    tacticalObjective:
+      params.tacticalObjective || "Neutralize the threat before causal collapse.",
     status: "ongoing",
     companionAssistingName: params.companionAssistingName,
     log: [
@@ -135,6 +169,7 @@ export interface ClashTurnResolution {
   enemyDamageTaken: number;
   isVictory: boolean;
   isDefeat: boolean;
+  isRetreat: boolean;
   isCrit: boolean;
   isStaggered: boolean;
   isEvaded: boolean;
@@ -144,20 +179,54 @@ export interface ClashTurnResolution {
 
 /**
  * Resolves a single tactical turn in an active Story Clash, applying the full
- * Universal 6-Stance Matrix mechanics (Crit, Stagger, Evasion, Burn, Lethality Reduction).
+ * Universal 6-Stance Matrix mechanics (Crit, Stagger, Evasion, Burn, Lethality Reduction)
+ * as well as tactical disengagement ("flee").
  */
 export function resolveClashTurn(
   clashState: ActiveStoryClashState,
-  actionType: "strike" | "burst" | "synergy" | "defense",
+  actionType: "strike" | "burst" | "synergy" | "defense" | "flee",
   playerRole: string = "Voidstrider",
   companion?: { name: string } | StoryCompanion | null,
   playerStats?: { hp: number; maxHp: number; mp: number; maxMp: number },
   activeStance: CombatStanceType = "neutral"
 ): ClashTurnResolution {
   const arsenal: ClassArsenal = getClassArsenal(playerRole);
-  const action: ClassTacticalAction = arsenal.actions[actionType] || arsenal.actions.strike;
   const compName = companion?.name || "Companion";
   const stanceCfg = COMBAT_STANCES[activeStance] || COMBAT_STANCES.neutral;
+
+  // Handle Tactical Disengagement / Flee
+  if (actionType === "flee") {
+    const canSpendMp = (playerStats?.mp ?? 0) >= 10;
+    const mpCost = canSpendMp ? 10 : 0;
+    const partingGraze = canSpendMp || activeStance === "phase" ? 0 : 6;
+    const updatedClashState: ActiveStoryClashState = {
+      ...clashState,
+      status: "retreat",
+      isActive: false,
+      log: [
+        ...clashState.log,
+        `[Turn ${clashState.clashTurn}] [Tactical Disengage]: Broke combat engagement against ${clashState.enemyName}${partingGraze > 0 ? ` (took ${partingGraze} grazing DMG)` : " cleanly"}.`,
+      ].slice(-10),
+    };
+
+    return {
+      updatedClashState,
+      damageDealt: 0,
+      mpCost,
+      hpHealed: 0,
+      enemyDamageTaken: partingGraze,
+      isVictory: false,
+      isDefeat: false,
+      isRetreat: true,
+      isCrit: false,
+      isStaggered: false,
+      isEvaded: partingGraze === 0,
+      activeStance,
+      narrativePromptAction: `[Subterfuge/Disengage]: Deploy a burst of ${stanceCfg.name} footwork alongside ${compName} to break engagement and tactical distance from ${clashState.enemyName}, retreating to cover.`,
+    };
+  }
+
+  const action: ClassTacticalAction = arsenal.actions[actionType] || arsenal.actions.strike;
 
   let damageDealt = 0;
   const mpCost = action.costMp || 0;
@@ -215,22 +284,23 @@ export function resolveClashTurn(
   const nextEnemyHp = Math.max(0, clashState.enemyHp - damageDealt);
   const isVictory = nextEnemyHp === 0;
 
-  // 4. Enemy Counter-Attack Resolution (with Phase Evasion, Frost Lethality Reduction & Stagger Stun)
+  // 4. Enemy Counter-Attack Resolution (respecting telegraphed enemyIntent, Phase Evasion, Frost Ward & Stagger Stun)
   let enemyDamageTaken = 0;
   let isEvaded = false;
 
   if (!isVictory) {
     if (isStaggered) {
       enemyDamageTaken = 0;
-    } else if (activeStance === "phase" && Math.random() < 0.22) {
+    } else if (activeStance === "phase" && Math.random() < 0.35) {
       isEvaded = true;
       enemyDamageTaken = 0;
     } else {
-      const baseEnemyDmg = clashState.enemyAttackPower || 16;
-      const frostReduction = activeStance === "frost" ? 0.85 : 1.0;
+      const telegraphedDmg =
+        clashState.enemyIntent?.estimatedDamage || clashState.enemyAttackPower || 16;
+      const frostReduction = activeStance === "frost" ? 0.6 : 1.0; // -40% DMG Taken in Cryo-Ward
       enemyDamageTaken = Math.max(
         2,
-        Math.round(baseEnemyDmg * incomingDamageMultiplier * frostReduction * (0.85 + Math.random() * 0.3))
+        Math.round(telegraphedDmg * incomingDamageMultiplier * frostReduction * (0.9 + Math.random() * 0.2))
       );
     }
   }
@@ -246,6 +316,16 @@ export function resolveClashTurn(
     .filter(Boolean)
     .join(" ");
 
+  const nextTurnNumber = clashState.clashTurn + 1;
+  const nextIntent = !isVictory
+    ? generateEnemyIntent(
+        clashState.enemyName,
+        clashState.enemyAttackPower || 16,
+        nextTurnNumber,
+        clashState.threatRank || "C"
+      )
+    : undefined;
+
   const nextLog = [
     ...clashState.log,
     `[Turn ${clashState.clashTurn}] ${tagBadges}: Deployed ${action.name} dealing ${damageDealt} DMG.${hpHealed > 0 ? ` Healed +${hpHealed} HP.` : ""} ${
@@ -254,15 +334,16 @@ export function resolveClashTurn(
         : isStaggered
         ? `${clashState.enemyName} was STAGGERED and could not counter-attack!`
         : isEvaded
-        ? `Phased through ${clashState.enemyName}'s counter-attack (0 DMG)!`
-        : `${clashState.enemyName} struck back for ${enemyDamageTaken} DMG.`
+        ? `Phased through ${clashState.enemyName}'s ${clashState.enemyIntent?.label || "counter-attack"} (0 DMG)!`
+        : `${clashState.enemyName} executed ${clashState.enemyIntent?.label || "Counter-Strike"} for ${enemyDamageTaken} DMG.`
     }`,
   ];
 
   const updatedClashState: ActiveStoryClashState = {
     ...clashState,
     enemyHp: nextEnemyHp,
-    clashTurn: clashState.clashTurn + 1,
+    clashTurn: nextTurnNumber,
+    enemyIntent: nextIntent,
     status: isVictory ? "victory" : isDefeat ? "retreat" : "ongoing",
     isActive: !isVictory && !isDefeat,
     log: nextLog.slice(-10),
@@ -289,6 +370,7 @@ export function resolveClashTurn(
     enemyDamageTaken,
     isVictory,
     isDefeat,
+    isRetreat: false,
     isCrit,
     isStaggered,
     isEvaded,

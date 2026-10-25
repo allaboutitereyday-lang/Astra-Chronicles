@@ -99,10 +99,13 @@ export function sanitizeNarrativeAndMechanics(
     }
   );
 
-  // Fix single-quoted speech containing apostrophes before stripping markdown
+  // 1. Strip erratic bold/italic/table/unclosed markdown symbols and normalize .. -> ... first
+  narrativeWork = stripErraticMarkdownFormatting(narrativeWork);
+
+  // 2. Fix single-quoted speech containing apostrophes into standard double quotes ("...")
   narrativeWork = fixSingleQuotedSpeechWithApostrophes(narrativeWork);
 
-  // Strip erratic bold/italic/table/unclosed markdown symbols
+  // 3. Final pass to ensure zero stray markdown symbols remain
   narrativeWork = stripErraticMarkdownFormatting(narrativeWork);
 
   const uniqueMechanics = Array.from(new Set(extractedMechanics.filter(Boolean)));

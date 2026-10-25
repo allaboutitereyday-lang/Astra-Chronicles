@@ -14,6 +14,11 @@ import {
   getCompanionKnowledge,
   enforceSpokenDialogueMasking,
 } from "@/lib/knowledgeGating";
+import {
+  evaluatePlayerVitalsCondition,
+  inferFallbackVitalsDelta,
+  resolveHostileEncounterEscalation,
+} from "@/lib/vitalsAndEncounters";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -330,6 +335,10 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
       presentHeroineNames,
       playerProfile
     );
+    const playerVitals = evaluatePlayerVitalsCondition(
+      playerProfile?.stats,
+      playerProfile?.name || "Wanderer"
+    );
 
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
@@ -343,6 +352,7 @@ ${companionDossiers}
 --- CURRENT CAMPAIGN STATE ---
 - Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
 - Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
+- Vitals & Pools: ${playerVitals.summaryLine}
 - Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
 - Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
 - Active Stance: [${activeStance.toUpperCase()}]
@@ -350,6 +360,8 @@ ${companionDossiers}
 - Active Location: ${gameState.location}
 - Active Speaker Context: ${sanitizedContextSpeaker}
 - Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE (No companions present)" : `Accompanied by: ${presentHeroineNames.join(", ")}`}
+
+${playerVitals.directiveBlock}
 
 ${knowledgeGateDirective}
 
@@ -504,12 +516,25 @@ Respond strictly in valid JSON matching this schema:
       "knowsName": boolean, // Set true ONLY if the protagonist explicitly introduced their name in this turn
       "knowsClass": boolean, // Set true ONLY if the protagonist explicitly stated or visibly unleashed their signature class archetype in this turn
       "knowsOrigin": boolean // Set true ONLY if the protagonist explicitly revealed their Regressor/System origin in this turn
-    }
+    },
+    "story_clash": {
+      "isActive": boolean, // Set true ONLY when a hostile story moment escalates into immediate combat
+      "enemyName": string,
+      "enemyHp": number,
+      "enemyMaxHp": number,
+      "enemyDesc": string,
+      "enemyVisualPrompt": string,
+      "threatRank": "E" | "D" | "C" | "B" | "A" | "S",
+      "enemyArchetype": string,
+      "enemyAttackPower": number,
+      "tacticalObjective": string
+    } | null
   },
   "player_progression": {
     "exp_gained": number,
-    "hp_change": number,
-    "mp_change": number,
+    "hp_change": number, // Negative when taking damage in story (-5 to -30), positive when healed (+10 to +30)
+    "mp_change": number, // Negative when casting spells/abilities (-8 to -20), positive when recovering (+10 to +20)
+    "vitals_reason": string | null, // Short 2-5 word label explaining the HP/MP change (e.g. "Inquisition Bolt", "Dark Essence Scorch")
     "new_ability_unlocked": string | null,
     "gear_granted": { "weapon"?: string, "armor"?: string, "relic"?: string } | null,
     "items_dropped": [
@@ -747,6 +772,44 @@ Respond strictly in valid JSON matching this schema:
         if (!responseData.state_updates) responseData.state_updates = {};
         responseData.state_updates.npc_knowledge_map = finalKnowledgeMap;
         responseData.state_updates.newly_unlocked_knowledge = preTurnUnlockEval.newlyUnlocked;
+
+        // Evaluate narrative damage/mana synchronization & fallback delta
+        if (!responseData.player_progression) {
+          responseData.player_progression = {
+            exp_gained: 20,
+            hp_change: 0,
+            mp_change: 0,
+            vitals_reason: null,
+            new_ability_unlocked: null,
+            gear_granted: null,
+            items_dropped: null,
+          };
+        }
+        const vitalsEval = inferFallbackVitalsDelta({
+          storyText: cleanedProse,
+          actionText: action || "",
+          reportedHpChange: responseData.player_progression.hp_change,
+          reportedMpChange: responseData.player_progression.mp_change,
+          reportedReason: responseData.player_progression.vitals_reason,
+          isClashTurn: Boolean(activeClash && activeClash.isActive),
+        });
+        responseData.player_progression.hp_change = vitalsEval.hpChange;
+        responseData.player_progression.mp_change = vitalsEval.mpChange;
+        responseData.player_progression.vitals_reason = vitalsEval.vitalsReason;
+
+        // Evaluate hostile encounter escalation ONLY when LLM escalates a hostile story moment
+        const resolvedEncounter = resolveHostileEncounterEscalation({
+          llmStoryClash: responseData.state_updates?.story_clash || null,
+          existingClash: activeClash || null,
+          storyText: cleanedProse,
+          actionText: action || "",
+          location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
+          genre: storyContext?.genre || "Dark Fantasy LitRPG",
+          assistingCompanionName: presentHeroineNames[0] || undefined,
+        });
+        if (resolvedEncounter) {
+          responseData.state_updates.story_clash = resolvedEncounter;
+        }
 
         // Sanitize suggested choices and guarantee intent tags
         if (Array.isArray(responseData.suggested_choices)) {

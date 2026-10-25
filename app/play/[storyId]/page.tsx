@@ -91,7 +91,7 @@ import {
 } from "@/lib/saveStorage";
 import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm } from "@/types/story";
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
-import { SectorClashHud, ClashCombatPopup } from "@/components/play/SectorClashHud";
+import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType } from "@/lib/progressionMechanics";
@@ -208,6 +208,12 @@ interface ChatMessage {
   sender: "user" | "character";
   speakerName: string;
   text: string;
+  mechanics?: string | null;
+  vitalsImpact?: {
+    hpDelta: number;
+    mpDelta: number;
+    reason?: string | null;
+  } | null;
   timestamp: string;
   avatarSrc?: string;
   isPending?: boolean;
@@ -1384,6 +1390,39 @@ export default function VisualNovelGame() {
   const [isAwakeningRelic, setIsAwakeningRelic] = useState(false);
   const [showPortraitEditor, setShowPortraitEditor] = useState(false);
   const [clashCombatPopups, setClashCombatPopups] = useState<ClashCombatPopup[]>([]);
+  const [lastClashHitEvent, setLastClashHitEvent] = useState<ClashVisualHitEvent | null>(null);
+  const [isGeneratingEnemyImage, setIsGeneratingEnemyImage] = useState(false);
+  const [vitalsFeedback, setVitalsFeedback] = useState<{
+    id: number;
+    hpDelta: number;
+    mpDelta: number;
+    reason: string;
+  } | null>(null);
+  const vitalsFeedbackTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerVitalsFeedback = (hpDelta: number, mpDelta: number, reason?: string | null) => {
+    if (hpDelta === 0 && mpDelta === 0) return;
+    if (vitalsFeedbackTimerRef.current) {
+      clearTimeout(vitalsFeedbackTimerRef.current);
+    }
+    const defaultReason =
+      hpDelta < 0
+        ? "Damage Sustained"
+        : hpDelta > 0
+        ? "Vitality Restored"
+        : mpDelta < 0
+        ? "Mana Expended"
+        : "Mana Restored";
+    setVitalsFeedback({
+      id: Date.now(),
+      hpDelta,
+      mpDelta,
+      reason: reason || defaultReason,
+    });
+    vitalsFeedbackTimerRef.current = setTimeout(() => {
+      setVitalsFeedback(null);
+    }, 2600);
+  };
   const sceneFileInputRef = useRef<HTMLInputElement | null>(null);
   const itemFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -3320,11 +3359,24 @@ export default function VisualNovelGame() {
       playerMsg.isPending = false;
 
       const isAmbientSpeaker = ["narrator", "system", "inner monologue"].some((s) => speakerName.toLowerCase().includes(s));
+      const rawHpDelta = Number(data.player_progression?.hp_change || 0);
+      const rawMpDelta = Number(data.player_progression?.mp_change || 0);
+      const rawVitalsReason = data.player_progression?.vitals_reason || null;
+
       const companionMsg: ChatMessage = {
         id: crypto.randomUUID(),
         sender: "character",
         speakerName,
         text: narrative,
+        mechanics: data.mechanics || null,
+        vitalsImpact:
+          rawHpDelta !== 0 || rawMpDelta !== 0
+            ? {
+                hpDelta: rawHpDelta,
+                mpDelta: rawMpDelta,
+                reason: rawVitalsReason,
+              }
+            : null,
         timestamp: timeString,
         avatarSrc: isAmbientSpeaker ? undefined : getSpriteSrc(speakerName, nextExpression),
       };
@@ -3529,7 +3581,20 @@ export default function VisualNovelGame() {
           maxAff
         );
         let finalTurnInventory = unsealTurnRes.updatedInventory;
-        const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + (prog.hp_change || 0)));
+        const hpDeltaToApply = Number(prog.hp_change || 0);
+        const mpDeltaToApply = Number(prog.mp_change || 0);
+        const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + hpDeltaToApply));
+        const resolvedMp = Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + mpDeltaToApply));
+
+        if (hpDeltaToApply !== 0 || mpDeltaToApply !== 0) {
+          if (hpDeltaToApply < 0) {
+            soundEffects.playFavorSound(false);
+          } else if (hpDeltaToApply > 0) {
+            soundEffects.playFavorSound(true);
+          }
+          triggerVitalsFeedback(hpDeltaToApply, mpDeltaToApply, prog.vitals_reason || null);
+        }
+
         if (resolvedHp > 0 && resolvedHp <= newMaxHp * 0.6) {
           const lowHpRes = updateInventoryUnsealingProgress(finalTurnInventory, "low_hp_survival", 1, maxAff);
           finalTurnInventory = lowHpRes.updatedInventory;
@@ -3555,7 +3620,7 @@ export default function VisualNovelGame() {
           stats: {
             ...playerRef.current.stats,
             hp: resolvedHp,
-            mp: Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + (prog.mp_change || 0))),
+            mp: resolvedMp,
             exp: newExp,
             maxExp: newMaxExp,
             maxHp: newMaxHp,
@@ -3572,6 +3637,26 @@ export default function VisualNovelGame() {
 
         playerRef.current = nextPlayerState;
         setPlayer(nextPlayerState);
+      }
+
+      // Check if the LLM escalated a hostile story moment into a Random Encounter / Story Clash
+      if (
+        data.state_updates?.story_clash &&
+        data.state_updates.story_clash.isActive &&
+        (!activeClash || !activeClash.isActive)
+      ) {
+        const incomingClash: ActiveStoryClashState = data.state_updates.story_clash;
+        setActiveClash(incomingClash);
+        soundEffects.playSystemAlert();
+        pushNotification({
+          id: `encounter_escalated_${Date.now()}`,
+          type: "story_clash",
+          title: `HOSTILE ENCOUNTER: ${incomingClash.enemyName.toUpperCase()}`,
+          subtitle: `Rank ${incomingClash.threatRank || "C"} ${incomingClash.enemyArchetype || "Adversary"} (${incomingClash.enemyHp} HP) engaged in ${nextLocation}!`,
+          difficulty: incomingClash.threatRank || "B",
+        });
+        // Automatically synthesize a bespoke AI portrait for the enemy in the background
+        handleGenerateEnemyImage(incomingClash.enemyVisualPrompt, incomingClash);
       }
 
       let nextMemories = memories;
@@ -4084,7 +4169,73 @@ export default function VisualNovelGame() {
     setIsSeveringCovenant(false);
   };
 
-  const handleExecuteClashAction = async (actionType: "strike" | "burst" | "synergy" | "defense") => {
+  const handleGenerateEnemyImage = async (
+    customPrompt?: string,
+    clashOverride?: ActiveStoryClashState
+  ) => {
+    const targetClash = clashOverride || activeClash;
+    if (!targetClash || isGeneratingEnemyImage) return;
+
+    setIsGeneratingEnemyImage(true);
+    try {
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-key": accessKey,
+        },
+        body: JSON.stringify({
+          mode: "monster",
+          enemyName: targetClash.enemyName,
+          enemyDesc: targetClash.enemyDesc,
+          location: gameState.location,
+          modifier: `${targetClash.threatRank || "C"}-Rank ${targetClash.enemyArchetype || "Adversary"}`,
+          genre: currentStory.genre || "Dark Fantasy LitRPG",
+          prompt: customPrompt || targetClash.enemyVisualPrompt || undefined,
+          userAccessKey: accessKey,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.imageUrl) {
+        setActiveClash((prev) => {
+          if (!prev) return prev;
+          const updated: ActiveStoryClashState = {
+            ...prev,
+            enemyImageUrl: data.imageUrl,
+            enemyVisualPrompt: customPrompt || prev.enemyVisualPrompt,
+          };
+          performAutoSave({ activeClash: updated });
+          return updated;
+        });
+
+        try {
+          await saveCodexScene({
+            storyId: currentStory.id,
+            storyTitle: currentStory.title,
+            location: gameState.location,
+            speaker: `Adversary: ${targetClash.enemyName}`,
+            prompt:
+              data.prompt ||
+              customPrompt ||
+              targetClash.enemyDesc ||
+              `Hostile encounter with ${targetClash.enemyName}`,
+            imageUrl: data.imageUrl,
+            model: data.model || "Google: Nano Banana 2.1",
+          });
+        } catch (codexErr) {
+          console.warn("Could not archive enemy portrait in Codex:", codexErr);
+        }
+      }
+    } catch (err) {
+      console.warn("Enemy portrait generation failed:", err);
+    } finally {
+      setIsGeneratingEnemyImage(false);
+    }
+  };
+
+  const handleExecuteClashAction = async (
+    actionType: "strike" | "burst" | "synergy" | "defense" | "flee"
+  ) => {
     if (!activeClash || !activeClash.isActive || isLoading || isExecutingClashAction) return;
 
     setIsExecutingClashAction(true);
@@ -4101,17 +4252,26 @@ export default function VisualNovelGame() {
       (player.activeStance as any) || "neutral"
     );
 
-    const newPopups: ClashCombatPopup[] = [
-      {
+    const newPopups: ClashCombatPopup[] = [];
+    if (result.isRetreat) {
+      newPopups.push({
+        id: `flee_${Date.now()}`,
+        text: "DISENGAGED!",
+        subtext: result.enemyDamageTaken > 0 ? `-${result.enemyDamageTaken} HP Graze` : "Clean Escape",
+        colorClass: "border-amber-400 text-amber-300",
+      });
+    } else {
+      newPopups.push({
         id: `dmg_${Date.now()}`,
         text: result.isCrit ? `CRIT! -${result.damageDealt} HP` : `-${result.damageDealt} HP`,
         subtext: result.isStaggered ? "STAGGERED!" : `${(player.activeStance || "neutral").toUpperCase()} STANCE`,
         colorClass: result.isCrit
           ? "border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
           : "border-rose-500/60 text-rose-300",
-      },
-    ];
-    if (result.isEvaded) {
+      });
+    }
+
+    if (result.isEvaded && !result.isRetreat) {
       newPopups.push({
         id: `evade_${Date.now()}`,
         text: "PHASE EVADED!",
@@ -4122,18 +4282,42 @@ export default function VisualNovelGame() {
       newPopups.push({
         id: `counter_${Date.now()}`,
         text: `-${result.enemyDamageTaken} Player HP`,
-        subtext: "Enemy Counter",
+        subtext: result.isRetreat ? "Parting Strike" : "Enemy Counter",
         colorClass: "border-red-500/60 text-red-300",
       });
     }
     setClashCombatPopups(newPopups);
     setTimeout(() => setClashCombatPopups([]), 2400);
 
+    setLastClashHitEvent({
+      id: Date.now(),
+      damageDealt: result.damageDealt,
+      enemyDamageTaken: result.enemyDamageTaken,
+      hpHealed: result.hpHealed,
+      isCrit: result.isCrit,
+      isStaggered: result.isStaggered,
+      isEvaded: result.isEvaded,
+    });
+
     const hpAfterHeal = Math.min(player.stats.maxHp, player.stats.hp + result.hpHealed);
     const hpFinal = Math.max(0, hpAfterHeal - result.enemyDamageTaken);
     const mpCost = result.mpCost;
     const mpGain = actionType === "strike" ? 5 : actionType === "defense" ? 15 : 0;
     const mpFinal = Math.max(0, Math.min(player.stats.maxMp, player.stats.mp - mpCost + mpGain));
+
+    const netHpDelta = hpFinal - player.stats.hp;
+    const netMpDelta = mpFinal - player.stats.mp;
+    if (netHpDelta !== 0 || netMpDelta !== 0) {
+      triggerVitalsFeedback(
+        netHpDelta,
+        netMpDelta,
+        netHpDelta < 0
+          ? `${activeClash.enemyName} Counter-Attack`
+          : netHpDelta > 0
+          ? "Tactical Synergy Heal"
+          : `${actionType.toUpperCase()} Stance Exchange`
+      );
+    }
 
     const unsealAfterClash = result.isVictory
       ? updateInventoryUnsealingProgress(
@@ -4165,13 +4349,21 @@ export default function VisualNovelGame() {
         subtitle: `${activeClash.enemyName} neutralized! Sector secured.`,
         difficulty: "S",
       });
+    } else if (result.isRetreat) {
+      soundEffects.playFavorSound(false);
+      pushNotification({
+        id: `clash_flee_${Date.now()}`,
+        type: "story_clash",
+        title: "TACTICAL DISENGAGEMENT",
+        subtitle: `Broke combat engagement with ${activeClash.enemyName}.`,
+      });
     } else {
       soundEffects.playFavorSound(false);
       pushNotification({
         id: `clash_hit_${Date.now()}`,
         type: "story_clash",
         title: actionType.toUpperCase() + " RESOLVED",
-        subtitle: `Dealt ${result.damageDealt} DMG. ${result.enemyDamageTaken > 0 ? `Took ${result.enemyDamageTaken} DMG counter.` : ''}`,
+        subtitle: `Dealt ${result.damageDealt} DMG. ${result.enemyDamageTaken > 0 ? `Took ${result.enemyDamageTaken} DMG counter.` : ""}`,
       });
     }
 
@@ -4186,6 +4378,7 @@ export default function VisualNovelGame() {
       enemyHp,
       tacticalObjective: `Neutralize the ${enemyName} before causal perimeter breaches.`,
       companionAssistingName: assistingComp,
+      genre: currentStory.genre || "Dark Fantasy LitRPG",
     });
     setActiveClash(clash);
     soundEffects.playSystemAlert();
@@ -4196,6 +4389,7 @@ export default function VisualNovelGame() {
       subtitle: `${enemyName} (HP: ${enemyHp}) detected within combat radius. Class Arsenal primed.`,
       difficulty: "A",
     });
+    handleGenerateEnemyImage(clash.enemyVisualPrompt, clash);
   };
 
   const handleResolveCampUltimatum = async (choiceKey: "reconcile" | "comp1" | "comp2" | "command") => {
@@ -5671,6 +5865,59 @@ export default function VisualNovelGame() {
       <div className="absolute inset-0 cinematic-vignette pointer-events-none z-10" />
       <AtmosphericParticles location={gameState.location} />
 
+      {/* FULL-SCREEN STORY DAMAGE / VITALS IMPACT FEEDBACK OVERLAY */}
+      {vitalsFeedback && (
+        <div
+          key={vitalsFeedback.id}
+          className="pointer-events-none fixed inset-0 z-40 flex items-start justify-center pt-16 sm:pt-20 overflow-hidden"
+        >
+          {vitalsFeedback.hpDelta < 0 && (
+            <div
+              className="absolute inset-0 animate-pulse"
+              style={{
+                background:
+                  "radial-gradient(circle at center, transparent 45%, rgba(220, 38, 38, 0.42) 100%)",
+                boxShadow: "inset 0 0 90px rgba(239, 68, 68, 0.65)",
+              }}
+            />
+          )}
+          {vitalsFeedback.hpDelta > 0 && (
+            <div
+              className="absolute inset-0 animate-pulse"
+              style={{
+                background:
+                  "radial-gradient(circle at center, transparent 55%, rgba(16, 185, 129, 0.25) 100%)",
+              }}
+            />
+          )}
+          <div
+            className={`relative px-4 py-1.5 rounded-2xl border backdrop-blur-xl font-mono text-xs font-black tracking-wider shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200 ${
+              vitalsFeedback.hpDelta < 0
+                ? "bg-red-950/95 border-red-500 text-red-100 shadow-[0_0_30px_rgba(239,68,68,0.5)]"
+                : vitalsFeedback.hpDelta > 0
+                ? "bg-emerald-950/95 border-emerald-400 text-emerald-100 shadow-[0_0_25px_rgba(16,185,129,0.4)]"
+                : "bg-sky-950/95 border-sky-400 text-sky-100 shadow-[0_0_25px_rgba(56,189,248,0.4)]"
+            }`}
+          >
+            {vitalsFeedback.hpDelta !== 0 && (
+              <span className="flex items-center gap-1">
+                <Heart className="w-3.5 h-3.5 fill-current" />
+                {vitalsFeedback.hpDelta > 0 ? `+${vitalsFeedback.hpDelta}` : vitalsFeedback.hpDelta} HP
+              </span>
+            )}
+            {vitalsFeedback.mpDelta !== 0 && (
+              <span className="flex items-center gap-1">
+                <Zap className="w-3.5 h-3.5 fill-current" />
+                {vitalsFeedback.mpDelta > 0 ? `+${vitalsFeedback.mpDelta}` : vitalsFeedback.mpDelta} MP
+              </span>
+            )}
+            <span className="text-[10px] font-normal opacity-85">
+              • {vitalsFeedback.reason}
+            </span>
+          </div>
+        </div>
+      )}
+
       <GameNotificationStack
         notifications={notifications}
         onDismiss={dismissNotification}
@@ -5697,12 +5944,38 @@ export default function VisualNovelGame() {
             <span className="hidden md:inline font-mono text-[11px]">Catalogue</span>
           </button>
 
-          {/* Character Identity & Status Card */}
+          {/* Character Identity & Status Card with Live Vitals Bars & Hit Feedback */}
           <button
             onClick={() => setShowPlayerSheet(true)}
-            className="flex items-center gap-2.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-white/10 hover:border-rose-500/50 shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group"
+            className={`relative flex items-center gap-2.5 bg-black/85 hover:bg-black/95 backdrop-blur-md px-3 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group ${
+              vitalsFeedback && vitalsFeedback.hpDelta < 0
+                ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
+                : vitalsFeedback && vitalsFeedback.hpDelta > 0
+                ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
+                : player.stats.hp <= player.stats.maxHp * 0.35
+                ? "border-red-500/70 shadow-[0_0_16px_rgba(239,68,68,0.3)]"
+                : "border-white/10 hover:border-rose-500/50"
+            }`}
             title="Open Character Sheet & Inventory"
           >
+            {/* Floating Delta Badge on Top HUD Player Card */}
+            {vitalsFeedback && (
+              <div
+                key={`hud_delta_${vitalsFeedback.id}`}
+                className={`pointer-events-none absolute -bottom-6 left-2 z-30 px-2 py-0.5 rounded-lg border font-mono text-[10px] font-black shadow-xl animate-bounce ${
+                  vitalsFeedback.hpDelta < 0
+                    ? "bg-red-950 border-red-400 text-red-200"
+                    : vitalsFeedback.hpDelta > 0
+                    ? "bg-emerald-950 border-emerald-400 text-emerald-200"
+                    : "bg-sky-950 border-sky-400 text-sky-200"
+                }`}
+              >
+                {vitalsFeedback.hpDelta !== 0
+                  ? `${vitalsFeedback.hpDelta > 0 ? "+" : ""}${vitalsFeedback.hpDelta} HP`
+                  : `${vitalsFeedback.mpDelta > 0 ? "+" : ""}${vitalsFeedback.mpDelta} MP`}
+              </div>
+            )}
+
             <div className="w-8 h-8 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-rose-300 shrink-0">
               {playerAvatar && playerAvatar.trim() ? (
                 <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
@@ -5716,12 +5989,48 @@ export default function VisualNovelGame() {
               </p>
               <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.role}</p>
             </div>
-            <div className="hidden lg:flex flex-col gap-0.5 pl-1">
-              <div className="flex items-center gap-1 text-[10px] text-rose-400 font-mono">
-                <Heart className="w-2.5 h-2.5 fill-rose-500" /> {player.stats.hp}/{player.stats.maxHp}
+            <div className="flex flex-col gap-1 pl-1 min-w-[86px] sm:min-w-[104px]">
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                  <span className="flex items-center gap-1 text-rose-400 font-bold">
+                    <Heart className="w-2.5 h-2.5 fill-rose-500" />
+                    {player.stats.hp}/{player.stats.maxHp}
+                  </span>
+                </div>
+                <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      player.stats.hp <= player.stats.maxHp * 0.35
+                        ? "bg-gradient-to-r from-red-600 to-rose-400 animate-pulse"
+                        : "bg-gradient-to-r from-rose-600 to-emerald-400"
+                    }`}
+                    style={{
+                      width: `${Math.max(
+                        0,
+                        Math.min(100, (player.stats.hp / Math.max(1, player.stats.maxHp)) * 100)
+                      )}%`,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="flex items-center gap-1 text-[10px] text-sky-400 font-mono">
-                <Zap className="w-2.5 h-2.5 fill-sky-500" /> {player.stats.mp}/{player.stats.maxMp}
+              <div className="space-y-0.5">
+                <div className="flex items-center justify-between gap-1 text-[10px] font-mono">
+                  <span className="flex items-center gap-1 text-sky-400 font-bold">
+                    <Zap className="w-2.5 h-2.5 fill-sky-500" />
+                    {player.stats.mp}/{player.stats.maxMp}
+                  </span>
+                </div>
+                <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                  <div
+                    className="h-full bg-gradient-to-r from-sky-600 to-cyan-400 transition-all duration-300"
+                    style={{
+                      width: `${Math.max(
+                        0,
+                        Math.min(100, (player.stats.mp / Math.max(1, player.stats.maxMp)) * 100)
+                      )}%`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </button>
@@ -6314,6 +6623,7 @@ export default function VisualNovelGame() {
                       ) : isLatestCharacterTurn ? (
                         <MarkdownRenderer
                           content={displayedText}
+                          mechanics={msg.mechanics}
                           isUser={false}
                           isStreaming={displayedText.length < gameState.dialogue.length}
                         />
@@ -6326,8 +6636,46 @@ export default function VisualNovelGame() {
                       ) : (
                         <MarkdownRenderer
                           content={msg.text}
+                          mechanics={msg.mechanics}
                           isUser={msg.sender === "user"}
                         />
+                      )}
+
+                      {/* Inline Story Vitals Impact Pill (Damage Taken / Healed / Mana Expended) */}
+                      {msg.vitalsImpact && (msg.vitalsImpact.hpDelta !== 0 || msg.vitalsImpact.mpDelta !== 0) && (
+                        <div
+                          className={`mt-2.5 px-3 py-1.5 rounded-xl border font-mono text-xs flex flex-wrap items-center justify-between gap-2 ${
+                            msg.vitalsImpact.hpDelta < 0
+                              ? "bg-red-950/50 border-red-500/40 text-red-200"
+                              : msg.vitalsImpact.hpDelta > 0
+                              ? "bg-emerald-950/50 border-emerald-500/40 text-emerald-200"
+                              : "bg-sky-950/50 border-sky-500/40 text-sky-200"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 font-bold">
+                            {msg.vitalsImpact.hpDelta !== 0 && (
+                              <span className="flex items-center gap-1">
+                                <Heart className="w-3.5 h-3.5 fill-current" />
+                                {msg.vitalsImpact.hpDelta > 0
+                                  ? `+${msg.vitalsImpact.hpDelta} HP Restored`
+                                  : `${msg.vitalsImpact.hpDelta} HP Damage Taken`}
+                              </span>
+                            )}
+                            {msg.vitalsImpact.mpDelta !== 0 && (
+                              <span className="flex items-center gap-1">
+                                <Zap className="w-3.5 h-3.5 fill-current" />
+                                {msg.vitalsImpact.mpDelta > 0
+                                  ? `+${msg.vitalsImpact.mpDelta} MP`
+                                  : `${msg.vitalsImpact.mpDelta} MP`}
+                              </span>
+                            )}
+                          </div>
+                          {msg.vitalsImpact.reason && (
+                            <span className="text-[10px] opacity-85">
+                              {msg.vitalsImpact.reason}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -6366,8 +6714,12 @@ export default function VisualNovelGame() {
         {activeClash && activeClash.isActive && (
           <SectorClashHud
             activeClash={activeClash}
+            playerName={player.name}
             playerRole={player.role || "Voidstrider"}
+            playerHp={player.stats.hp}
+            playerMaxHp={player.stats.maxHp}
             playerMp={player.stats.mp}
+            playerMaxMp={player.stats.maxMp}
             activeStance={(player.activeStance as any) || "neutral"}
             onSelectStance={(nextStance) => {
               setPlayer((prev) => {
@@ -6380,7 +6732,10 @@ export default function VisualNovelGame() {
             isLoading={isLoading}
             isExecutingClashAction={isExecutingClashAction}
             onExecuteClashAction={handleExecuteClashAction}
+            onGenerateEnemyImage={(customPrompt) => handleGenerateEnemyImage(customPrompt)}
+            isGeneratingEnemyImage={isGeneratingEnemyImage}
             combatPopups={clashCombatPopups}
+            lastHitEvent={lastClashHitEvent}
           />
         )}
 
