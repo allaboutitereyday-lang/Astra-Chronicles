@@ -51,7 +51,7 @@ async function synthesizeFullScenePrompt(
   const protagonistVisualAnchor =
     visualDna?.fullPromptAnchor ||
     visualDescription ||
-    `${protagonist.name}: ${protagonist.role || "Adventurer"} wearing ${protagonist.weapon || "blade"}`;
+    `${protagonist.name}: ${protagonist.race ? protagonist.race + " " : ""}${protagonist.role || "Adventurer"} wearing ${protagonist.weapon || "blade"}`;
 
   const presentCharacters = sceneContext?.presentCharacters || [];
   const relationshipContext = sceneContext?.relationshipContext || "";
@@ -67,7 +67,7 @@ Your task is to analyze the FULL scene context provided (the dialogue transcript
 Requirements for the output prompt:
 1. Format: A single dense, descriptive prompt paragraph (100 to 160 words).
 2. Composition: 16:9 widescreen anime visual novel event CG, dramatic cinematic framing (e.g. intimate close two-shot, dynamic mid-shot, or epic hero angle).
-3. Protagonist Accuracy (CRITICAL): The protagonist MUST match their exact Visual DNA and appearance traits specified below (exact hair color, hairstyle, eye color, physical build, and attire). Do NOT alter their hair or eye colors.
+3. Protagonist Accuracy (CRITICAL): The protagonist MUST match their exact Visual DNA and appearance traits specified below (exact race/species anatomy such as fur, fangs, wolf/animal ears, horns, wings, tail, or scales matching their lineage, hair color, hairstyle, eye color, physical build, and attire). Do NOT turn non-human protagonists into ordinary humans.
 4. Characters: Explicitly describe character physical traits (hair color, eye color, attire, expressions, posture, eye contact, and touch/interaction).
 5. Atmosphere & Environment: Describe specific lighting (volumetric god rays, golden hour, neon backlighting, soft starlight), particles (floating embers, cherry blossom petals, rain on glass, glowing arcane wisps), and depth of field.
 6. Aesthetic: High-end anime feature film quality (Makoto Shinkai & Ufotable style, clean line art, rich vibrant color grading).
@@ -76,7 +76,7 @@ Requirements for the output prompt:
     const artDirectorUserPrompt = `Story: "${storyTitle}" (${genre})
 Location: ${location}
 Mood & Atmosphere: ${mood}
-Protagonist: ${protagonist.name} (Class: ${protagonist.role})
+Protagonist: ${protagonist.name} (Class: ${protagonist.role}, Lineage: ${protagonist.race || visualDna?.race || "Human"})
 PROTAGONIST MANDATORY VISUAL DNA: ${protagonistVisualAnchor}
 Current Speaker / Center Focus: ${speaker}
 Current Spoken Line: "${dialogue}"

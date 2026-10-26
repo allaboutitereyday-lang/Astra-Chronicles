@@ -284,6 +284,8 @@ export interface PlayerStats {
 
 export interface CharacterVisualDNA {
   gender: "male" | "female" | "androgynous";
+  race?: string; // Identified or declared race/lineage (e.g. "Lycan", "Human", "Demonkin", "High Elf")
+  racialTraits?: string[]; // Detected non-human anatomical features (e.g. fur, fangs, wolf ears, horns, tail, scales)
   ageAppearance?: string;
   build?: string;
   hair: {
@@ -309,6 +311,8 @@ export interface CharacterVisualDNA {
 export interface PlayerProfile {
   name: string;
   role: string;
+  race?: string; // Character Lineage / Race (e.g. "Human", "Lycan", "Demonkin", or custom)
+  racialTraits?: string[]; // Specific anatomical & biological characteristics
   level: number;
   stats: PlayerStats;
   gear: { weapon: string; armor: string; relic: string };

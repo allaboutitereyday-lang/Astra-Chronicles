@@ -192,6 +192,8 @@ interface PlayerStats {
 interface PlayerProfile {
   name: string;
   role: string;
+  race?: string;
+  racialTraits?: string[];
   level: number;
   stats: PlayerStats;
   gear: { weapon: string; armor: string; relic: string };
@@ -333,6 +335,58 @@ const LOCATION_BACKGROUNDS: Record<string, string> = {
 };
 
 const DEFAULT_BG = "/backgrounds/imperial_capital_imperium.jpg";
+
+export const RACE_PRESETS = [
+  {
+    id: "human",
+    name: "Human",
+    icon: "🛡️",
+    defaultTraits: ["Adaptable physiology", "Expressive gaze"],
+    description: "Resolute mortal lineage with high versatility.",
+  },
+  {
+    id: "lycan",
+    name: "Lycan / Beastkin",
+    icon: "🐺",
+    defaultTraits: ["Canine ears & fangs", "Dense lupine fur", "Heightened olfactory tracking", "Predatory posture"],
+    description: "Lupine shapeshifter with razor fangs, thick pelt, and predatory senses.",
+  },
+  {
+    id: "elf",
+    name: "High Elf",
+    icon: "🧝",
+    defaultTraits: ["Elongated pointed ears", "Ethereal luminescence", "Refined noble cheekbones"],
+    description: "Ancient graceful kin attuned to ambient ether and astral leylines.",
+  },
+  {
+    id: "demonkin",
+    name: "Demonkin",
+    icon: "😈",
+    defaultTraits: ["Curved obsidian horns", "Glowing slit pupils", "Pointed fangs", "Barbed tail"],
+    description: "Abyssal heritage bearing demonic horns, fiery eyes, and infernal resilience.",
+  },
+  {
+    id: "dragonborn",
+    name: "Dragonborn",
+    icon: "🐉",
+    defaultTraits: ["Fine draconic scales", "Reptilian slit irises", "Horns and crest", "Radiant body heat"],
+    description: "Primordial drake lineage boasting armored scales and draconic majesty.",
+  },
+  {
+    id: "vampire",
+    name: "Vampire",
+    icon: "🧛",
+    defaultTraits: ["Elongated predatory fangs", "Pallid moonlit skin", "Crimson irises", "Cold noble bearing"],
+    description: "Nocturnal bloodborn predator possessing unearthly allure and predatory fangs.",
+  },
+  {
+    id: "custom",
+    name: "Custom Lineage",
+    icon: "✨",
+    defaultTraits: [],
+    description: "Define your own unique species and anatomical physiology.",
+  },
+];
 
 /**
  * Silently pre-caches companion expression sprites and key location backgrounds
@@ -503,6 +557,8 @@ export default function VisualNovelGame() {
   const [player, setPlayer] = useState<PlayerProfile>({
     name: "Caelen",
     role: "",
+    race: "Human",
+    racialTraits: ["Adaptable physiology", "Expressive gaze"],
     level: 1,
     stats: { hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: 100, str: 10, dex: 10, int: 10 },
     gear: { weapon: "Pending...", armor: "Pending...", relic: "None" },
@@ -510,6 +566,8 @@ export default function VisualNovelGame() {
     abilityDetails: {},
     inventory: [],
   });
+  const [selectedRacePreset, setSelectedRacePreset] = useState<string>("human");
+  const [racialTraitsInput, setRacialTraitsInput] = useState<string>("Adaptable physiology, Expressive gaze");
   const playerRef = useRef<PlayerProfile>(player);
   useEffect(() => {
     playerRef.current = player;
@@ -1892,7 +1950,9 @@ export default function VisualNovelGame() {
         playerRef.current.name,
         playerRef.current.role,
         playerRef.current.visualDescription,
-        accessKey
+        accessKey,
+        playerRef.current.race || "Human",
+        playerRef.current.racialTraits || []
       ).then((dna) => {
         setPlayer((prev) => {
           const next = {
@@ -1909,6 +1969,107 @@ export default function VisualNovelGame() {
       });
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleSelectRacePreset = (preset: typeof RACE_PRESETS[0]) => {
+    setSelectedRacePreset(preset.id);
+    if (preset.id === "custom") {
+      return;
+    }
+    const newTraits = [...preset.defaultTraits];
+    const newTraitsStr = newTraits.join(", ");
+    setRacialTraitsInput(newTraitsStr);
+    setPlayer((prev) => {
+      const next = {
+        ...prev,
+        race: preset.name,
+        racialTraits: newTraits,
+      };
+      playerRef.current = next;
+
+      // Re-anchor visual DNA if an avatar has already been uploaded
+      if (playerAvatar) {
+        extractProtagonistVisualDna(
+          playerAvatar,
+          next.name,
+          next.role,
+          next.visualDescription,
+          accessKey,
+          next.race,
+          newTraits
+        ).then((dna) => {
+          setPlayer((p) => {
+            const updated = { ...p, visualDna: dna, visualDescription: dna.fullPromptAnchor };
+            playerRef.current = updated;
+            return updated;
+          });
+        }).catch(() => {});
+      }
+
+      return next;
+    });
+  };
+
+  const handleCustomRaceChange = (newRace: string) => {
+    setPlayer((prev) => {
+      const next = { ...prev, race: newRace };
+      playerRef.current = next;
+
+      if (playerAvatar) {
+        extractProtagonistVisualDna(
+          playerAvatar,
+          next.name,
+          next.role,
+          next.visualDescription,
+          accessKey,
+          next.race,
+          next.racialTraits || []
+        ).then((dna) => {
+          setPlayer((p) => {
+            const updated = { ...p, visualDna: dna, visualDescription: dna.fullPromptAnchor };
+            playerRef.current = updated;
+            return updated;
+          });
+        }).catch(() => {});
+      }
+
+      return next;
+    });
+    const match = RACE_PRESETS.find((p) => p.name.toLowerCase() === newRace.trim().toLowerCase());
+    if (match) {
+      setSelectedRacePreset(match.id);
+    } else {
+      setSelectedRacePreset("custom");
+    }
+  };
+
+  const handleRacialTraitsChange = (value: string) => {
+    setRacialTraitsInput(value);
+    const parsed = value.split(",").map((s) => s.trim()).filter(Boolean);
+    setPlayer((prev) => {
+      const next = { ...prev, racialTraits: parsed };
+      playerRef.current = next;
+
+      if (playerAvatar) {
+        extractProtagonistVisualDna(
+          playerAvatar,
+          next.name,
+          next.role,
+          next.visualDescription,
+          accessKey,
+          next.race || "Human",
+          parsed
+        ).then((dna) => {
+          setPlayer((p) => {
+            const updated = { ...p, visualDna: dna, visualDescription: dna.fullPromptAnchor };
+            playerRef.current = updated;
+            return updated;
+          });
+        }).catch(() => {});
+      }
+
+      return next;
+    });
   };
 
   const handleStatChange = (stat: "str" | "dex" | "int", amount: number) => {
@@ -2118,6 +2279,8 @@ export default function VisualNovelGame() {
       const protagonistData = {
         name: player.name || "Protagonist",
         role: player.role || "Voidstrider",
+        race: player.race || "Human",
+        racialTraits: player.racialTraits || [],
         weapon: player.gear?.weapon || "Blade",
         visualDescription: player.visualDescription || undefined,
         visualDna: player.visualDna || undefined,
@@ -3111,8 +3274,13 @@ export default function VisualNovelGame() {
       speaker: sanitizedSpeaker || data.gameState?.speaker || (isLoadedAlone ? "Narrator" : "Companion"),
     };
 
-    playerRef.current = loadedPlayer;
-    setPlayer(loadedPlayer);
+    const safeLoadedPlayer: PlayerProfile = {
+      ...loadedPlayer,
+      race: loadedPlayer?.race || "Human",
+      racialTraits: loadedPlayer?.racialTraits || [],
+    };
+    playerRef.current = safeLoadedPlayer;
+    setPlayer(safeLoadedPlayer);
     setPlayerAvatar(data.playerAvatar);
     if (data.narrationStyle || loadedPlayer?.narrationStyle) {
       setNarrationStyle(data.narrationStyle || loadedPlayer?.narrationStyle);
@@ -6110,7 +6278,7 @@ export default function VisualNovelGame() {
                 onChange={handleAvatarUpload}
                 className="text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-rose-600/30 file:text-rose-200 hover:file:bg-rose-600/50 cursor-pointer"
               />
-              <p className="text-[11px] text-zinc-500 mt-1">OpenRouter will inspect your image to describe your traits in narrative turns.</p>
+              <p className="text-[11px] text-zinc-500 mt-1">Visual AI will inspect your portrait to detect species anatomy, facial features, armor, and traits.</p>
             </div>
           </div>
 
@@ -6135,6 +6303,91 @@ export default function VisualNovelGame() {
                   className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700"
                 />
               </div>
+            </div>
+
+            {/* LINEAGE & ANATOMICAL VISION PROFILE */}
+            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <div>
+                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Lineage & Anatomical Physiology
+                  </label>
+                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
+                    Select a preset or create a custom race. Visual AI scans your avatar portrait for non-human anatomy (fur, fangs, wolf ears, horns, scales).
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 self-start sm:self-auto font-bold">
+                  Race: {player.race || "Human"}
+                </span>
+              </div>
+
+              {/* Race Presets */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                {RACE_PRESETS.map((p) => {
+                  const isSelected = selectedRacePreset === p.id || (!selectedRacePreset && p.id === "human" && player.race === "Human");
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectRacePreset(p)}
+                      className={`px-2 py-1.5 rounded-xl border text-xs font-mono transition-all flex flex-col items-center gap-1 cursor-pointer text-center ${
+                        isSelected
+                          ? "bg-amber-950/40 border-amber-500/80 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
+                          : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                      }`}
+                      title={p.description}
+                    >
+                      <span className="text-base">{p.icon}</span>
+                      <span className="text-[10px] truncate w-full">{p.name.split("/")[0].trim()}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Inputs for Lineage Name & Anatomical Traits */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-xs font-mono text-zinc-400 block mb-1">
+                    Lineage / Race Name
+                  </label>
+                  <input
+                    type="text"
+                    value={player.race || ""}
+                    onChange={(e) => handleCustomRaceChange(e.target.value)}
+                    placeholder="e.g. Lycan, Void Chimera, Kitsune..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none placeholder-zinc-700 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-mono text-zinc-400 block mb-1">
+                    Anatomical & Biological Traits <span className="text-zinc-600 font-sans text-[10px]">(Comma-separated)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={racialTraitsInput}
+                    onChange={(e) => handleRacialTraitsChange(e.target.value)}
+                    placeholder="e.g. canine ears, razor fangs, dense silver fur, bushy tail..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none placeholder-zinc-700 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Traits Tag Pills Preview */}
+              {player.racialTraits && player.racialTraits.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-mono text-zinc-500">Active Traits:</span>
+                  {player.racialTraits.map((trait, tIdx) => (
+                    <span
+                      key={tIdx}
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 border border-white/10 text-amber-200/90 flex items-center gap-1"
+                    >
+                      <span className="text-amber-400">•</span>
+                      <span>{trait}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
@@ -6695,7 +6948,7 @@ export default function VisualNovelGame() {
                 <p className="font-semibold leading-tight text-white group-hover:text-rose-300 transition-colors">
                   {player.name}
                 </p>
-                <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.role}</p>
+                <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.race ? `${player.race} ` : ""}{player.role}</p>
               </div>
               <div className="flex flex-col gap-0.5 pl-1 min-w-[76px] sm:min-w-[104px]">
                 <div className="space-y-0.5">
@@ -7691,8 +7944,11 @@ export default function VisualNovelGame() {
                 </button>
                 <div>
                   <h2 className="text-lg font-bold text-white font-mono">{player.name}</h2>
-                  <p className="text-xs text-rose-400 font-mono">Level {player.level} {player.role}</p>
+                  <p className="text-xs text-rose-400 font-mono">Level {player.level} {player.race ? `${player.race} • ` : ""}{player.role}</p>
                   <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold">
+                      Race: {player.race || "Human"}
+                    </span>
                     <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-300">
                       Tone: {getNarrationStyleBadge(narrationStyle || player.narrationStyle)}
                     </span>
@@ -7708,6 +7964,15 @@ export default function VisualNovelGame() {
                       <span>Edit Portrait</span>
                     </button>
                   </div>
+                  {player.racialTraits && player.racialTraits.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      {player.racialTraits.slice(0, 4).map((trait, tIdx) => (
+                        <span key={tIdx} className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 border border-white/10 text-zinc-300">
+                          {trait}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <button onClick={() => setShowPlayerSheet(false)} className="text-zinc-400 hover:text-white cursor-pointer">
@@ -8523,7 +8788,9 @@ export default function VisualNovelGame() {
             playerRef.current.name,
             playerRef.current.role,
             playerRef.current.visualDescription,
-            accessKey
+            accessKey,
+            playerRef.current.race || "Human",
+            playerRef.current.racialTraits || []
           ).then((dna) => {
             setPlayer((prev) => {
               const next = {

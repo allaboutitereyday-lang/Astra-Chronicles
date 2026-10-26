@@ -160,7 +160,9 @@ The user selected this choice/action vector: "${action}".
           playerAvatarBase64,
           playerProfile?.name || "The Protagonist",
           playerProfile?.role || "Adventurer",
-          apiKey
+          apiKey,
+          playerProfile?.race || "Human",
+          playerProfile?.racialTraits || []
         );
       } catch (vErr: any) {
         console.warn("[Turn API] Failed to encode avatar with vision:", vErr?.message);
@@ -190,6 +192,13 @@ This is the initial meeting with the protagonist (${playerProfile.name}).
 - The active speaker (${sanitizedContextSpeaker}) should naturally observe and comment on the protagonist's initial appearance in their dialogue or narrative prose.`
       : `--- APPEARANCE DIRECTIVE ---
 Do NOT repeatedly comment on or re-describe the player's general physical appearance unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
+
+    const speciesPhysiologyDirective = `--- PROTAGONIST LINEAGE & ANATOMICAL PHYSIOLOGY DIRECTIVE ---
+- Lineage: ${playerProfile.race || "Human"}
+${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? `- Biological Characteristics: ${playerProfile.racialTraits.join(", ")}` : ""}
+- Biological Consistency: When portraying ${playerProfile.name}'s actions, sensory perception (smell, hearing, thermal cues, night vision), physical reactions, or movements (e.g. lupine/canine gait, tail posture, ears twitching, baring fangs, unsheathing claws, flexed wings, glowing slit eyes, scales), remain physically authentic to their ${playerProfile.race || "Human"} anatomy.
+- World & Companion Perception: Companions and NPCs naturally perceive and react to this lineage (e.g., recognizing beastkin/lycan predatory instincts and acute olfactory tracking, demonic fiend heritage, high elven grace, etc.).
+- Intimate & Close Proximity Scenes: In romantic, sensory, or high-intimacy encounters, physical interactions must reflect their unique physiology (e.g. running fingers through fur, sensitive ear twitches, animal body heat, fangs grazing skin, purring or deep guttural rumbles).`;
 
     const compatibilityDirective = storyContext?.companions && storyContext.companions.length > 0
       ? storyContext.companions.map((c: any) => `- ${c.name}: Values ${c.values?.join(", ") || "Honor, Loyalty"}. Dislikes ${c.dislikes?.join(", ") || "Deceit, Cowardice"}.`).join("\n")
@@ -544,6 +553,8 @@ Respond strictly in valid JSON matching this schema:
 --- CURRENT CAMPAIGN STATE & DYNAMIC TURN CONTEXT ---
 - Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
 - Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
+- Lineage / Race: ${playerProfile.race || "Human"}
+- Racial Anatomy & Traits: ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? playerProfile.racialTraits.join(", ") : "Standard human physiology"}
 - Vitals & Pools: ${playerVitals.summaryLine}
 - Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
 - Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
@@ -612,6 +623,8 @@ ${
 }
 
 ${inputHandlingInstruction}
+
+${speciesPhysiologyDirective}
 
 ${visualInspectionInstruction}`;
 

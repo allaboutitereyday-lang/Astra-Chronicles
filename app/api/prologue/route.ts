@@ -92,7 +92,9 @@ export async function POST(req: Request) {
           playerAvatarBase64,
           playerProfile?.name || "The Protagonist",
           playerProfile?.role || "Adventurer",
-          apiKey
+          apiKey,
+          playerProfile?.race || "Human",
+          playerProfile?.racialTraits || []
         );
       } catch (vErr: any) {
         console.warn("[Prologue API] Failed to encode avatar with vision:", vErr?.message);
@@ -209,6 +211,11 @@ ${knowledgeGatePrompt}
 - High Compatibility (class, vibe, and visual presentation strongly match her values): 18 - 25.
 - Neutral / Average Compatibility: 12 - 17.
 - Low / Suspicious Compatibility (clashes with her nature or poses an overt annoyance): 5 - 11.
+
+--- PROTAGONIST LINEAGE & ANATOMICAL PHYSIOLOGY ---
+- Race / Lineage: ${playerProfile?.race || "Human"}
+- Biological Traits & Anatomy: ${playerProfile?.racialTraits && playerProfile.racialTraits.length > 0 ? playerProfile.racialTraits.join(", ") : "Standard human physiology"}
+- PROLOGUE SPECIES MANDATE: ${startingHeroine} and the surrounding world MUST naturally perceive and react to ${playerProfile?.name || "The protagonist"}'s lineage (${playerProfile?.race || "Human"}). If they possess non-human traits (e.g. lupine/canine fur, fangs, wolf ears, tail, claws, horns, wings, or scales), describe these physical traits naturally in the prose and sensory details (scent, ear movements, predatory tension, body heat, or bristling fur), reflecting ${startingHeroine}'s authentic cultural and emotional reaction to encountering such an entity.
 
 --- VISUAL INSPECTION DIRECTIVE ---
 ${visualDescription
