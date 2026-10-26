@@ -711,11 +711,23 @@ ${visualInspectionInstruction}`;
           }),
         });
 
-        // Fail-safe retry: If OpenRouter rejects because of image input, retry immediately as text-only
+        // Fail-safe retry: If OpenRouter rejects because of image input or content safety filters, retry immediately as text-only
         if (!response.ok) {
           const firstErrText = await response.text();
-          if (firstErrText.includes("image input") || firstErrText.includes("Image Support") || firstErrText.includes("Filter by Image")) {
-            console.warn(`Model ${model} does not accept vision payload. Retrying with pure text...`);
+          const hasImagePayload = modelMessages.some((m) => Array.isArray(m.content) && m.content.some((c: any) => c.type === "image_url"));
+          const isVisionOrSafetyRejection =
+            firstErrText.includes("image input") ||
+            firstErrText.includes("Image Support") ||
+            firstErrText.includes("Filter by Image") ||
+            firstErrText.includes("safety") ||
+            firstErrText.includes("policy") ||
+            firstErrText.includes("moderation") ||
+            firstErrText.includes("explicit") ||
+            firstErrText.includes("prohibited") ||
+            firstErrText.includes("unsupported");
+
+          if (hasImagePayload && isVisionOrSafetyRejection) {
+            console.warn(`Model ${model} rejected image payload (${firstErrText.slice(0, 100)}). Retrying with pure text...`);
             const fallbackMessages = modelMessages.map((m) => {
               if (Array.isArray(m.content)) {
                 const textOnly = m.content
