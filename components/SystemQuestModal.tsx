@@ -15,7 +15,7 @@ import {
   Sparkles,
   ArrowLeft
 } from "lucide-react";
-import { SystemState, QuestDifficulty, PlausibilityTier } from "@/types/system";
+import { SystemState, SystemQuest, QuestDifficulty, PlausibilityTier } from "@/types/system";
 
 interface SystemQuestModalProps {
   isOpen: boolean;
@@ -80,9 +80,56 @@ const TIER_COLORS: Record<PlausibilityTier, { badge: string; text: string; bg: s
 
 export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest }: SystemQuestModalProps) {
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "directives">("active");
-  const activeQuests = Array.isArray(systemState?.activeQuests) ? systemState.activeQuests : [];
-  const completedQuests = Array.isArray(systemState?.completedQuests) ? systemState.completedQuests : [];
-  const systemDirectives = Array.isArray(systemState?.systemDirectives) ? systemState.systemDirectives : [];
+
+  const rawActiveQuests = Array.isArray(systemState?.activeQuests) ? systemState.activeQuests : [];
+  const rawCompletedQuests = Array.isArray(systemState?.completedQuests) ? systemState.completedQuests : [];
+  const rawSystemDirectives = Array.isArray(systemState?.systemDirectives) ? systemState.systemDirectives : [];
+
+  // Deduplicate completedQuests by id and normalized title (merging isClaimed)
+  const completedQuests: SystemQuest[] = [];
+  const seenCompletedIds = new Set<string>();
+  const seenCompletedTitles = new Set<string>();
+  for (const q of rawCompletedQuests) {
+    if (!q) continue;
+    const qId = String(q.id || "").trim();
+    const qTitle = String(q.title || "").trim().toLowerCase();
+    if ((qId && seenCompletedIds.has(qId)) || (qTitle && seenCompletedTitles.has(qTitle))) {
+      const existingIdx = completedQuests.findIndex(
+        (cq) => (qId && cq.id === qId) || (qTitle && String(cq.title || "").trim().toLowerCase() === qTitle)
+      );
+      if (existingIdx !== -1 && q.isClaimed) {
+        completedQuests[existingIdx] = { ...completedQuests[existingIdx], isClaimed: true };
+      }
+      continue;
+    }
+    if (qId) seenCompletedIds.add(qId);
+    if (qTitle) seenCompletedTitles.add(qTitle);
+    completedQuests.push(q);
+  }
+
+  // Deduplicate activeQuests and exclude any already in completedQuests
+  const activeQuests: SystemQuest[] = [];
+  const seenActiveIds = new Set<string>();
+  const seenActiveTitles = new Set<string>();
+  for (const q of rawActiveQuests) {
+    if (!q) continue;
+    const qId = String(q.id || "").trim();
+    const qTitle = String(q.title || "").trim().toLowerCase();
+    if (
+      (qId && (seenActiveIds.has(qId) || seenCompletedIds.has(qId))) ||
+      (qTitle && (seenActiveTitles.has(qTitle) || seenCompletedTitles.has(qTitle)))
+    ) {
+      continue;
+    }
+    if (qId) seenActiveIds.add(qId);
+    if (qTitle) seenActiveTitles.add(qTitle);
+    activeQuests.push(q);
+  }
+
+  const systemDirectives = rawSystemDirectives.filter((dir, idx, arr) => {
+    if (typeof dir !== "string" || !dir.trim()) return false;
+    return arr.indexOf(dir) === idx;
+  });
 
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(
     activeQuests[0]?.id || completedQuests[0]?.id || null
@@ -126,8 +173,6 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
   const currentQuests = activeTab === "active" ? activeQuests : completedQuests;
   const selectedQuest =
     currentQuests.find((q) => q.id === selectedQuestId) ||
-    activeQuests.find((q) => q.id === selectedQuestId) ||
-    completedQuests.find((q) => q.id === selectedQuestId) ||
     currentQuests[0] ||
     null;
 
@@ -153,13 +198,13 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
         />
 
         {/* Manhwa Stylized Corner Brackets */}
-        <span className="absolute top-2 left-2 text-xs font-mono text-rose-400/60 pointer-events-none">┌ SYSTEM ┐</span>
-        <span className="absolute top-2 right-2 text-xs font-mono text-rose-400/60 pointer-events-none">┌ PROTOCOL ┐</span>
-        <span className="absolute bottom-2 left-2 text-xs font-mono text-rose-400/60 pointer-events-none">└ V4.2 ┘</span>
-        <span className="absolute bottom-2 right-2 text-xs font-mono text-rose-400/60 pointer-events-none">└ ADMIN ┘</span>
+        <span className="absolute top-1.5 left-4 text-[10px] tracking-widest font-mono text-rose-400/50 pointer-events-none z-40">┌ SYSTEM ┐</span>
+        <span className="absolute top-1.5 right-4 text-[10px] tracking-widest font-mono text-rose-400/50 pointer-events-none z-40">┌ PROTOCOL ┐</span>
+        <span className="absolute bottom-1.5 left-4 text-[10px] tracking-widest font-mono text-rose-400/50 pointer-events-none z-40">└ V4.2 ┘</span>
+        <span className="absolute bottom-1.5 right-4 text-[10px] tracking-widest font-mono text-rose-400/50 pointer-events-none z-40">└ ADMIN ┘</span>
 
         {/* SYSTEM HEADER BAR */}
-        <div className="p-4 sm:p-5 border-b border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-30 bg-rose-950/25">
+        <div className="pt-6 pb-3.5 px-4 sm:px-6 border-b border-rose-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-30 bg-rose-950/25">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-950/60 border border-rose-500/50 flex items-center justify-center text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.35)]">
               <Terminal className="w-5 h-5 animate-pulse" />
@@ -311,7 +356,7 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
         </div>
 
         {/* MODAL BODY */}
-        <div className="flex-1 overflow-hidden p-4 sm:p-6 flex flex-col md:flex-row gap-4 relative z-10">
+        <div key={activeTab} className="flex-1 overflow-hidden px-4 sm:px-6 pt-4 pb-7 flex flex-col md:flex-row gap-4 relative z-10">
           {activeTab === "directives" ? (
             /* ADMINISTRATIVE DIRECTIVES / SYSTEM LOG */
             <div className="w-full h-full overflow-y-auto space-y-3 font-mono text-xs pr-2">
@@ -360,12 +405,32 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
               )}
             </div>
           ) : currentQuests.length === 0 ? (
-            <div className="w-full flex flex-col items-center justify-center text-center p-12 text-zinc-500">
-              <Terminal className="w-12 h-12 text-rose-500/30 mb-3" />
-              <p className="text-sm font-mono text-zinc-400">
+            <div className="w-full flex flex-col items-center justify-center text-center p-8 sm:p-12 text-zinc-500">
+              <div className="w-14 h-14 rounded-2xl bg-rose-950/30 border border-rose-500/20 flex items-center justify-center mb-4">
+                <Terminal className="w-7 h-7 text-rose-400/50" />
+              </div>
+              <p className="text-sm font-mono text-zinc-300 font-semibold">
                 {activeTab === "active" ? "No active system scenarios assigned." : "No completed quests archived yet."}
               </p>
-              <p className="text-xs text-zinc-600 mt-1">Advance narrative turns to trigger scenario objectives.</p>
+              <p className="text-xs text-zinc-500 mt-1.5 max-w-md leading-relaxed">
+                {activeTab === "active"
+                  ? "All current directives have been resolved. Advance the narrative on your next turn for the World Administrator to issue a new scenario."
+                  : "Complete scenario objectives during your chronicle to archive cleared directives here."}
+              </p>
+              {activeTab === "active" && completedQuests.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab("completed");
+                    setSelectedQuestId(completedQuests[0]?.id || null);
+                    setMobileDetailView(false);
+                  }}
+                  className="mt-4 px-4 py-2 rounded-xl border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/50 text-rose-200 font-mono text-xs flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Inspect Completed Archive ({completedQuests.length})</span>
+                </button>
+              )}
             </div>
           ) : (
             <>
@@ -375,7 +440,7 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
                   mobileDetailView ? "hidden md:block" : "block"
                 }`}
               >
-                {currentQuests.map((quest) => {
+                {currentQuests.map((quest, idx) => {
                   const diffStyle = DIFFICULTY_STYLES[quest.difficulty] || DIFFICULTY_STYLES.E;
                   const isSelected = selectedQuest?.id === quest.id;
                   const questObjs = Array.isArray(quest.objectives) ? quest.objectives : [];
@@ -383,7 +448,7 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
 
                   return (
                     <div
-                      key={quest.id}
+                      key={`${activeTab}_${quest.id}_${idx}`}
                       onClick={() => {
                         setSelectedQuestId(quest.id);
                         setMobileDetailView(true);

@@ -340,6 +340,7 @@ export const RACE_PRESETS = [
   {
     id: "human",
     name: "Human",
+    shortLabel: "Human",
     icon: "🛡️",
     defaultTraits: ["Adaptable physiology", "Expressive gaze"],
     description: "Resolute mortal lineage with high versatility.",
@@ -347,6 +348,7 @@ export const RACE_PRESETS = [
   {
     id: "lycan",
     name: "Lycan / Beastkin",
+    shortLabel: "Lycan",
     icon: "🐺",
     defaultTraits: ["Canine ears & fangs", "Dense lupine fur", "Heightened olfactory tracking", "Predatory posture"],
     description: "Lupine shapeshifter with razor fangs, thick pelt, and predatory senses.",
@@ -354,6 +356,7 @@ export const RACE_PRESETS = [
   {
     id: "elf",
     name: "High Elf",
+    shortLabel: "High Elf",
     icon: "🧝",
     defaultTraits: ["Elongated pointed ears", "Ethereal luminescence", "Refined noble cheekbones"],
     description: "Ancient graceful kin attuned to ambient ether and astral leylines.",
@@ -361,6 +364,7 @@ export const RACE_PRESETS = [
   {
     id: "demonkin",
     name: "Demonkin",
+    shortLabel: "Demonkin",
     icon: "😈",
     defaultTraits: ["Curved obsidian horns", "Glowing slit pupils", "Pointed fangs", "Barbed tail"],
     description: "Abyssal heritage bearing demonic horns, fiery eyes, and infernal resilience.",
@@ -368,6 +372,7 @@ export const RACE_PRESETS = [
   {
     id: "dragonborn",
     name: "Dragonborn",
+    shortLabel: "Dragonkin",
     icon: "🐉",
     defaultTraits: ["Fine draconic scales", "Reptilian slit irises", "Horns and crest", "Radiant body heat"],
     description: "Primordial drake lineage boasting armored scales and draconic majesty.",
@@ -375,6 +380,7 @@ export const RACE_PRESETS = [
   {
     id: "vampire",
     name: "Vampire",
+    shortLabel: "Vampire",
     icon: "🧛",
     defaultTraits: ["Elongated predatory fangs", "Pallid moonlit skin", "Crimson irises", "Cold noble bearing"],
     description: "Nocturnal bloodborn predator possessing unearthly allure and predatory fangs.",
@@ -382,6 +388,7 @@ export const RACE_PRESETS = [
   {
     id: "custom",
     name: "Custom Lineage",
+    shortLabel: "Custom",
     icon: "✨",
     defaultTraits: [],
     description: "Define your own unique species and anatomical physiology.",
@@ -420,7 +427,7 @@ function preloadStoryAssets(): void {
 }
 
 /**
- * Normalizes system state, heals improperly completed quests, and deduplicates directives.
+ * Normalizes system state, heals improperly completed quests, and deduplicates quests & directives.
  */
 function normalizeSystemState(raw?: SystemState | null): SystemState {
   if (!raw) {
@@ -441,44 +448,83 @@ function normalizeSystemState(raw?: SystemState | null): SystemState {
   const validCompleted: SystemQuest[] = [];
 
   for (const q of completedQuests) {
+    if (!q || !q.title) continue;
     const objs = Array.isArray(q.objectives) ? q.objectives : [];
     const allDone = objs.length === 0 || objs.every((o) => o && o.completed);
     if (!q.isClaimed && !allDone && objs.length > 1) {
       // It was prematurely completed while having pending objectives
       restoredQuests.push({ ...q, status: "active" });
     } else {
-      validCompleted.push({
+      const normalizedItem: SystemQuest = {
         ...q,
         status: "completed",
         objectives: objs.map((o) => ({ ...o, completed: true })),
-      });
+      };
+      const qIdKey = (q.id || "").toLowerCase().trim();
+      const qTitleKey = (q.title || "").toLowerCase().trim();
+      const existingIdx = validCompleted.findIndex(
+        (existing) =>
+          (qIdKey && (existing.id || "").toLowerCase().trim() === qIdKey) ||
+          (qTitleKey && (existing.title || "").toLowerCase().trim() === qTitleKey)
+      );
+      if (existingIdx !== -1) {
+        // Merge duplicate completed quest (preserve claimed status if either copy was claimed)
+        validCompleted[existingIdx] = {
+          ...validCompleted[existingIdx],
+          isClaimed: Boolean(validCompleted[existingIdx].isClaimed || normalizedItem.isClaimed),
+        };
+      } else {
+        validCompleted.push(normalizedItem);
+      }
     }
   }
 
-  // Ensure activeQuests has status: "active" unless all objectives are truly done
-  activeQuests = [...activeQuests, ...restoredQuests].map((q) => {
+  // Deduplicate activeQuests and exclude any quest already present in validCompleted
+  const dedupedActive: SystemQuest[] = [];
+  for (const q of [...activeQuests, ...restoredQuests]) {
+    if (!q || !q.title) continue;
+    const qIdKey = (q.id || "").toLowerCase().trim();
+    const qTitleKey = (q.title || "").toLowerCase().trim();
+
+    const alreadyCompleted = validCompleted.some(
+      (c) =>
+        (qIdKey && (c.id || "").toLowerCase().trim() === qIdKey) ||
+        (qTitleKey && (c.title || "").toLowerCase().trim() === qTitleKey)
+    );
+    if (alreadyCompleted) continue;
+
+    const alreadyActive = dedupedActive.some(
+      (a) =>
+        (qIdKey && (a.id || "").toLowerCase().trim() === qIdKey) ||
+        (qTitleKey && (a.title || "").toLowerCase().trim() === qTitleKey)
+    );
+    if (alreadyActive) continue;
+
     const objs = Array.isArray(q.objectives) ? q.objectives : [];
     const allDone = objs.length > 0 && objs.every((o) => o && o.completed);
-    return {
+    dedupedActive.push({
       ...q,
       status: allDone ? ("completed" as const) : ("active" as const),
-    };
-  });
+    });
+  }
 
-  // Deduplicate directives
+  // Deduplicate directives across the log
   const rawDirs = Array.isArray(raw.systemDirectives) ? raw.systemDirectives : [];
   const dedupedDirs: string[] = [];
+  const seenDirs = new Set<string>();
   for (const dir of rawDirs) {
     if (!dir || typeof dir !== "string") continue;
     const trimmed = dir.trim();
-    if (dedupedDirs.length === 0 || dedupedDirs[dedupedDirs.length - 1].toLowerCase() !== trimmed.toLowerCase()) {
+    const key = trimmed.toLowerCase();
+    if (!seenDirs.has(key)) {
+      seenDirs.add(key);
       dedupedDirs.push(trimmed);
     }
   }
 
   return {
     ...raw,
-    activeQuests,
+    activeQuests: dedupedActive,
     completedQuests: validCompleted,
     systemDirectives: dedupedDirs.slice(0, 40),
   };
@@ -3760,34 +3806,34 @@ export default function VisualNovelGame() {
         ? data.state_updates.newly_encountered_heroines
         : [];
 
-      setParty((prevParty) =>
-        prevParty.map((comp) => {
-          const isCurrentSpeaker = comp.name.toLowerCase().includes(speakerName.toLowerCase());
-          const isAffected = affectedComp ? comp.name.toLowerCase().includes(affectedComp.toLowerCase()) : false;
-          const isPresent = presentList.some((p) => comp.name.toLowerCase().includes(p.toLowerCase()));
-          const isNewlyMet = newlyMet.some((n) => comp.name.toLowerCase().includes(n.toLowerCase()));
+      const nextPartyState = party.map((comp) => {
+        const isCurrentSpeaker = comp.name.toLowerCase().includes(speakerName.toLowerCase());
+        const isAffected = affectedComp ? comp.name.toLowerCase().includes(affectedComp.toLowerCase()) : false;
+        const isPresent = presentList.some((p) => comp.name.toLowerCase().includes(p.toLowerCase()));
+        const isNewlyMet = newlyMet.some((n) => comp.name.toLowerCase().includes(n.toLowerCase()));
 
-          const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
-          const targetCap = getCompanionCap(comp.name);
+        const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
+        const targetCap = getCompanionCap(comp.name);
 
-          let updatedAffection = comp.affection;
-          if (isAffected && isCompPhysicallyPresent && typeof delta === "number") {
-            if (delta > 0) {
-              updatedAffection = Math.min(targetCap, comp.affection + delta);
-            } else if (delta < 0) {
-              updatedAffection = Math.max(0, comp.affection + delta);
-            }
+        let updatedAffection = comp.affection;
+        if (isAffected && isCompPhysicallyPresent && typeof delta === "number") {
+          if (delta > 0) {
+            updatedAffection = Math.min(targetCap, comp.affection + delta);
+          } else if (delta < 0) {
+            updatedAffection = Math.max(0, comp.affection + delta);
           }
+        }
 
-          return {
-            ...comp,
-            isPresent,
-            encountered: nowEncountered,
-            expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
-            affection: updatedAffection,
-          };
-        })
-      );
+        return {
+          ...comp,
+          isPresent,
+          encountered: nowEncountered,
+          expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
+          affection: updatedAffection,
+        };
+      });
+
+      setParty(nextPartyState);
 
       // Finalize user message and clear pending state
       playerMsg.text = playerText;
@@ -4305,9 +4351,21 @@ export default function VisualNovelGame() {
                   targetQuest.objectives = (targetQuest.objectives || []).map((o) => ({ ...o, completed: true }));
                   targetQuest.isClaimed = false;
 
-                  // Move to completed archive
+                  // Move to completed archive (deduplicating if an identical quest ID or title is already archived)
                   updatedActive.splice(qIndex, 1);
-                  updatedCompleted.unshift(targetQuest);
+                  const existingCompIdx = updatedCompleted.findIndex(
+                    (c) =>
+                      c.id.toLowerCase().trim() === targetQuest.id.toLowerCase().trim() ||
+                      c.title.toLowerCase().trim() === targetQuest.title.toLowerCase().trim()
+                  );
+                  if (existingCompIdx !== -1) {
+                    updatedCompleted[existingCompIdx] = {
+                      ...targetQuest,
+                      isClaimed: Boolean(updatedCompleted[existingCompIdx].isClaimed),
+                    };
+                  } else {
+                    updatedCompleted.unshift(targetQuest);
+                  }
 
                   soundEffects.playQuestComplete();
                   setSystemToast({
@@ -4593,7 +4651,7 @@ export default function VisualNovelGame() {
         location: nextLocation,
         visitedAt: new Date().toISOString(),
         choiceTaken: isCustom ? formattedPayload : (data.player_execution || formattedPayload),
-        affectionSnapshot: party.reduce((acc, c) => ({ ...acc, [c.name]: c.affection }), {}),
+        affectionSnapshot: nextPartyState.reduce((acc, c) => ({ ...acc, [c.name]: c.affection }), {}),
         gameStateSnapshot: {
           gameState: {
             speaker: speakerName,
@@ -4603,7 +4661,7 @@ export default function VisualNovelGame() {
             mood: data.state_updates?.mood ?? gameState.mood,
             presentCompanions: presentList,
           },
-          party: party,
+          party: nextPartyState,
           player: snapshotPlayer,
           systemState: systemState,
           memories: nextMemories,
@@ -4629,50 +4687,81 @@ export default function VisualNovelGame() {
       if (typeof delta === "number" && delta > 0 && affectedComp) {
         const compObj = party.find((c) => c.name.toLowerCase().includes(affectedComp.toLowerCase()));
         if (compObj) {
+          const canonicalName = compObj.name;
+          const compSlug = canonicalName.toLowerCase().replace(/[^a-z0-9]/g, "_");
           const oldAffection = compObj.affection;
           const newAffection = Math.min(100, oldAffection + delta);
           [25, 50, 75, 100].forEach((threshold) => {
-            if (
-              oldAffection < threshold &&
-              newAffection >= threshold &&
-              !(companionMilestones[affectedComp] || []).includes(threshold)
-            ) {
+            const milestoneId = `milestone_${compSlug}_${threshold}`;
+            const questTitle = `[COMPANION QUEST] ${canonicalName}: ${threshold}% Heart Resonance`;
+
+            const alreadyTracked =
+              (companionMilestones[canonicalName] || []).includes(threshold) ||
+              (companionMilestones[affectedComp] || []).includes(threshold) ||
+              (companionCompletedMilestones[canonicalName.toLowerCase()] || []).includes(threshold) ||
+              (systemState.activeQuests || []).some(
+                (q) =>
+                  q.id.toLowerCase() === milestoneId ||
+                  q.title.toLowerCase() === questTitle.toLowerCase() ||
+                  (q.title.toLowerCase().includes(canonicalName.toLowerCase()) && q.title.includes(`${threshold}%`))
+              ) ||
+              (systemState.completedQuests || []).some(
+                (q) =>
+                  q.id.toLowerCase() === milestoneId ||
+                  q.title.toLowerCase() === questTitle.toLowerCase() ||
+                  (q.title.toLowerCase().includes(canonicalName.toLowerCase()) && q.title.includes(`${threshold}%`))
+              );
+
+            if (oldAffection < threshold && newAffection >= threshold && !alreadyTracked) {
               setCompanionMilestones((prev) => ({
                 ...prev,
-                [affectedComp]: [...(prev[affectedComp] || []), threshold],
+                [canonicalName]: [...(prev[canonicalName] || []), threshold],
               }));
 
               const questDifficulty = threshold >= 100 ? "Calamity" : threshold >= 75 ? "S" : threshold >= 50 ? "A" : "B";
-              const questTitle = `[COMPANION QUEST] ${affectedComp}: ${threshold}% Heart Resonance`;
-              const questDesc = `${affectedComp} has reached the ${threshold}% emotional barrier! Her favor is locked at ${threshold}% until this crisis is resolved. Complete this scenario to shatter her defenses and synthesize a bespoke CG illustration.`;
+              const questDesc = `${canonicalName} has reached the ${threshold}% emotional barrier! Her favor is locked at ${threshold}% until this crisis is resolved. Complete this scenario to shatter her defenses and synthesize a bespoke CG illustration.`;
 
-              setSystemState((prevSys) => ({
-                ...prevSys,
-                activeQuests: [
-                  {
-                    id: `milestone_${affectedComp.toLowerCase().replace(/[^a-z0-9]/g, "_")}_${threshold}`,
-                    title: questTitle,
-                    description: questDesc,
-                    type: "scenario",
-                    difficulty: questDifficulty as any,
-                    objectives: [
-                      { text: `Complete private audience with ${affectedComp}`, completed: false },
-                      { text: `Overcome emotional vulnerability or planar crisis with ${affectedComp}`, completed: false },
-                    ],
-                    rewards: { exp: threshold * 5, gold: threshold * 10, items: [`${affectedComp}'s Keepsake`] },
-                    status: "active",
-                  },
-                  ...prevSys.activeQuests,
-                ],
-                systemDirectives: [`[SYSTEM: Companion Arc Locked - '${questTitle}' (Favor Capped at ${threshold}%)]`, ...prevSys.systemDirectives],
-              }));
+              setSystemState((prevSys) => {
+                const existsInSys =
+                  prevSys.activeQuests.some(
+                    (q) => q.id.toLowerCase() === milestoneId || q.title.toLowerCase() === questTitle.toLowerCase()
+                  ) ||
+                  prevSys.completedQuests.some(
+                    (q) => q.id.toLowerCase() === milestoneId || q.title.toLowerCase() === questTitle.toLowerCase()
+                  );
+                if (existsInSys) return prevSys;
+
+                return {
+                  ...prevSys,
+                  activeQuests: [
+                    {
+                      id: milestoneId,
+                      title: questTitle,
+                      description: questDesc,
+                      type: "scenario",
+                      difficulty: questDifficulty as any,
+                      objectives: [
+                        { text: `Complete private audience with ${canonicalName}`, completed: false },
+                        { text: `Overcome emotional vulnerability or planar crisis with ${canonicalName}`, completed: false },
+                      ],
+                      rewards: { exp: threshold * 5, gold: threshold * 10, items: [`${canonicalName}'s Keepsake`] },
+                      status: "active",
+                    },
+                    ...prevSys.activeQuests,
+                  ],
+                  systemDirectives: [
+                    `[SYSTEM: Companion Arc Locked - '${questTitle}' (Favor Capped at ${threshold}%)]`,
+                    ...prevSys.systemDirectives,
+                  ],
+                };
+              });
 
               soundEffects.playQuestComplete();
               pushNotification({
                 id: `milestone_${Date.now()}`,
                 type: "quest_assigned",
                 title: "ROMANCE MILESTONE QUEST UNLOCKED",
-                subtitle: `${affectedComp} favor reached ${threshold}%! Complete her Companion Quest to unlock further affection.`,
+                subtitle: `${canonicalName} favor reached ${threshold}%! Complete her Companion Quest to unlock further affection.`,
                 difficulty: questDifficulty,
               });
             }
@@ -4683,6 +4772,7 @@ export default function VisualNovelGame() {
       // Auto-Save after every successful turn
       performAutoSave({
         player: playerRef.current,
+        party: nextPartyState,
         memories: nextMemories,
         chatLog: [...chatLog, playerMsg, companionMsg],
         gameState: {
@@ -6175,10 +6265,10 @@ export default function VisualNovelGame() {
           <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
         </div>
 
-        <div className="relative z-10 w-full max-w-2xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-6 my-auto">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            {/* Top row on mobile: Navigation on left, Quick Actions on right */}
-            <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+        <div className="relative z-10 w-full max-w-3xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-5 my-auto">
+          <div className="space-y-3 border-b border-white/10 pb-3.5">
+            {/* Top Utility Navigation Bar */}
+            <div className="flex items-center justify-between gap-2">
               <button
                 onClick={handleNavigateToCatalogue}
                 className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer font-mono shrink-0"
@@ -6188,11 +6278,10 @@ export default function VisualNovelGame() {
                 <span className="font-mono text-xs">Catalogue</span>
               </button>
 
-              {/* Mobile Actions Cluster (< sm) */}
-              <div className="flex sm:hidden items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   onClick={handleToggleAudio}
-                  className="p-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
                   title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
                 >
                   {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
@@ -6202,7 +6291,7 @@ export default function VisualNovelGame() {
                     soundEffects.playClick();
                     setShowAuthModal(true);
                   }}
-                  className="px-2.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1 transition-all cursor-pointer"
+                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
                   title="Realm Access Key"
                 >
                   <Key className="w-3.5 h-3.5 text-purple-400" />
@@ -6213,52 +6302,24 @@ export default function VisualNovelGame() {
                     soundEffects.playClick();
                     setShowSaveModal(true);
                   }}
-                  className="px-2.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1 transition-all cursor-pointer"
+                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <FolderOpen className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="font-mono text-xs">Load</span>
+                  <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400" />
+                  <span className="font-mono text-xs sm:hidden">Load</span>
+                  <span className="hidden sm:inline">Load Game</span>
                 </button>
               </div>
             </div>
 
-            {/* Title */}
-            <div className="flex items-center gap-2 min-w-0">
-              <h1 className="text-base sm:text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-1.5 sm:gap-2 truncate">
+            {/* Full-Width Story Title Row (Never Truncated) */}
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white font-mono flex items-center gap-2 min-w-0">
                 <Sparkles className="text-rose-400 w-4 h-4 sm:w-5 sm:h-5 animate-pulse shrink-0" />
-                <span className="truncate">{currentStory.title.toUpperCase()}</span>
+                <span className="break-words">{currentStory.title.toUpperCase()}</span>
               </h1>
-            </div>
-
-            {/* Desktop Actions Cluster (>= sm) */}
-            <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <button
-                onClick={handleToggleAudio}
-                className="px-3 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer"
-                title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
-              >
-                {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
-              </button>
-              <button
-                onClick={() => {
-                  soundEffects.playClick();
-                  setShowAuthModal(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Realm Access Key"
-              >
-                <Key className="w-3.5 h-3.5 text-purple-400" />
-                <span>{userAuth ? userAuth.name.split(" ")[0] : "Key"}</span>
-              </button>
-              <button
-                onClick={() => {
-                  soundEffects.playClick();
-                  setShowSaveModal(true);
-                }}
-                className="px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <FolderOpen className="w-4 h-4 text-sky-400" />
-                <span>Load Game</span>
-              </button>
+              <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-widest text-zinc-500 border border-white/10 bg-zinc-950/70 px-2.5 py-1 rounded-lg shrink-0">
+                Origin Protocol
+              </span>
             </div>
           </div>
 
@@ -6307,16 +6368,17 @@ export default function VisualNovelGame() {
 
             {/* LINEAGE & ANATOMICAL VISION PROFILE */}
             <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                <div>
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                <div className="min-w-0">
                   <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Lineage & Anatomical Physiology
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span>Lineage & Anatomical Physiology</span>
                   </label>
-                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
+                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
                     Select a preset or create a custom race. Visual AI scans your avatar portrait for non-human anatomy (fur, fangs, wolf ears, horns, scales).
                   </p>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30 text-amber-300 self-start sm:self-auto font-bold">
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 self-start shrink-0 whitespace-nowrap font-bold">
                   Race: {player.race || "Human"}
                 </span>
               </div>
@@ -6325,31 +6387,34 @@ export default function VisualNovelGame() {
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
                 {RACE_PRESETS.map((p) => {
                   const isSelected = selectedRacePreset === p.id || (!selectedRacePreset && p.id === "human" && player.race === "Human");
+                  const displayLabel = (p as any).shortLabel || p.name.split("/")[0].trim();
                   return (
                     <button
                       key={p.id}
                       type="button"
                       onClick={() => handleSelectRacePreset(p)}
-                      className={`px-2 py-1.5 rounded-xl border text-xs font-mono transition-all flex flex-col items-center gap-1 cursor-pointer text-center ${
+                      className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
                         isSelected
                           ? "bg-amber-950/40 border-amber-500/80 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
                           : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
                       }`}
                       title={p.description}
                     >
-                      <span className="text-base">{p.icon}</span>
-                      <span className="text-[10px] truncate w-full">{p.name.split("/")[0].trim()}</span>
+                      <span className="text-base leading-none">{p.icon}</span>
+                      <span className="text-[10px] leading-tight whitespace-nowrap">{displayLabel}</span>
                     </button>
                   );
                 })}
               </div>
 
               {/* Inputs for Lineage Name & Anatomical Traits */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
                 <div>
-                  <label className="text-xs font-mono text-zinc-400 block mb-1">
-                    Lineage / Race Name
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="text-xs font-mono text-zinc-400 truncate">
+                      Lineage / Race Name
+                    </label>
+                  </div>
                   <input
                     type="text"
                     value={player.race || ""}
@@ -6360,9 +6425,12 @@ export default function VisualNovelGame() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-zinc-400 block mb-1">
-                    Anatomical & Biological Traits <span className="text-zinc-600 font-sans text-[10px]">(Comma-separated)</span>
-                  </label>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="text-xs font-mono text-zinc-400 truncate">
+                      Anatomical & Biological Traits
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono shrink-0">Comma-separated</span>
+                  </div>
                   <input
                     type="text"
                     value={racialTraitsInput}
@@ -6378,13 +6446,21 @@ export default function VisualNovelGame() {
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   <span className="text-[10px] font-mono text-zinc-500">Active Traits:</span>
                   {player.racialTraits.map((trait, tIdx) => (
-                    <span
+                    <button
                       key={tIdx}
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 border border-white/10 text-amber-200/90 flex items-center gap-1"
+                      type="button"
+                      onClick={() => {
+                        const updated = (player.racialTraits || []).filter((_, i) => i !== tIdx);
+                        setRacialTraitsInput(updated.join(", "));
+                        setPlayer((prev) => ({ ...prev, racialTraits: updated }));
+                      }}
+                      title="Click to remove trait"
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-rose-950/50 border border-white/10 hover:border-rose-500/40 text-amber-200/90 hover:text-rose-200 flex items-center gap-1 transition-colors cursor-pointer group"
                     >
-                      <span className="text-amber-400">•</span>
+                      <span className="text-amber-400 group-hover:text-rose-400">•</span>
                       <span>{trait}</span>
-                    </span>
+                      <span className="text-zinc-600 group-hover:text-rose-400 ml-0.5">×</span>
+                    </button>
                   ))}
                 </div>
               )}
@@ -6397,18 +6473,18 @@ export default function VisualNovelGame() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                 {["str", "dex", "int"].map((stat) => (
-                  <div key={stat} className="flex items-center justify-between bg-zinc-900/90 rounded-xl px-3 py-2 border border-white/5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-zinc-200 uppercase">{stat}</span>
-                      <span className="text-[10px] text-zinc-500 font-mono hidden xs:inline sm:hidden md:inline">
+                  <div key={stat} className="flex items-center justify-between gap-2 bg-zinc-900/90 rounded-xl px-3 py-2.5 border border-white/5 min-w-0">
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-mono font-bold text-zinc-200 uppercase leading-tight">{stat}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono truncate leading-tight">
                         {stat === "str" ? "Strength" : stat === "dex" ? "Dexterity" : "Intelligence"}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         type="button"
                         onClick={() => handleStatChange(stat as any, -1)}
-                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm"
+                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
                       >
                         -
                       </button>
@@ -6418,7 +6494,7 @@ export default function VisualNovelGame() {
                       <button
                         type="button"
                         onClick={() => handleStatChange(stat as any, 1)}
-                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm"
+                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
                       >
                         +
                       </button>
@@ -7667,7 +7743,7 @@ export default function VisualNovelGame() {
       <SystemQuestModal
         isOpen={showSystemModal}
         onClose={() => setShowSystemModal(false)}
-        systemState={systemState}
+        systemState={normalizeSystemState(systemState)}
         onCompleteQuest={handleCompleteQuest}
       />
 

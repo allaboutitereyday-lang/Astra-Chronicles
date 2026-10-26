@@ -613,7 +613,7 @@ ${
     ? systemState.activeQuests.map((q: any) => 
         `  * Quest ID: "${q.id}" | [${q.difficulty}-Rank ${q.type}] "${q.title}"\n    Objectives:\n${(q.objectives || []).map((o: any, idx: number) => `      - [Index ${idx}]: "${o.text}" -> STATUS: ${o.completed ? 'COMPLETED' : 'PENDING'}`).join("\n")}`
       ).join("\n\n")
-    : "  * None currently active. (Assign a new scenario if narratively appropriate)."
+    : "  * NONE CURRENTLY ACTIVE — MANDATORY SYSTEM DIRECTIVE: Because there are 0 active scenarios, you MUST generate and assign a new active quest in 'system_updates.new_quest' on this turn tailored to the current narrative situation, location, and active companion (with 2-3 clear objectives)!"
 }
 - Completed & Archived Scenarios (ALREADY FINISHED - DO NOT RE-ASSIGN):
 ${
