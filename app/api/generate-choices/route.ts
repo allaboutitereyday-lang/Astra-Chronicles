@@ -3,6 +3,7 @@ import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getChoicesStyleDirective, getNarrationProseDirective } from "@/lib/narrationStyles";
 import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
 import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
+import { buildAntiRepetitionDirective } from "@/lib/repetitionGuard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -139,12 +140,14 @@ ${recentExchanges}
 Chronological Memories & Past Interactions:
 ${canonicalMemories}
 
+${buildAntiRepetitionDirective(recentHistory, playerProfile?.name || "Protagonist", gameState?.location || "Current Sector")}
+
 ${choiceDirective}
 
 Format Requirement:
-- Every choice MUST strictly follow the format: [Tone/Action]: Short summary of character action/dialogue (e.g. "[Inquire/Diplomatic]: Ask who funded the expedition", "[Combat/Aggressive]: Draw blade and lunge forward", "[Arcana/Analytical]: Channel mana into the containment ward", "[Subterfuge/Cunning]: Slip into the shadows unnoticed").
+- Every choice MUST strictly follow the format: [Tone/Action]: Short summary of character action/dialogue (e.g. "[Traversal/Agile]: Vault across the roof gap toward the canal", "[Combat/Aggressive]: Draw blade and lunge forward", "[Arcana/Analytical]: Channel mana into the containment ward", "[Command/Strategic]: Demand to know which tunnel leads to safety").
 - Never output bare single brackets like [Combat] or [Inquire]. Always use the [Tone/Action]: format.
-- Each choice must be 1 concise, vivid, natural sentence summarizing the protagonist's intended move or reply.
+- Each choice must be 1 concise, vivid, natural sentence summarizing the protagonist's intended move or reply that ACTIVELY MOVES THE STORY FORWARD.
 - Return strictly JSON matching:
 {
   "choices": [string, string, string, string]
@@ -155,8 +158,8 @@ Format Requirement:
       { 
         role: "user", 
         content: isProtagonistAlone
-          ? `Generate 4 dynamic contextual choices for ${playerProfile?.name} exploring ${gameState?.location} alone.`
-          : `Generate the 4 dynamic contextual choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}.`
+          ? `Generate 4 dynamic, story-advancing choices for ${playerProfile?.name} exploring ${gameState?.location} alone.`
+          : `Generate 4 distinct, story-advancing choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}.`
       }
     ];
 
@@ -177,6 +180,7 @@ Format Requirement:
             messages,
             user: activeUser.key,
             temperature: 0.85,
+            repetition_penalty: 1.15,
             response_format: { type: "json_object" },
           }),
         });

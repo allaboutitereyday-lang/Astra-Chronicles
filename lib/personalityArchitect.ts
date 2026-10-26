@@ -124,31 +124,32 @@ ${dominantTendency ? `- Emergent Behavioral Alignment: [${dominantTendency} TEND
 - Tactical Stance / Active Arts: [${(ctx.activeStance || "Neutral").toUpperCase()} Stance | ${abilitiesSnippet}]
 - Scene Context: ${companionClause}
 
-SCENE-AWARE AUTHORING INSTRUCTIONS:
-Do NOT generate static or generic template options. The 4 options MUST be razor-sharp reactions to what JUST occurred in the scene ("${ctx.latestDialogue || "..."}" at ${ctx.location}).
-Compose the exactly 4 choices according to this roleplay architecture:
+SCENE-AWARE & STORY-PROGRESSIVE AUTHORING INSTRUCTIONS (CRITICAL):
+Do NOT generate static, repetitive, or passive options that keep the characters standing in the same place talking.
+Every single choice MUST actively push the story forward, alter the physical or tactical state, and channel ${ctx.playerName}'s crafted persona ("${personaName}" — [${traits}]):
 
-1. [OPTION 1 - CRAFTED PERSONALITY (PRIMARY VECTOR)]:
-   - Channels ${ctx.playerName}'s core demeanor ("${personaName}") and traits (${traits}).
-   - Directly addresses the immediate scene obstacle, threat, or speaker in their signature voice.
+1. [OPTION 1 - DECISIVE SCENE TRAVERSAL / PHYSICAL PROGRESSION]:
+   - Physically moves ${ctx.playerName}${ctx.isProtagonistAlone ? "" : ` and ${ctx.presentHeroineNames[0] || "their companion"}`} to a new vantage point, across an obstacle, or through a threshold in ${ctx.location} (e.g. vaulting across rooftops, slipping into an undercroft grate, breaching a chamber door, advancing down a shadowed corridor).
+   - Must combine concrete physical movement with ${ctx.playerName}'s "${personaName}" demeanor.
 
-2. [OPTION 2 - CRAFTED PERSONALITY (TACTICAL / INTERACTION VECTOR)]:
-   - A second distinct reaction also grounded in ${ctx.playerName}'s personality, but exploring a different tactical angle (e.g. sharp banter, cold scrutiny, decisive repositioning, or protective vigilance).
+2. [OPTION 2 - TACTICAL COUNTERMEASURE / ENVIRONMENTAL ENGAGEMENT]:
+   - Actively manipulates the environment or confronts the immediate threat/puzzle (e.g. setting an ambush, extinguishing lanterns for stealth, disarming a ward, seizing high ground, or drawing steel to intercept pursuers).
 
-3. [OPTION 3 - PHILOSOPHICAL COUNTERPOINT / MORAL DILEMMA]:
-   - Offers an alternative philosophical or moral choice that tests character growth or restraint (e.g., unexpected empathy from a cynic, ruthless practicality from a noble, cautious delay vs. reckless action).
+3. [OPTION 3 - PROGRESSIVE INTERPERSONAL / PLOT ESCALATION DIALOGUE]:
+   - Pushes the conversation into NEW territory: demanding actionable intel, deciding on a specific escape/attack route, striking a binding bargain, or confronting an unspoken secret.
+   - STRICT ANTI-REPETITION RULE: NEVER generate redundant reassurance or vows already spoken (e.g. do NOT repeat "You're safe with me", "Hold tight", or "I won't let them take you"). Once comfort is given, move immediately to action or strategy!
 
-4. [OPTION 4 - LINEAGE ANATOMY, CLASS, OR STANCE TRIGGER]:
-   - Uniquely leverages ${ctx.playerName}'s racial physiology (e.g. ${raceAnatomy}), class abilities (${abilitiesSnippet}), or active stance (${ctx.activeStance || "Neutral"}).
-   - e.g. Utilizing lupine scent tracking, darkvision, spellblade mana channeling, or stance-specific combat footwork.
+4. [OPTION 4 - LINEAGE ANATOMY, CLASS ABILITY, OR STANCE FEAT]:
+   - Unleashes ${ctx.playerName}'s non-human physiology (${raceAnatomy}), signature class powers (${abilitiesSnippet}), or [${(ctx.activeStance || "Neutral").toUpperCase()}] stance to overcome the current obstacle in a way only a ${ctx.playerRace || "Human"} ${ctx.playerRole} can (e.g. digitigrade rooftop leap, predatory scent-lock, arcane blade surge).
 
-FORMAT REQUIREMENTS:
-- Every choice MUST strictly follow the dual-tag pattern: "[Tone/Action]: Action summary with dialogue snippet"
+FORMAT & VARIETY REQUIREMENTS:
+- Every choice MUST strictly follow the dual-tag pattern: "[Tone/Action]: Action summary with fresh dialogue or decisive movement"
   Examples:
-  - "[Cynical/Scrutiny]: 'Save your platitudes.' Narrow your eyes and question who sent them."
-  - "[Lupine/Scent]: Snarl as your heightened olfactory tracking detects sulfur in the damp fog."
-  - "[Arcana/Channel]: Infuse your blade with starlight essence, ready to sever the binding ward."
-  - "[Diplomatic/Compromise]: 'We share a common enemy.' Step forward and offer a provisional pact."
+  - "[Traversal/Agile]: 'The canal roofs—now!' Vault across the gap toward the lower district."
+  - "[Tactics/Ambush]: Kick over the brazier to flood the alley with smoke and prepare a counter-strike."
+  - "[Command/Strategic]: 'Perci, which tunnel leads to the safehouse? Point the way while I hold the flank.'"
+  - "[${ctx.playerRace && ctx.playerRace !== "Human" ? ctx.playerRace.split("/")[0].trim() : "Class"}/Feat]: Tap your ${raceAnatomy} and launch into a high-speed burst past the cordon."
+- All 4 options MUST have completely different verbs, intentions, and outcomes.
 - Exactly 4 options. No bare brackets like [Combat]. Always use the [Tone/Action]: format.
 - Output MUST be plain text inside the JSON "suggested_choices" (or "choices") string array without Markdown asterisks.`;
 }

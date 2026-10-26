@@ -25,6 +25,15 @@ import {
 } from "@/lib/characterPersonas";
 import { detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
 import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
+import {
+  buildPlausibilityCapabilityEnvelope,
+  sanitizePlausibilityEvaluation,
+} from "@/lib/plausibilityEngine";
+import {
+  buildAntiRepetitionDirective,
+  detectRepetitionLoop,
+  breakStagnationLoop,
+} from "@/lib/repetitionGuard";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -362,6 +371,18 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
       presentHeroineNames,
     });
 
+    const plausibilityCapabilityDirective = buildPlausibilityCapabilityEnvelope(
+      playerProfile,
+      activeStance,
+      storyContext?.genre || "Dark Fantasy LitRPG"
+    );
+
+    const antiRepetitionDirective = buildAntiRepetitionDirective(
+      recentHistory,
+      playerProfile.name,
+      gameState.location
+    );
+
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
 ${getNarrationProseDirective(effectiveTone)}
@@ -469,9 +490,11 @@ MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
      * "status": "completed" -> Use ONLY when EVERY single objective in the quest is completely fulfilled.
      * "status": "failed" -> Use ONLY if an objective is ruined, timed out, or compromised beyond recovery.
    - PREVENT DUPLICATION: Do NOT assign or regenerate quests that are already active or listed in "Completed & Archived Scenarios".
-2. CAUSAL PLAUSIBILITY:
-   - Grounded, tactical choices: plausibility_delta: 0 to +4.
-   - Reckless, reality-defying, or suicidal bluffs: plausibility_delta: -5 to -15.
+2. CAUSAL PLAUSIBILITY & FANTASY CAPABILITY BENCHMARK:
+   - Evaluate strictly against ${playerProfile.name}'s Lineage (${playerProfile.race || "Human"}), Anatomical Traits (${(playerProfile.racialTraits || []).join(", ") || "Standard"}), Class (${playerProfile.role}), and Stats (STR ${playerProfile.stats.str}, DEX ${playerProfile.stats.dex}, INT ${playerProfile.stats.int}).
+   - NEVER apply mundane human limits to non-human species (e.g. Beastkin/Lycan superhuman leaps, sprint bursts, scent tracking; Dragonborn scales/strength; Elven agility; Vampire speed) or fantasy class abilities.
+   - Grounded, tactical, or lineage-authentic feats: plausibility_delta: +1 to +4.
+   - True cosmic contradictions or ungrounded god-moding bluffs ONLY: plausibility_delta: -5 to -15.
    - Volatile Plausibility (<40%) or Critical (<25%): Severe danger. Issue an [URGENT PENALTY QUEST] to restore causal order.
 3. SYSTEM ANNOUNCEMENTS:
    - ALWAYS output an authoritative LitRPG notification in "system_updates.system_announcement".
@@ -644,6 +667,10 @@ ${
 ${inputHandlingInstruction}
 
 ${speciesPhysiologyDirective}
+
+${plausibilityCapabilityDirective}
+
+${antiRepetitionDirective}
 
 ${dynamicChoiceDirective}
 
@@ -849,9 +876,41 @@ ${visualInspectionInstruction}`;
           playerProfile?.name,
           speakerKnowsNameNow
         );
-        responseData.narrative_text = cleanedProse;
-        responseData.narrative = cleanedProse;
-        responseData.mechanics = separated.mechanics || null;
+
+        // Server-side Anti-Repetition Circuit Breaker: detect and break dialogue/narrative loops
+        const loopCheck = detectRepetitionLoop(
+          responseData.player_execution,
+          cleanedProse,
+          recentHistory
+        );
+        const loopResolved = breakStagnationLoop({
+          playerExecution: responseData.player_execution || null,
+          narrativeText: cleanedProse,
+          isExecutionRepeated: loopCheck.isExecutionRepeated,
+          isNarrativeRepeated: loopCheck.isNarrativeRepeated,
+          action: action || "",
+          playerName: playerProfile?.name || "Wanderer",
+          playerRole: playerProfile?.role || "Adventurer",
+          playerRace: playerProfile?.race,
+          speakerName: finalSpeakerName,
+          location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
+          isProtagonistAlone,
+        });
+
+        responseData.player_execution = loopResolved.playerExecution;
+        responseData.narrative_text = loopResolved.narrativeText;
+        responseData.narrative = loopResolved.narrativeText;
+
+        // Server-side Plausibility Capability Safeguard: prevent false "human limits" penalties
+        if (responseData.system_updates) {
+          responseData.system_updates = sanitizePlausibilityEvaluation(
+            responseData.system_updates,
+            playerProfile,
+            action || ""
+          );
+        }
+
+        responseData.mechanics = separated.mechanics || responseData.system_updates?.system_announcement || null;
         if (!responseData.state_updates) responseData.state_updates = {};
         responseData.state_updates.npc_knowledge_map = finalKnowledgeMap;
         responseData.state_updates.newly_unlocked_knowledge = preTurnUnlockEval.newlyUnlocked;
