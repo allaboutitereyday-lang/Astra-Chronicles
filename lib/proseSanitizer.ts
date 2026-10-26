@@ -213,6 +213,8 @@ export function ensureChoiceIntentTag(choice: string): string {
       dualTag = "[Inquire/Diplomatic]";
     } else if (rawTag.includes("composure") || rawTag.includes("gentle") || rawTag.includes("defiance") || rawTag.includes("resolve") || rawTag.includes("pragmatism")) {
       dualTag = "[Composure/Defiant]";
+    } else if (rawTag.includes("romance") || rawTag.includes("intimate") || rawTag.includes("passion") || rawTag.includes("love") || rawTag.includes("tender") || rawTag.includes("seduce")) {
+      dualTag = "[Romance/Intimate]";
     }
 
     return `${dualTag}: ${rest}`;
@@ -280,6 +282,22 @@ export function ensureChoiceIntentTag(choice: string): string {
     lower.includes("wait")
   ) {
     dualTag = "[Composure/Defiant]";
+  } else if (
+    lower.includes("kiss") ||
+    lower.includes("embrace") ||
+    lower.includes("caress") ||
+    lower.includes("touch") ||
+    lower.includes("hug") ||
+    lower.includes("comfort") ||
+    lower.includes("intimate") ||
+    lower.includes("hold her") ||
+    lower.includes("hold his") ||
+    lower.includes("stroke") ||
+    lower.includes("seduce") ||
+    lower.includes("undress") ||
+    lower.includes("whisper softly")
+  ) {
+    dualTag = "[Romance/Intimate]";
   }
 
   return `${dualTag}: ${trimmed}`;
