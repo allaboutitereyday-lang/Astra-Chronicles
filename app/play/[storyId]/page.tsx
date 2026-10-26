@@ -2523,7 +2523,7 @@ export default function VisualNovelGame() {
     });
 
     const initialGear = customGear || (gearPreference === "none"
-      ? { weapon: "Bare Hands", armor: "Rags", relic: "None" }
+      ? { weapon: "None", armor: "None", relic: "None" }
       : { weapon: "[System Pending]", armor: "[System Pending]", relic: "None" });
 
     const initialGearImages: Record<string, string> = { ...(player.gearImages || {}) };

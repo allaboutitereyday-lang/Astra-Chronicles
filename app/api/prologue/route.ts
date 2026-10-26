@@ -147,6 +147,25 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
    - High compatibility: Kind wanderers, gentle protectors, rangers, empathetic souls.
    - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.`;
 
+    const isUncladOrNude = Boolean(
+      visualDescription &&
+      (visualDescription.toLowerCase().includes("nude") ||
+       visualDescription.toLowerCase().includes("unclad") ||
+       visualDescription.toLowerCase().includes("naked") ||
+       visualDescription.toLowerCase().includes("bare skin") ||
+       visualDescription.toLowerCase().includes("bare chest") ||
+       visualDescription.toLowerCase().includes("bare-chested") ||
+       visualDescription.toLowerCase().includes("without clothing"))
+    );
+
+    const visibleWeaponText = playerProfile.gear?.weapon && !playerProfile.gear.weapon.includes("Pending")
+      ? playerProfile.gear.weapon
+      : "Unarmed / Bare Hands";
+
+    const visibleArmorText = playerProfile.gear?.armor && !playerProfile.gear.armor.includes("Pending")
+      ? playerProfile.gear.armor
+      : (isUncladOrNude ? "Completely Unclad / No Clothing or Armor" : "Unarmored / Basic Attire");
+
     const systemPrompt = `You are the Game Master and Director for "${storyTitle}", an interactive visual novel set on ${settingName}.
 
 ${getNarrationProseDirective(effectiveTone)}
@@ -170,7 +189,10 @@ ${heroineDossier.baselineChoices.map((c) => `- ${c}`).join("\n")}
 
 --- CRITICAL GAME MASTER INSTRUCTIONS ---
 1. Use the bespoke heroine dossier as the working baseline. Capture her specific atmospheric environment, sensory triggers (smells, weather, ambient lighting, acoustic textures), and psychological demeanor.
-2. In her opening reaction, ${startingHeroine} MUST explicitly observe and remark on the newcomer's visible physical appearance, build, visible gear (${playerProfile.gear.weapon || "Bare Hands"} / ${playerProfile.gear.armor || "Wanderer Attire"}), and bearing—while strictly obeying the Diegetic Knowledge Gate below (she does NOT yet know the newcomer's name or internal LitRPG class title!).
+2. In her opening reaction, ${startingHeroine} MUST explicitly observe and remark on the newcomer's visible physical appearance, build, visible gear (${visibleWeaponText} / ${visibleArmorText}), and bearing—while strictly obeying the Diegetic Knowledge Gate below (she does NOT yet know the newcomer's name or internal LitRPG class title!).
+   ${isUncladOrNude || visibleArmorText.toLowerCase().includes("unclad") || visibleArmorText.toLowerCase().includes("none")
+     ? `- MANDATORY NUDITY / UNARMORED DIRECTIVE: The newcomer is completely unclad, nude, or lacking armor/gear. ${startingHeroine} MUST prominently and in-character acknowledge and react to this blatant lack of clothing (e.g. reacting with disdain, raised eyebrows, sarcasm, extreme fluster, or predatory amusement according to her persona).`
+     : ""}
 
 ${knowledgeGatePrompt}
 3. OPENING CHOICES GUIDELINE: The 4 generated options in "opening_choices" MUST STRICTLY follow this guideline:
@@ -192,10 +214,10 @@ ${knowledgeGatePrompt}
 ${visualDescription
   ? `Detailed visual appearance of ${playerProfile.name} (derived from uploaded avatar):
 "${visualDescription}"
-CRITICAL OPENING DIRECTIVE: ${startingHeroine} MUST explicitly observe and remark on ${playerProfile.name}'s specific appearance, attire, physical build, and bearing in her opening dialogue or internal impressions.`
+CRITICAL OPENING DIRECTIVE: ${startingHeroine} MUST explicitly observe and remark on ${playerProfile.name}'s specific appearance, attire (or complete lack of clothing/nudity if unclad), physical build, and bearing in her opening dialogue or internal impressions. If ${playerProfile.name} is unclad or nude, ${startingHeroine} MUST directly address this shocking or shameless state!`
   : playerAvatarBase64
   ? `If a character avatar image is provided, ${startingHeroine} MUST explicitly and naturally observe their appearance in her initial reaction:
-- Take note of their physical features (hair, eyes, build, stance), armor/clothing, visible weapons, and overall aura.
+- Take note of their physical features (hair, eyes, build, stance), armor/clothing (or lack thereof), visible weapons, and overall aura.
 - Weave these direct observations naturally into her dialogue or internal impression.`
   : `Portray the protagonist with the presence and demeanor befitting a ${playerProfile.role}.`}
 

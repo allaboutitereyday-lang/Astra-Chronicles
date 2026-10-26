@@ -76,7 +76,7 @@ export async function describeProtagonistAvatar(
           messages: [
             {
               role: "system",
-              content: `You are the Art Director for an immersive visual novel. In 2 to 3 vivid, atmospheric sentences, describe this character portrait of the protagonist (${protagonistName}, ${protagonistRole}). Highlight their hair color/style, eye color/expression, physical build, armor/clothing textures, visible weapons or accessories, and overall aura. Be evocative, specific, and direct. Do not say "The image shows" or "In this portrait"; write direct narrative character descriptions.`,
+              content: `You are the Art Director for an immersive visual novel. In 2 to 3 vivid, atmospheric sentences, describe this character portrait of the protagonist (${protagonistName}, ${protagonistRole}). Highlight their hair color/style, eye color/expression, physical build, armor/clothing textures (or explicitly note if they are unclad, nude, or bare-skinned without garments), visible weapons or accessories, and overall aura. Be evocative, specific, and direct. Do not say "The image shows" or "In this portrait"; write direct narrative character descriptions.`,
             },
             {
               role: "user",
@@ -142,7 +142,13 @@ export function buildFallbackVisualDna(
   const eyeMatch = desc.match(/\b(amber|gold|blue|azure|crimson|red|violet|purple|green|emerald|grey|gray)\s+eyes\b/i);
   const eyeColor = eyeMatch ? eyeMatch[1] : (desc.match(/\b(amber|gold|blue|azure|crimson|red|violet|purple|green|emerald|grey|gray)\b/i)?.[1] || "amber");
 
-  const anchor = `protagonist ${name}: ${gender} ${role}, ${hairColor} ${hairStyle} hair, piercing ${eyeColor} eyes, detailed ${role} combat attire with dark leather and reinforced plates, distinctive visual novel anime protagonist styling`;
+  const isUnclad = desc.includes("nude") || desc.includes("unclad") || desc.includes("naked") || desc.includes("bare skin") || desc.includes("bare chest") || desc.includes("bare shoulders");
+  const upperAttire = isUnclad ? "unclad, bare skin with no armor" : `${role} dark leather coat over armor vest`;
+  const lowerAttire = isUnclad ? "unclad, bare legs with no garments" : "dark combat trousers and boots";
+
+  const anchor = isUnclad
+    ? `protagonist ${name}: ${gender} ${role}, ${hairColor} ${hairStyle} hair, piercing ${eyeColor} eyes, completely unclad and bare-skinned with no clothing or armor, distinctive visual novel anime protagonist styling`
+    : `protagonist ${name}: ${gender} ${role}, ${hairColor} ${hairStyle} hair, piercing ${eyeColor} eyes, detailed ${role} combat attire with dark leather and reinforced plates, distinctive visual novel anime protagonist styling`;
 
   return {
     gender,
@@ -158,11 +164,11 @@ export function buildFallbackVisualDna(
     },
     complexion: "fair, subtly weathered",
     primaryAttire: {
-      upper: `${role} dark leather coat over armor vest`,
-      lower: "dark combat trousers and boots",
-      palette: ["midnight black", "burnished steel", "deep crimson"],
+      upper: upperAttire,
+      lower: lowerAttire,
+      palette: isUnclad ? ["bare skin tone"] : ["midnight black", "burnished steel", "deep crimson"],
     },
-    signatureAccessories: [`${role} weaponry`],
+    signatureAccessories: isUnclad ? [] : [`${role} weaponry`],
     fullPromptAnchor: anchor,
   };
 }
@@ -199,7 +205,7 @@ export async function extractProtagonistVisualDna(
   }
 
   const systemPrompt = `You are a Lead Anime Character Designer and Visual Concept Artist.
-Inspect this character portrait of the protagonist (${protagonistName}, ${protagonistRole}) and extract their exact, unambiguous Visual DNA.
+Inspect this character portrait of the protagonist (${protagonistName}, ${protagonistRole}) and extract their exact, unambiguous Visual DNA. If the character in the portrait is unclad, nude, or lacking armor/clothing, explicitly record their attire as unclad/none and describe their bare skin.
 You MUST respond STRICTLY with a valid JSON object matching this schema:
 {
   "gender": "male" | "female" | "androgynous",

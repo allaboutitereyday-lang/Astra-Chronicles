@@ -167,15 +167,26 @@ The user selected this choice/action vector: "${action}".
       }
     }
 
+    const isUncladOrNude = Boolean(
+      visualDescription &&
+      (visualDescription.toLowerCase().includes("nude") ||
+       visualDescription.toLowerCase().includes("unclad") ||
+       visualDescription.toLowerCase().includes("naked") ||
+       visualDescription.toLowerCase().includes("bare skin") ||
+       visualDescription.toLowerCase().includes("bare chest") ||
+       visualDescription.toLowerCase().includes("bare-chested") ||
+       visualDescription.toLowerCase().includes("without clothing"))
+    );
+
     const visualInspectionInstruction = visualDescription
       ? `--- PROTAGONIST VISUAL APPEARANCE (DERIVED FROM AVATAR VIA VISION ENGINE) ---
 Detailed visual appearance of ${playerProfile.name}:
 "${visualDescription}"
-${isFirstEncounter ? `CRITICAL FIRST ENCOUNTER DIRECTIVE: The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on ${playerProfile.name}'s specific visual features (attire, physical build, hair/eyes, visible weapons, or demeanor) in their dialogue or narrative prose.` : "You may reference these specific visual traits when describing physical gestures, combat actions, close proximity, or emotional moments."}`
+${isFirstEncounter ? `CRITICAL FIRST ENCOUNTER DIRECTIVE: The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on ${playerProfile.name}'s specific visual features (attire or lack thereof, physical build, hair/eyes, visible weapons, or demeanor) in their dialogue or narrative prose.${isUncladOrNude ? ` If ${playerProfile.name} is completely unclad, nude, or lacking armor/clothing, ${sanitizedContextSpeaker} MUST strongly and authentically react to this blatant lack of clothing true to their persona (e.g. aristocratic disgust, sardonic mockery, flustered shock, or predatory intrigue).` : ""}` : "You may reference these specific visual traits when describing physical gestures, combat actions, close proximity, or emotional moments."}`
       : (playerAvatarBase64 && isFirstEncounter)
       ? `--- FIRST ENCOUNTER APPEARANCE DIRECTIVE ---
 This is the initial meeting with the protagonist (${playerProfile.name}).
-- Portray the character with the physical bearing, attire, and combat readiness of their role (${playerProfile.role}).
+- Portray the character with the physical bearing, attire (or lack of clothing if unclad), and combat readiness of their role (${playerProfile.role}).
 - The active speaker (${sanitizedContextSpeaker}) should naturally observe and comment on the protagonist's initial appearance in their dialogue or narrative prose.`
       : `--- APPEARANCE DIRECTIVE ---
 Do NOT repeatedly comment on or re-describe the player's general physical appearance unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
