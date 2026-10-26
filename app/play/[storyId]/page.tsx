@@ -6837,135 +6837,129 @@ export default function VisualNovelGame() {
       <header className="absolute top-2 sm:top-3 inset-x-2 sm:inset-x-6 md:inset-x-8 z-40 pointer-events-auto select-none">
         {/* MOBILE TOP HUD (< sm) */}
         <div className="flex sm:hidden items-center justify-between gap-1.5 w-full">
-          {/* Back Button */}
-          <button
-            onClick={handleNavigateToCatalogue}
-            className="w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-white/10 hover:border-white/30 flex items-center justify-center text-zinc-300 shadow-lg cursor-pointer shrink-0 active:scale-95"
-            title="Return to Story Catalogue"
-          >
-            <ArrowLeft className="w-4 h-4 text-zinc-400" />
-          </button>
+          <div className="flex items-center gap-1.5 min-w-0">
+            {/* Back Button */}
+            <button
+              onClick={handleNavigateToCatalogue}
+              className="w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-white/10 hover:border-white/30 flex items-center justify-center text-zinc-300 shadow-lg cursor-pointer shrink-0 active:scale-95"
+              title="Return to Story Catalogue"
+            >
+              <ArrowLeft className="w-4 h-4 text-zinc-400" />
+            </button>
 
-          {/* Compact Mobile Player Pill */}
-          <button
-            onClick={() => setShowPlayerSheet(true)}
-            className={`relative h-9 px-2 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border shadow-lg flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
-              vitalsFeedback && vitalsFeedback.hpDelta < 0
-                ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
-                : vitalsFeedback && vitalsFeedback.hpDelta > 0
-                ? "border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
-                : player.stats.hp <= player.stats.maxHp * 0.35
-                ? "border-red-500/70 shadow-[0_0_12px_rgba(239,68,68,0.3)]"
-                : "border-white/10 hover:border-rose-500/50"
-            }`}
-            title="Open Character Sheet"
-          >
-            {/* Floating Delta Badge */}
-            {vitalsFeedback && (
-              <div
-                key={`mobile_hud_delta_${vitalsFeedback.id}`}
-                className={`pointer-events-none absolute -bottom-6 left-1 z-30 px-1.5 py-0.5 rounded-md border font-mono text-[9px] font-black shadow-xl animate-bounce ${
-                  vitalsFeedback.hpDelta < 0
-                    ? "bg-red-950 border-red-400 text-red-200"
-                    : vitalsFeedback.hpDelta > 0
-                    ? "bg-emerald-950 border-emerald-400 text-emerald-200"
-                    : "bg-sky-950 border-sky-400 text-sky-200"
-                }`}
-              >
-                {vitalsFeedback.hpDelta !== 0
-                  ? `${vitalsFeedback.hpDelta > 0 ? "+" : ""}${vitalsFeedback.hpDelta} HP`
-                  : `${vitalsFeedback.mpDelta > 0 ? "+" : ""}${vitalsFeedback.mpDelta} MP`}
-              </div>
-            )}
-
-            <div className="w-6 h-6 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-[10px] text-rose-300 shrink-0">
-              {playerAvatar && playerAvatar.trim() ? (
-                <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
-              ) : (
-                player.name.charAt(0)
-              )}
-            </div>
-
-            <div className="flex flex-col justify-center gap-0.5">
-              <div className="flex items-center gap-1.5 text-[9px] font-mono font-bold leading-none">
-                <span className="text-rose-400 flex items-center gap-0.5">
-                  <Heart className="w-2.5 h-2.5 fill-rose-500" />
-                  {player.stats.hp}
-                </span>
-                <span className="text-sky-400 flex items-center gap-0.5">
-                  <Zap className="w-2.5 h-2.5 fill-sky-500" />
-                  {player.stats.mp}
-                </span>
-              </div>
-              {/* Mini EXP progress track */}
-              <div className="w-12 h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
+            {/* Compact Mobile Player Pill */}
+            <button
+              onClick={() => setShowPlayerSheet(true)}
+              className={`relative h-9 px-2 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border shadow-lg flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
+                vitalsFeedback && vitalsFeedback.hpDelta < 0
+                  ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
+                  : vitalsFeedback && vitalsFeedback.hpDelta > 0
+                  ? "border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                  : player.stats.hp <= player.stats.maxHp * 0.35
+                  ? "border-red-500/70 shadow-[0_0_12px_rgba(239,68,68,0.3)]"
+                  : "border-white/10 hover:border-rose-500/50"
+              }`}
+              title="Open Character Sheet"
+            >
+              {/* Floating Delta Badge */}
+              {vitalsFeedback && (
                 <div
-                  className={`h-full transition-all duration-700 ${
-                    expFeedback
-                      ? "bg-gradient-to-r from-amber-400 to-yellow-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
-                      : "bg-gradient-to-r from-amber-600 to-yellow-500"
+                  key={`mobile_hud_delta_${vitalsFeedback.id}`}
+                  className={`pointer-events-none absolute -bottom-6 left-1 z-30 px-1.5 py-0.5 rounded-md border font-mono text-[9px] font-black shadow-xl animate-bounce ${
+                    vitalsFeedback.hpDelta < 0
+                      ? "bg-red-950 border-red-400 text-red-200"
+                      : vitalsFeedback.hpDelta > 0
+                      ? "bg-emerald-950 border-emerald-400 text-emerald-200"
+                      : "bg-sky-950 border-sky-400 text-sky-200"
                   }`}
-                  style={{
-                    width: `${Math.max(0, Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100))}%`,
-                  }}
-                />
+                >
+                  {vitalsFeedback.hpDelta !== 0
+                    ? `${vitalsFeedback.hpDelta > 0 ? "+" : ""}${vitalsFeedback.hpDelta} HP`
+                    : `${vitalsFeedback.mpDelta > 0 ? "+" : ""}${vitalsFeedback.mpDelta} MP`}
+                </div>
+              )}
+
+              <div className="w-6 h-6 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-[10px] text-rose-300 shrink-0">
+                {playerAvatar && playerAvatar.trim() ? (
+                  <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
+                ) : (
+                  player.name.charAt(0)
+                )}
               </div>
-            </div>
-          </button>
 
-          {/* Location Chip (Centered & Flex) */}
-          <button
-            onClick={() => setShowMap(true)}
-            className="h-9 px-2.5 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-white/10 hover:border-emerald-500/50 shadow-lg flex items-center gap-1 flex-1 min-w-0 justify-center cursor-pointer active:scale-95"
-            title="View Area Map & Sectors"
-          >
-            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="font-mono text-xs font-semibold text-emerald-300 truncate">{gameState.location}</span>
-          </button>
+              <div className="flex flex-col justify-center gap-0.5">
+                <div className="flex items-center gap-1.5 text-[9px] font-mono font-bold leading-none">
+                  <span className="text-rose-400 flex items-center gap-0.5">
+                    <Heart className="w-2.5 h-2.5 fill-rose-500" />
+                    {player.stats.hp}
+                  </span>
+                  <span className="text-sky-400 flex items-center gap-0.5">
+                    <Zap className="w-2.5 h-2.5 fill-sky-500" />
+                    {player.stats.mp}
+                  </span>
+                </div>
+                {/* Mini EXP progress track */}
+                <div className="w-12 h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
+                  <div
+                    className={`h-full transition-all duration-700 ${
+                      expFeedback
+                        ? "bg-gradient-to-r from-amber-400 to-yellow-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+                        : "bg-gradient-to-r from-amber-600 to-yellow-500"
+                    }`}
+                    style={{
+                      width: `${Math.max(0, Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </button>
+          </div>
 
-          {/* SYSTEM Button */}
-          <button
-            type="button"
-            onClick={() => {
-              soundEffects.playClick();
-              setShowSystemModal(true);
-            }}
-            className={`w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative ${
-              systemState.activeQuests.length > 0
-                ? "border-rose-500/60 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
-                : "border-white/10 text-zinc-300"
-            }`}
-            title="Open System Administrator Interface & Quests"
-          >
-            <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-            {/* Unclaimed Clearance Beacon */}
-            {hasUnclaimedClearance && (
-              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5" title="Clearance Ready to Claim">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-black shadow-[0_0_8px_#10b981]" />
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* SYSTEM Button */}
+            <button
+              type="button"
+              onClick={() => {
+                soundEffects.playClick();
+                setShowSystemModal(true);
+              }}
+              className={`w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative ${
+                systemState.activeQuests.length > 0
+                  ? "border-rose-500/60 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                  : "border-white/10 text-zinc-300"
+              }`}
+              title="Open System Administrator Interface & Quests"
+            >
+              <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              {/* Unclaimed Clearance Beacon */}
+              {hasUnclaimedClearance && (
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5" title="Clearance Ready to Claim">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-black shadow-[0_0_8px_#10b981]" />
+                </span>
+              )}
+            </button>
 
-          {/* Mobile Command Menu Button */}
-          <button
-            type="button"
-            onClick={() => {
-              soundEffects.playClick();
-              setShowMobileCommandSheet(true);
-            }}
-            className="w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-rose-500/40 text-rose-300 hover:text-white flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative"
-            title="Open Mobile Command Dock"
-          >
-            <LayoutGrid className="w-4 h-4 text-rose-400" />
-            {/* Notification / Unclaimed Beacon */}
-            {(unreadNotificationCount > 0 || hasUnclaimedClearance) && (
-              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
-              </span>
-            )}
-          </button>
+            {/* Mobile Command Menu Button */}
+            <button
+              type="button"
+              onClick={() => {
+                soundEffects.playClick();
+                setShowMobileCommandSheet(true);
+              }}
+              className="w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border border-rose-500/40 text-rose-300 hover:text-white flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative"
+              title="Open Mobile Command Dock"
+            >
+              <LayoutGrid className="w-4 h-4 text-rose-400" />
+              {/* Notification / Unclaimed Beacon */}
+              {(unreadNotificationCount > 0 || hasUnclaimedClearance) && (
+                <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600 border border-black shadow-[0_0_8px_rgba(244,63,94,0.8)]" />
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {/* DESKTOP TOP HUD (>= sm) */}
@@ -7132,19 +7126,6 @@ export default function VisualNovelGame() {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border border-black shadow-[0_0_10px_#10b981]" />
                 </span>
               )}
-            </button>
-          </div>
-
-          {/* CENTER CLUSTER: Spatial Location / Realm Anchor */}
-          <div className="flex-1 flex justify-center max-w-[120px] sm:max-w-sm md:max-w-md lg:max-w-lg min-w-0">
-            <button
-              onClick={() => setShowMap(true)}
-              className="flex items-center gap-1.5 sm:gap-2 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3.5 py-2 rounded-2xl border border-white/10 hover:border-emerald-500/50 shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group min-w-0 max-w-full"
-              title="View Area Map & Sectors"
-            >
-              <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-              <span className="font-mono text-[10px] sm:text-[11px] md:text-xs text-emerald-300 truncate max-w-[65px] sm:max-w-none">{gameState.location}</span>
-              <Compass className="w-3 h-3 text-zinc-500 shrink-0 group-hover:text-white transition-colors hidden sm:inline" />
             </button>
           </div>
 
@@ -7452,22 +7433,37 @@ export default function VisualNovelGame() {
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
+              {/* Relocated Area Map / Sector Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowMap(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-950/45 hover:bg-emerald-900/65 border border-emerald-500/35 hover:border-emerald-400/75 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold transition-all cursor-pointer shadow-sm group min-w-0 max-w-[140px] sm:max-w-[240px]"
+                title="View Area Map & Sectors"
+              >
+                <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                <span className="truncate">{gameState.location}</span>
+                <Compass className="w-3 h-3 text-emerald-400/70 shrink-0 group-hover:text-emerald-200 transition-colors hidden sm:inline" />
+              </button>
+
               {isSpeakingHeroine && (
-                <span className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded-md border border-white/5">
+                <span className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded-md border border-white/5 hidden md:inline-block">
                   {isSpeakingHeroine.expressionKey}
                 </span>
               )}
               {isProtagonistAlone && (
-                <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-500/20 hidden xs:inline-block">
+                <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-0.5 rounded-md border border-sky-500/20 hidden md:inline-block">
                   Solitary Arc
                 </span>
               )}
-              <span className="text-xs text-amber-400 font-mono hidden md:inline">• Mood: {gameState.mood}</span>
+              <span className="text-xs text-amber-400 font-mono hidden lg:inline">• Mood: {gameState.mood}</span>
               <button
                 type="button"
                 onClick={() => handleGenerateSceneCG(false)}
-                className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 text-[10px] font-mono font-bold transition-all cursor-pointer shadow-sm hover:border-rose-400"
+                className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 text-[10px] font-mono font-bold transition-all cursor-pointer shadow-sm hover:border-rose-400 shrink-0"
                 title="Illustrate this scene in real-time with Nano Banana 2.1"
               >
                 <Camera className="w-3 h-3 text-rose-400" />
