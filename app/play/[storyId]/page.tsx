@@ -6527,7 +6527,11 @@ export default function VisualNovelGame() {
                       onClick={() => {
                         const updated = (player.racialTraits || []).filter((_, i) => i !== tIdx);
                         setRacialTraitsInput(updated.join(", "));
-                        setPlayer((prev) => ({ ...prev, racialTraits: updated }));
+                        setPlayer((prev) => {
+                          const next = { ...prev, racialTraits: updated };
+                          playerRef.current = next;
+                          return next;
+                        });
                       }}
                       title="Click to remove trait"
                       className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-rose-950/50 border border-white/10 hover:border-rose-500/40 text-amber-200/90 hover:text-rose-200 flex items-center gap-1 transition-colors cursor-pointer group"
@@ -6626,7 +6630,11 @@ export default function VisualNovelGame() {
                       onClick={() => {
                         const updated = (player.personalityTraits || []).filter((_, i) => i !== tIdx);
                         setPersonalityTraitsInput(updated.join(", "));
-                        setPlayer((prev) => ({ ...prev, personalityTraits: updated }));
+                        setPlayer((prev) => {
+                          const next = { ...prev, personalityTraits: updated };
+                          playerRef.current = next;
+                          return next;
+                        });
                       }}
                       title="Click to remove trait"
                       className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-rose-950/50 border border-white/10 hover:border-rose-500/40 text-rose-200/90 hover:text-rose-100 flex items-center gap-1 transition-colors cursor-pointer group"
@@ -7868,22 +7876,33 @@ export default function VisualNovelGame() {
 
         {choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive) && (
           <div className="pointer-events-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 select-none shrink-0 max-h-24 sm:max-h-36 overflow-y-auto pr-0.5">
-            {choices.map((choice, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => sendAction(choice, false)}
-                disabled={isLoading}
-                className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
-              >
-                <span className="text-xs sm:text-sm text-zinc-200 group-hover:text-white line-clamp-2 pr-2">
-                  {choice}
-                </span>
-                <span className="text-rose-400/50 group-hover:text-rose-400 transition-colors shrink-0 text-xs">
-                  →
-                </span>
-              </button>
-            ))}
+            {choices.map((choice, idx) => {
+              const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
+              const tag = tagMatch ? tagMatch[1] : null;
+              const text = tagMatch ? tagMatch[2] : choice;
+
+              return (
+                <button
+                  key={`${idx}_${choice.slice(0, 16)}`}
+                  type="button"
+                  onClick={() => sendAction(choice, false)}
+                  disabled={isLoading}
+                  className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                >
+                  <span className="text-xs sm:text-sm text-zinc-200 group-hover:text-white line-clamp-2 pr-2 leading-relaxed">
+                    {tag && (
+                      <span className="font-mono text-[10px] sm:text-xs font-semibold text-rose-400/90 group-hover:text-rose-300 mr-1.5 shrink-0">
+                        {tag}
+                      </span>
+                    )}
+                    <span>{text}</span>
+                  </span>
+                  <span className="text-rose-400/50 group-hover:text-rose-400 transition-colors shrink-0 text-xs">
+                    →
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
