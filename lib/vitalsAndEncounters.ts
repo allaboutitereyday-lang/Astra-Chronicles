@@ -271,7 +271,7 @@ export function generateEnemyIntent(
       label: `Crushing Execution`,
       estimatedDamage: dmg,
       type: "heavy",
-      counterStanceHint: "Counter with Cryo-Ward (-40% DMG) or Crusher (Stagger)",
+      counterStanceHint: "Counter with Defensive Stance (-40% DMG) or Stagger Stance (Stun)",
     };
   }
   if (cycle === 3) {
@@ -280,7 +280,7 @@ export function generateEnemyIntent(
       label: `Aether Piercer / Hex Barrage`,
       estimatedDamage: dmg,
       type: "arcane",
-      counterStanceHint: "Counter with Blink (35% Evade) or Solaris Burst",
+      counterStanceHint: "Counter with Evasion Stance (35% Evade) or Aggressive Burst",
     };
   }
   if (cycle === 0) {
@@ -289,7 +289,7 @@ export function generateEnemyIntent(
       label: `Predatory Feint & Sunder`,
       estimatedDamage: dmg,
       type: "debuff",
-      counterStanceHint: "Counter with Lethality (45% Crit) to punish opening",
+      counterStanceHint: "Counter with Lethality Stance (45% Crit) to punish opening",
     };
   }
 
@@ -298,7 +298,7 @@ export function generateEnemyIntent(
     label: `Vicious Lunge`,
     estimatedDamage: dmg,
     type: "strike",
-    counterStanceHint: "Counter with Solaris (+30% ATK) or Adaptive Stance",
+    counterStanceHint: "Counter with Offensive Stance (+30% ATK) or Balanced Flow",
   };
 }
 
@@ -320,6 +320,7 @@ export function resolveHostileEncounterEscalation(params: {
     llmStoryClash,
     existingClash,
     storyText = "",
+    actionText = "",
     location = "Uncharted Sector",
     genre = "Dark Fantasy LitRPG",
     assistingCompanionName,
@@ -338,6 +339,17 @@ export function resolveHostileEncounterEscalation(params: {
     typeof llmStoryClash.enemyName === "string" &&
     llmStoryClash.enemyName.trim().length > 0
   ) {
+    // Anti-False-Positive Guard: If the player action was explicitly non-combat (stealth, diplomacy,
+    // dialogue, observation, investigation) and no physical attacks, charges, or injuries occurred in
+    // the narrative, do NOT lock the player into combat simply because an enemy is nearby or spotted.
+    const nonCombatActionRegex = /\[(Subterfuge|Stealth|Diplomacy|Inquire|Observe|Dialogue|Explore|Flee|Perception|Insight|Camp)/i;
+    const isExplicitlyNonCombatAction = nonCombatActionRegex.test(actionText || "");
+    const hasActiveViolentClashInProse = /\b(lunges?|strikes?|slashes?|swings?|casts?|detonates?|punches?|shoots?|fires?|charges? at|attacks?|inflicts?|bleeding|wound|stagger|parr(?:y|ies|ied)|dodges?|deflects?|teeth|claws|fangs)\b/i.test(storyText || "");
+
+    if (isExplicitlyNonCombatAction && !hasActiveViolentClashInProse) {
+      return null;
+    }
+
     const eName = llmStoryClash.enemyName.trim();
     const maxHp = Math.max(40, Number(llmStoryClash.enemyMaxHp || llmStoryClash.enemyHp) || 85);
     const hp = Math.max(1, Math.min(maxHp, Number(llmStoryClash.enemyHp) || maxHp));

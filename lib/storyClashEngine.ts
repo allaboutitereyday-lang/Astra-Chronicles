@@ -10,8 +10,8 @@
 
 import { ActiveStoryClashState, QuestDifficulty } from "@/types/system";
 import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "./trialsClassArsenals";
-import { StoryCompanion, CombatStanceType } from "@/types/story";
-import { COMBAT_STANCES } from "./progressionMechanics";
+import { StoryCompanion, CombatStanceType, AbilityDetail } from "@/types/story";
+import { COMBAT_STANCES, getClassStanceConfig } from "./progressionMechanics";
 import { generateProceduralMonsterSvg } from "./proceduralArt";
 import { generateEnemyIntent } from "./vitalsAndEncounters";
 
@@ -94,67 +94,118 @@ export interface FormattedClashChoice {
  */
 export function getStoryClashChoices(
   playerRole: string = "Voidstrider",
-  companion?: { name: string } | StoryCompanion | null,
+  companion?: { name: string; role?: string } | StoryCompanion | null,
   currentMp: number = 60,
-  activeStance: CombatStanceType = "neutral"
+  activeStance: CombatStanceType = "neutral",
+  playerAbilities?: string[],
+  abilityDetails?: Record<string, AbilityDetail>
 ): FormattedClashChoice[] {
   const arsenal: ClassArsenal = getClassArsenal(playerRole);
   const compName = companion?.name || "Companion";
-  const stanceCfg = COMBAT_STANCES[activeStance] || COMBAT_STANCES.neutral;
+  const stanceCatalog = getClassStanceConfig(playerRole);
+  const activeStanceInfo = stanceCatalog[activeStance] || stanceCatalog.neutral;
 
-  const actions = arsenal.actions;
+  let strikeAction = arsenal.actions.strike;
+  let burstAction = arsenal.actions.burst;
+  let synergyAction = arsenal.actions.synergy;
+  let defenseAction = arsenal.actions.defense;
 
-  const stanceFlavorMap: Record<CombatStanceType, { tag: string; bonusHint: string }> = {
-    neutral: { tag: "Balanced Flow", bonusHint: "Standard damage, +5 MP" },
-    flame: { tag: "Flame Infusion", bonusHint: "+25% Burn & Direct DMG" },
-    frost: { tag: "Frost Infusion", bonusHint: "+35% Stagger, -15% Enemy DMG" },
-    phase: { tag: "Phase Shift", bonusHint: "+20% Evasion, Armor Bypass" },
-    shadow: { tag: "Shadowstalker", bonusHint: "+30% Critical Hit Rate" },
-    graviton: { tag: "Graviton Collapse", bonusHint: "+40% Stagger Poise Break" },
-  };
+  // Contextual companion synergy branding
+  let synergyActionName = synergyAction.name;
+  if (compName.toLowerCase().includes("perci")) {
+    synergyActionName = "Perci's Foxfire Crossfire";
+  } else if (compName.toLowerCase().includes("morgana")) {
+    synergyActionName = "Morgana's Abyssal Entanglement";
+  } else if (compName.toLowerCase().includes("evelyn")) {
+    synergyActionName = "Evelyn's Celestial Aegis Burst";
+  } else if (compName.toLowerCase().includes("aria")) {
+    synergyActionName = "Aria's Runic Singularity";
+  } else if (compName.toLowerCase().includes("serena")) {
+    synergyActionName = "Serena's Crimson Edge Flurry";
+  } else if (compName.toLowerCase().includes("lyra")) {
+    synergyActionName = "Lyra's Cryo-Stasis Pin";
+  } else if (compName && compName !== "Companion") {
+    synergyActionName = `${compName}'s Tactical Resonance`;
+  }
 
-  const stanceMeta = stanceFlavorMap[activeStance] || stanceFlavorMap.neutral;
+  // Prioritize player's unlocked abilities if available in character sheet
+  if (abilityDetails && Object.keys(abilityDetails).length > 0) {
+    const details = Object.values(abilityDetails);
+    const customBurst = details.find(
+      (a) => a.type === "Ultimate" || a.type === "Burst" || (a.cost && a.cost.includes("MP") && parseInt(a.cost) >= 15)
+    );
+    const customStrike = details.find(
+      (a) => (a.type === "Active" || a.type === "Basic" || a.type === "Strike") && a.name !== customBurst?.name
+    );
+    const customDefense = details.find(
+      (a) => (a.type === "Stance" || a.type === "Defensive" || a.type === "Passive") && a.name !== customBurst?.name && a.name !== customStrike?.name
+    );
+
+    if (customStrike) {
+      strikeAction = {
+        ...strikeAction,
+        name: customStrike.name,
+        description: customStrike.description || strikeAction.description,
+      };
+    }
+    if (customBurst) {
+      const parsedCost = customBurst.cost ? parseInt(customBurst.cost) || burstAction.costMp : burstAction.costMp;
+      burstAction = {
+        ...burstAction,
+        name: customBurst.name,
+        description: customBurst.description || burstAction.description,
+        costMp: parsedCost,
+      };
+    }
+    if (customDefense) {
+      defenseAction = {
+        ...defenseAction,
+        name: customDefense.name,
+        description: customDefense.description || defenseAction.description,
+      };
+    }
+  }
 
   return [
     // 1. Strike (Infused with Active Stance)
     {
       actionType: "strike",
-      actionName: `${actions.strike.name} (${stanceMeta.tag})`,
-      label: `[Strike/${stanceMeta.tag}]: Execute ${actions.strike.name} in ${stanceCfg.name} (${stanceMeta.bonusHint}, 0 MP).`,
+      actionName: `${strikeAction.name} (${activeStanceInfo.label})`,
+      label: `[Strike/${activeStanceInfo.label}]: Execute ${strikeAction.name} in ${activeStanceInfo.label} (${activeStanceInfo.bonusHint}, 0 MP).`,
       mpCost: 0,
-      description: `${actions.strike.description} • Active Stance: ${stanceCfg.modifierLabel}`,
+      description: `${strikeAction.description} • Active Stance: ${activeStanceInfo.bonusText}`,
       disabled: false,
-      stanceTag: stanceMeta.tag,
+      stanceTag: activeStanceInfo.label,
     },
     // 2. Class Signature Burst
     {
       actionType: "burst",
-      actionName: actions.burst.name,
-      label: `[Class Burst/${stanceMeta.tag}]: Unleash ${actions.burst.name} amplified by ${stanceCfg.name} (-${actions.burst.costMp} MP).`,
-      mpCost: actions.burst.costMp,
-      description: `${actions.burst.description} • Amplified by ${stanceCfg.name}`,
-      disabled: currentMp < actions.burst.costMp,
-      reasonDisabled: currentMp < actions.burst.costMp ? `Insufficient MP (${currentMp}/${actions.burst.costMp})` : undefined,
-      stanceTag: stanceMeta.tag,
+      actionName: burstAction.name,
+      label: `[Class Burst/${activeStanceInfo.label}]: Unleash ${burstAction.name} amplified by ${activeStanceInfo.label} (-${burstAction.costMp} MP).`,
+      mpCost: burstAction.costMp,
+      description: `${burstAction.description} • Amplified by ${activeStanceInfo.label}`,
+      disabled: currentMp < burstAction.costMp,
+      reasonDisabled: currentMp < burstAction.costMp ? `Insufficient MP (${currentMp}/${burstAction.costMp})` : undefined,
+      stanceTag: activeStanceInfo.label,
     },
     // 3. Companion Tactical Synergy
     {
       actionType: "synergy",
-      actionName: actions.synergy.name,
-      label: `[Tactical Synergy/Coordinated]: Coordinate with ${compName} for a synchronized combo (-${actions.synergy.costMp} MP, heals 25 HP).`,
-      mpCost: actions.synergy.costMp,
+      actionName: synergyActionName,
+      label: `[Tactical Synergy/Coordinated]: Coordinate with ${compName} for a synchronized combo (-${synergyAction.costMp} MP, heals 25 HP).`,
+      mpCost: synergyAction.costMp,
       description: `Synchronizes strikes with ${compName}, staggering the target and restoring party health.`,
-      disabled: currentMp < actions.synergy.costMp,
-      reasonDisabled: currentMp < actions.synergy.costMp ? `Insufficient MP (${currentMp}/${actions.synergy.costMp})` : undefined,
+      disabled: currentMp < synergyAction.costMp,
+      reasonDisabled: currentMp < synergyAction.costMp ? `Insufficient MP (${currentMp}/${synergyAction.costMp})` : undefined,
       stanceTag: "Co-Op Resonance",
     },
     // 4. Defensive Stance / Parry
     {
       actionType: "defense",
-      actionName: actions.defense.name,
-      label: `[Parry/Defensive]: Adopt ${actions.defense.name} to absorb incoming blows (-70% incoming DMG, +15 MP).`,
+      actionName: defenseAction.name,
+      label: `[Parry/Defensive]: Adopt ${defenseAction.name} to absorb incoming blows (-70% incoming DMG, +15 MP).`,
       mpCost: 0,
-      description: actions.defense.description,
+      description: defenseAction.description,
       disabled: false,
       stanceTag: "Guard",
     },
@@ -193,6 +244,8 @@ export function resolveClashTurn(
   const arsenal: ClassArsenal = getClassArsenal(playerRole);
   const compName = companion?.name || "Companion";
   const stanceCfg = COMBAT_STANCES[activeStance] || COMBAT_STANCES.neutral;
+  const stanceCatalog = getClassStanceConfig(playerRole);
+  const activeStanceInfo = stanceCatalog[activeStance] || { label: stanceCfg.name, bonusText: stanceCfg.modifierLabel };
 
   // Handle Tactical Disengagement / Flee
   if (actionType === "flee") {
@@ -308,7 +361,7 @@ export function resolveClashTurn(
   const isDefeat = (playerStats?.hp ?? 100) + hpHealed - enemyDamageTaken <= 0;
 
   const tagBadges = [
-    `[${stanceCfg.name}]`,
+    `[${activeStanceInfo.label}]`,
     isCrit ? "[CRIT!]" : "",
     isStaggered ? "[STAGGER!]" : "",
     isEvaded ? "[EVADED!]" : "",
@@ -350,17 +403,17 @@ export function resolveClashTurn(
   };
 
   // Formatted prompt to send to LLM with Stance & Tactical Tags
-  const stanceProseNote = `using ${stanceCfg.name} (${stanceCfg.element} affinity${isCrit ? ", landing a devastating critical strike" : ""}${isStaggered ? ", shattering enemy poise into a stagger" : ""}${isEvaded ? ", and phasing cleanly through the counter-attack" : ""})`;
+  const stanceProseNote = `in ${activeStanceInfo.label} stance (${activeStanceInfo.bonusText}${isCrit ? ", landing a devastating critical strike" : ""}${isStaggered ? ", shattering enemy poise into a stagger" : ""}${isEvaded ? ", and phasing cleanly through the counter-attack" : ""})`;
 
   const narrativePromptAction = isVictory
-    ? `[Combat Victory/${stanceCfg.name}]: Execute the finishing blow with ${action.name} ${stanceProseNote}, shattering ${clashState.enemyName}'s defenses and achieving total tactical victory.`
+    ? `[Combat Victory/${activeStanceInfo.label}]: Execute the finishing blow with ${action.name} ${stanceProseNote}, shattering ${clashState.enemyName}'s defenses and achieving total tactical victory.`
     : actionType === "synergy"
-    ? `[Tactical Synergy/${stanceCfg.name}]: Coordinate seamlessly with ${compName}, striking in synchronized cadence with ${action.name} ${stanceProseNote} while shielding each other from incoming fire.`
+    ? `[Tactical Synergy/${activeStanceInfo.label}]: Coordinate seamlessly with ${compName}, striking in synchronized cadence with ${action.name} ${stanceProseNote} while shielding each other from incoming fire.`
     : actionType === "burst"
-    ? `[Class Burst/${stanceCfg.name}]: Channel your full ${playerRole} energy into ${action.name} ${stanceProseNote}, blasting through ${clashState.enemyName}'s armor with explosive force.`
+    ? `[Class Burst/${activeStanceInfo.label}]: Channel your full ${playerRole} energy into ${action.name} ${stanceProseNote}, blasting through ${clashState.enemyName}'s armor with explosive force.`
     : actionType === "defense"
-    ? `[Parry/${stanceCfg.name}]: Raise ${action.name} in ${stanceCfg.name}, absorbing ${clashState.enemyName}'s counter-strike with grounded poise and preparing the counter-offensive.`
-    : `[Strike/${stanceCfg.name}]: Lunge forward with ${action.name} ${stanceProseNote}, pressuring ${clashState.enemyName}'s perimeter and creating a lethal opening.`;
+    ? `[Parry/${activeStanceInfo.label}]: Raise ${action.name} in ${activeStanceInfo.label}, absorbing ${clashState.enemyName}'s counter-strike with grounded poise and preparing the counter-offensive.`
+    : `[Strike/${activeStanceInfo.label}]: Lunge forward with ${action.name} ${stanceProseNote}, pressuring ${clashState.enemyName}'s perimeter and creating a lethal opening.`;
 
   return {
     updatedClashState,

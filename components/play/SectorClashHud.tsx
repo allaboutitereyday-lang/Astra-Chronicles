@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Swords,
   Flame,
@@ -19,9 +19,10 @@ import {
   X,
   SlidersHorizontal,
 } from "lucide-react";
-import { ActiveStoryClashState, CombatStanceType } from "@/types/story";
+import { ActiveStoryClashState, CombatStanceType, AbilityDetail } from "@/types/story";
 import { getStoryClashChoices } from "@/lib/storyClashEngine";
 import { soundEffects } from "@/lib/audioEngine";
+import { getClassStanceConfig } from "@/lib/progressionMechanics";
 
 export interface ClashCombatPopup {
   id: string;
@@ -58,58 +59,9 @@ interface SectorClashHudProps {
   isGeneratingEnemyImage?: boolean;
   combatPopups?: ClashCombatPopup[];
   lastHitEvent?: ClashVisualHitEvent | null;
+  playerAbilities?: string[];
+  abilityDetails?: Record<string, AbilityDetail>;
 }
-
-const STANCE_CONFIG: {
-  id: CombatStanceType;
-  label: string;
-  bonusText: string;
-  icon: React.ComponentType<{ className?: string }>;
-  activeClass: string;
-}[] = [
-  {
-    id: "neutral",
-    label: "Adaptive",
-    bonusText: "+8% Balanced Output",
-    icon: Shield,
-    activeClass: "bg-zinc-800 border-zinc-400 text-white shadow-[0_0_12px_rgba(161,161,170,0.3)]",
-  },
-  {
-    id: "flame",
-    label: "Solaris",
-    bonusText: "+30% ATK • Burn DoT",
-    icon: Flame,
-    activeClass: "bg-orange-950/90 border-orange-400 text-orange-200 shadow-[0_0_14px_rgba(249,115,22,0.4)]",
-  },
-  {
-    id: "frost",
-    label: "Cryo-Ward",
-    bonusText: "-40% DMG Taken • Ward",
-    icon: Snowflake,
-    activeClass: "bg-cyan-950/90 border-cyan-400 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.4)]",
-  },
-  {
-    id: "phase",
-    label: "Blink",
-    bonusText: "35% Evade Counter",
-    icon: Zap,
-    activeClass: "bg-violet-950/90 border-violet-400 text-violet-200 shadow-[0_0_14px_rgba(167,139,250,0.4)]",
-  },
-  {
-    id: "shadow",
-    label: "Lethality",
-    bonusText: "45% Crit (1.6x DMG)",
-    icon: Moon,
-    activeClass: "bg-rose-950/90 border-rose-400 text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.4)]",
-  },
-  {
-    id: "graviton",
-    label: "Crusher",
-    bonusText: "+20% DMG • 35% Stagger",
-    icon: Orbit,
-    activeClass: "bg-amber-950/90 border-amber-400 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.4)]",
-  },
-];
 
 export function SectorClashHud({
   activeClash,
@@ -129,6 +81,8 @@ export function SectorClashHud({
   isGeneratingEnemyImage = false,
   combatPopups = [],
   lastHitEvent = null,
+  playerAbilities,
+  abilityDetails,
 }: SectorClashHudProps) {
   const enemyHpPercent = Math.max(
     0,
@@ -159,8 +113,16 @@ export function SectorClashHud({
   );
 
   useEffect(() => {
-    setCustomEnemyPrompt(activeClash.enemyVisualPrompt || activeClash.enemyDesc || "");
-  }, [activeClash.enemyName, activeClash.enemyVisualPrompt, activeClash.enemyDesc]);
+    if (!showEnemyLightbox) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        soundEffects.playClick();
+        setShowEnemyLightbox(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showEnemyLightbox]);
 
   useEffect(() => {
     if (enemyHpPercent < prevEnemyHpRef.current) {
@@ -222,15 +184,69 @@ export function SectorClashHud({
     }
   }, [lastHitEvent]);
 
+  const stanceConfigMap = useMemo(() => getClassStanceConfig(playerRole), [playerRole]);
+  const stanceList = useMemo<{
+    id: CombatStanceType;
+    label: string;
+    bonusText: string;
+    icon: React.ComponentType<{ className?: string }>;
+    activeClass: string;
+  }[]>(() => [
+    {
+      id: "neutral" as CombatStanceType,
+      label: stanceConfigMap.neutral.label,
+      bonusText: stanceConfigMap.neutral.bonusText,
+      icon: Shield,
+      activeClass: stanceConfigMap.neutral.activeClass,
+    },
+    {
+      id: "flame" as CombatStanceType,
+      label: stanceConfigMap.flame.label,
+      bonusText: stanceConfigMap.flame.bonusText,
+      icon: Flame,
+      activeClass: stanceConfigMap.flame.activeClass,
+    },
+    {
+      id: "frost" as CombatStanceType,
+      label: stanceConfigMap.frost.label,
+      bonusText: stanceConfigMap.frost.bonusText,
+      icon: Snowflake,
+      activeClass: stanceConfigMap.frost.activeClass,
+    },
+    {
+      id: "phase" as CombatStanceType,
+      label: stanceConfigMap.phase.label,
+      bonusText: stanceConfigMap.phase.bonusText,
+      icon: Zap,
+      activeClass: stanceConfigMap.phase.activeClass,
+    },
+    {
+      id: "shadow" as CombatStanceType,
+      label: stanceConfigMap.shadow.label,
+      bonusText: stanceConfigMap.shadow.bonusText,
+      icon: Moon,
+      activeClass: stanceConfigMap.shadow.activeClass,
+    },
+    {
+      id: "graviton" as CombatStanceType,
+      label: stanceConfigMap.graviton.label,
+      bonusText: stanceConfigMap.graviton.bonusText,
+      icon: Orbit,
+      activeClass: stanceConfigMap.graviton.activeClass,
+    },
+  ], [stanceConfigMap]);
+
   const choices = getStoryClashChoices(
     playerRole || "Voidstrider",
     assistingCompanion || undefined,
     playerMp,
-    activeStance
+    activeStance,
+    playerAbilities,
+    abilityDetails
   );
 
   const currentStanceMeta =
-    STANCE_CONFIG.find((s) => s.id === activeStance) || STANCE_CONFIG[0];
+    stanceList.find((s) => s.id === activeStance) || stanceList[0];
 
   const rankBadgeColor =
     activeClash.threatRank === "S" || activeClash.threatRank === "Calamity"
@@ -566,7 +582,7 @@ export function SectorClashHud({
             </span>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-            {STANCE_CONFIG.map((stance) => {
+            {stanceList.map((stance) => {
               const Icon = stance.icon;
               const isSelected = activeStance === stance.id;
               return (
@@ -646,11 +662,14 @@ export function SectorClashHud({
       {/* ENEMY PORTRAIT & TACTICAL DOSSIER LIGHTBOX MODAL */}
       {showEnemyLightbox && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={() => setShowEnemyLightbox(false)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 pointer-events-auto select-none"
+          onClick={() => {
+            soundEffects.playClick();
+            setShowEnemyLightbox(false);
+          }}
         >
           <div
-            className="w-full max-w-lg bg-zinc-950 border border-red-500/40 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.3)] flex flex-col"
+            className="w-full max-w-lg bg-zinc-950 border border-red-500/40 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.3)] flex flex-col pointer-events-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative h-64 sm:h-72 w-full bg-black">
@@ -661,11 +680,16 @@ export function SectorClashHud({
                   className="w-full h-full object-cover"
                 />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-black/40" />
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-black/40 pointer-events-none" />
               <button
                 type="button"
-                onClick={() => setShowEnemyLightbox(false)}
-                className="absolute top-3 right-3 p-2 rounded-full bg-black/70 text-zinc-300 hover:text-white border border-white/15 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  soundEffects.playClick();
+                  setShowEnemyLightbox(false);
+                }}
+                className="absolute top-3 right-3 z-30 p-2 rounded-full bg-black/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/20 transition-all cursor-pointer shadow-lg active:scale-95 pointer-events-auto"
+                title="Close Tactical Dossier (Esc)"
               >
                 <X className="w-4 h-4" />
               </button>

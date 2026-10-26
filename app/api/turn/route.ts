@@ -364,6 +364,14 @@ ${companionDossiers}
    - Companions MUST NOT default to subservient, agreeable, or overly eager personalities.
    - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer cynical reality checks according to their persona.
    - Affection cannot be forced in a single turn. Retain guarded boundaries and respect their defined personality constraints.
+8. Hostile Encounter Escalation & Combat Detection Directive ("story_clash"):
+   - PROXIMITY, OBSERVATION, STEALTH & STANDOFFS MUST NEVER TRIGGER COMBAT:
+     Merely observing an adversary, spotting guards on patrol, tailing a creature, hiding from an abomination, speaking during a tense armed standoff, sizing up an enemy, or sneaking past sentinels MUST NEVER set "state_updates.story_clash.isActive": true.
+     In these turns, keep "story_clash": null so the player retains narrative agency (to stealth past, negotiate, investigate, retreat, or cast prep buffs).
+   - WHEN COMBAT HAS ACTIVELY STARTED ("story_clash.isActive": true):
+     ONLY set "story_clash.isActive": true when:
+     1. The player explicitly initiates an attack or offensive action (e.g. "[Combat/Aggressive]", swinging a weapon, casting offensive magic, shooting), OR
+     2. An enemy explicitly executes an unavoidable lethal ambush, lunge, or physical melee charge where physical blows are actively struck and exchanged this turn.
 
 --- ABSOLUTE SYSTEM DIRECTIVE: NO PLAYER SAFEGUARDING & REAL MORTAL CONSEQUENCES ---
 DO NOT SAFEGUARD THE PROTAGONIST. Remove all artificial plot armor:
@@ -447,7 +455,7 @@ Respond strictly in valid JSON matching this schema:
       "knowsOrigin": boolean // Set true ONLY if the protagonist explicitly revealed their Regressor/System origin in this turn
     },
     "story_clash": {
-      "isActive": boolean, // Set true ONLY when a hostile story moment escalates into immediate combat
+      "isActive": boolean, // Set true ONLY when lethal blows, spells, or ambushes are actively exchanged this turn. Set null if player is observing, sneaking, talking, or in proximity to an enemy!
       "enemyName": string,
       "enemyHp": number,
       "enemyMaxHp": number,

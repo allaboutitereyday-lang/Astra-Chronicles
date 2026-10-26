@@ -226,19 +226,319 @@ export const COMBAT_STANCES: Record<CombatStanceType, CombatStanceConfig> = {
 };
 
 export function getAvailableStancesForRole(role?: string): CombatStanceType[] {
-  // Universal Combat Stances: All classes have access to the complete 6-stance matrix.
-  // Order prioritizes class affinity while guaranteeing universal tactical access.
-  const r = (role || "").toLowerCase();
-  if (r.includes("spell") || r.includes("blade") || r.includes("mage")) {
-    return ["neutral", "flame", "frost", "phase", "shadow", "graviton"];
-  }
-  if (r.includes("void") || r.includes("singularity") || r.includes("chrono")) {
-    return ["neutral", "phase", "graviton", "flame", "frost", "shadow"];
-  }
-  if (r.includes("rogue") || r.includes("assassin") || r.includes("shadow")) {
-    return ["neutral", "shadow", "phase", "flame", "frost", "graviton"];
-  }
   return ["neutral", "flame", "frost", "phase", "shadow", "graviton"];
+}
+
+export interface ClassStanceDisplayInfo {
+  id: CombatStanceType;
+  label: string;
+  bonusText: string;
+  bonusHint: string;
+  tag: string;
+  description: string;
+  activeClass: string;
+}
+
+export function getClassStanceConfig(roleString?: string): Record<CombatStanceType, ClassStanceDisplayInfo> {
+  const r = (roleString || "").toLowerCase().trim();
+
+  // 1. Reaver / Blood Knight / Berserker / Slayer
+  if (r.includes("reaver") || r.includes("blood") || r.includes("slayer") || r.includes("sanguine") || r.includes("carnage") || r.includes("gore") || r.includes("rend")) {
+    return {
+      neutral: {
+        id: "neutral",
+        label: "Reaver's Flow",
+        bonusText: "+8% Balanced Output",
+        bonusHint: "Balanced damage & vitality, +5 MP",
+        tag: "Reaver's Flow",
+        description: "Centered combat balance, channeling blood flow into measured momentum.",
+        activeClass: "bg-zinc-800 border-zinc-400 text-white shadow-[0_0_12px_rgba(161,161,170,0.3)]",
+      },
+      flame: {
+        id: "flame",
+        label: "Blood Rage",
+        bonusText: "+30% ATK • Bleed DoT",
+        bonusHint: "+30% Attack, Bleed damage over time",
+        tag: "Blood Rage",
+        description: "Ignites crimson berserk frenzy, trading restraint for savage arterial damage.",
+        activeClass: "bg-red-950/90 border-red-500 text-red-200 shadow-[0_0_14px_rgba(239,68,68,0.4)]",
+      },
+      frost: {
+        id: "frost",
+        label: "Iron Flesh",
+        bonusText: "-40% DMG Taken • Fortify",
+        bonusHint: "-40% Damage taken, +35% poise resistance",
+        tag: "Iron Flesh",
+        description: "Hardens vascular fibers and muscular sinew into an impenetrable physical barrier.",
+        activeClass: "bg-stone-900/90 border-stone-400 text-stone-200 shadow-[0_0_14px_rgba(168,162,158,0.4)]",
+      },
+      phase: {
+        id: "phase",
+        label: "Slaughter Step",
+        bonusText: "35% Evade Counter",
+        bonusHint: "35% Evasion counter, unhindered flanking",
+        tag: "Slaughter Step",
+        description: "Low predatory footwork that slips through weapon swings for lethal counter-strikes.",
+        activeClass: "bg-rose-950/90 border-rose-400 text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.4)]",
+      },
+      shadow: {
+        id: "shadow",
+        label: "Executioner",
+        bonusText: "45% Crit (1.6x DMG)",
+        bonusHint: "+45% Critical Strike chance, 1.6x damage",
+        tag: "Executioner",
+        description: "Fixates purely on vital nerve clusters and exposed arteries for decapitating trauma.",
+        activeClass: "bg-purple-950/90 border-purple-400 text-purple-200 shadow-[0_0_14px_rgba(168,85,247,0.4)]",
+      },
+      graviton: {
+        id: "graviton",
+        label: "Bonecrusher",
+        bonusText: "+20% DMG • 35% Stagger",
+        bonusHint: "+20% Direct damage, +35% stagger buildup",
+        tag: "Bonecrusher",
+        description: "Pours full kinetic body mass into each blow to fracture bones and shatter posture.",
+        activeClass: "bg-amber-950/90 border-amber-400 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.4)]",
+      },
+    };
+  }
+
+  // 2. Warrior / Juggernaut / Knight
+  if (r.includes("warrior") || r.includes("berserk") || r.includes("juggernaut") || r.includes("colossus") || r.includes("fighter") || r.includes("knight")) {
+    return {
+      neutral: {
+        id: "neutral",
+        label: "Colossus Guard",
+        bonusText: "+8% Balanced Output",
+        bonusHint: "Solid martial stance, +5 MP",
+        tag: "Colossus Guard",
+        description: "Disciplined heavy posture resisting momentum.",
+        activeClass: "bg-zinc-800 border-zinc-400 text-white shadow-[0_0_12px_rgba(161,161,170,0.3)]",
+      },
+      flame: {
+        id: "flame",
+        label: "War Frenzy",
+        bonusText: "+30% ATK • Cleave",
+        bonusHint: "+30% Attack power, wide cleaving strikes",
+        tag: "War Frenzy",
+        description: "Unbridled battlefield bloodlust amplifying kinetic cleave.",
+        activeClass: "bg-orange-950/90 border-orange-500 text-orange-200 shadow-[0_0_14px_rgba(249,115,22,0.4)]",
+      },
+      frost: {
+        id: "frost",
+        label: "Iron Bulwark",
+        bonusText: "-40% DMG Taken • Ward",
+        bonusHint: "-40% Damage taken, impenetrable shield",
+        tag: "Iron Bulwark",
+        description: "Bracing behind armor plates to absorb catastrophic impact.",
+        activeClass: "bg-cyan-950/90 border-cyan-400 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.4)]",
+      },
+      phase: {
+        id: "phase",
+        label: "Intercept",
+        bonusText: "35% Evade Counter",
+        bonusHint: "35% Intercept counter, poise defense",
+        tag: "Intercept",
+        description: "Quick tactical sidestep to parry and drive forward.",
+        activeClass: "bg-violet-950/90 border-violet-400 text-violet-200 shadow-[0_0_14px_rgba(167,139,250,0.4)]",
+      },
+      shadow: {
+        id: "shadow",
+        label: "Overpower",
+        bonusText: "45% Crit (1.6x DMG)",
+        bonusHint: "+45% Critical Strike chance, heavy stun",
+        tag: "Overpower",
+        description: "Crushing momentum targeting armor joint vulnerabilities.",
+        activeClass: "bg-rose-950/90 border-rose-400 text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.4)]",
+      },
+      graviton: {
+        id: "graviton",
+        label: "Earthshaker",
+        bonusText: "+20% DMG • 35% Stagger",
+        bonusHint: "+20% Damage, +35% stagger poise break",
+        tag: "Earthshaker",
+        description: "Cataclysmic ground-slamming impact that staggers adversaries.",
+        activeClass: "bg-amber-950/90 border-amber-400 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.4)]",
+      },
+    };
+  }
+
+  // 3. Rogue / Assassin / Shadow
+  if (r.includes("rogue") || r.includes("assassin") || r.includes("shadow") || r.includes("saboteur") || r.includes("thief") || r.includes("scout")) {
+    return {
+      neutral: {
+        id: "neutral",
+        label: "Shadow Stride",
+        bonusText: "+8% Balanced Output",
+        bonusHint: "Fluid stealth momentum, +5 MP",
+        tag: "Shadow Stride",
+        description: "Silent predatory posture masking breath and presence.",
+        activeClass: "bg-zinc-800 border-zinc-400 text-white shadow-[0_0_12px_rgba(161,161,170,0.3)]",
+      },
+      flame: {
+        id: "flame",
+        label: "Venom Blade",
+        bonusText: "+30% ATK • Poison DoT",
+        bonusHint: "+30% Poison and bleeding damage",
+        tag: "Venom Blade",
+        description: "Coats weapon edges in flesh-rotting neurotoxic ichor.",
+        activeClass: "bg-emerald-950/90 border-emerald-500 text-emerald-200 shadow-[0_0_14px_rgba(16,185,129,0.4)]",
+      },
+      frost: {
+        id: "frost",
+        label: "Smoke Screen",
+        bonusText: "-40% DMG Taken • Cloak",
+        bonusHint: "-40% Damage taken, miss chance",
+        tag: "Smoke Screen",
+        description: "Diffuses an obscuring smoke cloud to misdirect incoming blades.",
+        activeClass: "bg-zinc-900 border-zinc-400 text-zinc-200 shadow-[0_0_14px_rgba(161,161,170,0.4)]",
+      },
+      phase: {
+        id: "phase",
+        label: "Shadow Step",
+        bonusText: "35% Evade Counter",
+        bonusHint: "35% Evasion counter, flank ambush",
+        tag: "Shadow Step",
+        description: "Melts through blind spots to reappear instantly behind the foe.",
+        activeClass: "bg-violet-950/90 border-violet-400 text-violet-200 shadow-[0_0_14px_rgba(167,139,250,0.4)]",
+      },
+      shadow: {
+        id: "shadow",
+        label: "Lethal Edge",
+        bonusText: "45% Crit (1.6x DMG)",
+        bonusHint: "+45% Critical Strike chance, assassinate",
+        tag: "Lethal Edge",
+        description: "Hones every motion toward an instantaneous fatal strike.",
+        activeClass: "bg-rose-950/90 border-rose-400 text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.4)]",
+      },
+      graviton: {
+        id: "graviton",
+        label: "Pressure Point",
+        bonusText: "+20% DMG • 35% Stagger",
+        bonusHint: "+20% Damage, +35% nerve stagger",
+        tag: "Pressure Point",
+        description: "Targets critical somatic nodes to collapse enemy motor function.",
+        activeClass: "bg-amber-950/90 border-amber-400 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.4)]",
+      },
+    };
+  }
+
+  // 4. Paladin / Holy / Templar / Cleric
+  if (r.includes("paladin") || r.includes("solar") || r.includes("holy") || r.includes("templar") || r.includes("cleric") || r.includes("light") || r.includes("crusader")) {
+    return {
+      neutral: {
+        id: "neutral",
+        label: "Righteous Stance",
+        bonusText: "+8% Balanced Output",
+        bonusHint: "Conscrated balance, +5 MP",
+        tag: "Righteous Stance",
+        description: "Vigilant guardian stance wreathed in sacred aether.",
+        activeClass: "bg-zinc-800 border-zinc-400 text-white shadow-[0_0_12px_rgba(161,161,170,0.3)]",
+      },
+      flame: {
+        id: "flame",
+        label: "Solar Radiance",
+        bonusText: "+30% ATK • Holy Burn",
+        bonusHint: "+30% Smite damage, holy burn over time",
+        tag: "Solar Radiance",
+        description: "Ignites divine sunlight to sear unholy flesh and armor.",
+        activeClass: "bg-yellow-950/90 border-yellow-400 text-yellow-200 shadow-[0_0_14px_rgba(250,204,21,0.4)]",
+      },
+      frost: {
+        id: "frost",
+        label: "Divine Sanctuary",
+        bonusText: "-40% DMG Taken • Ward",
+        bonusHint: "-40% Damage taken, consecrated shield",
+        tag: "Divine Sanctuary",
+        description: "Projects a holy aegis that defused demonic and chaotic trauma.",
+        activeClass: "bg-sky-950/90 border-sky-400 text-sky-200 shadow-[0_0_14px_rgba(56,189,248,0.4)]",
+      },
+      phase: {
+        id: "phase",
+        label: "Angelic Shift",
+        bonusText: "35% Evade Counter",
+        bonusHint: "35% Evasion counter, radiant flash",
+        tag: "Angelic Shift",
+        description: "Blinding flash of celestial wings allowing effortless repositioning.",
+        activeClass: "bg-amber-950/90 border-amber-300 text-amber-100 shadow-[0_0_14px_rgba(252,211,77,0.4)]",
+      },
+      shadow: {
+        id: "shadow",
+        label: "Judgement",
+        bonusText: "45% Crit (1.6x DMG)",
+        bonusHint: "+45% Critical Strike chance, divine smite",
+        tag: "Judgement",
+        description: "Channels heavenly condemnation to strike directly at corrupted cores.",
+        activeClass: "bg-yellow-900/90 border-yellow-300 text-white shadow-[0_0_14px_rgba(234,179,8,0.4)]",
+      },
+      graviton: {
+        id: "graviton",
+        label: "Smite Crusher",
+        bonusText: "+20% DMG • 35% Stagger",
+        bonusHint: "+20% Damage, +35% holy stagger",
+        tag: "Smite Crusher",
+        description: "Delivers a concussive hammer strike that shatters unholy poise.",
+        activeClass: "bg-amber-950/90 border-amber-400 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.4)]",
+      },
+    };
+  }
+
+  // 5. Default Universal Matrix (Voidstrider / Cosmic / Unspecified)
+  return {
+    neutral: {
+      id: "neutral",
+      label: "Adaptive",
+      bonusText: "+8% Balanced Output",
+      bonusHint: "Standard damage output, +5 MP",
+      tag: "Adaptive Flow",
+      description: "Centered combat balance, versatile offensive and defensive cadence.",
+      activeClass: "bg-zinc-800 border-zinc-400 text-white shadow-[0_0_12px_rgba(161,161,170,0.3)]",
+    },
+    flame: {
+      id: "flame",
+      label: "Solaris",
+      bonusText: "+30% ATK • Burn DoT",
+      bonusHint: "+30% Attack power, Burn damage over time",
+      tag: "Solaris Surge",
+      description: "Overclocks kinetic output for blistering heat and armor scorch.",
+      activeClass: "bg-orange-950/90 border-orange-400 text-orange-200 shadow-[0_0_14px_rgba(249,115,22,0.4)]",
+    },
+    frost: {
+      id: "frost",
+      label: "Cryo-Ward",
+      bonusText: "-40% DMG Taken • Ward",
+      bonusHint: "-40% Damage taken, high barrier stability",
+      tag: "Cryo-Ward",
+      description: "Encases the chassis in crystallizing aether to diffuse kinetic force.",
+      activeClass: "bg-cyan-950/90 border-cyan-400 text-cyan-200 shadow-[0_0_14px_rgba(34,211,238,0.4)]",
+    },
+    phase: {
+      id: "phase",
+      label: "Blink",
+      bonusText: "35% Evade Counter",
+      bonusHint: "35% Evasion counter, phase slip",
+      tag: "Blink Shift",
+      description: "Sub-dimensional flicker that slips through solid projectiles and blades.",
+      activeClass: "bg-violet-950/90 border-violet-400 text-violet-200 shadow-[0_0_14px_rgba(167,139,250,0.4)]",
+    },
+    shadow: {
+      id: "shadow",
+      label: "Lethality",
+      bonusText: "45% Crit (1.6x DMG)",
+      bonusHint: "+45% Critical Strike chance, 1.6x damage",
+      tag: "Lethality",
+      description: "Nanosecond timing targeting fractured weak points for catastrophic crits.",
+      activeClass: "bg-rose-950/90 border-rose-400 text-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.4)]",
+    },
+    graviton: {
+      id: "graviton",
+      label: "Crusher",
+      bonusText: "+20% DMG • 35% Stagger",
+      bonusHint: "+20% Damage, +35% poise stagger",
+      tag: "Crusher",
+      description: "Condenses localized gravitational mass to stagger heavy constructs.",
+      activeClass: "bg-amber-950/90 border-amber-400 text-amber-200 shadow-[0_0_14px_rgba(251,191,36,0.4)]",
+    },
+  };
 }
 
 // ============================================================================

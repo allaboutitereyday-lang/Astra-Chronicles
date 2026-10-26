@@ -508,6 +508,278 @@ export const CLASS_ARSENALS: Record<string, ClassArsenal> = {
     },
   },
 
+  reaver: {
+    classKey: "reaver",
+    className: "Crimson Reaver",
+    classTagline: "Visceral Executioner • Blood Frenzy & Flesh Sunder",
+    primaryStat: "STR",
+    accentColor: "text-rose-500",
+    badgeBg: "bg-rose-950/40",
+    badgeBorder: "border-rose-500/40",
+    actions: {
+      strike: {
+        id: "blood_cleave",
+        name: "Blood Cleave",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Rends enemy armor with savage kinetic torque, tearing bleeding wounds with heavy physical inertia.",
+        effectLabel: "0 MP • Pure STR Scaling • Bleed Sunder",
+        iconType: "sword",
+        scalingStat: "str",
+        baseDamage: 30,
+        coherenceDelta: 2,
+        badgeText: "Blood Cleave",
+      },
+      burst: {
+        id: "crimson_rampage",
+        name: "Crimson Rampage",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 20,
+        description: "Unleashes a catastrophic flurry of blood-drenched frenzy, shattering enemy posture with devastating strikes.",
+        effectLabel: "20 MP • Cataclysmic Blood Burst • 68 DMG",
+        iconType: "flame",
+        scalingStat: "str",
+        baseDamage: 68,
+        badgeText: "Blood Rampage",
+      },
+      synergy: {
+        id: "carnage_resonance",
+        name: "Carnage Resonance",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: "Coordinates a visceral synchronized cross-strike with companion assistance, siphoning life from the staggered target.",
+        effectLabel: "18 MP • 35 DMG + 25 HP Siphon",
+        iconType: "sparkles",
+        scalingStat: "str",
+        baseDamage: 35,
+        baseHeal: 25,
+        coherenceDelta: 4,
+        badgeText: "Carnage Duo",
+      },
+      defense: {
+        id: "siphon_ward",
+        name: "Siphon Ward",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Hardens blood-sinew against incoming strikes, siphoning ambient vitality to shrug off lethal impact.",
+        effectLabel: "0 MP • Restore +35 HP • -70% DMG Taken",
+        iconType: "shield",
+        scalingStat: "str",
+        baseHeal: 35,
+        coherenceDelta: 6,
+        badgeText: "Siphon Ward",
+      },
+    },
+  },
+
+  gunslinger: {
+    classKey: "gunslinger",
+    className: "Gunslinger",
+    classTagline: "Deadeye Marksman • Ballistic Crossfire & Trickshot Volleys",
+    primaryStat: "DEX",
+    accentColor: "text-amber-400",
+    badgeBg: "bg-amber-950/40",
+    badgeBorder: "border-amber-500/40",
+    actions: {
+      strike: {
+        id: "quickdraw_shot",
+        name: "Quickdraw Shot",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Draws and snaps a pinpoint armor-piercing shot into the target's vital seam before they can react.",
+        effectLabel: "0 MP • DEX Scaling • Armor Pierce",
+        iconType: "target",
+        scalingStat: "dex",
+        baseDamage: 27,
+        coherenceDelta: 2,
+        badgeText: "Quickdraw",
+      },
+      burst: {
+        id: "deadeye_volley",
+        name: "Deadeye Volley",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 22,
+        description: "Fans the hammer in a blinding arc of lead, peppering critical seams with explosive rounds.",
+        effectLabel: "22 MP • High-Velocity Burst • 65 DMG",
+        iconType: "flame",
+        scalingStat: "dex",
+        baseDamage: 65,
+        badgeText: "Deadeye",
+      },
+      synergy: {
+        id: "coordinated_crossfire",
+        name: "Coordinated Crossfire",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: "Lays down suppressing ricochet fire while your companion flanks, creating an inescapable crossfire killzone.",
+        effectLabel: "18 MP • 34 DMG + 20 HP Regen",
+        iconType: "sparkles",
+        scalingStat: "dex",
+        baseDamage: 34,
+        baseHeal: 20,
+        coherenceDelta: 4,
+        badgeText: "Crossfire",
+      },
+      defense: {
+        id: "tactical_roll",
+        name: "Tactical Roll & Smoke",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Drops an obscuring flash-smoke canister and rolls to distant high cover, breaking line of sight.",
+        effectLabel: "0 MP • Restore +35 HP • 80% Evasion",
+        iconType: "shield",
+        scalingStat: "dex",
+        baseHeal: 35,
+        coherenceDelta: 5,
+        badgeText: "Smoke Screen",
+      },
+    },
+  },
+
+  monk: {
+    classKey: "monk",
+    className: "Martial Ascetic",
+    classTagline: "Master of Chi Flow • Bone-Breaking Kata & Fluid Momentum",
+    primaryStat: "DEX",
+    accentColor: "text-emerald-400",
+    badgeBg: "bg-emerald-950/40",
+    badgeBorder: "border-emerald-500/40",
+    actions: {
+      strike: {
+        id: "iron_palm_flurry",
+        name: "Iron Palm Flurry",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Delivers rapid chi-infused palm strikes that ripple through internal organ matrixes.",
+        effectLabel: "0 MP • Pure Unarmed Scaling • Poise Break",
+        iconType: "sword",
+        scalingStat: "dex",
+        baseDamage: 28,
+        coherenceDelta: 2,
+        badgeText: "Iron Palm",
+      },
+      burst: {
+        id: "dragon_sunder_palm",
+        name: "Dragon Sunder Palm",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 20,
+        description: "Channels internal spirit into an earth-splitting palm strike that shatters armor plates.",
+        effectLabel: "20 MP • Devastating Internal Burst • 66 DMG",
+        iconType: "zap",
+        scalingStat: "dex",
+        baseDamage: 66,
+        badgeText: "Dragon Palm",
+      },
+      synergy: {
+        id: "harmonious_kata",
+        name: "Harmonious Kata",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 16,
+        description: "Synchronizes breathing and movement with your companion, executing a twin-flow combo.",
+        effectLabel: "16 MP • 32 DMG + 25 HP Heal",
+        iconType: "sparkles",
+        scalingStat: "hybrid",
+        baseDamage: 32,
+        baseHeal: 25,
+        coherenceDelta: 5,
+        badgeText: "Twin Kata",
+      },
+      defense: {
+        id: "flowing_water_stance",
+        name: "Flowing Water Stance",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Adopts the defensive posture of flowing water, redirecting kinetic strikes away from vital cores.",
+        effectLabel: "0 MP • Restore +40 HP • Kinetic Redirection",
+        iconType: "shield",
+        scalingStat: "dex",
+        baseHeal: 40,
+        coherenceDelta: 6,
+        badgeText: "Water Stance",
+      },
+    },
+  },
+
+  chronomancer: {
+    classKey: "chronomancer",
+    className: "Chronomancer",
+    classTagline: "Temporal Architect • Paradox Rifts & Causal Distortion",
+    primaryStat: "INT",
+    accentColor: "text-purple-400",
+    badgeBg: "bg-purple-950/40",
+    badgeBorder: "border-purple-500/40",
+    actions: {
+      strike: {
+        id: "temporal_slash",
+        name: "Temporal Slash",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Strikes with a weapon shifted a half-second into the future, striking through parries.",
+        effectLabel: "0 MP • INT Scaling • Unparryable",
+        iconType: "sword",
+        scalingStat: "int",
+        baseDamage: 27,
+        coherenceDelta: 2,
+        badgeText: "Temporal Strike",
+      },
+      burst: {
+        id: "paradox_cataclysm",
+        name: "Paradox Cataclysm",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 24,
+        description: "Overlays four conflicting timeline states onto the target, detonating paradox energy.",
+        effectLabel: "24 MP • Temporal Paradox Burst • 67 DMG",
+        iconType: "zap",
+        scalingStat: "int",
+        baseDamage: 67,
+        badgeText: "Paradox Burst",
+      },
+      synergy: {
+        id: "timeline_convergence",
+        name: "Timeline Convergence",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: "Synchronizes temporal anchors between allies, speeding partner actions and reversing wounds.",
+        effectLabel: "18 MP • 33 DMG + 25 HP Rewind",
+        iconType: "sparkles",
+        scalingStat: "int",
+        baseDamage: 33,
+        baseHeal: 25,
+        coherenceDelta: 5,
+        badgeText: "Causal Link",
+      },
+      defense: {
+        id: "rewind_stasis",
+        name: "Rewind Stasis",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Envelops yourself in a local causality loop, instantly rewinding received damage.",
+        effectLabel: "0 MP • Restore +40 HP • Causal Shield",
+        iconType: "shield",
+        scalingStat: "int",
+        baseHeal: 40,
+        coherenceDelta: 6,
+        badgeText: "Time Rewind",
+      },
+    },
+  },
+
   default: {
     classKey: "wanderer",
     className: "Dimensional Wanderer",
@@ -578,6 +850,84 @@ export const CLASS_ARSENALS: Record<string, ClassArsenal> = {
 };
 
 /**
+ * Generates a bespoke class arsenal dynamically for arbitrary custom classes
+ * (e.g. "Astral Cartographer", "Glitch Weaver", "Cyber Ronin") so players
+ * never get dumped into generic kinetic fallback attacks.
+ */
+function synthesizeCustomArsenal(roleName: string): ClassArsenal {
+  const cleanName = roleName.trim();
+  const slug = cleanName.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+
+  return {
+    classKey: slug,
+    className: cleanName,
+    classTagline: `Master of the ${cleanName} Path`,
+    primaryStat: "HYBRID",
+    accentColor: "text-rose-400",
+    badgeBg: "bg-rose-950/40",
+    badgeBorder: "border-rose-500/40",
+    actions: {
+      strike: {
+        id: `${slug}_strike`,
+        name: `${cleanName} Strike`,
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: `Delivers a signature martial technique honed in the traditions of the ${cleanName}.`,
+        effectLabel: "0 MP • Class Martial Strike",
+        iconType: "sword",
+        scalingStat: "hybrid",
+        baseDamage: 28,
+        coherenceDelta: 2,
+        badgeText: `${cleanName} Strike`,
+      },
+      burst: {
+        id: `${slug}_burst`,
+        name: `${cleanName} Overdrive`,
+        type: "burst",
+        category: "Class Burst",
+        costMp: 22,
+        description: `Ignites the full latent power of the ${cleanName}, unleashing a devastating tactical burst.`,
+        effectLabel: "22 MP • Signature Class Burst • 66 DMG",
+        iconType: "flame",
+        scalingStat: "hybrid",
+        baseDamage: 66,
+        badgeText: "Class Burst",
+      },
+      synergy: {
+        id: `${slug}_synergy`,
+        name: `${cleanName} Synergy`,
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: `Combines your ${cleanName} disciplines with companion momentum for a devastating dual attack.`,
+        effectLabel: "18 MP • 34 DMG + 25 HP Heal",
+        iconType: "sparkles",
+        scalingStat: "hybrid",
+        baseDamage: 34,
+        baseHeal: 25,
+        coherenceDelta: 4,
+        badgeText: "Dual Synergy",
+      },
+      defense: {
+        id: `${slug}_defense`,
+        name: `${cleanName} Aegis`,
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: `Adopts the guarded defensive stance of the ${cleanName}, mitigating lethal trauma.`,
+        effectLabel: "0 MP • Restore +35 HP • -70% DMG Taken",
+        iconType: "shield",
+        scalingStat: "hybrid",
+        baseHeal: 35,
+        coherenceDelta: 6,
+        badgeText: "Class Guard",
+      },
+    },
+  };
+}
+
+/**
  * Resolves a player's class role string into the appropriate ClassArsenal.
  * Handles fuzzy matches (e.g. "Aether Blade Inquisitor" -> spellblade, "Voidstrider Captain" -> voidstrider).
  */
@@ -586,28 +936,52 @@ export function getClassArsenal(roleString?: string): ClassArsenal {
 
   if (!r) return CLASS_ARSENALS.default;
 
-  if (r.includes("void") || r.includes("singularity") || r.includes("gravit") || r.includes("space")) {
+  // 1. Reaver / Blood Knight / Berserker / Slayer
+  if (r.includes("reaver") || r.includes("blood") || r.includes("slayer") || r.includes("sanguine") || r.includes("carnage") || r.includes("gore") || r.includes("rend")) {
+    return CLASS_ARSENALS.reaver;
+  }
+  // 2. Gunslinger / Ranger / Marksman
+  if (r.includes("gun") || r.includes("shot") || r.includes("sniper") || r.includes("ranger") || r.includes("marksm") || r.includes("bullet") || r.includes("archer") || r.includes("bow")) {
+    return CLASS_ARSENALS.gunslinger;
+  }
+  // 3. Monk / Brawler / Martial Artist
+  if (r.includes("monk") || r.includes("brawler") || r.includes("martial") || r.includes("fist") || r.includes("pugilist") || r.includes("unarmed") || r.includes("kata")) {
+    return CLASS_ARSENALS.monk;
+  }
+  // 4. Chronomancer / Time Mage
+  if (r.includes("chrono") || r.includes("time") || r.includes("paradox") || r.includes("temporal") || r.includes("rewind") || r.includes("causal")) {
+    return CLASS_ARSENALS.chronomancer;
+  }
+  // 5. Voidstrider / Graviton / Cosmic
+  if (r.includes("void") || r.includes("singularity") || r.includes("gravit") || r.includes("space") || r.includes("astral") || r.includes("rift")) {
     return CLASS_ARSENALS.voidstrider;
   }
-  if (r.includes("spell") || r.includes("blade") || r.includes("inquisitor") || r.includes("enchant") || r.includes("rune")) {
+  // 6. Spellblade / Inquisitor / Runeblade
+  if (r.includes("spell") || r.includes("blade") || r.includes("inquisitor") || r.includes("enchant") || r.includes("rune") || r.includes("sword")) {
     return CLASS_ARSENALS.spellblade;
   }
-  if (r.includes("mage") || r.includes("wizard") || r.includes("sorcerer") || r.includes("arcan") || r.includes("elemental")) {
+  // 7. Mage / Wizard / Sorcerer
+  if (r.includes("mage") || r.includes("wizard") || r.includes("sorcerer") || r.includes("arcan") || r.includes("elemental") || r.includes("witch")) {
     return CLASS_ARSENALS.mage;
   }
-  if (r.includes("rogue") || r.includes("assassin") || r.includes("shadow") || r.includes("saboteur") || r.includes("thief") || r.includes("scout")) {
+  // 8. Rogue / Assassin / Shadow
+  if (r.includes("rogue") || r.includes("assassin") || r.includes("shadow") || r.includes("saboteur") || r.includes("thief") || r.includes("scout") || r.includes("ninja")) {
     return CLASS_ARSENALS.rogue;
   }
-  if (r.includes("warrior") || r.includes("berserk") || r.includes("juggernaut") || r.includes("colossus") || r.includes("fighter")) {
+  // 9. Warrior / Knight / Juggernaut
+  if (r.includes("warrior") || r.includes("berserk") || r.includes("juggernaut") || r.includes("colossus") || r.includes("fighter") || r.includes("knight") || r.includes("gladiator")) {
     return CLASS_ARSENALS.warrior;
   }
-  if (r.includes("paladin") || r.includes("solar") || r.includes("holy") || r.includes("templar") || r.includes("cleric") || r.includes("light")) {
+  // 10. Paladin / Templar / Holy
+  if (r.includes("paladin") || r.includes("solar") || r.includes("holy") || r.includes("templar") || r.includes("cleric") || r.includes("light") || r.includes("crusader")) {
     return CLASS_ARSENALS.paladin;
   }
-  if (r.includes("necro") || r.includes("death") || r.includes("soul") || r.includes("grim") || r.includes("lich")) {
+  // 11. Necromancer / Death / Warlock
+  if (r.includes("necro") || r.includes("death") || r.includes("soul") || r.includes("grim") || r.includes("lich") || r.includes("warlock") || r.includes("dark")) {
     return CLASS_ARSENALS.necromancer;
   }
 
-  return CLASS_ARSENALS.default;
+  // Synthesize a custom class arsenal on the fly for any unique archetype
+  return synthesizeCustomArsenal(roleString || "Adventurer");
 }
 

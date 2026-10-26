@@ -7223,6 +7223,8 @@ export default function VisualNovelGame() {
             isGeneratingEnemyImage={isGeneratingEnemyImage}
             combatPopups={clashCombatPopups}
             lastHitEvent={lastClashHitEvent}
+            playerAbilities={player.abilities}
+            abilityDetails={player.abilityDetails}
           />
         )}
 
