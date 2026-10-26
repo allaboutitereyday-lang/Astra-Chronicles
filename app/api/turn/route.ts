@@ -413,10 +413,14 @@ ${compatibilityDirective}
 
 --- SYSTEM ADMINISTRATOR & QUEST OBJECTIVE TRACKING DIRECTIVE ---
 MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
-1. QUEST OBJECTIVE EVALUATION:
-   - Check the player's action against pending objectives in active quests.
-   - If an objective is satisfied, mark completed in "system_updates.quest_updates" (status: "active" or "completed").
-   - If an objective is ruined or irrecoverably failed, set "status": "failed".
+1. QUEST OBJECTIVE EVALUATION & STATUS:
+   - Carefully evaluate the player's action against the pending objectives of active quests.
+   - If an objective is satisfied, include its 0-based index in "system_updates.quest_updates.completed_objective_indices".
+   - CRITICAL STATUS DETERMINATION:
+     * "status": "active" -> MANDATORY whenever ANY objective in the quest remains pending/unfulfilled. Do NOT mark the quest completed while objectives are still outstanding!
+     * "status": "completed" -> Use ONLY when EVERY single objective in the quest is completely fulfilled.
+     * "status": "failed" -> Use ONLY if an objective is ruined, timed out, or compromised beyond recovery.
+   - PREVENT DUPLICATION: Do NOT assign or regenerate quests that are already active or listed in "Completed & Archived Scenarios".
 2. CAUSAL PLAUSIBILITY:
    - Grounded, tactical choices: plausibility_delta: 0 to +4.
    - Reckless, reality-defying, or suicidal bluffs: plausibility_delta: -5 to -15.
@@ -492,9 +496,9 @@ Respond strictly in valid JSON matching this schema:
     "quest_updates": [
       {
         "quest_id": string,
-        "status": "active" | "completed" | "failed",
-        "completed_objective_indices": number[],
-        "progress_note": string
+        "status": "active" | "completed" | "failed", // Use "active" if ANY objectives remain pending. Use "completed" ONLY if ALL objectives are now fulfilled!
+        "completed_objective_indices": number[], // Array of 0-based indices of all fulfilled objectives
+        "progress_note": string // Concise system log description of the progress or milestone achieved
       }
     ],
     "new_quest": {
@@ -572,13 +576,19 @@ ${
 
 --- CURRENT SYSTEM STATE ---
 - Causal Plausibility: ${systemState?.plausibility ?? 80}% (Tier: ${systemState?.plausibilityTier ?? "Stable"})
-- Active Quests & Objective Status:
+- Active Scenarios & Objective Status:
 ${
   systemState?.activeQuests && systemState.activeQuests.length > 0
     ? systemState.activeQuests.map((q: any) => 
-        `  * Quest ID: "${q.id}" | [${q.difficulty}-Rank ${q.type}] "${q.title}"\n    Objectives:\n${q.objectives.map((o: any, idx: number) => `      - [Index ${idx}]: "${o.text}" -> STATUS: ${o.completed ? 'COMPLETED' : 'PENDING'}`).join("\n")}`
+        `  * Quest ID: "${q.id}" | [${q.difficulty}-Rank ${q.type}] "${q.title}"\n    Objectives:\n${(q.objectives || []).map((o: any, idx: number) => `      - [Index ${idx}]: "${o.text}" -> STATUS: ${o.completed ? 'COMPLETED' : 'PENDING'}`).join("\n")}`
       ).join("\n\n")
-    : "  * None active."
+    : "  * None currently active. (Assign a new scenario if narratively appropriate)."
+}
+- Completed & Archived Scenarios (ALREADY FINISHED - DO NOT RE-ASSIGN):
+${
+  systemState?.completedQuests && systemState.completedQuests.length > 0
+    ? systemState.completedQuests.slice(0, 6).map((q: any) => `  * [CLEARED & ARCHIVED]: "${q.title}"`).join("\n")
+    : "  * None completed yet."
 }
 
 ${inputHandlingInstruction}

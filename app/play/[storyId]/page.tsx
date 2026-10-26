@@ -365,6 +365,71 @@ function preloadStoryAssets(): void {
   }
 }
 
+/**
+ * Normalizes system state, heals improperly completed quests, and deduplicates directives.
+ */
+function normalizeSystemState(raw?: SystemState | null): SystemState {
+  if (!raw) {
+    return {
+      plausibility: 80,
+      plausibilityTier: "Stable",
+      activeQuests: [],
+      completedQuests: [],
+      systemDirectives: ["Administrator protocol engaged. Causal anchor established at 80%."],
+    };
+  }
+
+  let activeQuests = Array.isArray(raw.activeQuests) ? [...raw.activeQuests] : [];
+  const completedQuests = Array.isArray(raw.completedQuests) ? [...raw.completedQuests] : [];
+
+  // Self-heal: If any quest in completedQuests was not claimed and has incomplete objectives, restore it to active
+  const restoredQuests: SystemQuest[] = [];
+  const validCompleted: SystemQuest[] = [];
+
+  for (const q of completedQuests) {
+    const objs = Array.isArray(q.objectives) ? q.objectives : [];
+    const allDone = objs.length === 0 || objs.every((o) => o && o.completed);
+    if (!q.isClaimed && !allDone && objs.length > 1) {
+      // It was prematurely completed while having pending objectives
+      restoredQuests.push({ ...q, status: "active" });
+    } else {
+      validCompleted.push({
+        ...q,
+        status: "completed",
+        objectives: objs.map((o) => ({ ...o, completed: true })),
+      });
+    }
+  }
+
+  // Ensure activeQuests has status: "active" unless all objectives are truly done
+  activeQuests = [...activeQuests, ...restoredQuests].map((q) => {
+    const objs = Array.isArray(q.objectives) ? q.objectives : [];
+    const allDone = objs.length > 0 && objs.every((o) => o && o.completed);
+    return {
+      ...q,
+      status: allDone ? ("completed" as const) : ("active" as const),
+    };
+  });
+
+  // Deduplicate directives
+  const rawDirs = Array.isArray(raw.systemDirectives) ? raw.systemDirectives : [];
+  const dedupedDirs: string[] = [];
+  for (const dir of rawDirs) {
+    if (!dir || typeof dir !== "string") continue;
+    const trimmed = dir.trim();
+    if (dedupedDirs.length === 0 || dedupedDirs[dedupedDirs.length - 1].toLowerCase() !== trimmed.toLowerCase()) {
+      dedupedDirs.push(trimmed);
+    }
+  }
+
+  return {
+    ...raw,
+    activeQuests,
+    completedQuests: validCompleted,
+    systemDirectives: dedupedDirs.slice(0, 40),
+  };
+}
+
 // ------------------------------------------------------------------
 // CONTINENT REGIONS MAP
 // ------------------------------------------------------------------
@@ -798,7 +863,7 @@ export default function VisualNovelGame() {
       setPlayer(restoredPlayer);
       playerRef.current = restoredPlayer;
     }
-    if (snap.systemState) setSystemState(snap.systemState);
+    if (snap.systemState) setSystemState(normalizeSystemState(snap.systemState));
     if (snap.memories) setMemories(snap.memories);
     if (snap.chatLog) setChatLog(snap.chatLog);
     if (snap.choices) setChoices(snap.choices);
@@ -3058,7 +3123,7 @@ export default function VisualNovelGame() {
     setMemories(data.memories);
     setChatLog(data.chatLog);
     if (data.systemState) {
-      setSystemState(data.systemState);
+      setSystemState(normalizeSystemState(data.systemState));
     }
 
     if (data.timelineScars && Array.isArray(data.timelineScars)) {
@@ -3993,18 +4058,34 @@ export default function VisualNovelGame() {
           let updatedCompleted = [...prevSys.completedQuests];
           let updatedDirectives = [...prevSys.systemDirectives];
 
+          const appendDirective = (dirText: string) => {
+            const clean = dirText.trim();
+            if (!clean) return;
+            // Prevent immediate or redundant duplicate directives
+            const isDuplicate = updatedDirectives.slice(0, 3).some(
+              (existing) =>
+                existing.toLowerCase() === clean.toLowerCase() ||
+                (clean.startsWith("[SYSTEM:") && existing.toLowerCase() === clean.toLowerCase())
+            );
+            if (!isDuplicate) {
+              updatedDirectives.unshift(clean);
+            }
+          };
+
           // 1. Process quest updates
           if (Array.isArray(sysUpdates.quest_updates) && sysUpdates.quest_updates.length > 0) {
             sysUpdates.quest_updates.forEach((update: any) => {
               if (!update) return;
               const updateId = (update.quest_id || "").toLowerCase().trim();
-              let qIndex = updatedActive.findIndex(
-                (q) =>
-                  q.id.toLowerCase() === updateId ||
-                  q.title.toLowerCase().includes(updateId) ||
-                  updateId.includes(q.id.toLowerCase()) ||
-                  updateId.includes(q.title.toLowerCase())
-              );
+              let qIndex = updatedActive.findIndex((q) => {
+                const qId = q.id.toLowerCase().trim();
+                const qTitle = q.title.toLowerCase().trim();
+                return (
+                  qId === updateId ||
+                  qTitle === updateId ||
+                  (updateId.length > 3 && (qTitle.includes(updateId) || updateId.includes(qTitle)))
+                );
+              });
 
               // If only 1 active quest, fall back to it if not strictly matched
               if (qIndex === -1 && updatedActive.length === 1) {
@@ -4017,7 +4098,7 @@ export default function VisualNovelGame() {
 
                 // Update objectives
                 if (Array.isArray(update.completed_objective_indices)) {
-                  targetQuest.objectives = targetQuest.objectives.map((obj, idx) => {
+                  targetQuest.objectives = (targetQuest.objectives || []).map((obj, idx) => {
                     const shouldBeCompleted = update.completed_objective_indices.includes(idx) || obj.completed;
                     if (shouldBeCompleted && !obj.completed) {
                       anyNewlyCompleted = true;
@@ -4033,17 +4114,30 @@ export default function VisualNovelGame() {
                   targetQuest.progressNote = update.progress_note;
                 }
 
-                // Check if all objectives are completed or status is completed
-                const allObjectivesDone =
-                  targetQuest.objectives.length > 0 && targetQuest.objectives.every((o) => o.completed);
-                const isNowCompleted = update.status === "completed" || allObjectivesDone;
+                // Check completion condition: ALL objectives must be fulfilled
+                const totalObjectives = (targetQuest.objectives || []).length;
+                const completedCount = (targetQuest.objectives || []).filter((o) => o.completed).length;
+                const allObjectivesDone = totalObjectives > 0 && completedCount === totalObjectives;
 
-                if (isNowCompleted) {
+                if (update.status === "failed") {
+                  targetQuest.status = "failed";
+                  updatedActive.splice(qIndex, 1);
+                  appendDirective(`[SYSTEM: Scenario Failed - '${targetQuest.title}']`);
+                  setSystemToast({
+                    id: `quest_failed_${Date.now()}`,
+                    type: "penalty_quest",
+                    title: `SCENARIO FAILED: ${targetQuest.title}`,
+                    subtitle: targetQuest.progressNote || "Scenario objectives compromised.",
+                    difficulty: targetQuest.difficulty,
+                    timestamp: "Just now",
+                  });
+                  questNotificationShown = true;
+                } else if (allObjectivesDone || (totalObjectives <= 1 && update.status === "completed")) {
                   targetQuest.status = "completed";
-                  targetQuest.objectives = targetQuest.objectives.map((o) => ({ ...o, completed: true }));
+                  targetQuest.objectives = (targetQuest.objectives || []).map((o) => ({ ...o, completed: true }));
                   targetQuest.isClaimed = false;
 
-                  // Move to completed
+                  // Move to completed archive
                   updatedActive.splice(qIndex, 1);
                   updatedCompleted.unshift(targetQuest);
 
@@ -4054,30 +4148,30 @@ export default function VisualNovelGame() {
                     title: `CLEARANCE READY: ${targetQuest.title}`,
                     subtitle:
                       targetQuest.progressNote ||
-                      "Scenario objectives fulfilled! Access SYSTEM interface to claim resonance rewards.",
+                      "All scenario objectives fulfilled! Access SYSTEM interface to claim resonance rewards.",
                     difficulty: targetQuest.difficulty,
                     timestamp: "Just now",
                   });
                   questNotificationShown = true;
-                  updatedDirectives.unshift(`[SYSTEM: Scenario Cleared - '${targetQuest.title}' (Clearance Ready to Claim)]`);
+                  appendDirective(`[SYSTEM: Scenario Cleared - '${targetQuest.title}' (Clearance Ready to Claim)]`);
                 } else {
+                  // Scenario remains ACTIVE and in progress with pending objectives
+                  targetQuest.status = "active";
                   updatedActive[qIndex] = targetQuest;
 
                   if (anyNewlyCompleted) {
                     soundEffects.playSystemNotification();
-                    const completedCount = targetQuest.objectives.filter((o) => o.completed).length;
-                    const totalCount = targetQuest.objectives.length;
                     setSystemToast({
                       id: `quest_update_${Date.now()}`,
                       type: "quest_updated",
-                      title: `OBJECTIVE UPDATED (${completedCount}/${totalCount})`,
+                      title: `OBJECTIVE UPDATED (${completedCount}/${totalObjectives})`,
                       subtitle: `${targetQuest.title}: ${targetQuest.progressNote || "Objective progress confirmed."}`,
                       difficulty: targetQuest.difficulty,
                       timestamp: "Just now",
                     });
                     questNotificationShown = true;
-                    updatedDirectives.unshift(
-                      `[SYSTEM: Objective Complete - '${targetQuest.title}' (${completedCount}/${totalCount})]`
+                    appendDirective(
+                      `[SYSTEM: Objective Progress - '${targetQuest.title}' (${completedCount}/${totalObjectives})]`
                     );
                   }
                 }
@@ -4110,7 +4204,7 @@ export default function VisualNovelGame() {
 
             if (!isDuplicate) {
               updatedActive.push(newQ);
-              updatedDirectives.unshift(`[SYSTEM: New Scenario Assigned - '${newQ.title}']`);
+              appendDirective(`[SYSTEM: New Scenario Assigned - '${newQ.title}']`);
 
               if (!questNotificationShown) {
                 soundEffects.playSystemNotification();
@@ -4212,18 +4306,29 @@ export default function VisualNovelGame() {
           if (sysUpdates.system_announcement && typeof sysUpdates.system_announcement === "string") {
             const announcement = sysUpdates.system_announcement.trim();
             if (announcement.length > 0) {
-              updatedDirectives.unshift(announcement);
+              const isRedundant = updatedDirectives.slice(0, 3).some((existing) => {
+                const eLower = existing.toLowerCase();
+                const aLower = announcement.toLowerCase();
+                return (
+                  eLower === aLower ||
+                  (aLower.includes("scenario cleared") && eLower.includes("scenario cleared")) ||
+                  (aLower.includes("objective complete") && eLower.includes("objective complete"))
+                );
+              });
+              if (!isRedundant) {
+                appendDirective(announcement);
+              }
               if (!questNotificationShown) {
                 soundEffects.playSystemNotification();
+                setSystemToast({
+                  id: `sys_alert_${Date.now()}`,
+                  type: "system_alert",
+                  title: "SYSTEM DIRECTIVE",
+                  subtitle: announcement,
+                  timestamp: "Just now",
+                });
+                questNotificationShown = true;
               }
-              setSystemToast({
-                id: `sys_alert_${Date.now()}`,
-                type: "system_alert",
-                title: "SYSTEM DIRECTIVE",
-                subtitle: announcement,
-                timestamp: "Just now",
-              });
-              questNotificationShown = true;
             }
           }
 
@@ -4232,7 +4337,7 @@ export default function VisualNovelGame() {
             plausibilityTier: nextTier,
             activeQuests: updatedActive,
             completedQuests: updatedCompleted,
-            systemDirectives: updatedDirectives.slice(0, 30),
+            systemDirectives: updatedDirectives.slice(0, 40),
             penaltyScenario: activePenalty,
             covenantState: nextCovenantState,
           };
@@ -4759,6 +4864,14 @@ export default function VisualNovelGame() {
       return;
     }
 
+    // Safety guard: Cannot claim rewards if any objectives are still pending
+    const rawObjs = rawTarget.objectives || [];
+    const allDone = rawObjs.length === 0 || rawObjs.every((o) => o?.completed);
+    if (!allDone) {
+      console.warn(`[SystemQuest] Quest ${questId} has pending objectives; cannot claim clearance.`);
+      return;
+    }
+
     const targetQuest: SystemQuest = {
       ...rawTarget,
       status: "completed" as const,
@@ -4782,11 +4895,17 @@ export default function VisualNovelGame() {
       nextCompleted.unshift(targetQuest);
     }
 
+    const verifyMsg = `[SYSTEM: Clearance Verified - '${targetQuest.title}']`;
+    const curDirs = systemState.systemDirectives || [];
+    const updatedDirs = curDirs.length > 0 && curDirs[0].toLowerCase() === verifyMsg.toLowerCase()
+      ? curDirs
+      : [verifyMsg, ...curDirs];
+
     const nextSystemState: SystemState = {
       ...systemState,
       activeQuests: nextActive,
       completedQuests: nextCompleted,
-      systemDirectives: [`[SYSTEM: Clearance Verified - '${targetQuest.title}']`, ...systemState.systemDirectives],
+      systemDirectives: updatedDirs.slice(0, 40),
     };
 
     setSystemState(nextSystemState);

@@ -93,18 +93,20 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
   // Auto-focus on claim-ready quests whenever the modal opens
   useEffect(() => {
     if (!isOpen) return;
-    const activeClaimable = activeQuests.find(
-      (q) =>
-        (q.status === "completed" ||
-          ((q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed))) &&
-        !q.isClaimed
-    );
+
+    const isClaimable = (q: any) => {
+      if (!q || q.isClaimed) return false;
+      const objs = q.objectives || [];
+      return objs.length > 0 ? objs.every((o: any) => o?.completed) : q.status === "completed";
+    };
+
+    const activeClaimable = activeQuests.find(isClaimable);
     if (activeClaimable) {
       setActiveTab("active");
       setSelectedQuestId(activeClaimable.id);
       return;
     }
-    const completedClaimable = completedQuests.find((q) => !q.isClaimed);
+    const completedClaimable = completedQuests.find(isClaimable);
     if (completedClaimable) {
       setActiveTab("completed");
       setSelectedQuestId(completedClaimable.id);
@@ -252,12 +254,11 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-950/60 text-rose-300 border border-rose-500/40">
               {activeQuests.length}
             </span>
-            {activeQuests.some(
-              (q) =>
-                (q.status === "completed" ||
-                  ((q.objectives || []).length > 0 && (q.objectives || []).every((o) => o?.completed))) &&
-                !q.isClaimed
-            ) && (
+            {activeQuests.some((q) => {
+              const objs = q.objectives || [];
+              const allDone = objs.length > 0 ? objs.every((o: any) => o?.completed) : q.status === "completed";
+              return allDone && !q.isClaimed;
+            }) && (
               <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-black animate-pulse">
                 CLAIM READY
               </span>
@@ -281,7 +282,11 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-800 text-zinc-400">
               {completedQuests.length}
             </span>
-            {completedQuests.some((q) => !q.isClaimed) && (
+            {completedQuests.some((q) => {
+              const objs = q.objectives || [];
+              const allDone = objs.length > 0 ? objs.every((o: any) => o?.completed) : q.status === "completed";
+              return allDone && !q.isClaimed;
+            }) && (
               <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-black animate-pulse">
                 CLAIM READY
               </span>
@@ -316,15 +321,42 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
               {systemDirectives.length === 0 ? (
                 <div className="text-zinc-500 italic p-6 text-center">No administrative logs recorded yet.</div>
               ) : (
-                systemDirectives.map((directive, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-xl bg-zinc-900/80 border border-rose-500/20 text-zinc-300 leading-relaxed flex items-start gap-3"
-                  >
-                    <span className="text-rose-400 font-bold shrink-0">#{systemDirectives.length - idx}</span>
-                    <span className="flex-1">{directive}</span>
-                  </div>
-                ))
+                systemDirectives.map((directive, idx) => {
+                  const isCleared = directive.includes("Cleared") || directive.includes("Verified") || directive.includes("OVERCOME");
+                  const isProgress = directive.includes("Objective") || directive.includes("Progress") || directive.includes("Updated");
+                  const isAssigned = directive.includes("New Scenario") || directive.includes("Assigned");
+                  const isPenalty = directive.includes("Failed") || directive.includes("PENALTY") || directive.includes("Critical") || directive.includes("Calamity");
+
+                  const borderClass = isCleared
+                    ? "border-emerald-500/30 bg-emerald-950/20 text-emerald-200"
+                    : isProgress
+                    ? "border-cyan-500/30 bg-cyan-950/20 text-cyan-200"
+                    : isAssigned
+                    ? "border-amber-500/30 bg-amber-950/20 text-amber-200"
+                    : isPenalty
+                    ? "border-rose-500/40 bg-rose-950/30 text-rose-200"
+                    : "border-white/10 bg-zinc-900/80 text-zinc-300";
+
+                  const badgeColor = isCleared
+                    ? "text-emerald-400"
+                    : isProgress
+                    ? "text-cyan-400"
+                    : isAssigned
+                    ? "text-amber-400"
+                    : isPenalty
+                    ? "text-rose-400"
+                    : "text-zinc-400";
+
+                  return (
+                    <div
+                      key={idx}
+                      className={`p-3 rounded-xl border text-xs sm:text-sm font-mono leading-relaxed flex items-start gap-3 transition-all ${borderClass}`}
+                    >
+                      <span className={`font-bold shrink-0 text-xs ${badgeColor}`}>#{systemDirectives.length - idx}</span>
+                      <span className="flex-1 break-words">{directive}</span>
+                    </div>
+                  );
+                })
               )}
             </div>
           ) : currentQuests.length === 0 ? (
@@ -373,7 +405,7 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
                             {quest.type}
                           </span>
                         </div>
-                        {((quest.status === "completed" || (questObjs.length > 0 && completedObjectives === questObjs.length)) && !quest.isClaimed) ? (
+                        {((!quest.isClaimed && (questObjs.length > 0 ? completedObjectives === questObjs.length : quest.status === "completed"))) ? (
                           <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-pulse font-bold">
                             CLAIM READY
                           </span>
@@ -527,8 +559,8 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
                   {/* Interactive Claim Clearance Action */}
                   {(() => {
                     const objs = selectedQuest.objectives || [];
-                    const allObjsDone = objs.length > 0 && objs.every((o) => o?.completed);
-                    const isEligible = selectedQuest.status === "completed" || allObjsDone;
+                    const allObjsDone = objs.length > 0 ? objs.every((o) => o?.completed) : selectedQuest.status === "completed";
+                    const isEligible = allObjsDone;
                     const isClaimed = Boolean(selectedQuest.isClaimed);
 
                     if (isEligible && !isClaimed && onCompleteQuest) {
