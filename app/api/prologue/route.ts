@@ -10,6 +10,7 @@ import {
   getCompanionKnowledge,
   enforceSpokenDialogueMasking,
 } from "@/lib/knowledgeGating";
+import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -160,6 +161,23 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
        visualDescription.toLowerCase().includes("without clothing"))
     );
 
+    const openingChoiceDirective = buildDynamicChoiceDirective({
+      playerName: playerProfile.name,
+      playerRole: playerProfile.role,
+      playerRace: playerProfile.race,
+      racialTraits: playerProfile.racialTraits,
+      personality: playerProfile.personality,
+      personalityTraits: playerProfile.personalityTraits,
+      behavioralTendencies: playerProfile.behavioralTendencies,
+      abilities: playerProfile.abilities,
+      location: startingLocation,
+      activeSpeaker: startingHeroine,
+      latestDialogue: `Opening encounter with ${startingHeroine}`,
+      mood: "Introductory Encounter",
+      isProtagonistAlone: false,
+      presentHeroineNames: [startingHeroine],
+    });
+
     const visibleWeaponText = playerProfile.gear?.weapon && !playerProfile.gear.weapon.includes("Pending")
       ? playerProfile.gear.weapon
       : "Unarmed / Bare Hands";
@@ -232,6 +250,8 @@ CRITICAL OPENING DIRECTIVE: ${startingHeroine} MUST explicitly observe and remar
 You also operate the transcendent LitRPG/Manhwa 'SYSTEM' that tracks and guides the protagonist.
 Initialize the starting scenario quest and starting causal plausibility (default 80%).
 Voice: Detached, cold, authoritative administrator ([SYSTEM: ...]).
+
+${openingChoiceDirective}
 
 --- OUTPUT FORMAT ---
 Respond strictly in valid JSON matching this schema:

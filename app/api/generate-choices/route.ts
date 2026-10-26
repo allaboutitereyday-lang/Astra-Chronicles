@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getChoicesStyleDirective, getNarrationProseDirective } from "@/lib/narrationStyles";
 import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
+import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -96,22 +97,23 @@ export async function POST(req: Request) {
       ? recentHistory.slice(-6).map((h: any) => `${h.speaker}: "${h.text}"`).join("\n")
       : `Scene: ${sanitizedSpeaker}: "${gameState?.dialogue || "..."}"`;
 
-    const choiceDirective = isProtagonistAlone
-      ? `--- CHOICE AUTHORING DIRECTIVE (PROTAGONIST IS PHYSICALLY ALONE) ---
-The protagonist (${playerProfile?.name || "Protagonist"}) is navigating ${gameState?.location || "this sector"} COMPLETELY ALONE.
-- Absolutely DO NOT author options that address, speak to, inquire of, or converse with absent heroines (e.g. Serena, Aria, Evelyn, etc.).
-- Generate exactly 4 distinct, immersive options tailored to solitary exploration, environmental examination, stealth/traps, LitRPG System analysis, or personal contemplation:
-  1. [Survey/Analytical]: Examining ancient architecture, inscriptions, strange footprints, or planar resonance.
-  2. [Tactics/Survival]: Checking vantage points, securing a perimeter, or moving silently through the shadows.
-  3. [System/Analytical]: Probing the System interface, evaluating causal plausibility, or priming an ability.
-  4. [Combat/Aggressive]: Advancing decisively with weapon at the ready, determined to press onward alone.`
-      : `--- CHOICE AUTHORING DIRECTIVE (ACCOMPANIED BY ${presentHeroineNames.join(", ")}) ---
-Generate exactly 4 distinct, context-aware options that directly and compellingly respond to what ${sanitizedSpeaker} just said and the immediate situation in ${gameState?.location}.
-Prefix each choice with a strict tactical/roleplay dual tag indicating the vector of action:
-1. [Inquire/Diplomatic]: Probing, questioning, or pressing ${sanitizedSpeaker} about secrets, terms, or ancient lore.
-2. [Pragmatism/Tactical]: Proposing a grounded compromise, tradecraft, preparation, or conditional alliance.
-3. [Combat/Defiant]: Taking decisive physical action, asserting authority, casting a spell, or demonstrating resolve.
-4. [Empathy/Gentle]: Reading ${sanitizedSpeaker}'s emotional state, appealing to shared survival, or forming an emotional bond.`;
+    const choiceDirective = buildDynamicChoiceDirective({
+      playerName: playerProfile?.name || "Protagonist",
+      playerRole: playerProfile?.role || "Adventurer",
+      playerRace: playerProfile?.race,
+      racialTraits: playerProfile?.racialTraits,
+      personality: playerProfile?.personality,
+      personalityTraits: playerProfile?.personalityTraits,
+      behavioralTendencies: playerProfile?.behavioralTendencies,
+      activeStance: playerProfile?.activeStance,
+      abilities: playerProfile?.abilities,
+      location: gameState?.location || "Uncharted Sector",
+      activeSpeaker: sanitizedSpeaker,
+      latestDialogue: gameState?.dialogue,
+      mood: gameState?.mood,
+      isProtagonistAlone,
+      presentHeroineNames,
+    });
 
     const systemPrompt = `You are the Interactive Decision Architect and Game Master for "${storyTitle}", set in ${settingName}.
 Atmospheric Tone: ${effectiveTone}.

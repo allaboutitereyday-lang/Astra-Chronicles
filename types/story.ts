@@ -331,6 +331,11 @@ export interface PlayerProfile {
   narrationStyle?: string; // Active narration prose directive / atmosphere tone
   visualDescription?: string; // Persisted vision-encoded physical appearance description
   visualDna?: CharacterVisualDNA; // Structured character visual DNA for consistent image synthesis
+
+  // Personality & Emergent Behavioral Crafting
+  personality?: string; // Core persona / demeanor (e.g. "Stoic Pragmatist", "Cynical Outlaw")
+  personalityTraits?: string[]; // Specific behavioral traits (e.g. ["Calculated", "Deadpan Wit", "Protective"])
+  behavioralTendencies?: Record<string, number>; // Dynamic counter of choice vectors taken over turns
 }
 
 export interface VisitedStoryNode {

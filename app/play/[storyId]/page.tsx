@@ -128,6 +128,7 @@ import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
 import { WorldShareModal } from "@/components/WorldShareModal";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
+import { PERSONALITY_PRESETS, PersonalityPreset, analyzeChoiceVector, getDominantTendencyLabel } from "@/lib/personalityArchitect";
 
 // Dynamic code splitting for heavy interactive canvas graph
 const FlowchartViewer = dynamic(
@@ -207,6 +208,9 @@ interface PlayerProfile {
   narrationStyle?: string;
   visualDescription?: string;
   visualDna?: CharacterVisualDNA;
+  personality?: string;
+  personalityTraits?: string[];
+  behavioralTendencies?: Record<string, number>;
 }
 
 interface RoleplayState {
@@ -605,6 +609,9 @@ export default function VisualNovelGame() {
     role: "",
     race: "Human",
     racialTraits: ["Adaptable physiology", "Expressive gaze"],
+    personality: "Stoic Pragmatist",
+    personalityTraits: ["Calculated", "Unflinching", "Efficient", "Vigilant"],
+    behavioralTendencies: {},
     level: 1,
     stats: { hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: 100, str: 10, dex: 10, int: 10 },
     gear: { weapon: "Pending...", armor: "Pending...", relic: "None" },
@@ -614,6 +621,8 @@ export default function VisualNovelGame() {
   });
   const [selectedRacePreset, setSelectedRacePreset] = useState<string>("human");
   const [racialTraitsInput, setRacialTraitsInput] = useState<string>("Adaptable physiology, Expressive gaze");
+  const [selectedPersonalityPreset, setSelectedPersonalityPreset] = useState<string>("stoic");
+  const [personalityTraitsInput, setPersonalityTraitsInput] = useState<string>("Calculated, Unflinching, Efficient, Vigilant");
   const playerRef = useRef<PlayerProfile>(player);
   useEffect(() => {
     playerRef.current = player;
@@ -2118,6 +2127,49 @@ export default function VisualNovelGame() {
     });
   };
 
+  const handleSelectPersonalityPreset = (preset: PersonalityPreset) => {
+    setSelectedPersonalityPreset(preset.id);
+    if (preset.id === "custom") {
+      return;
+    }
+    const newTraits = [...preset.defaultTraits];
+    const newTraitsStr = newTraits.join(", ");
+    setPersonalityTraitsInput(newTraitsStr);
+    setPlayer((prev) => {
+      const next = {
+        ...prev,
+        personality: preset.name,
+        personalityTraits: newTraits,
+      };
+      playerRef.current = next;
+      return next;
+    });
+  };
+
+  const handleCustomPersonalityChange = (newPersona: string) => {
+    setPlayer((prev) => {
+      const next = { ...prev, personality: newPersona };
+      playerRef.current = next;
+      return next;
+    });
+    const match = PERSONALITY_PRESETS.find((p) => p.name.toLowerCase() === newPersona.trim().toLowerCase());
+    if (match) {
+      setSelectedPersonalityPreset(match.id);
+    } else {
+      setSelectedPersonalityPreset("custom");
+    }
+  };
+
+  const handlePersonalityTraitsChange = (raw: string) => {
+    setPersonalityTraitsInput(raw);
+    const parsed = raw.split(",").map((t) => t.trim()).filter(Boolean);
+    setPlayer((prev) => {
+      const next = { ...prev, personalityTraits: parsed };
+      playerRef.current = next;
+      return next;
+    });
+  };
+
   const handleStatChange = (stat: "str" | "dex" | "int", amount: number) => {
     const currentValue = player.stats[stat];
     if (amount > 0 && statPoints > 0) {
@@ -3324,9 +3376,19 @@ export default function VisualNovelGame() {
       ...loadedPlayer,
       race: loadedPlayer?.race || "Human",
       racialTraits: loadedPlayer?.racialTraits || [],
+      personality: loadedPlayer?.personality || "Stoic Pragmatist",
+      personalityTraits: loadedPlayer?.personalityTraits || ["Calculated", "Unflinching", "Efficient", "Vigilant"],
+      behavioralTendencies: loadedPlayer?.behavioralTendencies || {},
     };
     playerRef.current = safeLoadedPlayer;
     setPlayer(safeLoadedPlayer);
+    if (loadedPlayer?.personality) {
+      const match = PERSONALITY_PRESETS.find((p) => p.name.toLowerCase() === loadedPlayer.personality!.trim().toLowerCase());
+      setSelectedPersonalityPreset(match ? match.id : "custom");
+    }
+    if (loadedPlayer?.personalityTraits) {
+      setPersonalityTraitsInput(loadedPlayer.personalityTraits.join(", "));
+    }
     setPlayerAvatar(data.playerAvatar);
     if (data.narrationStyle || loadedPlayer?.narrationStyle) {
       setNarrationStyle(data.narrationStyle || loadedPlayer?.narrationStyle);
@@ -3596,6 +3658,19 @@ export default function VisualNovelGame() {
     const formattedPayload = isOOC ? `[OOC: ${rawAction.trim()}]` : rawAction.trim();
     const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+    // Track emergent behavioral tendencies based on player action choices
+    const vectorKey = analyzeChoiceVector(formattedPayload);
+    const updatedTendencies = {
+      ...(player.behavioralTendencies || {}),
+      [vectorKey]: ((player.behavioralTendencies || {})[vectorKey] || 0) + 1,
+    };
+    const playerWithTendencies: PlayerProfile = {
+      ...player,
+      behavioralTendencies: updatedTendencies,
+    };
+    setPlayer(playerWithTendencies);
+    playerRef.current = playerWithTendencies;
+
     setIsLoading(true);
     setChoices([]);
 
@@ -3658,7 +3733,7 @@ export default function VisualNovelGame() {
           isCustom,
           gameState,
           partyMembers: party,
-          playerProfile: player,
+          playerProfile: playerWithTendencies,
           playerAvatarBase64: playerAvatar,
           narrationStyle: narrationStyle || player?.narrationStyle || currentStory?.narrationStyle || "Grimdark & Atmospheric",
           plotMemories: memories,
@@ -6466,6 +6541,105 @@ export default function VisualNovelGame() {
               )}
             </div>
 
+            {/* CHARACTER DEMEANOR & CRAFTED PERSONA */}
+            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                    <span>Character Demeanor & Persona</span>
+                  </label>
+                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
+                    Craft your protagonist's personality and voice. The 4 action choices each turn dynamically reflect your demeanor, moral instincts, and conversational style.
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 self-start shrink-0 whitespace-nowrap font-bold">
+                  Persona: {player.personality || "Stoic Pragmatist"}
+                </span>
+              </div>
+
+              {/* Personality Presets */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                {PERSONALITY_PRESETS.map((p) => {
+                  const isSelected = selectedPersonalityPreset === p.id || (!selectedPersonalityPreset && p.id === "stoic" && player.personality === "Stoic Pragmatist");
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectPersonalityPreset(p)}
+                      className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
+                        isSelected
+                          ? "bg-rose-950/40 border-rose-500/80 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
+                          : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                      }`}
+                      title={p.description}
+                    >
+                      <span className="text-base leading-none">{p.icon}</span>
+                      <span className="text-[10px] leading-tight whitespace-nowrap">{p.shortLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Inputs for Personality Name & Traits */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
+                <div>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="text-xs font-mono text-zinc-400 truncate">
+                      Core Demeanor / Persona
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={player.personality || ""}
+                    onChange={(e) => handleCustomPersonalityChange(e.target.value)}
+                    placeholder="e.g. Stoic Pragmatist, Cynical Outlaw, Noble Protector..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="text-xs font-mono text-zinc-400 truncate">
+                      Key Personality & Roleplay Traits
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono shrink-0">Comma-separated</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={personalityTraitsInput}
+                    onChange={(e) => handlePersonalityTraitsChange(e.target.value)}
+                    placeholder="e.g. Calculated, Deadpan Wit, Protective, Sharp-Tongued..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Traits Tag Pills Preview */}
+              {player.personalityTraits && player.personalityTraits.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  <span className="text-[10px] font-mono text-zinc-500">Active Persona Traits:</span>
+                  {player.personalityTraits.map((trait, tIdx) => (
+                    <button
+                      key={tIdx}
+                      type="button"
+                      onClick={() => {
+                        const updated = (player.personalityTraits || []).filter((_, i) => i !== tIdx);
+                        setPersonalityTraitsInput(updated.join(", "));
+                        setPlayer((prev) => ({ ...prev, personalityTraits: updated }));
+                      }}
+                      title="Click to remove trait"
+                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-rose-950/50 border border-white/10 hover:border-rose-500/40 text-rose-200/90 hover:text-rose-100 flex items-center gap-1 transition-colors cursor-pointer group"
+                    >
+                      <span className="text-rose-400 group-hover:text-rose-300">•</span>
+                      <span>{trait}</span>
+                      <span className="text-zinc-600 group-hover:text-rose-300 ml-0.5">×</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
               <div className="flex justify-between items-center mb-2.5">
                 <label className="text-xs font-mono text-zinc-400">Attribute Allocation</label>
@@ -8035,9 +8209,28 @@ export default function VisualNovelGame() {
                       <Edit3 className="w-3 h-3 text-rose-400" />
                       <span>Edit Portrait</span>
                     </button>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold">
+                      Persona: {player.personality || "Stoic Pragmatist"}
+                    </span>
+                    {player.behavioralTendencies && Object.keys(player.behavioralTendencies).length > 0 && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 font-bold" title="Dominant Choice Alignment">
+                        Alignment: {getDominantTendencyLabel(player.behavioralTendencies)}
+                      </span>
+                    )}
                   </div>
+                  {player.personalityTraits && player.personalityTraits.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      <span className="text-[9px] font-mono text-zinc-500">Traits:</span>
+                      {player.personalityTraits.slice(0, 4).map((trait, tIdx) => (
+                        <span key={tIdx} className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-950/40 border border-rose-500/20 text-rose-300">
+                          {trait}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   {player.racialTraits && player.racialTraits.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      <span className="text-[9px] font-mono text-zinc-500">Anatomy:</span>
                       {player.racialTraits.slice(0, 4).map((trait, tIdx) => (
                         <span key={tIdx} className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-zinc-800/80 border border-white/10 text-zinc-300">
                           {trait}

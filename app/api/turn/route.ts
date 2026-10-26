@@ -24,6 +24,7 @@ import {
   buildActiveSpeakerPersonaLock,
 } from "@/lib/characterPersonas";
 import { detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
+import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -343,6 +344,24 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
       playerProfile?.name || "Wanderer"
     );
 
+    const dynamicChoiceDirective = buildDynamicChoiceDirective({
+      playerName: playerProfile.name,
+      playerRole: playerProfile.role,
+      playerRace: playerProfile.race,
+      racialTraits: playerProfile.racialTraits,
+      personality: playerProfile.personality,
+      personalityTraits: playerProfile.personalityTraits,
+      behavioralTendencies: playerProfile.behavioralTendencies,
+      activeStance,
+      abilities: playerProfile.abilities,
+      location: gameState.location,
+      activeSpeaker: sanitizedContextSpeaker,
+      latestDialogue: gameState.dialogue,
+      mood: gameState.mood,
+      isProtagonistAlone,
+      presentHeroineNames,
+    });
+
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
 ${getNarrationProseDirective(effectiveTone)}
@@ -625,6 +644,8 @@ ${
 ${inputHandlingInstruction}
 
 ${speciesPhysiologyDirective}
+
+${dynamicChoiceDirective}
 
 ${visualInspectionInstruction}`;
 
