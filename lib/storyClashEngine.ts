@@ -107,7 +107,7 @@ export function getStoryClashChoices(
 
   let strikeAction = arsenal.actions.strike;
   let burstAction = arsenal.actions.burst;
-  let synergyAction = arsenal.actions.synergy;
+  const synergyAction = arsenal.actions.synergy;
   let defenseAction = arsenal.actions.defense;
 
   // Contextual companion synergy branding

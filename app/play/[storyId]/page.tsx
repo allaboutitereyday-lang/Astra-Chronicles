@@ -94,7 +94,7 @@ import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateIn
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
 import { extractProtagonistVisualDna } from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
-import { ActionInputBar, BufferedTextInput } from "@/components/play/ActionInputBar";
+import { ActionInputBar } from "@/components/play/ActionInputBar";
 import { ChatMessageItem } from "@/components/play/ChatMessageItem";
 import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType, detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
@@ -5223,15 +5223,14 @@ export default function VisualNovelGame() {
 
               <div className="space-y-2">
                 <div className="relative flex items-center">
-                  <BufferedTextInput
+                  <input
                     type={showKeySecret ? "text" : "password"}
                     placeholder="Enter realm access key..."
                     value={keyInput}
-                    onValueChange={setKeyInput}
-                    debounceMs={80}
+                    onChange={(e) => setKeyInput(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        verifyKey((e.currentTarget as HTMLInputElement).value);
+                        verifyKey(keyInput);
                       }
                     }}
                     className="w-full bg-zinc-900 border border-white/15 rounded-xl pl-4 pr-11 py-2.5 text-base sm:text-sm font-mono text-white focus:outline-none focus:border-purple-500/80"
@@ -6000,20 +5999,20 @@ export default function VisualNovelGame() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-mono text-zinc-400 block mb-1">Character Name</label>
-                <BufferedTextInput
+                <input
                   type="text"
                   value={player.name}
-                  onValueChange={(val) => setPlayer((prev) => ({ ...prev, name: val }))}
+                  onChange={(e) => setPlayer((prev) => ({ ...prev, name: e.target.value }))}
                   className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none"
                 />
               </div>
               <div>
                 <label className="text-xs font-mono text-zinc-400 block mb-1">Custom Class / Archetype</label>
-                <BufferedTextInput
+                <input
                   type="text"
                   placeholder="e.g., Regressed Spellblade..."
                   value={player.role}
-                  onValueChange={(val) => setPlayer((prev) => ({ ...prev, role: val }))}
+                  onChange={(e) => setPlayer((prev) => ({ ...prev, role: e.target.value }))}
                   className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700"
                 />
               </div>
@@ -8225,12 +8224,16 @@ export default function VisualNovelGame() {
               </div>
 
               <div className="pt-2">
-                <BufferedTextInput
+                <input
                   type="text"
                   placeholder="Or enter custom severance intent..."
                   value={covenantIntentText}
-                  onValueChange={setCovenantIntentText}
-                  debounceMs={80}
+                  onChange={(e) => setCovenantIntentText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && covenantIntentText.trim() && !isSeveringCovenant) {
+                      handleConfirmCovenant(covenantIntentText);
+                    }
+                  }}
                   className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 text-base sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
                 />
               </div>

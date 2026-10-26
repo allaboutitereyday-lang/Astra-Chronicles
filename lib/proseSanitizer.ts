@@ -24,7 +24,7 @@ export { sanitizeNarrativeAndMechanics, fixSingleQuotedSpeechWithApostrophes, st
 export function normalizeQuotes(text: string): string {
   if (!text) return "";
 
-  let cleaned = text
+  const cleaned = text
     // Normalize unicode smart quotes to standard ascii quotes
     .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
     .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
