@@ -47,6 +47,7 @@ export interface ChatMessageItemProps {
   onSaveEdit: (id: string, newText: string, shouldRegenerate?: boolean) => void;
   onRegenerateTurn: () => void;
   onSkipTypewriter: (msg: ChatMessageData, isLatestCharacterTurn: boolean) => void;
+  onViewPortrait?: (imageUrl: string, name?: string) => void;
 }
 
 export const ChatMessageItem = memo(function ChatMessageItem({
@@ -67,6 +68,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onSaveEdit,
   onRegenerateTurn,
   onSkipTypewriter,
+  onViewPortrait,
 }: ChatMessageItemProps) {
   const [localEditText, setLocalEditText] = useState(msg.text);
 
@@ -108,7 +110,30 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             <span className="text-xs font-semibold text-zinc-200 select-none">
               {msg.speakerName}
             </span>
-            <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0 select-none">
+            <div
+              onClick={() => {
+                const targetImg =
+                  (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                  (playerAvatar && playerAvatar.trim()) ||
+                  "";
+                if (targetImg && onViewPortrait) {
+                  onViewPortrait(targetImg, msg.speakerName || playerName);
+                }
+              }}
+              title={
+                (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                (playerAvatar && playerAvatar.trim())
+                  ? "Click to view full character portrait"
+                  : undefined
+              }
+              className={`w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0 select-none ${
+                ((msg.avatarSrc && msg.avatarSrc.trim()) ||
+                  (playerAvatar && playerAvatar.trim())) &&
+                onViewPortrait
+                  ? "cursor-pointer hover:ring-2 hover:ring-sky-400/60 hover:scale-105 transition-transform"
+                  : ""
+              }`}
+            >
               {(msg.avatarSrc && msg.avatarSrc.trim()) ||
               (playerAvatar && playerAvatar.trim()) ? (
                 <img
@@ -136,7 +161,20 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 )}
               </div>
             ) : (
-              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none">
+              <div
+                onClick={() => {
+                  const targetImg = resolvedSpriteSrc || defaultFallbackSprite;
+                  if (targetImg && onViewPortrait) {
+                    onViewPortrait(targetImg, msg.speakerName);
+                  }
+                }}
+                title="Click to view full character portrait"
+                className={`w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none ${
+                  onViewPortrait
+                    ? "cursor-pointer hover:ring-2 hover:ring-rose-400/60 hover:scale-105 transition-transform"
+                    : ""
+                }`}
+              >
                 <img
                   src={resolvedSpriteSrc || defaultFallbackSprite}
                   alt={msg.speakerName}

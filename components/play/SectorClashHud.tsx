@@ -241,7 +241,7 @@ export function SectorClashHud({
 
   return (
     <div
-      className={`shrink-0 mx-2 sm:mx-4 mb-1.5 rounded-xl bg-gradient-to-r from-red-950/95 via-zinc-950/95 to-rose-950/95 border px-2.5 py-1.5 shadow-[0_0_20px_rgba(244,63,94,0.22)] relative overflow-hidden transition-all duration-200 ${
+      className={`pointer-events-auto z-30 select-none shrink-0 mx-2 sm:mx-4 mb-1.5 rounded-xl bg-gradient-to-r from-red-950/95 via-zinc-950/95 to-rose-950/95 border px-2.5 py-1.5 shadow-[0_0_20px_rgba(244,63,94,0.22)] relative overflow-hidden transition-all duration-200 ${
         playerDamagedFlash
           ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)]"
           : enemyDamagedFlash

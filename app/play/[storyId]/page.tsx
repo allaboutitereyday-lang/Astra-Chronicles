@@ -621,6 +621,12 @@ export default function VisualNovelGame() {
   const [gearPreference, setGearPreference] = useState<"system" | "none">("system");
 
   const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
+  const [fullPortraitViewer, setFullPortraitViewer] = useState<{
+    imageUrl: string;
+    name: string;
+    subtitle?: string;
+    canEdit?: boolean;
+  } | null>(null);
   const [player, setPlayer] = useState<PlayerProfile>({
     name: "Caelen",
     role: "",
@@ -5334,141 +5340,145 @@ export default function VisualNovelGame() {
     if (!activeClash || !activeClash.isActive || isLoading || isExecutingClashAction) return;
 
     setIsExecutingClashAction(true);
-    soundEffects.playClick();
+    try {
+      soundEffects.playClick();
 
-    const assistingComp = party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)) || null;
+      const assistingComp = party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)) || null;
 
-    const result = resolveClashTurn(
-      activeClash,
-      actionType,
-      player.role || "Voidstrider",
-      assistingComp,
-      player.stats,
-      (player.activeStance as any) || "neutral"
-    );
-
-    const newPopups: ClashCombatPopup[] = [];
-    if (result.isRetreat) {
-      newPopups.push({
-        id: `flee_${Date.now()}`,
-        text: "DISENGAGED!",
-        subtext: result.enemyDamageTaken > 0 ? `-${result.enemyDamageTaken} HP Graze` : "Clean Escape",
-        colorClass: "border-amber-400 text-amber-300",
-      });
-    } else {
-      newPopups.push({
-        id: `dmg_${Date.now()}`,
-        text: result.isCrit ? `CRIT! -${result.damageDealt} HP` : `-${result.damageDealt} HP`,
-        subtext: result.isStaggered ? "STAGGERED!" : `${(player.activeStance || "neutral").toUpperCase()} STANCE`,
-        colorClass: result.isCrit
-          ? "border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
-          : "border-rose-500/60 text-rose-300",
-      });
-    }
-
-    if (result.isEvaded && !result.isRetreat) {
-      newPopups.push({
-        id: `evade_${Date.now()}`,
-        text: "PHASE EVADED!",
-        subtext: "0 Counter DMG",
-        colorClass: "border-violet-400 text-violet-300",
-      });
-    } else if (result.enemyDamageTaken > 0) {
-      newPopups.push({
-        id: `counter_${Date.now()}`,
-        text: `-${result.enemyDamageTaken} Player HP`,
-        subtext: result.isRetreat ? "Parting Strike" : "Enemy Counter",
-        colorClass: "border-red-500/60 text-red-300",
-      });
-    }
-    setClashCombatPopups(newPopups);
-    setTimeout(() => setClashCombatPopups([]), 2400);
-
-    setLastClashHitEvent({
-      id: Date.now(),
-      damageDealt: result.damageDealt,
-      enemyDamageTaken: result.enemyDamageTaken,
-      hpHealed: result.hpHealed,
-      isCrit: result.isCrit,
-      isStaggered: result.isStaggered,
-      isEvaded: result.isEvaded,
-    });
-
-    const hpAfterHeal = Math.min(player.stats.maxHp, player.stats.hp + result.hpHealed);
-    const hpFinal = Math.max(0, hpAfterHeal - result.enemyDamageTaken);
-    const mpCost = result.mpCost;
-    const mpGain = actionType === "strike" ? 5 : actionType === "defense" ? 15 : 0;
-    const mpFinal = Math.max(0, Math.min(player.stats.maxMp, player.stats.mp - mpCost + mpGain));
-
-    const netHpDelta = hpFinal - player.stats.hp;
-    const netMpDelta = mpFinal - player.stats.mp;
-    if (netHpDelta !== 0 || netMpDelta !== 0) {
-      triggerVitalsFeedback(
-        netHpDelta,
-        netMpDelta,
-        netHpDelta < 0
-          ? `${activeClash.enemyName} Counter-Attack`
-          : netHpDelta > 0
-          ? "Tactical Synergy Heal"
-          : `${actionType.toUpperCase()} Stance Exchange`
+      const result = resolveClashTurn(
+        activeClash,
+        actionType,
+        player.role || "Voidstrider",
+        assistingComp,
+        player.stats,
+        (player.activeStance as any) || "neutral"
       );
+
+      const newPopups: ClashCombatPopup[] = [];
+      if (result.isRetreat) {
+        newPopups.push({
+          id: `flee_${Date.now()}`,
+          text: "DISENGAGED!",
+          subtext: result.enemyDamageTaken > 0 ? `-${result.enemyDamageTaken} HP Graze` : "Clean Escape",
+          colorClass: "border-amber-400 text-amber-300",
+        });
+      } else {
+        newPopups.push({
+          id: `dmg_${Date.now()}`,
+          text: result.isCrit ? `CRIT! -${result.damageDealt} HP` : `-${result.damageDealt} HP`,
+          subtext: result.isStaggered ? "STAGGERED!" : `${(player.activeStance || "neutral").toUpperCase()} STANCE`,
+          colorClass: result.isCrit
+            ? "border-amber-400 text-amber-300 shadow-[0_0_15px_rgba(251,191,36,0.5)]"
+            : "border-rose-500/60 text-rose-300",
+        });
+      }
+
+      if (result.isEvaded && !result.isRetreat) {
+        newPopups.push({
+          id: `evade_${Date.now()}`,
+          text: "PHASE EVADED!",
+          subtext: "0 Counter DMG",
+          colorClass: "border-violet-400 text-violet-300",
+        });
+      } else if (result.enemyDamageTaken > 0) {
+        newPopups.push({
+          id: `counter_${Date.now()}`,
+          text: `-${result.enemyDamageTaken} Player HP`,
+          subtext: result.isRetreat ? "Parting Strike" : "Enemy Counter",
+          colorClass: "border-red-500/60 text-red-300",
+        });
+      }
+      setClashCombatPopups(newPopups);
+      setTimeout(() => setClashCombatPopups([]), 2400);
+
+      setLastClashHitEvent({
+        id: Date.now(),
+        damageDealt: result.damageDealt,
+        enemyDamageTaken: result.enemyDamageTaken,
+        hpHealed: result.hpHealed,
+        isCrit: result.isCrit,
+        isStaggered: result.isStaggered,
+        isEvaded: result.isEvaded,
+      });
+
+      const hpAfterHeal = Math.min(player.stats.maxHp, player.stats.hp + result.hpHealed);
+      const hpFinal = Math.max(0, hpAfterHeal - result.enemyDamageTaken);
+      const mpCost = result.mpCost;
+      const mpGain = actionType === "strike" ? 5 : actionType === "defense" ? 15 : 0;
+      const mpFinal = Math.max(0, Math.min(player.stats.maxMp, player.stats.mp - mpCost + mpGain));
+
+      const netHpDelta = hpFinal - player.stats.hp;
+      const netMpDelta = mpFinal - player.stats.mp;
+      if (netHpDelta !== 0 || netMpDelta !== 0) {
+        triggerVitalsFeedback(
+          netHpDelta,
+          netMpDelta,
+          netHpDelta < 0
+            ? `${activeClash.enemyName} Counter-Attack`
+            : netHpDelta > 0
+            ? "Tactical Synergy Heal"
+            : `${actionType.toUpperCase()} Stance Exchange`
+        );
+      }
+
+      const unsealAfterClash = result.isVictory
+        ? updateInventoryUnsealingProgress(
+            ensureInventoryRelicConditions(playerRef.current.inventory || []),
+            "clash_victory",
+            3
+          )
+        : { updatedInventory: playerRef.current.inventory || [], newlyReadyItems: [] };
+
+      const updatedPlayerState: PlayerProfile = {
+        ...playerRef.current,
+        inventory: unsealAfterClash.updatedInventory,
+        stats: {
+          ...playerRef.current.stats,
+          hp: hpFinal,
+          mp: mpFinal,
+        },
+      };
+      playerRef.current = updatedPlayerState;
+      setPlayer(updatedPlayerState);
+      activeClashRef.current = result.updatedClashState.isActive ? result.updatedClashState : null;
+      setActiveClash(result.updatedClashState);
+
+      if (result.isVictory) {
+        soundEffects.playQuestComplete();
+        pushNotification({
+          id: `clash_win_${Date.now()}`,
+          type: "story_clash",
+          title: "SECTOR CLASH VICTORY",
+          subtitle: `${activeClash.enemyName} neutralized! Sector secured.`,
+          difficulty: "S",
+        });
+      } else if (result.isRetreat) {
+        soundEffects.playFavorSound(false);
+        pushNotification({
+          id: `clash_flee_${Date.now()}`,
+          type: "story_clash",
+          title: "TACTICAL DISENGAGEMENT",
+          subtitle: `Broke combat engagement with ${activeClash.enemyName}.`,
+        });
+      } else {
+        soundEffects.playFavorSound(false);
+        pushNotification({
+          id: `clash_hit_${Date.now()}`,
+          type: "story_clash",
+          title: actionType.toUpperCase() + " RESOLVED",
+          subtitle: `Dealt ${result.damageDealt} DMG. ${result.enemyDamageTaken > 0 ? `Took ${result.enemyDamageTaken} DMG counter.` : ""}`,
+        });
+      }
+
+      setIsExecutingClashAction(false);
+      await sendAction(result.narrativePromptAction, false, null, null, false, {
+        playerSnapshot: updatedPlayerState,
+        clashSnapshot: result.updatedClashState,
+        isClashResolutionTurn: true,
+      });
+    } finally {
+      setIsExecutingClashAction(false);
     }
-
-    const unsealAfterClash = result.isVictory
-      ? updateInventoryUnsealingProgress(
-          ensureInventoryRelicConditions(playerRef.current.inventory || []),
-          "clash_victory",
-          3
-        )
-      : { updatedInventory: playerRef.current.inventory || [], newlyReadyItems: [] };
-
-    const updatedPlayerState: PlayerProfile = {
-      ...playerRef.current,
-      inventory: unsealAfterClash.updatedInventory,
-      stats: {
-        ...playerRef.current.stats,
-        hp: hpFinal,
-        mp: mpFinal,
-      },
-    };
-    playerRef.current = updatedPlayerState;
-    setPlayer(updatedPlayerState);
-    activeClashRef.current = result.updatedClashState.isActive ? result.updatedClashState : null;
-    setActiveClash(result.updatedClashState);
-
-    if (result.isVictory) {
-      soundEffects.playQuestComplete();
-      pushNotification({
-        id: `clash_win_${Date.now()}`,
-        type: "story_clash",
-        title: "SECTOR CLASH VICTORY",
-        subtitle: `${activeClash.enemyName} neutralized! Sector secured.`,
-        difficulty: "S",
-      });
-    } else if (result.isRetreat) {
-      soundEffects.playFavorSound(false);
-      pushNotification({
-        id: `clash_flee_${Date.now()}`,
-        type: "story_clash",
-        title: "TACTICAL DISENGAGEMENT",
-        subtitle: `Broke combat engagement with ${activeClash.enemyName}.`,
-      });
-    } else {
-      soundEffects.playFavorSound(false);
-      pushNotification({
-        id: `clash_hit_${Date.now()}`,
-        type: "story_clash",
-        title: actionType.toUpperCase() + " RESOLVED",
-        subtitle: `Dealt ${result.damageDealt} DMG. ${result.enemyDamageTaken > 0 ? `Took ${result.enemyDamageTaken} DMG counter.` : ""}`,
-      });
-    }
-
-    setIsExecutingClashAction(false);
-    await sendAction(result.narrativePromptAction, false, null, null, false, {
-      playerSnapshot: updatedPlayerState,
-      clashSnapshot: result.updatedClashState,
-      isClashResolutionTurn: true,
-    });
   };
 
   const handleInitiateSectorClash = (enemyName: string = "Sector Anomaly Golem", enemyHp: number = 75) => {
@@ -6603,6 +6613,105 @@ export default function VisualNovelGame() {
       </div>
     );
 
+  const handleOpenPlayerFullPortrait = (
+    e?: React.MouseEvent,
+    customAvatar?: string | null,
+    customName?: string,
+    customSubtitle?: string
+  ) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    const targetUrl = (customAvatar ?? playerAvatar)?.trim();
+    if (!targetUrl) return;
+    soundEffects.playClick();
+    setFullPortraitViewer({
+      imageUrl: targetUrl,
+      name: customName || player.name || "Wanderer",
+      subtitle:
+        customSubtitle ||
+        `Lv.${player.level || 1} ${player.race || "Human"} • ${player.role || "Adventurer"}`,
+      canEdit: !customAvatar && isConfigured,
+    });
+  };
+
+  const renderCharacterPortraitViewerModal = () =>
+    fullPortraitViewer && (
+      <div
+        className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-150"
+        onClick={() => setFullPortraitViewer(null)}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full max-w-2xl bg-zinc-950/95 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[92dvh] animate-in zoom-in-95 duration-150"
+        >
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-white font-mono flex items-center gap-2">
+                <Eye className="w-4 h-4 text-rose-400" />
+                <span>{fullPortraitViewer.name}</span>
+              </h3>
+              {fullPortraitViewer.subtitle && (
+                <p className="text-xs font-mono text-zinc-400 mt-0.5">
+                  {fullPortraitViewer.subtitle}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setFullPortraitViewer(null)}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+              title="Close Full Image View"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 bg-black/80 border border-white/10 rounded-2xl p-2 sm:p-4 flex items-center justify-center overflow-hidden min-h-[260px] max-h-[70dvh]">
+            <img
+              src={fullPortraitViewer.imageUrl}
+              alt={fullPortraitViewer.name}
+              className="max-h-[66dvh] max-w-full w-auto h-auto object-contain rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.9)]"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10">
+            <a
+              href={fullPortraitViewer.imageUrl}
+              download={`${(fullPortraitViewer.name || "character").replace(/\s+/g, "_")}_portrait.png`}
+              className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-200 hover:text-white font-mono text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-sky-400" />
+              <span>Download Full Image</span>
+            </a>
+
+            <div className="flex items-center gap-2">
+              {fullPortraitViewer.canEdit && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFullPortraitViewer(null);
+                    setShowPortraitEditor(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/40 text-rose-200 hover:text-white font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-rose-400" />
+                  <span>Edit / Change Portrait</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setFullPortraitViewer(null)}
+                className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-mono font-bold text-xs transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+
   // 1. OPENING / WELCOME SPLASH SCREEN (FIRST LOAD)
   if (!isConfigured && !hasSeenWelcome) {
     return (
@@ -6725,6 +6834,7 @@ export default function VisualNovelGame() {
           {renderAuthModal()}
           {renderTransitionOverlay()}
           {renderAbilityModal()}
+          {renderCharacterPortraitViewerModal()}
           <ScreenTransitionOverlay {...screenTransition} />
           <LlmProviderModal
             isOpen={showLlmModal}
@@ -6892,7 +7002,28 @@ export default function VisualNovelGame() {
                       title={`Click to load ${bp.name} (${bp.race} ${bp.role}) into ${currentStory.title}`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-zinc-950 border border-white/15 flex items-center justify-center shrink-0">
+                        <div
+                          onClick={(e) => {
+                            if (bp.avatar && bp.avatar.trim()) {
+                              handleOpenPlayerFullPortrait(
+                                e,
+                                bp.avatar,
+                                bp.name,
+                                `${bp.race || "Human"} • ${bp.role || "Adventurer"}`
+                              );
+                            }
+                          }}
+                          title={
+                            bp.avatar && bp.avatar.trim()
+                              ? `Click to view full image of ${bp.name}`
+                              : undefined
+                          }
+                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-zinc-950 border border-white/15 flex items-center justify-center shrink-0 ${
+                            bp.avatar && bp.avatar.trim()
+                              ? "cursor-pointer hover:border-rose-400/70 hover:scale-105 transition-all"
+                              : ""
+                          }`}
+                        >
                           {bp.avatar && bp.avatar.trim() ? (
                             <img src={bp.avatar} alt={bp.name} className="w-full h-full object-cover" />
                           ) : (
@@ -6943,22 +7074,66 @@ export default function VisualNovelGame() {
           </div>
 
           <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 flex items-center gap-4">
-            <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0">
+            <button
+              type="button"
+              onClick={(e) => {
+                if (playerAvatar && playerAvatar.trim()) {
+                  handleOpenPlayerFullPortrait(e);
+                }
+              }}
+              title={
+                playerAvatar && playerAvatar.trim()
+                  ? "Click to view full character image"
+                  : "Upload a character portrait to preview"
+              }
+              className={`group relative w-16 h-16 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 transition-all ${
+                playerAvatar && playerAvatar.trim()
+                  ? "cursor-pointer hover:border-rose-500/70 hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                  : "cursor-default"
+              }`}
+            >
               {playerAvatar && playerAvatar.trim() ? (
-                <img src={playerAvatar} alt="Character Avatar" className="w-full h-full object-cover" />
+                <>
+                  <img
+                    src={playerAvatar}
+                    alt="Character Avatar"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                  />
+                  <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Eye className="w-4 h-4 text-white" />
+                  </div>
+                </>
               ) : (
                 <User className="w-8 h-8 text-zinc-600" />
               )}
-            </div>
+            </button>
             <div className="flex-1">
-              <label className="text-xs font-mono text-zinc-300 block mb-1">Character Portrait (Visual AI Input)</label>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <label className="text-xs font-mono text-zinc-300 block">
+                  Character Portrait (Visual AI Input)
+                </label>
+                {playerAvatar && playerAvatar.trim() && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                    className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/40 text-rose-200 hover:text-white flex items-center gap-1 cursor-pointer transition-all"
+                  >
+                    <Eye className="w-3 h-3 text-rose-400" />
+                    <span>View Full Image</span>
+                  </button>
+                )}
+              </div>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarUpload}
                 className="text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-rose-600/30 file:text-rose-200 hover:file:bg-rose-600/50 cursor-pointer"
               />
-              <p className="text-[11px] text-zinc-500 mt-1">Visual AI will inspect your portrait to detect species anatomy, facial features, armor, and traits.</p>
+              <p className="text-[11px] text-zinc-500 mt-1">
+                {playerAvatar && playerAvatar.trim()
+                  ? "Click your profile image anytime to view the full uncropped portrait."
+                  : "Visual AI will inspect your portrait to detect species anatomy, facial features, armor, and traits."}
+              </p>
             </div>
           </div>
 
@@ -7466,6 +7641,7 @@ export default function VisualNovelGame() {
         {renderAuthModal()}
         {renderTransitionOverlay()}
         {renderAbilityModal()}
+        {renderCharacterPortraitViewerModal()}
         <ScreenTransitionOverlay {...screenTransition} />
         <LlmProviderModal
           isOpen={showLlmModal}
@@ -7536,7 +7712,7 @@ export default function VisualNovelGame() {
             )}
             {vitalsFeedback.mpDelta !== 0 && (
               <span className="flex items-center gap-1">
-                <Zap className="w-3.5 h-3.5 fill-current" />
+                <Zap className="w-3.5 h-2.5 fill-current" />
                 {vitalsFeedback.mpDelta > 0 ? `+${vitalsFeedback.mpDelta}` : vitalsFeedback.mpDelta} MP
               </span>
             )}
@@ -7605,7 +7781,19 @@ export default function VisualNovelGame() {
                 </div>
               )}
 
-              <div className="w-6 h-6 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-[10px] text-rose-300 shrink-0">
+              <div
+                onClick={(e) => {
+                  if (playerAvatar && playerAvatar.trim()) {
+                    handleOpenPlayerFullPortrait(e);
+                  }
+                }}
+                title={
+                  playerAvatar && playerAvatar.trim()
+                    ? "Click to view full character image"
+                    : undefined
+                }
+                className="w-6 h-6 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-[10px] text-rose-300 shrink-0 hover:ring-2 hover:ring-rose-400/70 transition-all"
+              >
                 {playerAvatar && playerAvatar.trim() ? (
                   <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
                 ) : (
@@ -7733,7 +7921,19 @@ export default function VisualNovelGame() {
                 </div>
               )}
 
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-rose-300 shrink-0">
+              <div
+                onClick={(e) => {
+                  if (playerAvatar && playerAvatar.trim()) {
+                    handleOpenPlayerFullPortrait(e);
+                  }
+                }}
+                title={
+                  playerAvatar && playerAvatar.trim()
+                    ? "Click to view full character image"
+                    : undefined
+                }
+                className="w-8 h-8 rounded-full overflow-hidden bg-rose-600/30 border border-rose-500/60 flex items-center justify-center font-bold text-rose-300 shrink-0 hover:ring-2 hover:ring-rose-400/70 hover:scale-105 transition-all"
+              >
                 {playerAvatar && playerAvatar.trim() ? (
                   <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover" />
                 ) : (
@@ -8256,7 +8456,9 @@ export default function VisualNovelGame() {
                       <img
                         src={playerAvatar}
                         alt={player.name}
-                        className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] pointer-events-none"
+                        onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                        title="Click to view full character image"
+                        className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] cursor-pointer hover:brightness-110 transition-all"
                       />
                     ) : (
                       <div className="h-full w-full flex flex-col items-center justify-center text-center p-4">
@@ -8344,6 +8546,19 @@ export default function VisualNovelGame() {
                       onSaveEdit={handleSaveEdit}
                       onRegenerateTurn={handleRegenerateTurn}
                       onSkipTypewriter={handleSkipTypewriter}
+                      onViewPortrait={(imgUrl, speaker) => {
+                        const isPlayerSpeaker =
+                          !speaker ||
+                          speaker.toLowerCase() === (player.name || "").toLowerCase();
+                        handleOpenPlayerFullPortrait(
+                          undefined,
+                          imgUrl,
+                          speaker || player.name,
+                          isPlayerSpeaker
+                            ? `Lv.${player.level} ${player.race || "Human"} • ${player.role || "Adventurer"}`
+                            : "Companion Portrait"
+                        );
+                      }}
                     />
                   );
                 });
@@ -8481,6 +8696,7 @@ export default function VisualNovelGame() {
       {renderSceneModal()}
       {renderItemModal()}
       {renderAbilityModal()}
+      {renderCharacterPortraitViewerModal()}
 
 
 
@@ -8746,12 +8962,20 @@ export default function VisualNovelGame() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => {
-                    soundEffects.playClick();
-                    setShowPortraitEditor(true);
+                  onClick={(e) => {
+                    if (playerAvatar && playerAvatar.trim()) {
+                      handleOpenPlayerFullPortrait(e);
+                    } else {
+                      soundEffects.playClick();
+                      setShowPortraitEditor(true);
+                    }
                   }}
                   className="group relative w-14 h-14 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 hover:border-rose-500/60 shrink-0 flex items-center justify-center cursor-pointer transition-all shadow-md"
-                  title="Click to Edit Character Portrait"
+                  title={
+                    playerAvatar && playerAvatar.trim()
+                      ? "Click to View Full Character Image"
+                      : "Click to Edit Character Portrait"
+                  }
                 >
                   {playerAvatar && playerAvatar.trim() ? (
                     <img src={playerAvatar} alt={player.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
@@ -8759,7 +8983,11 @@ export default function VisualNovelGame() {
                     <User className="w-6 h-6 text-zinc-500 group-hover:text-rose-400 transition-colors" />
                   )}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Edit3 className="w-4 h-4 text-white" />
+                    {playerAvatar && playerAvatar.trim() ? (
+                      <Eye className="w-4 h-4 text-white" />
+                    ) : (
+                      <Edit3 className="w-4 h-4 text-white" />
+                    )}
                   </div>
                 </button>
                 <div>
@@ -8772,6 +9000,16 @@ export default function VisualNovelGame() {
                     <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-300">
                       Tone: {getNarrationStyleBadge(narrationStyle || player.narrationStyle)}
                     </span>
+                    {playerAvatar && playerAvatar.trim() && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                        className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-sky-500/20 hover:bg-sky-500/35 border border-sky-500/40 text-sky-200 hover:text-white flex items-center gap-1 cursor-pointer transition-all"
+                      >
+                        <Eye className="w-3 h-3 text-sky-400" />
+                        <span>View Full Image</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
