@@ -38,7 +38,11 @@ import { sanitizeImageUrl, DEFAULT_BG, DEFAULT_AVATAR } from "@/lib/imageUtils";
 import { getCodexStats } from "@/lib/codexStorage";
 import { validateKeyClientSide } from "@/lib/clientKeyValidation";
 import { CloudSyncModal } from "@/components/CloudSyncModal";
-import { getActiveCloudUser, CloudAccountUser } from "@/lib/supabaseClient";
+import {
+  getActiveCloudUser,
+  CloudAccountUser,
+  subscribeToCloudAuthChanges,
+} from "@/lib/supabaseClient";
 import {
   LlmConfig,
   DEFAULT_LLM_CONFIG,
@@ -77,6 +81,7 @@ export default function StoryCataloguePage() {
   const [llmConfig, setLlmConfig] = useState<LlmConfig>(DEFAULT_LLM_CONFIG);
   const [showLlmModal, setShowLlmModal] = useState<boolean>(false);
   const [showCloudSyncModal, setShowCloudSyncModal] = useState<boolean>(false);
+  const [isFirstVisitPrompt, setIsFirstVisitPrompt] = useState<boolean>(false);
   const [cloudUser, setCloudUser] = useState<CloudAccountUser | null>(null);
 
   const loadStories = async () => {
@@ -151,6 +156,27 @@ export default function StoryCataloguePage() {
       setLlmConfig(getStoredLlmConfig());
       refreshAllProgression();
 
+      // Check whether the user is signed in; if not and they haven't dismissed the registration prompt this session,
+      // automatically prompt them to register an Astra Chronicles account / sign in with Google
+      getActiveCloudUser()
+        .then((u) => {
+          setCloudUser(u);
+          if (!u && typeof window !== "undefined") {
+            const hasOAuthPending =
+              Boolean(window.sessionStorage?.getItem("astra_oauth_pending")) ||
+              window.location.search.includes("oauth_connected") ||
+              window.location.hash.includes("access_token=");
+            const alreadyDismissed = Boolean(
+              window.sessionStorage?.getItem("astra_welcome_register_prompt_dismissed")
+            );
+            if (!hasOAuthPending && !alreadyDismissed) {
+              setIsFirstVisitPrompt(true);
+              setShowCloudSyncModal(true);
+            }
+          }
+        })
+        .catch(() => {});
+
       try {
         const stored = localStorage.getItem("astra_access_key");
         if (stored) {
@@ -162,7 +188,17 @@ export default function StoryCataloguePage() {
       }
     }, 0);
 
-    return () => clearTimeout(initTimer);
+    const unsubscribeAuth = subscribeToCloudAuthChanges((u) => {
+      setCloudUser(u);
+      if (u) {
+        setIsFirstVisitPrompt(false);
+      }
+    });
+
+    return () => {
+      clearTimeout(initTimer);
+      unsubscribeAuth();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -282,31 +318,79 @@ export default function StoryCataloguePage() {
 
             {/* Grouped Utility Dock */}
             <div className="flex items-center gap-1 bg-zinc-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-md shadow-lg">
-              {/* Account & Roster Dossier */}
+              {/* Account & Roster Dossier (with explicit Google OAuth indicator) */}
               <Link
                 href="/account"
                 onClick={() => soundEffects.playClick()}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-emerald-300 hover:text-white transition-all whitespace-nowrap"
-                title="Astral Traveler Account Dossier & Character Roster"
+                title={
+                  cloudUser
+                    ? cloudUser.provider === "google" ||
+                      cloudUser.linkedProviders?.includes("google")
+                      ? `Authenticated with Google OAuth (${cloudUser.email}) — Click to open Account Dossier`
+                      : `Signed in via ${cloudUser.provider} (${cloudUser.email}) — Click to open Account Dossier`
+                    : "Not Signed In — Click to open Account Dossier & verify Google OAuth status"
+                }
               >
-                <User className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{cloudUser ? cloudUser.displayName.split(" ")[0] : "Account"}</span>
+                {cloudUser &&
+                (cloudUser.provider === "google" ||
+                  cloudUser.linkedProviders?.includes("google")) ? (
+                  <>
+                    <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+                      <path
+                        fill="#EA4335"
+                        d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
+                      />
+                      <path
+                        fill="#4285F4"
+                        d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"
+                      />
+                    </svg>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                    <span>Google: {cloudUser.displayName.split(" ")[0]}</span>
+                  </>
+                ) : cloudUser ? (
+                  <>
+                    <User className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                    <span>{cloudUser.displayName.split(" ")[0]}</span>
+                  </>
+                ) : (
+                  <>
+                    <User className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span className="text-amber-200">Account (Guest)</span>
+                  </>
+                )}
               </Link>
 
               <div className="h-4 w-px bg-white/10" />
 
-              {/* Cloud Sync Quick Modal */}
+              {/* Cloud Sync / Register Quick Modal */}
               <button
                 type="button"
                 onClick={() => {
                   soundEffects.playClick();
+                  setIsFirstVisitPrompt(false);
                   setShowCloudSyncModal(true);
                 }}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-sky-300 hover:text-white transition-all cursor-pointer whitespace-nowrap"
-                title="Cross-Save Cloud Sync & Portable .astra Backup"
+                title={
+                  cloudUser
+                    ? "Cross-Save Cloud Sync & Portable .astra Backup"
+                    : "Sign In with Google or Register an Astra Chronicles Account"
+                }
               >
                 <Cloud className="w-3.5 h-3.5 text-sky-400" />
-                <span className="hidden sm:inline">Sync</span>
+                <span className="hidden sm:inline">{cloudUser ? "Sync" : "Sign In / Register"}</span>
                 {cloudUser && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
                 )}
@@ -953,8 +1037,14 @@ export default function StoryCataloguePage() {
       {/* Cross-Save Cloud & Portable .astra Backup Modal */}
       <CloudSyncModal
         isOpen={showCloudSyncModal}
+        isFirstVisitPrompt={isFirstVisitPrompt}
+        defaultAuthMode={isFirstVisitPrompt ? "signup" : undefined}
         onClose={() => {
           setShowCloudSyncModal(false);
+          setIsFirstVisitPrompt(false);
+          try {
+            window.sessionStorage?.setItem("astra_welcome_register_prompt_dismissed", "true");
+          } catch {}
           getActiveCloudUser()
             .then((u) => setCloudUser(u))
             .catch(() => {});

@@ -36,6 +36,8 @@ import {
   getSupabaseCredentials,
   saveCustomSupabaseCredentials,
   OAuthProviderType,
+  extractOAuthCallbackError,
+  subscribeToCloudAuthChanges,
 } from "@/lib/supabaseClient";
 import {
   AstraProgressionBundle,
@@ -56,6 +58,8 @@ interface CloudSyncModalProps {
   onClose: () => void;
   onProgressionRestored?: () => void;
   initialTab?: "cloud" | "portable";
+  defaultAuthMode?: "signin" | "signup";
+  isFirstVisitPrompt?: boolean;
 }
 
 export function CloudSyncModal({
@@ -63,15 +67,19 @@ export function CloudSyncModal({
   onClose,
   onProgressionRestored,
   initialTab = "cloud",
+  defaultAuthMode,
+  isFirstVisitPrompt = false,
 }: CloudSyncModalProps) {
   const [activeTab, setActiveTab] = useState<"cloud" | "portable">(initialTab);
   const [user, setUser] = useState<CloudAccountUser | null>(null);
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [authMode, setAuthMode] = useState<"signin" | "signup">(
+    defaultAuthMode ?? (isFirstVisitPrompt ? "signup" : "signin")
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
-  const [ statusBanner, setStatusBanner ] = useState<{
+  const [statusBanner, setStatusBanner] = useState<{
     type: "success" | "error" | "info";
     text: string;
   } | null>(null);
@@ -162,9 +170,27 @@ export function CloudSyncModal({
     }
   };
 
-  // Detect OAuth redirect return on mount even when parent's `isOpen` is false
+  // Detect OAuth redirect return or error on mount even when parent's `isOpen` is false
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    const oauthErr = extractOAuthCallbackError();
+    if (oauthErr) {
+      try {
+        window.sessionStorage?.removeItem("astra_oauth_pending");
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("error");
+        cleanUrl.searchParams.delete("error_description");
+        cleanUrl.searchParams.delete("oauth_connected");
+        window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
+      } catch { }
+      setOauthWelcomeOpen(true);
+      setStatusBanner({
+        type: "error",
+        text: `Google / OAuth Sign-In Error: ${oauthErr}`,
+      });
+      return;
+    }
 
     const url = new URL(window.location.href);
     const hasOAuthParam = url.searchParams.has("oauth_connected");
@@ -173,7 +199,15 @@ export function CloudSyncModal({
       window.location.hash.includes("access_token=") ||
       window.location.hash.includes("refresh_token=");
 
-    if (!hasOAuthParam && !hasPendingSession && !hasAuthHash) return;
+    const unsubAuth = subscribeToCloudAuthChanges((u) => {
+      setUser(u);
+    });
+
+    if (!hasOAuthParam && !hasPendingSession && !hasAuthHash) {
+      return () => {
+        unsubAuth();
+      };
+    }
 
     let cancelled = false;
 
@@ -199,7 +233,7 @@ export function CloudSyncModal({
         const cleanUrl = new URL(window.location.href);
         cleanUrl.searchParams.delete("oauth_connected");
         window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
-      } catch {}
+      } catch { }
 
       setUser(activeUser);
       setActiveTab("cloud");
@@ -213,6 +247,7 @@ export function CloudSyncModal({
 
     return () => {
       cancelled = true;
+      unsubAuth();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -220,7 +255,11 @@ export function CloudSyncModal({
   useEffect(() => {
     if (!isOpen && !oauthWelcomeOpen) return;
     const initTimer = setTimeout(() => {
-      setStatusBanner(null);
+      if (defaultAuthMode) {
+        setAuthMode(defaultAuthMode);
+      } else if (isFirstVisitPrompt) {
+        setAuthMode("signup");
+      }
       setPendingImportBundle(null);
       setAutoSync(isCloudAutoSyncEnabled());
       setLastSyncedAt(getLastCloudSyncTimestamp());
@@ -236,7 +275,7 @@ export function CloudSyncModal({
     }, 0);
     return () => clearTimeout(initTimer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, oauthWelcomeOpen]);
+  }, [isOpen, oauthWelcomeOpen, isFirstVisitPrompt, defaultAuthMode]);
 
   if (!isOpen && !oauthWelcomeOpen) return null;
 
@@ -495,11 +534,10 @@ export function CloudSyncModal({
               soundEffects.playClick();
               setActiveTab("cloud");
             }}
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === "cloud"
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${activeTab === "cloud"
                 ? "bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-[0_0_15px_rgba(56,189,248,0.2)]"
                 : "text-zinc-400 hover:text-zinc-200"
-            }`}
+              }`}
           >
             <Cloud className="w-4 h-4" />
             Cloud Account & Auto-Sync
@@ -510,11 +548,10 @@ export function CloudSyncModal({
               soundEffects.playClick();
               setActiveTab("portable");
             }}
-            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${
-              activeTab === "portable"
+            className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer ${activeTab === "portable"
                 ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
                 : "text-zinc-400 hover:text-zinc-200"
-            }`}
+              }`}
           >
             <FileJson className="w-4 h-4" />
             Portable .astra Backup File
@@ -524,13 +561,12 @@ export function CloudSyncModal({
         {/* Status Feedback Banner */}
         {statusBanner && (
           <div
-            className={`px-3.5 py-2.5 rounded-2xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-150 ${
-              statusBanner.type === "success"
+            className={`px-3.5 py-2.5 rounded-2xl border text-xs flex items-start gap-2.5 animate-in fade-in duration-150 ${statusBanner.type === "success"
                 ? "bg-emerald-950/50 border-emerald-500/40 text-emerald-200"
                 : statusBanner.type === "error"
-                ? "bg-rose-950/50 border-rose-500/40 text-rose-200"
-                : "bg-sky-950/50 border-sky-500/40 text-sky-200"
-            }`}
+                  ? "bg-rose-950/50 border-rose-500/40 text-rose-200"
+                  : "bg-sky-950/50 border-sky-500/40 text-sky-200"
+              }`}
           >
             {statusBanner.type === "success" ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
@@ -550,6 +586,29 @@ export function CloudSyncModal({
               {!user ? (
                 /* AUTHENTICATION VIEW (OAUTH + EMAIL) */
                 <div className="space-y-4">
+                  {/* First-Visit Account Registration Callout */}
+                  {isFirstVisitPrompt && (
+                    <div className="bg-gradient-to-r from-emerald-950/60 via-zinc-900/90 to-sky-950/50 border border-emerald-500/40 rounded-2xl p-4 space-y-2 shadow-[0_0_25px_rgba(16,185,129,0.12)]">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-mono font-bold uppercase tracking-wider">
+                          <Sparkles className="w-3 h-3" /> Welcome to Astra Chronicles
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-400">
+                          Recommended for New Travelers
+                        </span>
+                      </div>
+                      <h3 className="text-sm sm:text-base font-bold text-white font-mono">
+                        Register Your Astral Traveler Account
+                      </h3>
+                      <p className="text-xs text-zinc-300 leading-relaxed">
+                        Sign in with <strong className="text-white">1-Click Google OAuth</strong> or register an Astra Chronicles account below to automatically back up your{" "}
+                        <span className="text-emerald-300 font-semibold">Save Slots (0–3)</span>,{" "}
+                        <span className="text-amber-300 font-semibold">Cross-World Character Roster</span>, and{" "}
+                        <span className="text-sky-300 font-semibold">Custom Worlds</span> across devices.
+                      </p>
+                    </div>
+                  )}
+
                   {/* OAuth Providers */}
                   <div className="bg-zinc-900/60 border border-white/10 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -557,11 +616,10 @@ export function CloudSyncModal({
                         <Globe className="w-3.5 h-3.5 text-sky-400" /> 1-Click OAuth Federation
                       </span>
                       <span
-                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                          supaConfigured
+                        className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${supaConfigured
                             ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
                             : "bg-zinc-800 text-zinc-400 border-white/10"
-                        }`}
+                          }`}
                       >
                         {supaConfigured ? "Supabase Cloud Active" : "Local Realm Server + Supabase Ready"}
                       </span>
@@ -571,7 +629,7 @@ export function CloudSyncModal({
                       <button
                         type="button"
                         onClick={() => handleOAuthLogin("google")}
-                        className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-xs font-semibold text-white transition-all cursor-pointer active:scale-95"
+                        className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-emerald-400/35 text-xs font-semibold text-white transition-all cursor-pointer active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 24 24">
                           <path
@@ -591,7 +649,7 @@ export function CloudSyncModal({
                             d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"
                           />
                         </svg>
-                        Google
+                        Continue with Google
                       </button>
 
                       <button
@@ -631,22 +689,20 @@ export function CloudSyncModal({
                         <button
                           type="button"
                           onClick={() => setAuthMode("signin")}
-                          className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold cursor-pointer transition-all ${
-                            authMode === "signin"
+                          className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold cursor-pointer transition-all ${authMode === "signin"
                               ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                               : "text-zinc-400 hover:text-white"
-                          }`}
+                            }`}
                         >
                           SIGN IN
                         </button>
                         <button
                           type="button"
                           onClick={() => setAuthMode("signup")}
-                          className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold cursor-pointer transition-all ${
-                            authMode === "signup"
+                          className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold cursor-pointer transition-all ${authMode === "signup"
                               ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                               : "text-zinc-400 hover:text-white"
-                          }`}
+                            }`}
                         >
                           REGISTER
                         </button>
@@ -723,6 +779,18 @@ export function CloudSyncModal({
                         : "Sign In & Connect Cloud Vault"}
                     </button>
                   </form>
+
+                  {isFirstVisitPrompt && (
+                    <div className="flex items-center justify-center pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white text-xs font-mono transition-all cursor-pointer"
+                      >
+                        Skip for Now — Continue as Local Guest (Saves Stored on This Browser Only)
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : showConnectedConfirmation ? (
                 /* OAUTH & ACCOUNT CONNECTED + SAVES SYNCED CONFIRMATION SCREEN */
@@ -745,10 +813,14 @@ export function CloudSyncModal({
                       <Sparkles className="w-3 h-3" />
                       {syncBusy && !initialSyncComplete
                         ? "Synchronizing Astral Cloud Vault..."
-                        : "All Saves & Character Roster Synced"}
+                        : user.provider === "google" || user.linkedProviders?.includes("google")
+                          ? "✓ Authenticated Through Google OAuth • Saves Synced"
+                          : "All Saves & Character Roster Synced"}
                     </div>
                     <h3 className="text-lg sm:text-xl font-bold text-white font-mono">
-                      Signed In to Astra Chronicles
+                      {user.provider === "google" || user.linkedProviders?.includes("google")
+                        ? "Google Account Connected to Astra Chronicles"
+                        : "Signed In to Astra Chronicles"}
                     </h3>
                     <p className="text-xs text-zinc-300">
                       Welcome, <span className="text-sky-300 font-semibold">{user.displayName}</span>{" "}
@@ -829,11 +901,18 @@ export function CloudSyncModal({
                         {user.displayName.slice(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold text-white">{user.displayName}</span>
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                            {user.mode === "supabase" ? `Supabase • ${user.provider}` : "Realm Cloud Vault"}
-                          </span>
+                          {user.provider === "google" || user.linkedProviders?.includes("google") ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                              Google OAuth Verified
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                              {user.mode === "supabase" ? `Supabase • ${user.provider}` : "Realm Cloud Vault"}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-zinc-400 font-mono">{user.email}</p>
                         {lastSyncedAt && (
@@ -853,11 +932,10 @@ export function CloudSyncModal({
                           setAutoSync(next);
                           setCloudAutoSyncEnabled(next);
                         }}
-                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold border transition-all cursor-pointer flex items-center gap-1 ${
-                          autoSync
+                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold border transition-all cursor-pointer flex items-center gap-1 ${autoSync
                             ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                             : "bg-white/5 text-zinc-400 border-white/10"
-                        }`}
+                          }`}
                         title="Automatically push saves to Cloud Vault after every turn"
                       >
                         <Zap className="w-3.5 h-3.5" />

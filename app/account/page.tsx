@@ -81,6 +81,8 @@ import {
   saveCustomSupabaseCredentials,
   updateCloudUserProfile,
   getTravelerProfileOverride,
+  subscribeToCloudAuthChanges,
+  extractOAuthCallbackError,
   OAuthProviderType,
 } from "@/lib/supabaseClient";
 import { getCodexStats } from "@/lib/codexStorage";
@@ -303,6 +305,14 @@ export default function AccountHubPage() {
       setCustomSupaUrl(creds.url);
       setCustomSupaKey(creds.anonKey);
 
+      const oauthErr = extractOAuthCallbackError();
+      if (oauthErr) {
+        setStatusBanner({
+          type: "error",
+          text: `Google / OAuth Authentication Error: ${oauthErr}`,
+        });
+      }
+
       try {
         const storedKey = localStorage.getItem("astra_access_key");
         if (storedKey) {
@@ -317,6 +327,13 @@ export default function AccountHubPage() {
       loadAllAccountData();
     }, 0);
 
+    const unsubscribeAuth = subscribeToCloudAuthChanges((updatedUser) => {
+      setUser(updatedUser);
+      if (updatedUser) {
+        loadAllAccountData();
+      }
+    });
+
     const handleStorageMutated = () => {
       loadAllAccountData();
     };
@@ -325,6 +342,7 @@ export default function AccountHubPage() {
     }
     return () => {
       clearTimeout(initTimer);
+      unsubscribeAuth();
       if (typeof window !== "undefined") {
         window.removeEventListener("astra-save-mutated", handleStorageMutated);
       }
@@ -1092,6 +1110,163 @@ export default function AccountHubPage() {
             </form>
           )}
         </section>
+
+        {/* GOOGLE OAUTH & CLOUD AUTHENTICATION VERIFICATION CARD */}
+        {(() => {
+          const isGoogleAuthed =
+            user?.provider === "google" || Boolean(user?.linkedProviders?.includes("google"));
+
+          if (isGoogleAuthed && user) {
+            return (
+              <section className="rounded-3xl bg-gradient-to-r from-emerald-950/60 via-zinc-900/90 to-sky-950/50 border border-emerald-500/40 p-4 sm:p-5 shadow-[0_0_30px_rgba(16,185,129,0.12)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start sm:items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 border border-emerald-400/50 flex items-center justify-center shrink-0 relative">
+                    <svg className="w-6 h-6" viewBox="0 0 24 24">
+                      <path
+                        fill="#EA4335"
+                        d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
+                      />
+                      <path
+                        fill="#4285F4"
+                        d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"
+                      />
+                    </svg>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 bg-zinc-950 rounded-full absolute -bottom-1 -right-1" />
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs sm:text-sm font-mono font-bold text-emerald-300 flex items-center gap-1.5">
+                        ✓ Successfully Authenticated Through Google OAuth
+                      </span>
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-200 border border-emerald-500/30 uppercase">
+                        Verified Session
+                      </span>
+                    </div>
+                    <p className="text-xs text-zinc-300 font-mono">
+                      Google Account: <span className="text-white font-bold">{user.email}</span> • Name:{" "}
+                      <span className="text-sky-300">{user.displayName}</span>
+                    </p>
+                    <p className="text-[11px] text-zinc-400">
+                      Your Astra Chronicles account is linked to Google and your Save Slots (0–3) & Character Roster are synced with the Cloud Vault.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-[11px] font-mono font-bold text-emerald-300 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    Google Connected
+                  </span>
+                </div>
+              </section>
+            );
+          }
+
+          if (user) {
+            return (
+              <section className="rounded-3xl bg-gradient-to-r from-sky-950/60 via-zinc-900/90 to-indigo-950/40 border border-sky-500/40 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-sky-400" />
+                    <span className="text-xs sm:text-sm font-mono font-bold text-white">
+                      Signed In via {user.provider.toUpperCase()} ({user.email})
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                      Google OAuth: Not Linked
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400">
+                    You are currently authenticated with {user.provider.toUpperCase()}, not Google OAuth. Click the button on the right if you want to authenticate through Google instead.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleOAuthLogin("google")}
+                  className="px-4 py-2.5 rounded-2xl bg-white hover:bg-zinc-100 text-zinc-950 font-mono font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-lg"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"
+                    />
+                  </svg>
+                  <span>Authenticate with Google</span>
+                </button>
+              </section>
+            );
+          }
+
+          return (
+            <section className="rounded-3xl bg-gradient-to-r from-amber-950/50 via-zinc-900/90 to-rose-950/40 border border-amber-500/40 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-400" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs sm:text-sm font-mono font-bold text-amber-200">
+                      Not Authenticated With Google — Local Guest Mode
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase">
+                      Unverified / Unsynced
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-300">
+                    You are not currently signed in with Google or an Astra Chronicles Cloud Account. Authenticate with Google now to register your account and sync your saves across devices.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOAuthLogin("google")}
+                className="px-4 py-2.5 rounded-2xl bg-white hover:bg-zinc-100 text-zinc-950 font-mono font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shrink-0 shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"
+                  />
+                </svg>
+                <span>Sign In with Google</span>
+              </button>
+            </section>
+          );
+        })()}
 
         {/* NAVIGATION TABS */}
         <nav className="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-zinc-900/80 p-1.5 rounded-2xl border border-white/10">

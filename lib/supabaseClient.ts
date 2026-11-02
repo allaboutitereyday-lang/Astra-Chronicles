@@ -7,13 +7,150 @@ export interface CloudAccountUser {
   email: string;
   displayName: string;
   provider: "email" | "google" | "discord" | "github" | "local_realm";
+  linkedProviders?: string[];
+  lastSignInAt?: string;
   avatarUrl?: string;
   mode: "supabase" | "local_server";
+}
+
+export function notifyCloudAuthChanged(): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(new CustomEvent("astra-auth-changed", { detail: { timestamp: Date.now() } }));
+  } catch {}
+}
+
+/**
+ * Checks if the current URL contains an OAuth error returned by Supabase or Google
+ */
+export function extractOAuthCallbackError(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const url = new URL(window.location.href);
+    const searchErrDesc = url.searchParams.get("error_description");
+    const searchErr = url.searchParams.get("error");
+    if (searchErrDesc || searchErr) {
+      return decodeURIComponent((searchErrDesc || searchErr || "").replace(/\+/g, " "));
+    }
+    if (window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const hashErrDesc = hashParams.get("error_description");
+      const hashErr = hashParams.get("error");
+      if (hashErrDesc || hashErr) {
+        return decodeURIComponent((hashErrDesc || hashErr || "").replace(/\+/g, " "));
+      }
+    }
+  } catch {}
+  return null;
 }
 
 const LOCAL_ACCOUNT_STORAGE_KEY = "astra_cloud_account_session";
 const CUSTOM_SUPABASE_CFG_KEY = "astra_custom_supabase_config";
 const TRAVELER_PROFILE_OVERRIDE_KEY = "astra_traveler_profile_override";
+
+/**
+ * Decodes a base64url JWT payload safely in the browser.
+ */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = base64 + "===".slice((base64.length + 3) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    const jsonStr = new TextDecoder().decode(bytes);
+    return JSON.parse(jsonStr) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Captures the Supabase OAuth `#access_token=...` JWT from `window.location.hash` before
+ * `@supabase/supabase-js` strips the hash (which otherwise discards the Google session if
+ * `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local` is set to the project ID instead of the `eyJ...` anon key).
+ */
+export function captureOAuthSessionFromUrlHash(): CloudAccountUser | null {
+  if (typeof window === "undefined" || !window.location.hash) return null;
+  try {
+    const rawHash = window.location.hash.replace(/^#/, "");
+    if (!rawHash.includes("access_token=")) return null;
+
+    const params = new URLSearchParams(rawHash);
+    const accessToken = params.get("access_token");
+    if (!accessToken) return null;
+
+    const payload = decodeJwtPayload(accessToken);
+    if (!payload || typeof payload.sub !== "string") return null;
+
+    const userMeta = (payload.user_metadata || {}) as Record<string, unknown>;
+    const appMeta = (payload.app_metadata || {}) as Record<string, unknown>;
+    const providersSet = new Set<string>();
+
+    if (typeof appMeta.provider === "string") {
+      providersSet.add(appMeta.provider.toLowerCase());
+    }
+    if (Array.isArray(appMeta.providers)) {
+      for (const p of appMeta.providers) {
+        if (typeof p === "string") providersSet.add(p.toLowerCase());
+      }
+    }
+    if (typeof userMeta.iss === "string" && userMeta.iss.includes("google")) {
+      providersSet.add("google");
+    }
+    const pendingProvider = window.sessionStorage?.getItem("astra_oauth_pending");
+    if (pendingProvider) {
+      providersSet.add(pendingProvider.toLowerCase());
+    }
+
+    let resolvedProvider: CloudAccountUser["provider"] = "google";
+    if (providersSet.has("google")) resolvedProvider = "google";
+    else if (providersSet.has("discord")) resolvedProvider = "discord";
+    else if (providersSet.has("github")) resolvedProvider = "github";
+    else if (typeof appMeta.provider === "string") {
+      resolvedProvider = appMeta.provider as CloudAccountUser["provider"];
+    }
+
+    const email =
+      (typeof payload.email === "string" && payload.email) ||
+      (typeof userMeta.email === "string" && userMeta.email) ||
+      `${payload.sub.slice(0, 8)}@astral.nexus`;
+
+    const displayName =
+      (typeof userMeta.full_name === "string" && userMeta.full_name) ||
+      (typeof userMeta.name === "string" && userMeta.name) ||
+      (typeof userMeta.user_name === "string" && userMeta.user_name) ||
+      email.split("@")[0] ||
+      "Astral Traveler";
+
+    const avatarUrl =
+      (typeof userMeta.avatar_url === "string" && userMeta.avatar_url) ||
+      (typeof userMeta.picture === "string" && userMeta.picture) ||
+      undefined;
+
+    const capturedUser: CloudAccountUser = {
+      id: payload.sub,
+      email,
+      displayName,
+      provider: resolvedProvider,
+      linkedProviders: Array.from(providersSet.size > 0 ? providersSet : [resolvedProvider]),
+      lastSignInAt: new Date().toISOString(),
+      avatarUrl,
+      mode: "supabase",
+    };
+
+    window.localStorage?.setItem(LOCAL_ACCOUNT_STORAGE_KEY, JSON.stringify(capturedUser));
+    return capturedUser;
+  } catch {
+    return null;
+  }
+}
+
+// Immediately inspect URL hash when module loads in browser before Supabase client clears it
+if (typeof window !== "undefined") {
+  captureOAuthSessionFromUrlHash();
+}
 
 export interface TravelerProfileOverride {
   displayName?: string;
@@ -88,6 +225,7 @@ export function saveCustomSupabaseCredentials(url: string, anonKey: string): voi
 }
 
 export function getSupabaseClient(): SupabaseClient | null {
+  captureOAuthSessionFromUrlHash();
   const { url, anonKey, isConfigured } = getSupabaseCredentials();
   if (!isConfigured) return null;
 
@@ -101,6 +239,7 @@ export function getSupabaseClient(): SupabaseClient | null {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      flowType: "implicit",
     },
   });
   cachedConfigKey = nextKey;
@@ -111,6 +250,7 @@ export function getSupabaseClient(): SupabaseClient | null {
  * Retrieves the currently signed-in cross-save user (from Supabase Auth or Local Realm Server session)
  */
 export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
+  captureOAuthSessionFromUrlHash();
   const override = getTravelerProfileOverride();
   const supabase = getSupabaseClient();
   if (supabase) {
@@ -118,7 +258,32 @@ export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
       const { data, error } = await supabase.auth.getUser();
       if (!error && data?.user) {
         const u = data.user;
-        const appProvider = (u.app_metadata?.provider || "email") as CloudAccountUser["provider"];
+        const providersSet = new Set<string>();
+        if (typeof u.app_metadata?.provider === "string") {
+          providersSet.add(u.app_metadata.provider.toLowerCase());
+        }
+        if (Array.isArray(u.app_metadata?.providers)) {
+          for (const p of u.app_metadata.providers) {
+            if (typeof p === "string") providersSet.add(p.toLowerCase());
+          }
+        }
+        if (Array.isArray(u.identities)) {
+          for (const idObj of u.identities) {
+            if (typeof idObj?.provider === "string") {
+              providersSet.add(idObj.provider.toLowerCase());
+            }
+          }
+        }
+
+        const linkedProviders = Array.from(providersSet);
+        let resolvedProvider: CloudAccountUser["provider"] = "email";
+        if (providersSet.has("google")) resolvedProvider = "google";
+        else if (providersSet.has("discord")) resolvedProvider = "discord";
+        else if (providersSet.has("github")) resolvedProvider = "github";
+        else if (typeof u.app_metadata?.provider === "string") {
+          resolvedProvider = u.app_metadata.provider as CloudAccountUser["provider"];
+        }
+
         const metaName =
           override.displayName ||
           u.user_metadata?.full_name ||
@@ -126,14 +291,25 @@ export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
           u.user_metadata?.user_name ||
           u.email?.split("@")[0] ||
           "Astral Traveler";
-        return {
+        const resolvedUser: CloudAccountUser = {
           id: u.id,
           email: u.email || `${u.id.slice(0, 8)}@astral.nexus`,
           displayName: metaName,
-          provider: appProvider,
-          avatarUrl: override.avatarUrl || u.user_metadata?.avatar_url,
+          provider: resolvedProvider,
+          linkedProviders,
+          lastSignInAt: u.last_sign_in_at,
+          avatarUrl:
+            override.avatarUrl ||
+            u.user_metadata?.avatar_url ||
+            u.user_metadata?.picture,
           mode: "supabase",
         };
+        if (typeof window !== "undefined" && window.localStorage) {
+          try {
+            localStorage.setItem(LOCAL_ACCOUNT_STORAGE_KEY, JSON.stringify(resolvedUser));
+          } catch {}
+        }
+        return resolvedUser;
       }
     } catch (err) {
       console.warn("Supabase getUser check failed:", err);
@@ -150,6 +326,7 @@ export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
             ...parsed,
             displayName: override.displayName || parsed.displayName,
             avatarUrl: override.avatarUrl || parsed.avatarUrl,
+            linkedProviders: parsed.linkedProviders || [parsed.provider || "local_realm"],
           };
         }
       }
@@ -323,9 +500,7 @@ export async function signInWithOAuthProvider(
       try {
         sessionStorage.setItem("astra_oauth_pending", provider);
       } catch {}
-      const currentUrl = new URL(window.location.href.split("#")[0]);
-      currentUrl.searchParams.set("oauth_connected", provider);
-      redirectTo = currentUrl.toString();
+      redirectTo = `${window.location.origin}${window.location.pathname}`;
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -396,6 +571,7 @@ export async function updateCloudUserProfile(params: {
   }
 
   const activeUser = await getActiveCloudUser();
+  notifyCloudAuthChanged();
   return { user: activeUser, override };
 }
 
@@ -412,5 +588,40 @@ export async function signOutCloudAccount(): Promise<void> {
   if (typeof window !== "undefined" && window.localStorage) {
     localStorage.removeItem(LOCAL_ACCOUNT_STORAGE_KEY);
   }
+  notifyCloudAuthChanged();
+}
+
+/**
+ * Subscribes to both Supabase Auth state changes (including OAuth URL token exchange)
+ * and custom local account changes so UI components immediately update when Google Auth completes.
+ */
+export function subscribeToCloudAuthChanges(
+  onAuthChange: (user: CloudAccountUser | null) => void
+): () => void {
+  const refresh = () => {
+    getActiveCloudUser()
+      .then((u) => onAuthChange(u))
+      .catch(() => {});
+  };
+
+  const supabase = getSupabaseClient();
+  const { data: sub } = supabase
+    ? supabase.auth.onAuthStateChange(() => {
+        refresh();
+      })
+    : { data: { subscription: null } };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("astra-auth-changed", refresh);
+  }
+
+  return () => {
+    if (sub?.subscription) {
+      sub.subscription.unsubscribe();
+    }
+    if (typeof window !== "undefined") {
+      window.removeEventListener("astra-auth-changed", refresh);
+    }
+  };
 }
 
