@@ -3783,6 +3783,44 @@ export default function VisualNovelGame() {
     }, 1800);
   };
 
+  // Handle deep-linked ?loadSlot=0..3 or ?rosterCharId=... from the /account page
+  const handledAccountDeepLinkRef = useRef<boolean>(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || handledAccountDeepLinkRef.current) return;
+    const url = new URL(window.location.href);
+    const loadSlotParam = url.searchParams.get("loadSlot");
+    const rosterCharIdParam = url.searchParams.get("rosterCharId");
+
+    if (loadSlotParam === null && !rosterCharIdParam) return;
+    handledAccountDeepLinkRef.current = true;
+
+    // Clean up query params from browser URL bar
+    try {
+      url.searchParams.delete("loadSlot");
+      url.searchParams.delete("rosterCharId");
+      window.history.replaceState({}, "", url.pathname + url.search);
+    } catch {}
+
+    if (loadSlotParam !== null) {
+      const slotNum = Number(loadSlotParam);
+      if ([0, 1, 2, 3].includes(slotNum)) {
+        loadGameSlot(slotNum).then((slotData) => {
+          if (slotData) {
+            handleLoadSlot(slotNum, slotData as SaveSlotData);
+          }
+        });
+      }
+    } else if (rosterCharIdParam) {
+      loadCharacterRoster().then((list) => {
+        const match = list.find((c) => c.id === rosterCharIdParam);
+        if (match) {
+          handleLoadCharacterFromRoster(match);
+        }
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (dialogueFeedRef.current) {
       dialogueFeedRef.current.scrollTop = dialogueFeedRef.current.scrollHeight;
@@ -6734,6 +6772,17 @@ export default function VisualNovelGame() {
                   title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
                 >
                   {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
+                </button>
+                <button
+                  onClick={() => {
+                    soundEffects.playClick();
+                    router.push("/account");
+                  }}
+                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-emerald-300 hover:text-white hover:border-emerald-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Astral Traveler Account Dossier & Character Roster Hub"
+                >
+                  <User className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="font-mono text-xs">Account</span>
                 </button>
                 <button
                   onClick={() => {

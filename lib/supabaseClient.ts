@@ -13,6 +13,36 @@ export interface CloudAccountUser {
 
 const LOCAL_ACCOUNT_STORAGE_KEY = "astra_cloud_account_session";
 const CUSTOM_SUPABASE_CFG_KEY = "astra_custom_supabase_config";
+const TRAVELER_PROFILE_OVERRIDE_KEY = "astra_traveler_profile_override";
+
+export interface TravelerProfileOverride {
+  displayName?: string;
+  avatarUrl?: string;
+  titleBadge?: string;
+  preferredNarrationStyle?: string;
+}
+
+export function getTravelerProfileOverride(): TravelerProfileOverride {
+  if (typeof window === "undefined" || !window.localStorage) return {};
+  try {
+    const raw = localStorage.getItem(TRAVELER_PROFILE_OVERRIDE_KEY);
+    if (raw) {
+      return JSON.parse(raw) as TravelerProfileOverride;
+    }
+  } catch {}
+  return {};
+}
+
+export function saveTravelerProfileOverride(patch: Partial<TravelerProfileOverride>): TravelerProfileOverride {
+  const current = getTravelerProfileOverride();
+  const next: TravelerProfileOverride = { ...current, ...patch };
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      localStorage.setItem(TRAVELER_PROFILE_OVERRIDE_KEY, JSON.stringify(next));
+    } catch {}
+  }
+  return next;
+}
 
 let cachedSupabaseClient: SupabaseClient | null = null;
 let cachedConfigKey = "";
@@ -81,6 +111,7 @@ export function getSupabaseClient(): SupabaseClient | null {
  * Retrieves the currently signed-in cross-save user (from Supabase Auth or Local Realm Server session)
  */
 export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
+  const override = getTravelerProfileOverride();
   const supabase = getSupabaseClient();
   if (supabase) {
     try {
@@ -89,6 +120,7 @@ export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
         const u = data.user;
         const appProvider = (u.app_metadata?.provider || "email") as CloudAccountUser["provider"];
         const metaName =
+          override.displayName ||
           u.user_metadata?.full_name ||
           u.user_metadata?.name ||
           u.user_metadata?.user_name ||
@@ -99,7 +131,7 @@ export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
           email: u.email || `${u.id.slice(0, 8)}@astral.nexus`,
           displayName: metaName,
           provider: appProvider,
-          avatarUrl: u.user_metadata?.avatar_url,
+          avatarUrl: override.avatarUrl || u.user_metadata?.avatar_url,
           mode: "supabase",
         };
       }
@@ -114,7 +146,11 @@ export async function getActiveCloudUser(): Promise<CloudAccountUser | null> {
       if (raw) {
         const parsed = JSON.parse(raw) as CloudAccountUser;
         if (parsed && parsed.id && parsed.email) {
-          return parsed;
+          return {
+            ...parsed,
+            displayName: override.displayName || parsed.displayName,
+            avatarUrl: override.avatarUrl || parsed.avatarUrl,
+          };
         }
       }
     } catch {}
@@ -196,8 +232,8 @@ export async function authenticateWithEmail(params: {
           return { user };
         }
       }
-    } catch (err: any) {
-      return { user: null, error: err?.message || "Supabase authentication failed." };
+    } catch (err: unknown) {
+      return { user: null, error: err instanceof Error ? err.message : "Supabase authentication failed." };
     }
   }
 
@@ -301,9 +337,66 @@ export async function signInWithOAuthProvider(
       return { redirected: false, error: error.message };
     }
     return { redirected: true };
-  } catch (err: any) {
-    return { redirected: false, error: err?.message || `Failed to start ${provider} OAuth.` };
+  } catch (err: unknown) {
+    return { redirected: false, error: err instanceof Error ? err.message : `Failed to start ${provider} OAuth.` };
   }
+}
+
+/**
+ * Updates the Traveler Handle and/or Avatar URL across local overrides, Local Realm session, and Supabase Auth metadata.
+ */
+export async function updateCloudUserProfile(params: {
+  displayName?: string;
+  avatarUrl?: string;
+  titleBadge?: string;
+  preferredNarrationStyle?: string;
+}): Promise<{ user: CloudAccountUser | null; override: TravelerProfileOverride }> {
+  const cleanPatch: Partial<TravelerProfileOverride> = {};
+  if (params.displayName !== undefined) cleanPatch.displayName = params.displayName.trim();
+  if (params.avatarUrl !== undefined) cleanPatch.avatarUrl = params.avatarUrl;
+  if (params.titleBadge !== undefined) cleanPatch.titleBadge = params.titleBadge;
+  if (params.preferredNarrationStyle !== undefined) {
+    cleanPatch.preferredNarrationStyle = params.preferredNarrationStyle;
+  }
+
+  const override = saveTravelerProfileOverride(cleanPatch);
+
+  // Update local account session if present
+  if (typeof window !== "undefined" && window.localStorage) {
+    try {
+      const raw = localStorage.getItem(LOCAL_ACCOUNT_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as CloudAccountUser;
+        if (parsed && parsed.id) {
+          const updatedLocal: CloudAccountUser = {
+            ...parsed,
+            displayName: override.displayName || parsed.displayName,
+            avatarUrl: override.avatarUrl || parsed.avatarUrl,
+          };
+          localStorage.setItem(LOCAL_ACCOUNT_STORAGE_KEY, JSON.stringify(updatedLocal));
+        }
+      }
+    } catch {}
+  }
+
+  // Update Supabase user_metadata if connected
+  const supabase = getSupabaseClient();
+  if (supabase && (params.displayName !== undefined || params.avatarUrl !== undefined)) {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (sessionData?.session) {
+        await supabase.auth.updateUser({
+          data: {
+            ...(params.displayName !== undefined ? { full_name: params.displayName.trim() } : {}),
+            ...(params.avatarUrl !== undefined ? { avatar_url: params.avatarUrl } : {}),
+          },
+        });
+      }
+    } catch {}
+  }
+
+  const activeUser = await getActiveCloudUser();
+  return { user: activeUser, override };
 }
 
 /**

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import {
   Cloud,
   CloudUpload,
@@ -466,13 +467,24 @@ export function CloudSyncModal({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={handleCloseModal}
-            className="p-1.5 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/account"
+              onClick={handleCloseModal}
+              className="px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono font-bold flex items-center gap-1.5 transition-all"
+              title="Open Full Astral Traveler Account & Roster Hub"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Account Hub</span>
+            </Link>
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="p-1.5 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Navigation Tabs */}

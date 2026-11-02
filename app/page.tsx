@@ -13,6 +13,7 @@ import {
   Volume2,
   VolumeX,
   Compass,
+  User,
   Users,
   Terminal,
   Shield,
@@ -240,16 +241,26 @@ export default function StoryCataloguePage() {
               {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
             </button>
 
+            <Link
+              href="/account"
+              onClick={() => soundEffects.playClick()}
+              className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-emerald-500/50 text-xs font-mono text-emerald-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
+              title="Astral Traveler Account Dossier & Character Roster Hub"
+            >
+              <User className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{cloudUser ? cloudUser.displayName.split(" ")[0] : "Account"}</span>
+            </Link>
+
             <button
               onClick={() => {
                 soundEffects.playClick();
                 setShowCloudSyncModal(true);
               }}
               className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-sky-500/50 text-xs font-mono text-sky-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
-              title="Cross-Save Cloud Sync & Portable .astra Backup"
+              title="Quick Cross-Save Cloud Sync & Portable .astra Backup"
             >
               <Cloud className="w-3.5 h-3.5 text-sky-400" />
-              <span>{cloudUser ? cloudUser.displayName.split(" ")[0] : "Cross-Save"}</span>
+              <span className="hidden md:inline">Cloud Sync</span>
             </button>
 
             <button
