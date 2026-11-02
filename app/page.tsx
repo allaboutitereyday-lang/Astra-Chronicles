@@ -24,7 +24,8 @@ import {
   Lock,
   Eye,
   EyeOff,
-  X
+  X,
+  Cloud
 } from "lucide-react";
 import { StoryContext } from "@/types/story";
 import { getAllStories, deleteStory } from "@/lib/storyStorage";
@@ -34,6 +35,8 @@ import { loadAllGameSlots } from "@/lib/saveStorage";
 import { sanitizeImageUrl, DEFAULT_BG, DEFAULT_AVATAR } from "@/lib/imageUtils";
 import { getCodexStats } from "@/lib/codexStorage";
 import { validateKeyClientSide } from "@/lib/clientKeyValidation";
+import { CloudSyncModal } from "@/components/CloudSyncModal";
+import { getActiveCloudUser, CloudAccountUser } from "@/lib/supabaseClient";
 import { 
   LlmConfig, 
   DEFAULT_LLM_CONFIG, 
@@ -69,21 +72,24 @@ export default function StoryCataloguePage() {
   // LLM Provider Routing State
   const [llmConfig, setLlmConfig] = useState<LlmConfig>(DEFAULT_LLM_CONFIG);
   const [showLlmModal, setShowLlmModal] = useState<boolean>(false);
+  const [showCloudSyncModal, setShowCloudSyncModal] = useState<boolean>(false);
+  const [cloudUser, setCloudUser] = useState<CloudAccountUser | null>(null);
+
+  const refreshAllProgression = () => {
+    loadStories();
+    loadAllGameSlots().then((slots) => setRecentSaves(slots));
+    getCodexStats()
+      .then((stats) => setCodexStats(stats))
+      .catch((err) => console.warn("Failed to load codex stats:", err));
+    getActiveCloudUser()
+      .then((u) => setCloudUser(u))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     setIsAudioMuted(soundEffects.isMuted());
     setLlmConfig(getStoredLlmConfig());
-    loadStories();
-
-    // Load active save slots
-    loadAllGameSlots().then((slots) => {
-      setRecentSaves(slots);
-    });
-
-    // Load Multiverse Codex stats
-    getCodexStats().then((stats) => {
-      setCodexStats(stats);
-    }).catch((err) => console.warn("Failed to load codex stats:", err));
+    refreshAllProgression();
 
     try {
       const stored = localStorage.getItem("astra_access_key");
@@ -232,6 +238,18 @@ export default function StoryCataloguePage() {
               title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
             >
               {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
+            </button>
+
+            <button
+              onClick={() => {
+                soundEffects.playClick();
+                setShowCloudSyncModal(true);
+              }}
+              className="flex items-center gap-2 px-3.5 py-2 min-h-[44px] rounded-2xl bg-black/60 hover:bg-black/90 border border-white/10 hover:border-sky-500/50 text-xs font-mono text-sky-300 hover:text-white transition-all cursor-pointer shadow-lg active:scale-95"
+              title="Cross-Save Cloud Sync & Portable .astra Backup"
+            >
+              <Cloud className="w-3.5 h-3.5 text-sky-400" />
+              <span>{cloudUser ? cloudUser.displayName.split(" ")[0] : "Cross-Save"}</span>
             </button>
 
             <button
@@ -626,6 +644,18 @@ export default function StoryCataloguePage() {
         onChange={(newConfig: LlmConfig) => {
           setLlmConfig(newConfig);
           saveStoredLlmConfig(newConfig);
+        }}
+      />
+
+      {/* Cross-Save Cloud & Portable .astra Backup Modal */}
+      <CloudSyncModal
+        isOpen={showCloudSyncModal}
+        onClose={() => {
+          setShowCloudSyncModal(false);
+          getActiveCloudUser().then((u) => setCloudUser(u)).catch(() => {});
+        }}
+        onProgressionRestored={() => {
+          refreshAllProgression();
         }}
       />
     </div>

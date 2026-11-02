@@ -7,6 +7,7 @@ import { DeathRegressionRecord, PenaltyScenarioState } from "@/types/system";
 export interface SaveSlotPayload {
   slotId: number;
   savedAt: string;
+  savedAtISO?: string;
   player: any;
   playerAvatar: string | null;
   gameState: any;
@@ -201,6 +202,7 @@ export async function saveGameSlot(slotId: number, payload: SaveSlotPayload): Pr
 
   const cleanPayload = sanitizePayload({
     ...payload,
+    savedAtISO: payload.savedAtISO || new Date().toISOString(),
     playerAvatar: optimizedAvatar,
     slotId,
   });
@@ -369,3 +371,131 @@ export function appendPersistentDeathRegression(storyId: string, record: DeathRe
     return [record];
   }
 }
+
+/**
+ * Collects all persistent timeline echoes across all storyIds for cross-save bundling
+ */
+export function getAllPersistentTimelineEchoes(): Record<string, TimelineEcho[]> {
+  if (typeof window === "undefined" || !window.localStorage) return {};
+  const result: Record<string, TimelineEcho[]> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(ECHO_STORAGE_PREFIX)) {
+        const storyId = key.slice(ECHO_STORAGE_PREFIX.length);
+        const raw = localStorage.getItem(key);
+        if (raw && storyId) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) result[storyId] = parsed;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to enumerate persistent timeline echoes:", err);
+  }
+  return result;
+}
+
+/**
+ * Restores or merges persistent timeline echoes across stories
+ */
+export function restorePersistentTimelineEchoes(
+  echoMap: Record<string, TimelineEcho[]>,
+  mode: "merge" | "overwrite" = "merge"
+): void {
+  if (typeof window === "undefined" || !window.localStorage || !echoMap) return;
+  try {
+    if (mode === "overwrite") {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(ECHO_STORAGE_PREFIX)) keysToRemove.push(key);
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    }
+
+    for (const [storyId, incoming] of Object.entries(echoMap)) {
+      if (!Array.isArray(incoming)) continue;
+      if (mode === "overwrite") {
+        localStorage.setItem(`${ECHO_STORAGE_PREFIX}${storyId}`, JSON.stringify(incoming.slice(0, 50)));
+      } else {
+        const existing = loadPersistentTimelineEchoes(storyId);
+        const mergedMap = new Map<string, TimelineEcho>();
+        [...incoming, ...existing].forEach((echo) => {
+          if (echo && echo.id && !mergedMap.has(echo.id)) {
+            mergedMap.set(echo.id, echo);
+          }
+        });
+        const merged = Array.from(mergedMap.values()).slice(0, 50);
+        localStorage.setItem(`${ECHO_STORAGE_PREFIX}${storyId}`, JSON.stringify(merged));
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to restore persistent timeline echoes:", err);
+  }
+}
+
+/**
+ * Collects all persistent death regression histories across all storyIds
+ */
+export function getAllPersistentRegressionHistories(): Record<string, DeathRegressionRecord[]> {
+  if (typeof window === "undefined" || !window.localStorage) return {};
+  const result: Record<string, DeathRegressionRecord[]> = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(REGRESSION_STORAGE_PREFIX)) {
+        const storyId = key.slice(REGRESSION_STORAGE_PREFIX.length);
+        const raw = localStorage.getItem(key);
+        if (raw && storyId) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) result[storyId] = parsed;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to enumerate persistent regression histories:", err);
+  }
+  return result;
+}
+
+/**
+ * Restores or merges persistent death regression histories across stories
+ */
+export function restorePersistentRegressionHistories(
+  regressionMap: Record<string, DeathRegressionRecord[]>,
+  mode: "merge" | "overwrite" = "merge"
+): void {
+  if (typeof window === "undefined" || !window.localStorage || !regressionMap) return;
+  try {
+    if (mode === "overwrite") {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(REGRESSION_STORAGE_PREFIX)) keysToRemove.push(key);
+      }
+      keysToRemove.forEach((k) => localStorage.removeItem(k));
+    }
+
+    for (const [storyId, incoming] of Object.entries(regressionMap)) {
+      if (!Array.isArray(incoming)) continue;
+      if (mode === "overwrite") {
+        localStorage.setItem(`${REGRESSION_STORAGE_PREFIX}${storyId}`, JSON.stringify(incoming.slice(0, 20)));
+      } else {
+        const existing = loadPersistentRegressionHistory(storyId);
+        const mergedMap = new Map<string, DeathRegressionRecord>();
+        [...incoming, ...existing].forEach((rec) => {
+          if (rec) {
+            const key = rec.id || `${rec.deathNumber ?? 0}_${rec.causeOfDeath ?? ""}_${rec.timestamp ?? ""}`;
+            if (!mergedMap.has(key)) mergedMap.set(key, rec);
+          }
+        });
+        const merged = Array.from(mergedMap.values()).slice(0, 20);
+        localStorage.setItem(`${REGRESSION_STORAGE_PREFIX}${storyId}`, JSON.stringify(merged));
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to restore regression histories:", err);
+  }
+}
+

@@ -113,6 +113,8 @@ import { validateKeyClientSide } from "@/lib/clientKeyValidation";
 import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 import { GeneratedGearPiece } from "@/app/api/generate-starting-gear/route";
 import { getNarrationStyleBadge } from "@/lib/narrationStyles";
+import { CloudSyncModal } from "@/components/CloudSyncModal";
+import { triggerBackgroundCloudSync, downloadAstraBundleFile } from "@/lib/crossSaveEngine";
 import {
   LlmConfig,
   DEFAULT_LLM_CONFIG,
@@ -1595,6 +1597,7 @@ export default function VisualNovelGame() {
     title: string;
   } | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showCloudSyncModal, setShowCloudSyncModal] = useState(false);
   const [savedSlots, setSavedSlots] = useState<Record<number, SaveSlotData | null>>({ 0: null, 1: null, 2: null, 3: null });
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -3178,6 +3181,7 @@ export default function VisualNovelGame() {
     try {
       await saveGameSlot(slotId, payload);
       setSavedSlots((prev) => ({ ...prev, [slotId]: payload }));
+      triggerBackgroundCloudSync();
     } catch (err) {
       console.error("Save slot error:", err);
     }
@@ -3238,6 +3242,7 @@ export default function VisualNovelGame() {
 
       await saveGameSlot(0, payload);
       setSavedSlots((prev) => ({ ...prev, [0]: payload }));
+      triggerBackgroundCloudSync();
 
       setShowAutoSaveIndicator(true);
       setTimeout(() => setShowAutoSaveIndicator(false), 2400);
@@ -5364,7 +5369,8 @@ export default function VisualNovelGame() {
   const heroineForMeter = isProtagonistAlone ? null : (isSpeakingHeroine || (presentComps.length > 0 ? presentComps[0] : null));
 
   const renderSaveModal = () => (
-    showSaveModal && (
+    <>
+    {showSaveModal && (
       <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
         <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -5374,6 +5380,40 @@ export default function VisualNovelGame() {
             <button onClick={() => { setShowSaveModal(false); setConfirmDeleteSlot(null); }} className="text-zinc-400 hover:text-white cursor-pointer">
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          {/* Cross-Save Cloud Vault & Portable .astra Backup Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gradient-to-r from-sky-950/35 via-zinc-900/70 to-amber-950/25 border border-sky-500/30 px-3.5 py-2.5 rounded-2xl">
+            <div className="flex items-center gap-2.5">
+              <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
+              <div>
+                <span className="text-xs font-mono font-bold text-white block">Cross-Save Progression Vault</span>
+                <span className="text-[10px] text-zinc-400 font-sans">Cloud Account Sync & Portable .astra Backup</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 self-end sm:self-center">
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.playClick();
+                  downloadAstraBundleFile();
+                }}
+                className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer flex items-center gap-1"
+                title="Download .astra Master Save File"
+              >
+                <Download className="w-3 h-3" /> .astra
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowCloudSyncModal(true);
+                }}
+                className="px-3 py-1.5 rounded-xl text-[10px] font-mono font-bold bg-sky-500/20 hover:bg-sky-500/35 text-sky-200 border border-sky-400/40 shadow-[0_0_12px_rgba(56,189,248,0.25)] transition-all cursor-pointer flex items-center gap-1"
+              >
+                <Cloud className="w-3 h-3" /> Cloud Sync Hub
+              </button>
+            </div>
           </div>
 
           {/* Auto-Save Status & Preference Toggle */}
@@ -5578,7 +5618,15 @@ export default function VisualNovelGame() {
           </div>
         </div>
       </div>
-    )
+    )}
+    <CloudSyncModal
+      isOpen={showCloudSyncModal}
+      onClose={() => setShowCloudSyncModal(false)}
+      onProgressionRestored={() => {
+        loadAllGameSlots().then((slots) => setSavedSlots(slots as any));
+      }}
+    />
+    </>
   );
 
   const renderAuthModal = () => (
