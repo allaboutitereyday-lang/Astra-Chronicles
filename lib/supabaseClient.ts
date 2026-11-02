@@ -184,14 +184,10 @@ export function saveTravelerProfileOverride(patch: Partial<TravelerProfileOverri
 let cachedSupabaseClient: SupabaseClient | null = null;
 let cachedConfigKey = "";
 
+const DEFAULT_SUPABASE_URL = "https://nlnutmkvmvyixmicjwuw.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY = "sb_publishable_Q_vqrxJuXR9oGeQxeimRQA_8_5cosp9";
+
 export function getSupabaseCredentials(): { url: string; anonKey: string; isConfigured: boolean } {
-  const envUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
-  const envKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
-
-  if (envUrl && envKey && envUrl.startsWith("http")) {
-    return { url: envUrl, anonKey: envKey, isConfigured: true };
-  }
-
   if (typeof window !== "undefined" && window.localStorage) {
     try {
       const raw = localStorage.getItem(CUSTOM_SUPABASE_CFG_KEY);
@@ -206,6 +202,13 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
         }
       }
     } catch {}
+  }
+
+  const envUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || DEFAULT_SUPABASE_URL).trim();
+  const envKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY).trim();
+
+  if (envUrl && envKey && envUrl.startsWith("http")) {
+    return { url: envUrl, anonKey: envKey, isConfigured: true };
   }
 
   return { url: "", anonKey: "", isConfigured: false };

@@ -184,12 +184,14 @@ export function CloudSyncModal({
         cleanUrl.searchParams.delete("oauth_connected");
         window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
       } catch { }
-      setOauthWelcomeOpen(true);
-      setStatusBanner({
-        type: "error",
-        text: `Google / OAuth Sign-In Error: ${oauthErr}`,
-      });
-      return;
+      const errTimer = setTimeout(() => {
+        setOauthWelcomeOpen(true);
+        setStatusBanner({
+          type: "error",
+          text: `Google / OAuth Sign-In Error: ${oauthErr}`,
+        });
+      }, 0);
+      return () => clearTimeout(errTimer);
     }
 
     const url = new URL(window.location.href);
@@ -609,11 +611,11 @@ export function CloudSyncModal({
                     </div>
                   )}
 
-                  {/* OAuth Providers */}
+                  {/* Google OAuth Provider */}
                   <div className="bg-zinc-900/60 border border-white/10 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-mono uppercase tracking-wider text-zinc-300 font-bold flex items-center gap-1.5">
-                        <Globe className="w-3.5 h-3.5 text-sky-400" /> 1-Click OAuth Federation
+                        <Globe className="w-3.5 h-3.5 text-sky-400" /> 1-Click Google OAuth
                       </span>
                       <span
                         className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${supaConfigured
@@ -625,55 +627,31 @@ export function CloudSyncModal({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOAuthLogin("google")}
-                        className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-emerald-400/35 text-xs font-semibold text-white transition-all cursor-pointer active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
-                      >
-                        <svg className="w-4 h-4" viewBox="0 0 24 24">
-                          <path
-                            fill="#EA4335"
-                            d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
-                          />
-                          <path
-                            fill="#4285F4"
-                            d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"
-                          />
-                        </svg>
-                        Continue with Google
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleOAuthLogin("discord")}
-                        className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#5865F2]/20 hover:bg-[#5865F2]/30 border border-[#5865F2]/40 text-xs font-semibold text-indigo-200 transition-all cursor-pointer active:scale-95"
-                      >
-                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                          <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994.021-.041.001-.09-.041-.106a13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z" />
-                        </svg>
-                        Discord
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleOAuthLogin("github")}
-                        className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-700/80 border border-white/15 text-xs font-semibold text-zinc-100 transition-all cursor-pointer active:scale-95"
-                      >
-                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.2.5-2.3 1.3-3.1-.2-.4-.6-1.6 0-3.2 0 0 1-.3 3.4 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8 0 3.2.9.8 1.3 1.9 1.3 3.2 0 4.6-2.8 5.6-5.5 5.9.5.4.9 1.1.9 2.2v3.3c0 .3.1.7.8.6A12 12 0 0 0 12 .3" />
-                        </svg>
-                        GitHub
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleOAuthLogin("google")}
+                      className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-emerald-400/35 text-xs font-semibold text-white transition-all cursor-pointer active:scale-98 shadow-[0_0_15px_rgba(16,185,129,0.12)]"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24">
+                        <path
+                          fill="#EA4335"
+                          d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.8C6.2 7.2 8.9 5 12 5z"
+                        />
+                        <path
+                          fill="#4285F4"
+                          d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6l3.7 2.9c2.2-2 3.7-5 3.7-8.7z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.3 14.8c-.2-.8-.4-1.6-.4-2.5s.2-1.7.4-2.5L1.6 7C.6 9 0 11.2 0 13.5s.6 4.5 1.6 6.5l3.7-2.9z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 24c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5l-3.7 2.8C3.5 21.4 7.4 24 12 24z"
+                        />
+                      </svg>
+                      Continue with Google
+                    </button>
                   </div>
 
                   {/* Email & Password Form */}
@@ -1107,7 +1085,7 @@ export function CloudSyncModal({
                 {showSupabaseConfig && (
                   <div className="mt-2.5 bg-black/50 border border-white/10 rounded-2xl p-3.5 space-y-2.5 animate-in fade-in duration-150">
                     <p className="text-[11px] text-zinc-400 leading-relaxed">
-                      By default, Astra Chronicles uses your environment keys or the built-in Local Realm Server API. You can also connect your own Supabase project URL and Anon Key here for Google/Discord/GitHub OAuth and global Postgres sync:
+                      By default, Astra Chronicles uses your environment keys or the built-in Local Realm Server API. You can also connect your own Supabase project URL and Anon Key here for Google OAuth and global Postgres sync:
                     </p>
                     <div className="space-y-2">
                       <input
