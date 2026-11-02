@@ -38,6 +38,11 @@ import {
   getSupabaseClient,
   CloudAccountUser,
 } from "@/lib/supabaseClient";
+import {
+  SavedCharacterBlueprint,
+  loadCharacterRoster,
+  mergeRemoteCharacterRoster,
+} from "@/lib/characterRosterStorage";
 
 export interface ProgressionSummary {
   activeCharacterName?: string;
@@ -73,6 +78,7 @@ export interface AstraProgressionBundle {
   customStories: StoryContext[];
   codexLoot: CodexLootEntry[];
   codexScenes: CodexSceneEntry[];
+  characterRoster?: SavedCharacterBlueprint[];
 }
 
 export interface RestoreResult {
@@ -130,6 +136,7 @@ export function buildProgressionSummary(params: {
   customStories: StoryContext[];
   codexLoot: CodexLootEntry[];
   codexScenes: CodexSceneEntry[];
+  characterRoster?: SavedCharacterBlueprint[];
 }): ProgressionSummary {
   let highestLevel = 1;
   let activeCharacterName: string | undefined;
@@ -190,11 +197,12 @@ export function buildProgressionSummary(params: {
 export async function collectProgressionBundle(options?: {
   optimizeForCloud?: boolean;
 }): Promise<AstraProgressionBundle> {
-  const [saveSlots, allStories, codexLoot, codexScenes] = await Promise.all([
+  const [saveSlots, allStories, codexLoot, codexScenes, characterRoster] = await Promise.all([
     loadAllGameSlots(),
     getAllStories(),
     getAllCodexLoot(),
     getAllCodexScenes(),
+    loadCharacterRoster(),
   ]);
 
   const presetIds = new Set(PRESET_STORIES.map((p) => p.id.toLowerCase()));
@@ -246,6 +254,7 @@ export async function collectProgressionBundle(options?: {
     customStories,
     codexLoot: finalLoot,
     codexScenes: finalScenes,
+    characterRoster,
   };
 }
 
@@ -320,6 +329,11 @@ export async function applyProgressionBundle(
         restoredScenes++;
       }
     }
+  }
+
+  // 6. Restore Cross-World Character Roster Blueprints
+  if (Array.isArray(bundle.characterRoster) && bundle.characterRoster.length > 0) {
+    await mergeRemoteCharacterRoster(bundle.characterRoster);
   }
 
   return {

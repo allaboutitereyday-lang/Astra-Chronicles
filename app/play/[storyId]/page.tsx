@@ -87,8 +87,17 @@ import {
   loadPersistentTimelineEchoes,
   appendPersistentTimelineEcho,
   loadPersistentRegressionHistory,
-  appendPersistentDeathRegression
+  appendPersistentDeathRegression,
+  normalizeSaveSlotData
 } from "@/lib/saveStorage";
+import {
+  SavedCharacterBlueprint,
+  loadCharacterRoster,
+  saveCharacterToRoster,
+  deleteCharacterFromRoster,
+  createBlueprintFromPlayer,
+  normalizeCharacterBlueprint,
+} from "@/lib/characterRosterStorage";
 import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA } from "@/types/story";
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
@@ -1204,39 +1213,42 @@ export default function VisualNovelGame() {
     getStoryById(storyId).then((story) => {
       if (active && story) {
         setCurrentStory(story);
-        setSelectedPrologue(0);
-        setNarrationStyle(story.narrationStyle || "Grimdark & Atmospheric");
-        if (story.companions && story.companions.length > 0) {
-          const startingSpeaker = story.startingNodes?.[0]?.speaker || story.companions[0].name;
-          setParty(
-            story.companions.map((c, idx) => ({
-              name: c.name,
-              title: c.title,
-              affection: c.affection ?? c.baseAffection ?? 15,
-              expressionKey: c.expressionKey || "neutral",
-              isPresent: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
-              encountered: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
-              color: c.color || "rose",
-            }))
-          );
-          const firstLoc = story.startingNodes?.[0]?.location || story.worldContext.locations[0]?.name || "Starting Point";
-          const firstBg = (story.worldContext.locations.find((l) => l.name === firstLoc)?.bgImage) || story.coverImage || DEFAULT_BG;
-          setGameState((prev) => ({
-            ...prev,
-            speaker: startingSpeaker,
-            location: firstLoc,
-            bgImage: firstBg,
-            presentCompanions: [startingSpeaker],
-          }));
-        }
-        if (story.rpgRules?.baseStats) {
-          setPlayer((prev) => ({
-            ...prev,
-            stats: {
-              ...prev.stats,
-              ...story.rpgRules.baseStats,
-            },
-          }));
+        // Do not overwrite party, gameState, or player stats if a save slot is currently resuming or already active
+        if (!isResumingSaveRef.current && !isConfiguredRef.current) {
+          setSelectedPrologue(0);
+          setNarrationStyle(story.narrationStyle || "Grimdark & Atmospheric");
+          if (story.companions && story.companions.length > 0) {
+            const startingSpeaker = story.startingNodes?.[0]?.speaker || story.companions[0].name;
+            setParty(
+              story.companions.map((c, idx) => ({
+                name: c.name,
+                title: c.title,
+                affection: c.affection ?? c.baseAffection ?? 15,
+                expressionKey: c.expressionKey || "neutral",
+                isPresent: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
+                encountered: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
+                color: c.color || "rose",
+              }))
+            );
+            const firstLoc = story.startingNodes?.[0]?.location || story.worldContext.locations[0]?.name || "Starting Point";
+            const firstBg = (story.worldContext.locations.find((l) => l.name === firstLoc)?.bgImage) || story.coverImage || DEFAULT_BG;
+            setGameState((prev) => ({
+              ...prev,
+              speaker: startingSpeaker,
+              location: firstLoc,
+              bgImage: firstBg,
+              presentCompanions: [startingSpeaker],
+            }));
+          }
+          if (story.rpgRules?.baseStats) {
+            setPlayer((prev) => ({
+              ...prev,
+              stats: {
+                ...prev.stats,
+                ...story.rpgRules.baseStats,
+              },
+            }));
+          }
         }
         setStoryLoaded(true);
       }
@@ -1649,6 +1661,174 @@ export default function VisualNovelGame() {
 
   const [activeClash, setActiveClash] = useState<ActiveStoryClashState | null>(null);
   const [isExecutingClashAction, setIsExecutingClashAction] = useState<boolean>(false);
+
+  // Live Refs to prevent stale React closure bugs in performAutoSave & handleExecuteClashAction
+  const isConfiguredRef = useRef<boolean>(isConfigured);
+  useEffect(() => { isConfiguredRef.current = isConfigured; }, [isConfigured]);
+  const chatLogRef = useRef<ChatMessage[]>(chatLog);
+  useEffect(() => { chatLogRef.current = chatLog; }, [chatLog]);
+  const gameStateRef = useRef<RoleplayState>(gameState);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  const partyRef = useRef<Companion[]>(party);
+  useEffect(() => { partyRef.current = party; }, [party]);
+  const memoriesRef = useRef<string[]>(memories);
+  useEffect(() => { memoriesRef.current = memories; }, [memories]);
+  const systemStateRef = useRef<SystemState>(systemState);
+  useEffect(() => { systemStateRef.current = systemState; }, [systemState]);
+  const choicesRef = useRef<string[]>(choices);
+  useEffect(() => { choicesRef.current = choices; }, [choices]);
+  const activeClashRef = useRef<ActiveStoryClashState | null>(activeClash);
+  useEffect(() => { activeClashRef.current = activeClash; }, [activeClash]);
+  const visitedNodesRef = useRef<VisitedStoryNode[]>(visitedStoryNodes);
+  useEffect(() => { visitedNodesRef.current = visitedStoryNodes; }, [visitedStoryNodes]);
+
+  // Cross-World Individual Character Roster State & Handlers (Identity-only blueprints)
+  const [characterRoster, setCharacterRoster] = useState<SavedCharacterBlueprint[]>([]);
+  const [rosterNotice, setRosterNotice] = useState<string | null>(null);
+  const rosterFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    loadCharacterRoster()
+      .then((list) => setCharacterRoster(list))
+      .catch((err) => console.warn("Failed to load character roster:", err));
+  }, [showCloudSyncModal]);
+
+  const handleSaveCharacterToRoster = async () => {
+    soundEffects.playQuestComplete();
+    const bp = createBlueprintFromPlayer({
+      player: playerRef.current || player,
+      avatar: playerAvatar || "",
+      narrationStyle,
+      originWorldTitle: currentStory?.title || "Astra Chronicles",
+    });
+    const updatedList = await saveCharacterToRoster(bp);
+    setCharacterRoster(updatedList);
+    setRosterNotice(`Saved "${bp.name}" (${bp.race} ${bp.role}) to Character Roster!`);
+    setTimeout(() => setRosterNotice(null), 3500);
+  };
+
+  const handleLoadCharacterFromRoster = (bp: SavedCharacterBlueprint) => {
+    soundEffects.playIntroBell();
+    const loadedTraits = Array.isArray(bp.racialTraits) ? bp.racialTraits : [];
+    const loadedPersonaTraits = Array.isArray(bp.personalityTraits)
+      ? bp.personalityTraits
+      : ["Calculated", "Composed", "Observant", "Resolute"];
+
+    // Match race preset or mark as custom
+    const matchedRace = RACE_PRESETS.find(
+      (r) =>
+        r.name.toLowerCase() === (bp.race || "").toLowerCase() ||
+        ((r as any).shortLabel && (r as any).shortLabel.toLowerCase() === (bp.race || "").toLowerCase())
+    );
+    setSelectedRacePreset(matchedRace ? matchedRace.id : "custom");
+    setRacialTraitsInput(loadedTraits.join(", "));
+
+    // Match personality preset or mark as custom
+    const matchedPersona = PERSONALITY_PRESETS.find(
+      (p) =>
+        p.name.toLowerCase() === (bp.personality || "").toLowerCase() ||
+        p.shortLabel.toLowerCase() === (bp.personality || "").toLowerCase()
+    );
+    setSelectedPersonalityPreset(matchedPersona ? matchedPersona.id : "custom");
+    setPersonalityTraitsInput(loadedPersonaTraits.join(", "));
+
+    if (bp.narrationStyle) {
+      setNarrationStyle(bp.narrationStyle);
+    }
+    setPlayerAvatar(bp.avatar || null);
+
+    // Strictly apply identity fields ONLY — keep fresh Lv.1 stats & empty inventory/gear for the new run
+    setPlayer((prev) => {
+      const baseStats = currentStory?.rpgRules?.baseStats || {
+        hp: 100,
+        maxHp: 100,
+        mp: 60,
+        maxMp: 60,
+        exp: 0,
+        maxExp: 100,
+        str: 10,
+        dex: 10,
+        int: 10,
+      };
+      const next: PlayerProfile = {
+        ...prev,
+        name: bp.name || "Caelen",
+        role: bp.role || "",
+        race: bp.race || "Human",
+        racialTraits: loadedTraits,
+        personality: bp.personality || "Stoic Pragmatist",
+        personalityTraits: loadedPersonaTraits,
+        visualDescription: bp.visualDescription || prev.visualDescription,
+        visualDna: bp.visualDna || prev.visualDna,
+        narrationStyle: bp.narrationStyle || narrationStyle,
+        level: 1,
+        stats: {
+          hp: baseStats.hp ?? 100,
+          maxHp: baseStats.maxHp ?? 100,
+          mp: baseStats.mp ?? 60,
+          maxMp: baseStats.maxMp ?? 60,
+          exp: 0,
+          maxExp: 100,
+          str: baseStats.str ?? 10,
+          dex: baseStats.dex ?? 10,
+          int: baseStats.int ?? 10,
+        },
+        gear: { weapon: "Pending...", armor: "Pending...", relic: "None" },
+        inventory: [],
+      };
+      playerRef.current = next;
+      return next;
+    });
+    setStatPoints(10);
+    setRosterNotice(`Loaded "${bp.name}" into ${currentStory?.title || "this world"} (Fresh Lv.1 Start)!`);
+    setTimeout(() => setRosterNotice(null), 3500);
+  };
+
+  const handleDeleteCharacterFromRoster = async (id: string, name: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    soundEffects.playClick();
+    const updated = await deleteCharacterFromRoster(id);
+    setCharacterRoster(updated);
+    setRosterNotice(`Removed "${name}" from Character Roster.`);
+    setTimeout(() => setRosterNotice(null), 2500);
+  };
+
+  const handleExportCharacterBlueprint = (bp: SavedCharacterBlueprint, e: React.MouseEvent) => {
+    e.stopPropagation();
+    soundEffects.playClick();
+    const clean = normalizeCharacterBlueprint(bp);
+    if (!clean) return;
+    const blob = new Blob([JSON.stringify(clean, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${clean.name.toLowerCase().replace(/[^a-z0-9]+/g, "_")}.character.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCharacterBlueprint = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const parsed = JSON.parse(String(ev.target?.result || "{}"));
+        const clean = normalizeCharacterBlueprint(parsed);
+        if (!clean) {
+          alert("Invalid character blueprint JSON file.");
+          return;
+        }
+        const updated = await saveCharacterToRoster(clean);
+        setCharacterRoster(updated);
+        handleLoadCharacterFromRoster(clean);
+      } catch {
+        alert("Failed to parse character blueprint JSON file.");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   // Nano Banana 2.1 Scene Generation & Item Inspection State
   const [showSceneModal, setShowSceneModal] = useState(false);
@@ -3163,11 +3343,12 @@ export default function VisualNovelGame() {
       const remainingDelay = Math.max(0, 2200 - elapsed);
 
       setTimeout(() => {
+        isConfiguredRef.current = true;
         setIsConfigured(true);
         setIsTransitioning(null);
         performAutoSave({
-          player: finalStartingPlayer,
-          choices: chosen.choices,
+          player: playerRef.current || finalStartingPlayer,
+          choices: choicesRef.current.length === 4 ? choicesRef.current : chosen.choices,
           selectedPrologueId: chosen.id,
         });
       }, remainingDelay);
@@ -3244,18 +3425,25 @@ export default function VisualNovelGame() {
   }) => {
     if (!autoSaveEnabled) return;
 
+    const finalChatLog = override?.chatLog || chatLogRef.current || chatLog;
+    // Never overwrite Auto-Save Slot 0 while still on the Character Creation screen with an empty chatLog
+    if (!isConfiguredRef.current && (!finalChatLog || finalChatLog.length === 0)) {
+      return;
+    }
+
     setIsAutoSaving(true);
     try {
       const currentAvatar = override?.playerAvatar !== undefined ? override.playerAvatar : playerAvatar;
       const finalPlayer = override?.player || playerRef.current || player;
-      const finalGameState = override?.gameState || gameState;
-      const finalParty = override?.party || party;
-      const finalMemories = override?.memories || memories;
-      const finalChatLog = override?.chatLog || chatLog;
-      const finalSystemState = override?.systemState || systemState;
-      const finalChoices = override?.choices || choices;
-      const finalVisitedNodes = override?.visitedNodes || visitedStoryNodes;
+      const finalGameState = override?.gameState || gameStateRef.current || gameState;
+      const finalParty = override?.party || partyRef.current || party;
+      const finalMemories = override?.memories || memoriesRef.current || memories;
+      const finalSystemState = override?.systemState || systemStateRef.current || systemState;
+      const finalChoices = override?.choices || choicesRef.current || choices;
+      const finalVisitedNodes = override?.visitedNodes || visitedNodesRef.current || visitedStoryNodes;
       const finalPrologueId = override?.selectedPrologueId || prologues[selectedPrologue]?.id;
+      const finalActiveClash =
+        override?.activeClash !== undefined ? override.activeClash : (activeClashRef.current ?? activeClash ?? null);
 
       const payload: SaveSlotData = {
         slotId: 0,
@@ -3275,9 +3463,9 @@ export default function VisualNovelGame() {
         narrationStyle: narrationStyle || finalPlayer?.narrationStyle || "Grimdark & Atmospheric",
         unlockedCompanions: (finalParty || []).filter((c: any) => c.encountered || c.isPresent).map((c: any) => c.id || c.name),
         timelineScars: override?.timelineScars !== undefined ? override.timelineScars : timelineScars,
-        covenantState: (override?.systemState || finalSystemState)?.covenantState,
+        covenantState: finalSystemState?.covenantState,
         frictionState: override?.frictionState !== undefined ? (override.frictionState || undefined) : (frictionState || undefined),
-        activeClash: override?.activeClash !== undefined ? override.activeClash : (activeClash || null),
+        activeClash: finalActiveClash,
       };
 
       await saveGameSlot(0, payload);
@@ -3376,18 +3564,37 @@ export default function VisualNovelGame() {
   };
 
   const handleLoadSlot = async (slotId: number, explicitData?: SaveSlotData) => {
-    const data = explicitData || savedSlots[slotId] || (await loadGameSlot(slotId));
+    const rawData = explicitData || savedSlots[slotId] || (await loadGameSlot(slotId));
+    const data = normalizeSaveSlotData(rawData) as SaveSlotData | null;
     if (!data) return;
 
     soundEffects.playIntroBell();
     isResumingSaveRef.current = true;
+    isConfiguredRef.current = true;
+
+    // If the save slot belongs to a different story, load that story context so lore & companions match
+    let activeStoryForSave = currentStory;
+    if (data.storyId && data.storyId !== currentStory.id) {
+      try {
+        const matchedStory = await getStoryById(data.storyId);
+        if (matchedStory) {
+          activeStoryForSave = matchedStory;
+          setCurrentStory(matchedStory);
+          if (typeof window !== "undefined") {
+            window.history.replaceState({}, document.title, `/play/${encodeURIComponent(matchedStory.id)}`);
+          }
+        }
+      } catch (storyErr) {
+        console.warn("Could not switch story context for loaded slot:", storyErr);
+      }
+    }
 
     // Auto-hydrate items from Multiverse Codex in case the save lacked image URLs
     let loadedPlayer = data.player;
     if (loadedPlayer && Array.isArray(loadedPlayer.inventory) && loadedPlayer.inventory.length > 0) {
       try {
         const { hydrated, updatedCount } = await hydrateInventoryItems(
-          data.storyId || currentStory.id,
+          data.storyId || activeStoryForSave.id,
           loadedPlayer.inventory
         );
         if (updatedCount > 0) {
@@ -3398,7 +3605,7 @@ export default function VisualNovelGame() {
       }
     }
 
-    const loadedParty = data.party
+    const loadedParty = data.party && data.party.length > 0
       ? (data.party as any[]).map((c: any) => ({
           ...c,
           encountered: typeof c.encountered === "boolean" ? c.encountered : (c.isPresent || c.affection !== 50),
@@ -3436,15 +3643,21 @@ export default function VisualNovelGame() {
     }
     setPlayerAvatar(data.playerAvatar);
     if (data.narrationStyle || loadedPlayer?.narrationStyle) {
-      setNarrationStyle(data.narrationStyle || loadedPlayer?.narrationStyle);
+      setNarrationStyle((data.narrationStyle || loadedPlayer?.narrationStyle) as string);
     }
+    gameStateRef.current = sanitizedGameState;
     setGameState(sanitizedGameState);
     setDisplayedText(sanitizedGameState.dialogue || "");
+    partyRef.current = loadedParty;
     setParty(loadedParty);
-    setMemories(data.memories);
-    setChatLog(data.chatLog);
+    memoriesRef.current = data.memories || [];
+    setMemories(data.memories || []);
+    chatLogRef.current = data.chatLog || [];
+    setChatLog(data.chatLog || []);
     if (data.systemState) {
-      setSystemState(normalizeSystemState(data.systemState));
+      const normSys = normalizeSystemState(data.systemState);
+      systemStateRef.current = normSys;
+      setSystemState(normSys);
     }
 
     if (data.timelineScars && Array.isArray(data.timelineScars)) {
@@ -3458,8 +3671,10 @@ export default function VisualNovelGame() {
       setFrictionState(null);
     }
     if (data.activeClash) {
+      activeClashRef.current = data.activeClash;
       setActiveClash(data.activeClash);
     } else {
+      activeClashRef.current = null;
       setActiveClash(null);
     }
 
@@ -3710,7 +3925,12 @@ export default function VisualNovelGame() {
     isCustom: boolean = false, 
     giftContext: any = null,
     covenantContext: { intent: string; targetPlausibility?: number } | null = null,
-    isOOC: boolean = false
+    isOOC: boolean = false,
+    turnOverrides?: {
+      playerSnapshot?: PlayerProfile;
+      clashSnapshot?: ActiveStoryClashState | null;
+      isClashResolutionTurn?: boolean;
+    }
   ) => {
     if (!rawAction.trim() || isLoading) return;
 
@@ -3722,9 +3942,14 @@ export default function VisualNovelGame() {
 
     const formattedPayload = isOOC ? `[OOC: ${rawAction.trim()}]` : rawAction.trim();
     const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const isClashTurn = Boolean(turnOverrides?.isClashResolutionTurn);
+    const currentClashSnapshot =
+      turnOverrides?.clashSnapshot !== undefined
+        ? turnOverrides.clashSnapshot
+        : (activeClashRef.current ?? activeClash);
 
     // Track emergent behavioral tendencies based on player action choices
-    const activePlayerSnapshot = playerRef.current || player;
+    const activePlayerSnapshot = turnOverrides?.playerSnapshot || playerRef.current || player;
     const vectorKey = analyzeChoiceVector(formattedPayload);
     const updatedTendencies = {
       ...(activePlayerSnapshot.behavioralTendencies || {}),
@@ -3746,21 +3971,24 @@ export default function VisualNovelGame() {
     setChoices([]);
 
     const playerMsgId = `player_msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    
-    // For preset choice clicks, do NOT write the raw choice string into the player's text box.
-    // Instead, show a pending state and prompt the LLM to generate the protagonist's response.
-    // For custom typed actions, render verbatim immediately.
+    const initialUserText = isCustom
+      ? formattedPayload
+      : formattedPayload.replace(/^\[[^\]]+\](?::)?\s*/, "").trim() || formattedPayload;
+
     const playerMsg: ChatMessage = {
       id: playerMsgId,
       sender: "user",
-      speakerName: player.name,
-      text: isCustom ? formattedPayload : "",
+      speakerName: playerWithTendencies.name,
+      text: initialUserText,
       timestamp: timeString,
       avatarSrc: playerAvatar || undefined,
       isPending: !isCustom,
     };
 
-    setChatLog((prev) => [...prev, playerMsg]);
+    const chatBeforeTurn = chatLogRef.current || chatLog;
+    const optimisticChat = [...chatBeforeTurn, playerMsg];
+    chatLogRef.current = optimisticChat;
+    setChatLog(optimisticChat);
 
     if (isCustom) {
       clearUserTypewriter();
@@ -3802,33 +4030,33 @@ export default function VisualNovelGame() {
         body: JSON.stringify({
           action: formattedPayload,
           isCustom,
-          gameState,
-          partyMembers: party,
+          gameState: gameStateRef.current || gameState,
+          partyMembers: partyRef.current || party,
           playerProfile: playerWithTendencies,
           playerAvatarBase64: playerAvatar,
-          narrationStyle: narrationStyle || player?.narrationStyle || currentStory?.narrationStyle || "Grimdark & Atmospheric",
-          plotMemories: memories,
+          narrationStyle: narrationStyle || playerWithTendencies?.narrationStyle || currentStory?.narrationStyle || "Grimdark & Atmospheric",
+          plotMemories: memoriesRef.current || memories,
           userAccessKey: accessKey,
-          systemState,
+          systemState: systemStateRef.current || systemState,
           storyContext: currentStory,
           timelineEchoes,
-          activeStance: player.activeStance || "neutral",
+          activeStance: playerWithTendencies.activeStance || "neutral",
           giftItemContext: giftContext,
           targetEnvironment: llmConfig.targetEnvironment,
           modelId: llmConfig.modelId,
           temperature: llmConfig.temperature,
           max_tokens: llmConfig.max_tokens,
           repetition_penalty: llmConfig.repetition_penalty,
-          recentHistory: chatLog.slice(-14).map((m) => ({
+          recentHistory: chatBeforeTurn.slice(-14).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
           })),
           // Systems Evolution Fields (Pillars A, B, C)
           covenantAction: covenantContext || (formattedPayload.toLowerCase().includes("covenant: reality severance") ? { intent: formattedPayload } : null),
-          activeClash: activeClash || null,
+          activeClash: currentClashSnapshot || null,
           frictionState: frictionState || null,
           timelineScars: timelineScars || [],
-          currentTurnNumber: chatLog.length + 1,
+          currentTurnNumber: chatBeforeTurn.length + 1,
         }),
       });
 
@@ -3871,7 +4099,10 @@ export default function VisualNovelGame() {
         rawSpeaker = isSceneAlone ? "Narrator" : (presentList[0] || currentPresentComps[0]?.name || "Narrator");
       }
       const speakerName = rawSpeaker;
-      const narrative = data.narrative_text || gameState.dialogue;
+      const narrative =
+        (typeof data.narrative_text === "string" && data.narrative_text.trim()) ||
+        (typeof data.narrative === "string" && data.narrative.trim()) ||
+        `Across ${data.state_updates?.current_location || gameState.location}, the momentum of ${playerWithTendencies.name}'s maneuver reshapes the immediate encounter.`;
       
       let playerText = "";
       if (isCustom) {
@@ -3879,8 +4110,7 @@ export default function VisualNovelGame() {
       } else if (data.player_execution && data.player_execution.trim()) {
         playerText = data.player_execution.trim().replace(/^\[[^\]]+\](?::)?\s*/, "");
       } else {
-        const cleanVector = formattedPayload.replace(/^\[[^\]]+\](?::)?\s*/, "");
-        playerText = `${player.name} steps forward to take action. "${cleanVector}"`;
+        playerText = initialUserText;
       }
       
       const nextExpression = data.state_updates?.expression_key || "neutral";
@@ -4008,10 +4238,13 @@ export default function VisualNovelGame() {
         avatarSrc: isAmbientSpeaker ? undefined : getSpriteSrc(speakerName, nextExpression),
       };
 
-      setChatLog((prev) => {
-        const updatedChat = prev.map((m) => (m.id === playerMsgId ? { ...m, isPending: false, text: playerText } : m));
-        return [...updatedChat, companionMsg];
-      });
+      const updatedChatLog = [
+        ...chatBeforeTurn.filter((m) => m.id !== playerMsgId),
+        { ...playerMsg, isPending: false, text: playerText },
+        companionMsg,
+      ];
+      chatLogRef.current = updatedChatLog;
+      setChatLog(updatedChatLog);
 
       if (!isCustom) {
         // Run typewriter on the LLM-generated protagonist execution
@@ -4325,8 +4558,9 @@ export default function VisualNovelGame() {
           maxAff
         );
         let finalTurnInventory = unsealTurnRes.updatedInventory;
-        const hpDeltaToApply = Number(prog.hp_change || 0);
-        const mpDeltaToApply = Number(prog.mp_change || 0);
+        // When handleExecuteClashAction already resolved combat vitals for this turn, skip duplicate server HP/MP deltas
+        const hpDeltaToApply = isClashTurn ? 0 : Number(prog.hp_change || 0);
+        const mpDeltaToApply = isClashTurn ? 0 : Number(prog.mp_change || 0);
         const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + hpDeltaToApply));
         const resolvedMp = Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + mpDeltaToApply));
 
@@ -4384,12 +4618,15 @@ export default function VisualNovelGame() {
       }
 
       // Check if the LLM escalated a hostile story moment into a Random Encounter / Story Clash
+      // (Skip if this turn was already a clash action/victory/retreat resolution)
       if (
+        !isClashTurn &&
         data.state_updates?.story_clash &&
         data.state_updates.story_clash.isActive &&
-        (!activeClash || !activeClash.isActive)
+        (!currentClashSnapshot || !currentClashSnapshot.isActive)
       ) {
         const incomingClash: ActiveStoryClashState = data.state_updates.story_clash;
+        activeClashRef.current = incomingClash;
         setActiveClash(incomingClash);
         soundEffects.playSystemAlert();
         pushNotification({
@@ -4916,27 +5153,45 @@ export default function VisualNovelGame() {
       }
 
       // Auto-Save after every successful turn
+      const nextGameStateSnapshot = {
+        speaker: speakerName,
+        dialogue: narrative,
+        location: nextLocation,
+        bgImage: nextBg,
+        mood: data.state_updates?.mood ?? gameState.mood,
+        presentCompanions: presentList,
+      };
+      gameStateRef.current = nextGameStateSnapshot;
+      partyRef.current = nextPartyState;
+      memoriesRef.current = nextMemories;
+      choicesRef.current = resolvedChoices;
+
       performAutoSave({
         player: playerRef.current,
         party: nextPartyState,
         memories: nextMemories,
-        chatLog: [...chatLog, playerMsg, companionMsg],
-        gameState: {
-          speaker: speakerName,
-          dialogue: narrative,
-          location: nextLocation,
-          bgImage: nextBg,
-          mood: data.state_updates?.mood ?? gameState.mood,
-          presentCompanions: presentList,
-        },
+        chatLog: updatedChatLog,
+        gameState: nextGameStateSnapshot,
         choices: resolvedChoices,
+        activeClash: activeClashRef.current,
+        systemState: systemStateRef.current,
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
       clearUserTypewriter();
       setTypingUserMsgId(null);
-      // Clean up uncommitted player message on error so user can re-try
-      setChatLog((prev) => prev.filter((m) => m.id !== playerMsgId));
+      // Preserve the user's prompt in chatLog (un-pending it) so it never vanishes and can be retried via Regenerate
+      setChatLog((prev) =>
+        prev.map((m) =>
+          m.id === playerMsgId ? { ...m, isPending: false, text: initialUserText } : m
+        )
+      );
+      pushNotification({
+        id: `turn_err_${Date.now()}`,
+        type: "system_alert",
+        title: "TURN RESPONSE INTERRUPTED",
+        subtitle: "Your prompt was preserved in the log. Click Regenerate (↻) on the message to retry.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -5140,6 +5395,7 @@ export default function VisualNovelGame() {
     };
     playerRef.current = updatedPlayerState;
     setPlayer(updatedPlayerState);
+    activeClashRef.current = result.updatedClashState.isActive ? result.updatedClashState : null;
     setActiveClash(result.updatedClashState);
 
     if (result.isVictory) {
@@ -5170,7 +5426,11 @@ export default function VisualNovelGame() {
     }
 
     setIsExecutingClashAction(false);
-    await sendAction(result.narrativePromptAction, false);
+    await sendAction(result.narrativePromptAction, false, null, null, false, {
+      playerSnapshot: updatedPlayerState,
+      clashSnapshot: result.updatedClashState,
+      isClashResolutionTurn: true,
+    });
   };
 
   const handleInitiateSectorClash = (enemyName: string = "Sector Anomaly Golem", enemyHp: number = 75) => {
@@ -6510,6 +6770,127 @@ export default function VisualNovelGame() {
                 Origin Protocol
               </span>
             </div>
+          </div>
+
+          {/* CROSS-WORLD CHARACTER ROSTER (IDENTITY-ONLY BLUEPRINTS) */}
+          <div className="bg-gradient-to-r from-indigo-950/50 via-zinc-950/90 to-purple-950/50 border border-indigo-500/30 rounded-2xl p-3.5 sm:p-4 space-y-3">
+            <input
+              ref={rosterFileInputRef}
+              type="file"
+              accept=".json,application/json"
+              onChange={handleImportCharacterBlueprint}
+              className="hidden"
+            />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                    Cross-World Character Roster
+                  </span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-200 font-bold">
+                    {characterRoster.length} Saved
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
+                  Save your character&apos;s identity (Name, Portrait, Race, Class, Personality &amp; Traits) to reuse across any world or starting introduction. Level and items are never carried over.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => rosterFileInputRef.current?.click()}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-indigo-400/50 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1.5 transition-all cursor-pointer"
+                  title="Import a .character.json blueprint file"
+                >
+                  <Upload className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>Import</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveCharacterToRoster}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                  title="Save current character identity (Name, Portrait, Race, Class, Personality) to Roster"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Character</span>
+                </button>
+              </div>
+            </div>
+
+            {rosterNotice && (
+              <div className="px-3 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>{rosterNotice}</span>
+              </div>
+            )}
+
+            {characterRoster.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1 pt-0.5">
+                {characterRoster.map((bp) => {
+                  const isActiveMatch =
+                    player.name.trim().toLowerCase() === bp.name.trim().toLowerCase() &&
+                    (player.race || "Human").trim().toLowerCase() === (bp.race || "Human").trim().toLowerCase();
+                  return (
+                    <div
+                      key={bp.id}
+                      onClick={() => handleLoadCharacterFromRoster(bp)}
+                      className={`group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                        isActiveMatch
+                          ? "bg-indigo-950/60 border-indigo-400/80 text-white shadow-md"
+                          : "bg-zinc-900/85 hover:bg-zinc-900 border-white/10 hover:border-indigo-500/50 text-zinc-300"
+                      }`}
+                      title={`Click to load ${bp.name} (${bp.race} ${bp.role}) into ${currentStory.title}`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-10 h-10 rounded-xl overflow-hidden bg-zinc-950 border border-white/15 flex items-center justify-center shrink-0">
+                          {bp.avatar && bp.avatar.trim() ? (
+                            <img src={bp.avatar} alt={bp.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <User className="w-5 h-5 text-indigo-400" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-mono font-bold text-white truncate">
+                              {bp.name}
+                            </span>
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 shrink-0">
+                              {bp.race || "Human"}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-mono text-indigo-300 truncate">
+                            {bp.role || "Adventurer"} • {bp.personality || "Stoic Pragmatist"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => handleExportCharacterBlueprint(bp, e)}
+                          className="p-1.5 rounded-lg bg-black/50 hover:bg-indigo-950 text-zinc-400 hover:text-indigo-300 border border-white/10 transition-colors cursor-pointer"
+                          title="Export Character JSON"
+                        >
+                          <Download className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteCharacterFromRoster(bp.id, bp.name, e)}
+                          className="p-1.5 rounded-lg bg-black/50 hover:bg-rose-950 text-zinc-400 hover:text-rose-300 border border-white/10 transition-colors cursor-pointer"
+                          title="Remove from Roster"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-[11px] font-mono text-zinc-500 bg-black/40 border border-dashed border-white/10 rounded-xl px-3 py-2 text-center">
+                No saved characters yet. Customize your protagonist below and click &ldquo;Save Character&rdquo; to use them across any world or prologue!
+              </div>
+            )}
           </div>
 
           <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 flex items-center gap-4">
@@ -8352,6 +8733,23 @@ export default function VisualNovelGame() {
                     >
                       <Edit3 className="w-3 h-3 text-rose-400" />
                       <span>Edit Portrait</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSaveCharacterToRoster();
+                        pushNotification({
+                          id: `roster_save_${Date.now()}`,
+                          type: "system_alert",
+                          title: "CHARACTER SAVED TO ROSTER",
+                          subtitle: `${player.name}'s identity (${player.race || "Human"} ${player.role}) is now available across all worlds & prologues!`,
+                        });
+                      }}
+                      className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-indigo-500/20 hover:bg-indigo-500/35 border border-indigo-500/40 text-indigo-200 hover:text-white flex items-center gap-1 cursor-pointer transition-all"
+                      title="Save this character's identity (without level/items) to use in other worlds or introductions"
+                    >
+                      <Save className="w-3 h-3 text-indigo-400" />
+                      <span>Save to Roster</span>
                     </button>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold">
                       Persona: {player.personality || "Stoic Pragmatist"}

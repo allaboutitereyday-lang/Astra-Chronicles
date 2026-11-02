@@ -44,6 +44,167 @@ const DB_NAME = "AstraChroniclesSaveDB";
 const STORE_NAME = "chronicle_saves";
 const DB_VERSION = 1;
 
+export function notifySaveStorageMutated(slotId: number = 0): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.dispatchEvent(
+      new CustomEvent("astra-save-mutated", { detail: { slotId, timestamp: Date.now() } })
+    );
+  } catch {}
+}
+
+/**
+ * Defensively normalizes any loaded SaveSlotPayload across git deployments / schema updates
+ * so older or partially-written saves never crash or render broken state on load.
+ */
+export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
+  if (!raw || typeof raw !== "object" || !raw.player || typeof raw.player !== "object") {
+    return null;
+  }
+
+  const p = raw.player;
+  const rawStats = p.stats && typeof p.stats === "object" ? p.stats : {};
+  const maxHp = typeof rawStats.maxHp === "number" && rawStats.maxHp > 0 ? rawStats.maxHp : 100;
+  const maxMp = typeof rawStats.maxMp === "number" && rawStats.maxMp > 0 ? rawStats.maxMp : 60;
+  const maxExp = typeof rawStats.maxExp === "number" && rawStats.maxExp > 0 ? rawStats.maxExp : 100;
+
+  const normalizedPlayer = {
+    ...p,
+    name: typeof p.name === "string" && p.name.trim() ? p.name.trim() : "Kaelen",
+    role: typeof p.role === "string" && p.role.trim() ? p.role.trim() : "Voidstrider",
+    race: typeof p.race === "string" && p.race.trim() ? p.race.trim() : "Human",
+    racialTraits: Array.isArray(p.racialTraits) ? p.racialTraits : [],
+    personality:
+      typeof p.personality === "string" && p.personality.trim()
+        ? p.personality.trim()
+        : "Stoic Pragmatist",
+    personalityTraits: Array.isArray(p.personalityTraits)
+      ? p.personalityTraits
+      : ["Calculated", "Composed", "Observant", "Resolute"],
+    level: typeof p.level === "number" && p.level >= 1 ? p.level : 1,
+    stats: {
+      hp: typeof rawStats.hp === "number" ? Math.max(1, Math.min(maxHp, rawStats.hp)) : maxHp,
+      maxHp,
+      mp: typeof rawStats.mp === "number" ? Math.max(0, Math.min(maxMp, rawStats.mp)) : maxMp,
+      maxMp,
+      exp: typeof rawStats.exp === "number" && rawStats.exp >= 0 ? rawStats.exp : 0,
+      maxExp,
+      str: typeof rawStats.str === "number" ? rawStats.str : 10,
+      dex: typeof rawStats.dex === "number" ? rawStats.dex : 10,
+      int: typeof rawStats.int === "number" ? rawStats.int : 10,
+    },
+    gear: {
+      weapon: p.gear?.weapon || "Unarmed",
+      armor: p.gear?.armor || "Traveler's Garb",
+      relic: p.gear?.relic || "None",
+    },
+    gearImages: p.gearImages && typeof p.gearImages === "object" ? p.gearImages : {},
+    abilities: Array.isArray(p.abilities) ? p.abilities : [],
+    abilityDetails: p.abilityDetails && typeof p.abilityDetails === "object" ? p.abilityDetails : {},
+    inventory: Array.isArray(p.inventory) ? p.inventory : [],
+    unlockedStances:
+      Array.isArray(p.unlockedStances) && p.unlockedStances.length > 0
+        ? p.unlockedStances
+        : ["neutral", "flame", "frost", "shadow", "graviton", "phase"],
+    activeStance: p.activeStance || raw.activeStance || "neutral",
+  };
+
+  const gs = raw.gameState && typeof raw.gameState === "object" ? raw.gameState : {};
+  const rawChatLog = Array.isArray(raw.chatLog) ? raw.chatLog : [];
+  // Filter out any corrupted or empty pending messages and ensure every message has an ID & text
+  const normalizedChatLog = rawChatLog
+    .filter((m: any) => m && typeof m === "object" && (typeof m.text === "string" && m.text.trim().length > 0))
+    .map((m: any, idx: number) => ({
+      ...m,
+      id: m.id || `msg_restored_${idx}_${Date.now()}`,
+      sender: m.sender === "user" ? "user" : "character",
+      text: String(m.text || "").trim(),
+      isPending: false,
+    }));
+
+  const lastCharacterMsg = [...normalizedChatLog].reverse().find((m: any) => m.sender === "character");
+  const normalizedGameState = {
+    location: gs.location || "Astral Convergence",
+    speaker: gs.speaker || lastCharacterMsg?.speakerName || "Narrator",
+    dialogue:
+      (typeof gs.dialogue === "string" && gs.dialogue.trim()) ||
+      lastCharacterMsg?.text ||
+      "The chronicle resumes...",
+    bgImage:
+      typeof gs.bgImage === "string" && gs.bgImage.startsWith("data:image") && gs.bgImage.length > 350000
+        ? "/images/backgrounds/imperial_capital.png"
+        : gs.bgImage || "/images/backgrounds/imperial_capital.png",
+    mood: gs.mood || "Tense",
+    npcKnowledgeMap: gs.npcKnowledgeMap && typeof gs.npcKnowledgeMap === "object" ? gs.npcKnowledgeMap : {},
+  };
+
+  const sys = raw.systemState && typeof raw.systemState === "object" ? raw.systemState : {};
+  const normalizedSystemState = {
+    plausibility: typeof sys.plausibility === "number" ? sys.plausibility : 100,
+    plausibilityTier: sys.plausibilityTier || "Stable",
+    activeQuests: Array.isArray(sys.activeQuests) ? sys.activeQuests : [],
+    completedQuests: Array.isArray(sys.completedQuests) ? sys.completedQuests : [],
+    systemDirectives: Array.isArray(sys.systemDirectives)
+      ? sys.systemDirectives
+      : ["[SYSTEM INITIALIZED: Causal Plausibility Nominal (100%)]"],
+    penaltyScenario: sys.penaltyScenario || raw.penaltyScenarioState || null,
+    covenantState: sys.covenantState || raw.covenantState || {
+      covenantsInvoked: 0,
+      maxPlausibilityCap: 100,
+      timelineScars: Array.isArray(raw.timelineScars) ? raw.timelineScars : [],
+      activeAnomalies: [],
+    },
+    regressionCount:
+      typeof sys.regressionCount === "number" ? sys.regressionCount : raw.regressionCount || 0,
+  };
+
+  // Validate activeClash so finished or corrupted clashes don't get stuck on screen
+  let normalizedClash: ActiveStoryClashState | null = null;
+  if (
+    raw.activeClash &&
+    typeof raw.activeClash === "object" &&
+    raw.activeClash.isActive === true &&
+    raw.activeClash.status === "ongoing" &&
+    typeof raw.activeClash.enemyHp === "number" &&
+    raw.activeClash.enemyHp > 0
+  ) {
+    normalizedClash = {
+      ...raw.activeClash,
+      enemyMaxHp: raw.activeClash.enemyMaxHp || Math.max(30, raw.activeClash.enemyHp),
+      clashTurn: raw.activeClash.clashTurn || 1,
+      maxClashTurns: raw.activeClash.maxClashTurns || 6,
+      log: Array.isArray(raw.activeClash.log) ? raw.activeClash.log : [],
+    };
+  }
+
+  return {
+    ...raw,
+    slotId: typeof raw.slotId === "number" ? raw.slotId : 0,
+    savedAt: raw.savedAt || "Saved Session",
+    savedAtISO: raw.savedAtISO || new Date(0).toISOString(),
+    player: normalizedPlayer,
+    playerAvatar: typeof raw.playerAvatar === "string" ? raw.playerAvatar : null,
+    gameState: normalizedGameState,
+    party: Array.isArray(raw.party) ? raw.party : [],
+    memories: Array.isArray(raw.memories) ? raw.memories : [],
+    chatLog:
+      normalizedChatLog.length > 0
+        ? normalizedChatLog
+        : [
+            {
+              id: `init_restored_${Date.now()}`,
+              sender: "character",
+              speakerName: normalizedGameState.speaker,
+              text: normalizedGameState.dialogue,
+              timestamp: "Resumed",
+            },
+          ],
+    systemState: normalizedSystemState,
+    activeClash: normalizedClash,
+    choices: Array.isArray(raw.choices) && raw.choices.length === 4 ? raw.choices : undefined,
+  };
+}
+
 /**
  * Compresses an image data URL down to a web-optimized avatar size (default 384x384 max dimension).
  * Reduces multi-megabyte base64 strings by 95-99% down to ~25KB-45KB.
@@ -241,34 +402,53 @@ export async function saveGameSlot(slotId: number, payload: SaveSlotPayload): Pr
   } else {
     setTimeout(writeLocalStorageMirror, 50);
   }
+  notifySaveStorageMutated(slotId);
 }
 
 /**
- * Loads a chronicle slot from IndexedDB, falling back to localStorage
+ * Loads a chronicle slot from IndexedDB and localStorage, picking the freshest copy
+ * and running schema normalization so post-deployment loads never break.
  */
 export async function loadGameSlot(slotId: number): Promise<SaveSlotPayload | null> {
+  let idbData: SaveSlotPayload | null = null;
+  let lsData: SaveSlotPayload | null = null;
+
   // 1. Try IndexedDB
   try {
     const db = await openIndexedDB();
-    const data = await new Promise<SaveSlotPayload | null>((resolve, reject) => {
+    idbData = await new Promise<SaveSlotPayload | null>((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, "readonly");
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(slotId);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
     });
-    if (data) return data;
   } catch {}
 
-  // 2. Fallback to localStorage
+  // 2. Also check localStorage mirror
   try {
     if (typeof window !== "undefined" && window.localStorage) {
       const raw = localStorage.getItem(`astra_save_slot_${slotId}`);
-      if (raw) return JSON.parse(raw);
+      if (raw) lsData = JSON.parse(raw);
     }
   } catch {}
 
-  return null;
+  const normIdb = normalizeSaveSlotData(idbData);
+  const normLs = normalizeSaveSlotData(lsData);
+
+  if (normIdb && normLs) {
+    const idbTime = normIdb.savedAtISO ? Date.parse(normIdb.savedAtISO) || 0 : 0;
+    const lsTime = normLs.savedAtISO ? Date.parse(normLs.savedAtISO) || 0 : 0;
+    // Choose whichever copy was saved more recently, preserving avatar if one copy has it
+    const chosen = lsTime > idbTime ? normLs : normIdb;
+    const fallbackAvatar = normIdb.playerAvatar || normLs.playerAvatar || null;
+    return {
+      ...chosen,
+      playerAvatar: chosen.playerAvatar || fallbackAvatar,
+    };
+  }
+
+  return normIdb || normLs || null;
 }
 
 /**

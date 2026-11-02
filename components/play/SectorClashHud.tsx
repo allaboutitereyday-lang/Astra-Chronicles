@@ -18,6 +18,8 @@ import {
   RefreshCw,
   X,
   SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { ActiveStoryClashState, CombatStanceType, AbilityDetail } from "@/types/story";
 import { getStoryClashChoices } from "@/lib/storyClashEngine";
@@ -103,34 +105,23 @@ export function SectorClashHud({
     Math.min(100, (playerMp / Math.max(1, playerMaxMp)) * 100)
   );
 
-  // Visual impact states for dealing and taking damage
-  const [enemyHitFlash, setEnemyHitFlash] = useState(false);
-  const [playerHitFlash, setPlayerHitFlash] = useState<"damage" | "heal" | "evade" | null>(null);
-  const [showEnemyLightbox, setShowEnemyLightbox] = useState(false);
-  const [showCustomPromptInput, setShowCustomPromptInput] = useState(false);
-  const [customEnemyPrompt, setCustomEnemyPrompt] = useState(
-    activeClash.enemyVisualPrompt || activeClash.enemyDesc || ""
-  );
+  const [enemyDamagedFlash, setEnemyDamagedFlash] = useState(false);
+  const [playerDamagedFlash, setPlayerDamagedFlash] = useState(false);
+  const [playerHealedFlash, setPlayerHealedFlash] = useState(false);
+  const [showPortraitLightbox, setShowPortraitLightbox] = useState(false);
+  const [showPromptEditor, setShowPromptEditor] = useState(false);
+  const [showCombatLog, setShowCombatLog] = useState(false);
+  const [customEnemyPrompt, setCustomEnemyPrompt] = useState(activeClash.enemyVisualPrompt || "");
 
   useEffect(() => {
-    if (!showEnemyLightbox) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        soundEffects.playClick();
-        setShowEnemyLightbox(false);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showEnemyLightbox]);
+    setCustomEnemyPrompt(activeClash.enemyVisualPrompt || "");
+  }, [activeClash.enemyName, activeClash.enemyVisualPrompt]);
 
   useEffect(() => {
     if (enemyHpPercent < prevEnemyHpRef.current) {
-      setEnemyHitFlash(true);
-      const flashTimer = setTimeout(() => setEnemyHitFlash(false), 650);
-      const ghostTimer = setTimeout(() => {
-        setGhostEnemyHpPercent(enemyHpPercent);
-      }, 500);
+      setEnemyDamagedFlash(true);
+      const flashTimer = setTimeout(() => setEnemyDamagedFlash(false), 450);
+      const ghostTimer = setTimeout(() => setGhostEnemyHpPercent(enemyHpPercent), 550);
       prevEnemyHpRef.current = enemyHpPercent;
       return () => {
         clearTimeout(flashTimer);
@@ -144,505 +135,364 @@ export function SectorClashHud({
 
   useEffect(() => {
     if (playerHpPercent < prevPlayerHpRef.current) {
-      setPlayerHitFlash("damage");
-      const flashTimer = setTimeout(() => setPlayerHitFlash(null), 700);
-      const ghostTimer = setTimeout(() => {
-        setGhostPlayerHpPercent(playerHpPercent);
-      }, 500);
+      setPlayerDamagedFlash(true);
+      const flashTimer = setTimeout(() => setPlayerDamagedFlash(false), 550);
+      const ghostTimer = setTimeout(() => setGhostPlayerHpPercent(playerHpPercent), 650);
       prevPlayerHpRef.current = playerHpPercent;
       return () => {
         clearTimeout(flashTimer);
         clearTimeout(ghostTimer);
       };
     } else if (playerHpPercent > prevPlayerHpRef.current) {
-      setPlayerHitFlash("heal");
+      setPlayerHealedFlash(true);
+      const healTimer = setTimeout(() => setPlayerHealedFlash(false), 600);
       setGhostPlayerHpPercent(playerHpPercent);
       prevPlayerHpRef.current = playerHpPercent;
-      const flashTimer = setTimeout(() => setPlayerHitFlash(null), 700);
-      return () => clearTimeout(flashTimer);
+      return () => clearTimeout(healTimer);
     } else {
       setGhostPlayerHpPercent(playerHpPercent);
       prevPlayerHpRef.current = playerHpPercent;
     }
   }, [playerHpPercent]);
 
-  useEffect(() => {
-    if (!lastHitEvent) return;
-    if (lastHitEvent.damageDealt > 0) {
-      setEnemyHitFlash(true);
-      setTimeout(() => setEnemyHitFlash(false), 650);
-    }
-    if (lastHitEvent.enemyDamageTaken > 0) {
-      setPlayerHitFlash("damage");
-      setTimeout(() => setPlayerHitFlash(null), 700);
-    } else if (lastHitEvent.isEvaded) {
-      setPlayerHitFlash("evade");
-      setTimeout(() => setPlayerHitFlash(null), 700);
-    } else if (lastHitEvent.hpHealed > 0) {
-      setPlayerHitFlash("heal");
-      setTimeout(() => setPlayerHitFlash(null), 700);
-    }
-  }, [lastHitEvent]);
-
-  const stanceConfigMap = useMemo(() => getClassStanceConfig(playerRole), [playerRole]);
-  const stanceList = useMemo<{
-    id: CombatStanceType;
-    label: string;
-    bonusText: string;
-    icon: React.ComponentType<{ className?: string }>;
-    activeClass: string;
-  }[]>(() => [
-    {
-      id: "neutral" as CombatStanceType,
-      label: stanceConfigMap.neutral.label,
-      bonusText: stanceConfigMap.neutral.bonusText,
-      icon: Shield,
-      activeClass: stanceConfigMap.neutral.activeClass,
-    },
-    {
-      id: "flame" as CombatStanceType,
-      label: stanceConfigMap.flame.label,
-      bonusText: stanceConfigMap.flame.bonusText,
-      icon: Flame,
-      activeClass: stanceConfigMap.flame.activeClass,
-    },
-    {
-      id: "frost" as CombatStanceType,
-      label: stanceConfigMap.frost.label,
-      bonusText: stanceConfigMap.frost.bonusText,
-      icon: Snowflake,
-      activeClass: stanceConfigMap.frost.activeClass,
-    },
-    {
-      id: "phase" as CombatStanceType,
-      label: stanceConfigMap.phase.label,
-      bonusText: stanceConfigMap.phase.bonusText,
-      icon: Zap,
-      activeClass: stanceConfigMap.phase.activeClass,
-    },
-    {
-      id: "shadow" as CombatStanceType,
-      label: stanceConfigMap.shadow.label,
-      bonusText: stanceConfigMap.shadow.bonusText,
-      icon: Moon,
-      activeClass: stanceConfigMap.shadow.activeClass,
-    },
-    {
-      id: "graviton" as CombatStanceType,
-      label: stanceConfigMap.graviton.label,
-      bonusText: stanceConfigMap.graviton.bonusText,
-      icon: Orbit,
-      activeClass: stanceConfigMap.graviton.activeClass,
-    },
-  ], [stanceConfigMap]);
-
-  const choices = getStoryClashChoices(
-    playerRole || "Voidstrider",
-    assistingCompanion || undefined,
+  const clashChoices = getStoryClashChoices(
+    playerRole,
+    assistingCompanion,
     playerMp,
     activeStance,
     playerAbilities,
     abilityDetails
   );
 
-  const currentStanceMeta =
-    stanceList.find((s) => s.id === activeStance) || stanceList[0];
+  const classStances = useMemo(() => getClassStanceConfig(playerRole), [playerRole]);
 
-  const rankBadgeColor =
-    activeClash.threatRank === "S" || activeClash.threatRank === "Calamity"
-      ? "bg-purple-950/90 border-purple-400 text-purple-200"
-      : activeClash.threatRank === "A"
-      ? "bg-rose-950/90 border-rose-400 text-rose-200"
-      : activeClash.threatRank === "B"
-      ? "bg-amber-950/90 border-amber-400 text-amber-200"
-      : "bg-red-950/80 border-red-500/40 text-red-200";
+  const stanceButtons: {
+    id: CombatStanceType;
+    label: string;
+    shortLabel: string;
+    bonusHint: string;
+    bonusText: string;
+    icon: React.ReactNode;
+    activeClass: string;
+  }[] = [
+    {
+      id: "neutral",
+      label: classStances.neutral.label,
+      shortLabel: classStances.neutral.label.split(" ")[0],
+      bonusHint: classStances.neutral.bonusHint,
+      bonusText: classStances.neutral.bonusText,
+      icon: <Shield className="w-2.5 h-2.5" />,
+      activeClass: "bg-zinc-800 border-white/40 text-white",
+    },
+    {
+      id: "flame",
+      label: classStances.flame.label,
+      shortLabel: classStances.flame.label.split(" ")[0],
+      bonusHint: classStances.flame.bonusHint,
+      bonusText: classStances.flame.bonusText,
+      icon: <Flame className="w-2.5 h-2.5 text-orange-400" />,
+      activeClass: "bg-orange-950/90 border-orange-500 text-orange-200",
+    },
+    {
+      id: "frost",
+      label: classStances.frost.label,
+      shortLabel: classStances.frost.label.split(" ")[0],
+      bonusHint: classStances.frost.bonusHint,
+      bonusText: classStances.frost.bonusText,
+      icon: <Snowflake className="w-2.5 h-2.5 text-cyan-400" />,
+      activeClass: "bg-cyan-950/90 border-cyan-400 text-cyan-200",
+    },
+    {
+      id: "shadow",
+      label: classStances.shadow.label,
+      shortLabel: classStances.shadow.label.split(" ")[0],
+      bonusHint: classStances.shadow.bonusHint,
+      bonusText: classStances.shadow.bonusText,
+      icon: <Moon className="w-2.5 h-2.5 text-purple-400" />,
+      activeClass: "bg-purple-950/90 border-purple-500 text-purple-200",
+    },
+    {
+      id: "graviton",
+      label: classStances.graviton.label,
+      shortLabel: classStances.graviton.label.split(" ")[0],
+      bonusHint: classStances.graviton.bonusHint,
+      bonusText: classStances.graviton.bonusText,
+      icon: <Orbit className="w-2.5 h-2.5 text-amber-400" />,
+      activeClass: "bg-amber-950/90 border-amber-500 text-amber-200",
+    },
+    {
+      id: "phase",
+      label: classStances.phase.label,
+      shortLabel: classStances.phase.label.split(" ")[0],
+      bonusHint: classStances.phase.bonusHint,
+      bonusText: classStances.phase.bonusText,
+      icon: <Zap className="w-2.5 h-2.5 text-emerald-400" />,
+      activeClass: "bg-emerald-950/90 border-emerald-500 text-emerald-200",
+    },
+  ];
+
+  const activeStanceInfo = stanceButtons.find((s) => s.id === activeStance) || stanceButtons[0];
+  const threatRank = activeClash.threatRank || "B";
+  const rankBadgeStyle =
+    threatRank === "S" || threatRank === "Calamity"
+      ? "bg-red-950/90 border-red-500 text-red-200"
+      : threatRank === "A"
+      ? "bg-rose-950/90 border-rose-500/70 text-rose-200"
+      : "bg-amber-950/80 border-amber-500/60 text-amber-200";
 
   return (
-    <>
-      <div
-        className={`relative pointer-events-auto bg-gradient-to-b from-zinc-900/95 via-black/95 to-zinc-950/95 border rounded-2xl p-3 sm:p-4 backdrop-blur-xl mb-2 select-none overflow-hidden max-h-[52dvh] sm:max-h-none overflow-y-auto transition-all duration-200 ${
-          playerHitFlash === "damage"
-            ? "border-red-500 shadow-[0_0_45px_rgba(239,68,68,0.55)] translate-x-[2px]"
-            : enemyHitFlash
-            ? "border-amber-400/80 shadow-[0_0_40px_rgba(251,191,36,0.35)]"
-            : "border-red-500/45 shadow-[0_0_35px_rgba(239,68,68,0.22)]"
-        }`}
-      >
-        {/* Top Crimson/Amber Hit Flash Overlay when Dealing or Taking Damage */}
-        {playerHitFlash === "damage" && (
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-red-600/25 via-transparent to-red-600/25 animate-pulse z-20" />
-        )}
-        {enemyHitFlash && (
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-amber-500/15 via-transparent to-rose-500/15 z-20" />
-        )}
-
-        {/* Floating Combat Popups */}
-        {combatPopups.length > 0 && (
-          <div className="pointer-events-none absolute top-2.5 right-4 z-30 flex flex-col items-end gap-1.5">
-            {combatPopups.map((popup) => (
-              <div
-                key={popup.id}
-                className={`px-3 py-1 rounded-xl bg-black/95 border font-mono text-xs font-black tracking-wider shadow-2xl animate-bounce ${popup.colorClass}`}
-              >
-                <span>{popup.text}</span>
-                {popup.subtext && (
-                  <span className="ml-1.5 text-[10px] font-normal opacity-90">
-                    ({popup.subtext})
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ENCOUNTER TOP HEADER: ENEMY PORTRAIT + VITALS + PLAYER VITALS */}
-        <div className="flex flex-col lg:flex-row items-stretch gap-3 border-b border-red-500/20 pb-3 mb-2.5">
-          {/* Left: Enemy Portrait & AI Art Generator Card */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+    <div
+      className={`shrink-0 mx-2 sm:mx-4 mb-1.5 rounded-xl bg-gradient-to-r from-red-950/95 via-zinc-950/95 to-rose-950/95 border px-2.5 py-1.5 shadow-[0_0_20px_rgba(244,63,94,0.22)] relative overflow-hidden transition-all duration-200 ${
+        playerDamagedFlash
+          ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)]"
+          : enemyDamagedFlash
+          ? "border-amber-400/90 shadow-[0_0_25px_rgba(251,191,36,0.45)]"
+          : "border-rose-500/45"
+      }`}
+    >
+      {/* Floating Combat Popups */}
+      {combatPopups.length > 0 && (
+        <div className="pointer-events-none absolute inset-x-0 top-1 z-30 flex flex-col items-center gap-0.5">
+          {combatPopups.map((p) => (
             <div
-              className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border bg-zinc-950 shrink-0 group transition-transform duration-150 ${
-                enemyHitFlash
-                  ? "border-amber-400 scale-95 ring-2 ring-amber-400/60"
-                  : "border-red-500/40 hover:border-red-400"
+              key={p.id}
+              className={`px-2.5 py-0.5 rounded-lg border backdrop-blur-md font-mono text-[10px] font-black tracking-wide shadow-lg animate-bounce ${p.colorClass}`}
+            >
+              <span>{p.text}</span>
+              {p.subtext && <span className="ml-1.5 text-[9px] font-normal opacity-90">{p.subtext}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Enemy Portrait Lightbox Modal */}
+      {showPortraitLightbox && activeClash.enemyImageUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setShowPortraitLightbox(false)}
+        >
+          <div
+            className="relative max-w-md w-full bg-zinc-950 border border-rose-500/50 rounded-2xl p-3 shadow-2xl space-y-2.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-2">
+                <Swords className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-mono font-bold text-white uppercase">
+                  {activeClash.enemyName}
+                </span>
+                <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${rankBadgeStyle}`}>
+                  Rank {threatRank}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPortraitLightbox(false)}
+                className="text-zinc-400 hover:text-white text-xs font-mono px-2 py-0.5 rounded bg-white/5 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+            <div className="relative aspect-square w-full rounded-xl overflow-hidden border border-white/10 bg-black">
+              <img
+                src={activeClash.enemyImageUrl}
+                alt={activeClash.enemyName}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <p className="text-[11px] font-mono text-zinc-300 leading-relaxed">
+              {activeClash.enemyDesc || activeClash.tacticalObjective}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Enemy Portrait Prompt Editor Modal */}
+      {showPromptEditor && onGenerateEnemyImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setShowPromptEditor(false)}
+        >
+          <div
+            className="relative max-w-lg w-full bg-zinc-950 border border-rose-500/50 rounded-2xl p-4 shadow-2xl space-y-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-2">
+                <Wand2 className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                  Synthesize Enemy Portrait: {activeClash.enemyName}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPromptEditor(false)}
+                className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/5 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <textarea
+              rows={3}
+              value={customEnemyPrompt}
+              onChange={(e) => setCustomEnemyPrompt(e.target.value)}
+              placeholder={`Describe ${activeClash.enemyName}'s appearance...`}
+              className="w-full rounded-xl bg-zinc-900 border border-white/15 px-3 py-2 text-xs text-white font-mono focus:outline-none focus:border-rose-500 resize-none"
+            />
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowPromptEditor(false)}
+                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[11px] font-mono cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isGeneratingEnemyImage}
+                onClick={() => {
+                  soundEffects.playClick();
+                  onGenerateEnemyImage(customEnemyPrompt.trim() || undefined);
+                  setShowPromptEditor(false);
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Render Portrait</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ROW 1: COMPACT UNIFIED TELEMETRY (ENEMY + INTENT + PLAYER VITALS + CONTROLS) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 relative z-10">
+        {/* Left: Compact Enemy Thumbnail + Name + Enemy HP Bar */}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="relative shrink-0 group">
+            <div
+              onClick={() => activeClash.enemyImageUrl && setShowPortraitLightbox(true)}
+              className={`w-9 h-9 rounded-lg overflow-hidden border bg-zinc-900 cursor-pointer relative shadow-md transition-transform ${
+                enemyDamagedFlash ? "border-amber-300 scale-95" : "border-rose-500/60 hover:border-rose-400"
               }`}
+              title="Click to inspect adversary portrait"
             >
               {activeClash.enemyImageUrl ? (
                 <img
                   src={activeClash.enemyImageUrl}
                   alt={activeClash.enemyName}
-                  onClick={() => setShowEnemyLightbox(true)}
-                  className={`w-full h-full object-cover cursor-pointer transition-all duration-200 ${
-                    enemyHitFlash ? "brightness-150 contrast-125 saturate-150" : "group-hover:scale-105"
-                  }`}
+                  className="w-full h-full object-cover"
                 />
               ) : (
-                <div
-                  onClick={() => setShowEnemyLightbox(true)}
-                  className="w-full h-full flex flex-col items-center justify-center text-red-400/70 cursor-pointer"
-                >
-                  <Swords className="w-6 h-6" />
+                <div className="w-full h-full flex items-center justify-center">
+                  <Swords className="w-4 h-4 text-rose-400" />
                 </div>
               )}
-
-              {/* Slash Impact Overlay on Enemy Portrait when Dealt Damage */}
-              {enemyHitFlash && lastHitEvent && lastHitEvent.damageDealt > 0 && (
-                <div className="pointer-events-none absolute inset-0 bg-red-600/45 flex flex-col items-center justify-center animate-in zoom-in-75 duration-150">
-                  <span className="font-mono text-xs sm:text-sm font-black text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)]">
-                    -{lastHitEvent.damageDealt}
-                  </span>
-                  {lastHitEvent.isCrit && (
-                    <span className="text-[9px] font-mono font-black text-amber-300 uppercase">
-                      CRIT!
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Loading Spinner During Enemy Portrait Synthesis */}
-              {isGeneratingEnemyImage && (
-                <div className="absolute inset-0 bg-black/80 backdrop-blur-xs flex flex-col items-center justify-center gap-1 text-amber-300">
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span className="text-[8px] font-mono uppercase tracking-tighter">
-                    Forging...
-                  </span>
-                </div>
-              )}
-
-              {/* Quick Inspect / Expand Button */}
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Eye className="w-3 h-3 text-white" />
+              </div>
+            </div>
+            {onGenerateEnemyImage && (
               <button
                 type="button"
-                onClick={() => setShowEnemyLightbox(true)}
-                className="absolute bottom-1 right-1 p-1 rounded-md bg-black/75 text-zinc-300 hover:text-white border border-white/15 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                title="Inspect Enemy Portrait & Dossier"
+                disabled={isGeneratingEnemyImage}
+                onClick={() => {
+                  soundEffects.playClick();
+                  onGenerateEnemyImage(customEnemyPrompt.trim() || undefined);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setShowPromptEditor(true);
+                }}
+                title="Generate AI Boss Portrait (Right-click to edit prompt)"
+                className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-rose-700 hover:bg-rose-500 border border-rose-300/60 text-white flex items-center justify-center shadow cursor-pointer disabled:opacity-50"
               >
-                <Eye className="w-3 h-3" />
+                <RefreshCw className={`w-2.5 h-2.5 ${isGeneratingEnemyImage ? "animate-spin" : ""}`} />
               </button>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[11px] font-mono font-extrabold text-white uppercase tracking-tight truncate max-w-[140px] sm:max-w-[200px]">
+                {activeClash.enemyName}
+              </span>
+              <span className={`text-[8px] font-mono font-black px-1 py-0.2 rounded border uppercase ${rankBadgeStyle}`}>
+                {threatRank}
+              </span>
+              <span className="text-[9px] font-mono text-rose-300/90 bg-black/50 px-1.5 py-0.2 rounded border border-rose-500/30">
+                T{activeClash.clashTurn}/{activeClash.maxClashTurns}
+              </span>
+              {activeClash.enemyIntent && (
+                <span
+                  className="text-[9px] font-mono text-amber-200 bg-amber-950/70 border border-amber-500/40 px-1.5 py-0.2 rounded inline-flex items-center gap-1 truncate max-w-[180px]"
+                  title={activeClash.enemyIntent.counterStanceHint || activeClash.enemyIntent.label}
+                >
+                  <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                  <span className="truncate">{activeClash.enemyIntent.label}</span>
+                  <span className="text-red-300 font-bold shrink-0">~{activeClash.enemyIntent.estimatedDamage}</span>
+                </span>
+              )}
             </div>
 
-            {/* Enemy Info, HP Bar & Intent Telegraph */}
-            <div className="flex-1 min-w-0 flex flex-col justify-between">
-              <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span
-                    className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded border uppercase shrink-0 ${rankBadgeColor}`}
-                  >
-                    Rank {activeClash.threatRank || "C"}
-                  </span>
-                  <span className="font-bold text-xs sm:text-sm text-red-100 truncate">
-                    {activeClash.enemyName}
-                  </span>
-                  {activeClash.enemyArchetype && (
-                    <span className="hidden sm:inline text-[10px] font-mono text-zinc-400 truncate">
-                      • {activeClash.enemyArchetype}
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-red-950/60 border border-red-500/30 text-red-300">
-                    Turn {activeClash.clashTurn}/{activeClash.maxClashTurns || 6}
-                  </span>
-                  {onGenerateEnemyImage && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        disabled={isGeneratingEnemyImage}
-                        onClick={() => {
-                          soundEffects.playClick();
-                          onGenerateEnemyImage(customEnemyPrompt || undefined);
-                        }}
-                        className="px-2 py-0.5 rounded-md bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/40 text-amber-200 text-[10px] font-mono font-semibold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
-                        title="Generate AI Portrait for this Enemy"
-                      >
-                        <Wand2 className="w-2.5 h-2.5 text-amber-400" />
-                        <span className="hidden sm:inline">
-                          {isGeneratingEnemyImage ? "Generating..." : "Enemy Art"}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowCustomPromptInput((prev) => !prev)}
-                        className={`p-1 rounded-md border text-[10px] transition-colors cursor-pointer ${
-                          showCustomPromptInput
-                            ? "bg-amber-500/20 border-amber-400 text-amber-200"
-                            : "bg-zinc-900/80 border-white/10 text-zinc-400 hover:text-white"
-                        }`}
-                        title="Customize Enemy Visual Prompt"
-                      >
-                        <SlidersHorizontal className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+            {/* Enemy HP Bar */}
+            <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex-1 max-w-[220px] h-1.5 bg-black/90 rounded-full overflow-hidden border border-rose-500/30 relative">
+                <div
+                  className="absolute inset-y-0 left-0 bg-amber-300/70 transition-all duration-500"
+                  style={{ width: `${ghostEnemyHpPercent}%` }}
+                />
+                <div
+                  className="relative h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 transition-all duration-200"
+                  style={{ width: `${enemyHpPercent}%` }}
+                />
               </div>
-
-              {/* Enemy HP Bar with Delayed Ghost Depletion */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[10px] font-mono">
-                  <span className="text-zinc-400 truncate max-w-[65%]">
-                    {activeClash.enemyDesc || activeClash.tacticalObjective}
-                  </span>
-                  <span className="text-red-300 font-bold shrink-0">
-                    {activeClash.enemyHp} / {activeClash.enemyMaxHp} HP ({Math.round(enemyHpPercent)}%)
-                  </span>
-                </div>
-                <div className="relative w-full bg-zinc-900/90 rounded-full h-2.5 overflow-hidden border border-red-950/80">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-amber-200/70 transition-all duration-500 ease-out"
-                    style={{ width: `${ghostEnemyHpPercent}%` }}
-                  />
-                  <div
-                    className={`relative h-full transition-all duration-200 ${
-                      enemyHitFlash
-                        ? "bg-gradient-to-r from-amber-300 via-white to-amber-300"
-                        : "bg-gradient-to-r from-red-600 via-rose-500 to-amber-500"
-                    }`}
-                    style={{ width: `${enemyHpPercent}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Telegraphed Enemy Intent Row */}
-              {activeClash.enemyIntent && (
-                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1 px-2 py-1 rounded-lg bg-red-950/35 border border-red-500/25 text-[10px] font-mono">
-                  <div className="flex items-center gap-1.5 text-red-200">
-                    <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span className="font-bold">
-                      Intent: {activeClash.enemyIntent.label} (~{activeClash.enemyIntent.estimatedDamage} DMG)
-                    </span>
-                  </div>
-                  <span className="text-amber-300/90 text-[9px] truncate">
-                    {activeClash.enemyIntent.counterStanceHint}
-                  </span>
-                </div>
+              <span className="text-[9px] font-mono font-bold text-rose-200 shrink-0">
+                {activeClash.enemyHp}/{activeClash.enemyMaxHp} HP
+              </span>
+              {lastHitEvent && lastHitEvent.damageDealt > 0 && (
+                <span className="text-[9px] font-mono font-black text-amber-300 animate-pulse shrink-0">
+                  -{lastHitEvent.damageDealt}
+                </span>
               )}
             </div>
           </div>
+        </div>
 
-          {/* Right: Live Player Vitals Telemetry Card (HP & MP with Hit Feedback) */}
+        {/* Right: Compact Player Vitals + Disengage + Log Toggle */}
+        <div className="flex items-center gap-2 shrink-0">
           <div
-            className={`lg:w-64 shrink-0 rounded-xl p-2.5 border transition-all duration-200 flex flex-col justify-between ${
-              playerHitFlash === "damage"
-                ? "bg-red-950/60 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.45)]"
-                : playerHitFlash === "heal"
-                ? "bg-emerald-950/50 border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.35)]"
-                : playerHitFlash === "evade"
-                ? "bg-violet-950/50 border-violet-400 shadow-[0_0_20px_rgba(167,139,250,0.35)]"
-                : "bg-black/65 border-white/10"
+            className={`flex items-center gap-2 px-2 py-1 rounded-lg bg-black/70 border text-[10px] font-mono ${
+              playerDamagedFlash
+                ? "border-red-500"
+                : playerHealedFlash
+                ? "border-emerald-400"
+                : "border-white/10"
             }`}
           >
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-[10px] font-mono font-bold text-zinc-200 truncate">
-                {playerName} • {playerRole}
-              </span>
-              {playerHitFlash === "damage" && lastHitEvent?.enemyDamageTaken ? (
-                <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-red-600 text-white animate-bounce">
-                  -{lastHitEvent.enemyDamageTaken} HP
-                </span>
-              ) : playerHitFlash === "heal" && lastHitEvent?.hpHealed ? (
-                <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-emerald-600 text-white animate-bounce">
-                  +{lastHitEvent.hpHealed} HP
-                </span>
-              ) : playerHitFlash === "evade" ? (
-                <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-violet-600 text-white">
-                  EVADED!
-                </span>
-              ) : activeClash.companionAssistingName ? (
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/30 text-rose-300 flex items-center gap-1">
-                  <Sparkles className="w-2.5 h-2.5 text-rose-400" />
-                  {activeClash.companionAssistingName}
-                </span>
-              ) : null}
-            </div>
-
-            {/* Player HP Bar */}
-            <div className="space-y-1 mb-1.5">
-              <div className="flex items-center justify-between text-[10px] font-mono">
-                <span className="text-emerald-300 flex items-center gap-1 font-semibold">
-                  <Heart className="w-2.5 h-2.5 text-emerald-400" /> VITALS (HP)
-                </span>
-                <span
-                  className={`font-bold ${
-                    playerHpPercent <= 35 ? "text-red-400 animate-pulse" : "text-emerald-300"
-                  }`}
-                >
-                  {playerHp} / {playerMaxHp}
-                </span>
-              </div>
-              <div className="relative w-full bg-zinc-900 rounded-full h-2 overflow-hidden border border-white/10">
-                <div
-                  className="absolute inset-y-0 left-0 bg-red-400/70 transition-all duration-500 ease-out"
-                  style={{ width: `${ghostPlayerHpPercent}%` }}
-                />
-                <div
-                  className={`relative h-full transition-all duration-200 ${
-                    playerHpPercent <= 30
-                      ? "bg-gradient-to-r from-red-600 to-rose-500"
-                      : "bg-gradient-to-r from-emerald-600 to-teal-400"
-                  }`}
-                  style={{ width: `${playerHpPercent}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Player MP Bar */}
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-[10px] font-mono">
-                <span className="text-sky-300 flex items-center gap-1 font-semibold">
-                  <Zap className="w-2.5 h-2.5 text-sky-400" /> MANA (MP)
-                </span>
-                <span className="text-sky-300 font-bold">
-                  {playerMp} / {playerMaxMp}
-                </span>
-              </div>
-              <div className="relative w-full bg-zinc-900 rounded-full h-1.5 overflow-hidden border border-white/10">
-                <div
-                  className="bg-gradient-to-r from-sky-600 to-cyan-400 h-full transition-all duration-200"
-                  style={{ width: `${playerMpPercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Optional Custom Enemy Prompt Bar */}
-        {showCustomPromptInput && onGenerateEnemyImage && (
-          <div className="mb-2.5 p-2 rounded-xl bg-black/80 border border-amber-500/30 flex flex-col sm:flex-row items-stretch sm:items-center gap-2 animate-in fade-in duration-150">
-            <input
-              type="text"
-              value={customEnemyPrompt}
-              onChange={(e) => setCustomEnemyPrompt(e.target.value)}
-              placeholder="Describe enemy appearance for AI portrait synthesis..."
-              className="flex-1 bg-zinc-900/90 border border-white/15 rounded-lg px-2.5 py-1.5 text-base sm:text-xs text-zinc-100 font-mono focus:outline-none focus:border-amber-400"
-            />
-            <button
-              type="button"
-              disabled={isGeneratingEnemyImage}
-              onClick={() => {
-                soundEffects.playClick();
-                onGenerateEnemyImage(customEnemyPrompt);
-                setShowCustomPromptInput(false);
-              }}
-              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer shrink-0 disabled:opacity-50"
-            >
-              <Wand2 className="w-3.5 h-3.5" />
-              <span>Synthesize Enemy Art</span>
-            </button>
-          </div>
-        )}
-
-        {/* Universal 6-Stance Matrix Selector */}
-        <div className="mb-2.5 bg-black/60 border border-white/10 rounded-xl p-2">
-          <div className="flex items-center justify-between gap-2 mb-1.5 px-1">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold">
-              Universal Combat Stance Matrix
+            <span className="text-zinc-300 font-bold hidden md:inline truncate max-w-[80px]">{playerName}</span>
+            <span className="flex items-center gap-0.5 text-emerald-300 font-bold" title="Player Health">
+              <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
+              {playerHp}/{playerMaxHp}
             </span>
-            <span className="text-[10px] font-mono text-amber-300 font-semibold">
-              {currentStanceMeta.label}: {currentStanceMeta.bonusText}
+            <div className="w-10 h-1.5 bg-zinc-900 rounded-full overflow-hidden hidden sm:block">
+              <div
+                className="h-full bg-gradient-to-r from-rose-500 to-emerald-400"
+                style={{ width: `${playerHpPercent}%` }}
+              />
+            </div>
+            <span className="flex items-center gap-0.5 text-sky-300 font-bold" title="Player Mana">
+              <Zap className="w-2.5 h-2.5 text-sky-400 fill-sky-400" />
+              {playerMp}/{playerMaxMp}
             </span>
+            <div className="w-8 h-1.5 bg-zinc-900 rounded-full overflow-hidden hidden sm:block">
+              <div
+                className="h-full bg-gradient-to-r from-sky-600 to-cyan-400"
+                style={{ width: `${playerMpPercent}%` }}
+              />
+            </div>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-            {stanceList.map((stance) => {
-              const Icon = stance.icon;
-              const isSelected = activeStance === stance.id;
-              return (
-                <button
-                  key={stance.id}
-                  type="button"
-                  disabled={isLoading || isExecutingClashAction}
-                  onClick={() => {
-                    soundEffects.playClick();
-                    onSelectStance(stance.id);
-                  }}
-                  className={`px-2 py-1.5 min-h-[36px] rounded-lg border text-[10px] font-mono font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                    isSelected
-                      ? stance.activeClass
-                      : "bg-zinc-950/80 hover:bg-zinc-900 border-white/10 text-zinc-400 hover:text-zinc-200"
-                  }`}
-                  title={`${stance.label} Stance (${stance.bonusText})`}
-                >
-                  <Icon className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{stance.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
 
-        {/* 4 Stance-Infused Tactical Clash Actions + Disengage Footer */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 mb-2">
-          {choices.map((clashChoice, idx) => (
-            <button
-              key={idx}
-              type="button"
-              disabled={isLoading || isExecutingClashAction || clashChoice.disabled}
-              onClick={() => onExecuteClashAction(clashChoice.actionType)}
-              className={`group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
-                clashChoice.disabled
-                  ? "bg-zinc-950/40 border-white/5 opacity-40 cursor-not-allowed"
-                  : "bg-zinc-900/90 hover:bg-zinc-800 border-red-500/30 hover:border-red-400 shadow-md active:scale-[0.99]"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="font-mono text-xs font-bold text-red-200 group-hover:text-white">
-                  {clashChoice.actionName}
-                </span>
-                <span className="text-[10px] font-mono text-zinc-400">
-                  {clashChoice.mpCost > 0 ? `-${clashChoice.mpCost} MP` : "0 MP"}
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-300 group-hover:text-zinc-100 line-clamp-2">
-                {clashChoice.label}
-              </p>
-            </button>
-          ))}
-        </div>
-
-        {/* Combat Telemetry Log & Tactical Disengage Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-white/10 text-[10px] font-mono text-zinc-400">
-          <span className="truncate max-w-[70%] text-zinc-400">
-            {activeClash.log?.[activeClash.log.length - 1] || activeClash.tacticalObjective}
-          </span>
           <button
             type="button"
             disabled={isLoading || isExecutingClashAction}
@@ -650,106 +500,123 @@ export function SectorClashHud({
               soundEffects.playClick();
               onExecuteClashAction("flee");
             }}
-            className="px-2.5 py-1.5 min-h-[36px] rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-amber-400/50 text-zinc-300 hover:text-amber-200 flex items-center gap-1 transition-all cursor-pointer shrink-0"
-            title="Break combat engagement and retreat to cover (-10 MP or grazing hit)"
+            className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-amber-950/70 border border-white/15 hover:border-amber-500/50 text-zinc-300 hover:text-amber-200 text-[9px] font-mono font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
+            title="Break engagement and retreat (-10 MP or take minor grazing hit)"
           >
-            <Footprints className="w-3 h-3 text-amber-400" />
-            <span>Break & Disengage</span>
+            <Footprints className="w-2.5 h-2.5 text-amber-400" />
+            <span className="hidden sm:inline">Disengage</span>
           </button>
+
+          {activeClash.log && activeClash.log.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowCombatLog((v) => !v)}
+              className="p-1 rounded-lg bg-black/60 hover:bg-white/10 border border-white/10 text-zinc-400 hover:text-white cursor-pointer"
+              title={showCombatLog ? "Hide Combat Log" : "Show Combat Log"}
+            >
+              {showCombatLog ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ENEMY PORTRAIT & TACTICAL DOSSIER LIGHTBOX MODAL */}
-      {showEnemyLightbox && (
-        <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 pointer-events-auto select-none"
-          onClick={() => {
-            soundEffects.playClick();
-            setShowEnemyLightbox(false);
-          }}
-        >
-          <div
-            className="w-full max-w-lg bg-zinc-950 border border-red-500/40 rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.3)] flex flex-col pointer-events-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative h-64 sm:h-72 w-full bg-black">
-              {activeClash.enemyImageUrl && (
-                <img
-                  src={activeClash.enemyImageUrl}
-                  alt={activeClash.enemyName}
-                  className="w-full h-full object-cover"
-                />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-black/40 pointer-events-none" />
+      {/* ROW 2: ULTRA-SLIM STANCE PILL STRIP */}
+      <div className="flex items-center justify-between gap-1.5 mt-1 pt-1 border-t border-white/10 relative z-10 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="text-[8px] font-mono uppercase tracking-wider text-zinc-400 mr-0.5 hidden sm:inline">
+            Stance:
+          </span>
+          {stanceButtons.map((st) => {
+            const isSelected = activeStance === st.id;
+            return (
               <button
+                key={st.id}
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   soundEffects.playClick();
-                  setShowEnemyLightbox(false);
+                  onSelectStance(st.id);
                 }}
-                className="absolute top-3 right-3 z-30 p-2 rounded-full bg-black/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/20 transition-all cursor-pointer shadow-lg active:scale-95 pointer-events-auto"
-                title="Close Tactical Dossier (Esc)"
+                title={`${st.label}: ${st.bonusText}`}
+                className={`px-1.5 py-0.5 rounded-md border text-[9px] font-mono flex items-center gap-1 transition-all cursor-pointer shrink-0 ${
+                  isSelected
+                    ? `${st.activeClass} font-bold shadow-sm`
+                    : "bg-zinc-900/70 border-white/10 text-zinc-400 hover:text-zinc-200 hover:border-white/25"
+                }`}
               >
-                <X className="w-4 h-4" />
+                {st.icon}
+                <span>{st.shortLabel}</span>
               </button>
-              <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between gap-2">
-                <div>
-                  <span
-                    className={`text-[10px] font-mono font-black px-2 py-0.5 rounded border uppercase ${rankBadgeColor}`}
-                  >
-                    Threat Rank {activeClash.threatRank || "C"} • {activeClash.enemyArchetype || "Hostile"}
-                  </span>
-                  <h3 className="text-lg font-bold text-white font-mono mt-1">
-                    {activeClash.enemyName}
-                  </h3>
-                </div>
-                {onGenerateEnemyImage && (
-                  <button
-                    type="button"
-                    disabled={isGeneratingEnemyImage}
-                    onClick={() => {
-                      soundEffects.playClick();
-                      onGenerateEnemyImage(customEnemyPrompt || undefined);
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-black font-mono text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-lg disabled:opacity-50"
-                  >
-                    <Wand2 className="w-3.5 h-3.5" />
-                    <span>{isGeneratingEnemyImage ? "Synthesizing..." : "Re-Forge AI Portrait"}</span>
-                  </button>
-                )}
-              </div>
-            </div>
+            );
+          })}
+        </div>
+        <span className="text-[9px] font-mono text-amber-300/90 truncate hidden md:inline">
+          {activeStanceInfo.label}: {activeStanceInfo.bonusHint}
+        </span>
+      </div>
 
-            <div className="p-4 space-y-3 text-xs font-mono">
-              <p className="text-zinc-300 font-sans leading-relaxed">
-                {activeClash.enemyDesc}
-              </p>
-              <div className="grid grid-cols-2 gap-2 text-[11px]">
-                <div className="p-2 rounded-xl bg-zinc-900/80 border border-white/10">
-                  <span className="text-zinc-500 block">Vital Integrity</span>
-                  <span className="text-red-300 font-bold">
-                    {activeClash.enemyHp} / {activeClash.enemyMaxHp} HP
-                  </span>
-                </div>
-                <div className="p-2 rounded-xl bg-zinc-900/80 border border-white/10">
-                  <span className="text-zinc-500 block">Attack Power</span>
-                  <span className="text-amber-300 font-bold">
-                    ~{activeClash.enemyAttackPower || 16} DMG / Round
-                  </span>
-                </div>
+      {/* ROW 3: COMPACT 4-COLUMN TACTICAL ARSENAL BUTTONS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-1.5 relative z-10">
+        {clashChoices.map((c) => {
+          const isBurst = c.actionType === "burst";
+          const isSynergy = c.actionType === "synergy";
+          const isDefense = c.actionType === "defense";
+
+          return (
+            <button
+              key={c.actionType}
+              type="button"
+              disabled={isLoading || isExecutingClashAction || c.disabled}
+              onClick={() => onExecuteClashAction(c.actionType)}
+              title={`${c.actionName} — ${c.description}${c.reasonDisabled ? ` (${c.reasonDisabled})` : ""}`}
+              className={`px-2 py-1.5 rounded-lg border text-left transition-all flex items-center justify-between gap-1.5 relative overflow-hidden ${
+                c.disabled
+                  ? "bg-zinc-950/50 border-white/5 text-zinc-600 cursor-not-allowed opacity-60"
+                  : isBurst
+                  ? "bg-gradient-to-r from-rose-950/90 to-amber-950/80 hover:from-rose-900 hover:to-amber-900 border-rose-500/50 hover:border-amber-400 text-rose-100 cursor-pointer shadow-sm"
+                  : isSynergy
+                  ? "bg-gradient-to-r from-purple-950/90 to-indigo-950/80 hover:from-purple-900 hover:to-indigo-900 border-purple-500/50 hover:border-purple-400 text-purple-100 cursor-pointer shadow-sm"
+                  : isDefense
+                  ? "bg-zinc-900/90 hover:bg-emerald-950/70 border-emerald-500/35 hover:border-emerald-400 text-emerald-100 cursor-pointer"
+                  : "bg-zinc-900/90 hover:bg-rose-950/80 border-white/15 hover:border-rose-500/60 text-zinc-100 cursor-pointer"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="shrink-0">
+                  {c.actionType === "strike" && <Swords className="w-3 h-3 text-rose-400" />}
+                  {c.actionType === "burst" && <Flame className="w-3 h-3 text-amber-400" />}
+                  {c.actionType === "synergy" && <Sparkles className="w-3 h-3 text-purple-400" />}
+                  {c.actionType === "defense" && <Shield className="w-3 h-3 text-emerald-400" />}
+                </span>
+                <span className="text-[10px] font-mono font-bold truncate leading-tight">
+                  {c.actionName}
+                </span>
               </div>
-              {activeClash.log && activeClash.log.length > 0 && (
-                <div className="p-2.5 rounded-xl bg-black/70 border border-white/10 max-h-28 overflow-y-auto space-y-1 text-[10px] text-zinc-400">
-                  {activeClash.log.map((entry, idx) => (
-                    <div key={idx}>{entry}</div>
-                  ))}
-                </div>
-              )}
+              <span
+                className={`text-[8px] font-mono px-1 py-0.2 rounded shrink-0 ${
+                  c.mpCost > 0
+                    ? c.disabled
+                      ? "bg-red-950/80 text-red-400 border border-red-500/30"
+                      : "bg-sky-950/90 text-sky-300 border border-sky-500/30"
+                    : "bg-emerald-950/80 text-emerald-300 border border-emerald-500/30"
+                }`}
+              >
+                {c.mpCost > 0 ? `${c.mpCost}MP` : c.actionType === "defense" ? "+15MP" : "0MP"}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Collapsible Combat Log (Only shown when toggled open) */}
+      {showCombatLog && activeClash.log && activeClash.log.length > 0 && (
+        <div className="mt-1.5 pt-1 border-t border-white/10 text-[9px] font-mono text-rose-200/90 space-y-0.5 max-h-16 overflow-y-auto relative z-10">
+          {activeClash.log.slice(-3).map((entry, idx) => (
+            <div key={idx} className="truncate">
+              {entry}
             </div>
-          </div>
+          ))}
         </div>
       )}
-    </>
+    </div>
   );
 }

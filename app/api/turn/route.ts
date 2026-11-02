@@ -853,7 +853,17 @@ ${visualInspectionInstruction}`;
         let content = data.choices?.[0]?.message?.content || "";
         content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
 
-        responseData = JSON.parse(content);
+        try {
+          responseData = JSON.parse(content);
+        } catch {
+          const firstBrace = content.indexOf("{");
+          const lastBrace = content.lastIndexOf("}");
+          if (firstBrace !== -1 && lastBrace > firstBrace) {
+            responseData = JSON.parse(content.slice(firstBrace, lastBrace + 1));
+          } else {
+            throw new Error("Malformed JSON response from model");
+          }
+        }
 
         // Fail-safe post-processing: sanitize and guarantee substantial player_execution for preset choices
         if (responseData.player_execution) {
@@ -861,8 +871,8 @@ ${visualInspectionInstruction}`;
         }
         if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().split(/[.!?]+/).filter(Boolean).length < 2)) {
           const cleanAct = action.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
-          const stanceDesc = activeStance === "aggressive" ? "blade angled forward with relentless pressure" : activeStance === "defensive" ? "guard raised high and footing braced firmly against the ground" : "shoulders squared and senses locked on the target";
-          responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The cold tension in the air crystallizes as every muscle tightens for immediate follow-through. "${cleanAct}"`;
+          const stanceDesc = activeStance === "aggressive" || activeStance === "flame" ? "blade angled forward with relentless pressure" : activeStance === "defensive" || activeStance === "frost" ? "guard raised high and footing braced firmly against the ground" : "shoulders squared and senses locked on the target";
+          responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The tension in the air crystallizes as every muscle tightens for immediate follow-through. ${cleanAct}`;
         }
 
         // Merge LLM-reported knowledge unlocks with pre-turn deterministic unlocks
@@ -875,17 +885,47 @@ ${visualInspectionInstruction}`;
         const speakerKnowsNameNow = getCompanionKnowledge(finalKnowledgeMap, finalSpeakerName).knowsName;
 
         // Deep-sanitize narrative & mechanics: strip inline markdown, fix single-quoted speech, and separate LitRPG readouts
-        const rawNarrativeSource = responseData.narrative_text || responseData.narrative || "";
+        const rawNarrativeSource =
+          responseData.narrative_text ||
+          responseData.narrative ||
+          responseData.dialogue ||
+          responseData.story_text ||
+          responseData.scene ||
+          "";
         const rawMechanicsSource =
           responseData.mechanics ||
           responseData.system_updates?.system_announcement ||
           null;
         const separated = sanitizeNarrativeAndMechanics(rawNarrativeSource, rawMechanicsSource);
-        const cleanedProse = enforceSpokenDialogueMasking(
+        let cleanedProse = enforceSpokenDialogueMasking(
           sanitizeVisualNovelProse(separated.narrative),
           playerProfile?.name,
           speakerKnowsNameNow
         );
+
+        // Guarantee non-empty narrative prose during combat or complex turns
+        if (!cleanedProse || cleanedProse.trim().length < 20) {
+          const cleanActSummary = (action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+          const enemyLabel = activeClash?.enemyName || "the hostile force";
+          const locLabel = responseData.state_updates?.current_location || gameState?.location || "the sector";
+          if (activeClash?.status === "victory" || (action || "").includes("[Combat Victory")) {
+            cleanedProse = `Shockwaves ripple across ${locLabel} as ${playerProfile?.name || "the protagonist"}'s finishing strike shatters ${enemyLabel}'s final guard. Sparks of dispersing essence scatter into the air as the threat collapses, leaving the perimeter secure.${
+              !isProtagonistAlone && finalSpeakerName !== "Narrator"
+                ? ` ${finalSpeakerName} lowers her weapon slightly, catching her breath as she looks toward ${playerProfile?.name || "you"}. "That settled it. Stay sharp—more may have felt that shockwave."`
+                : ""
+            }`;
+          } else if (activeClash?.status === "retreat" || (action || "").includes("Disengage")) {
+            cleanedProse = `With a sharp burst of evasive footwork, ${playerProfile?.name || "the protagonist"} breaks engagement from ${enemyLabel} and vaults back into tactical cover across ${locLabel}. The immediate line of fire is severed, buying precious seconds to regroup.`;
+          } else if (activeClash && activeClash.isActive) {
+            cleanedProse = `Steel and kinetic aura collide across ${locLabel} as ${playerProfile?.name || "the protagonist"} executes ${cleanActSummary || "a decisive combat maneuver"} against ${enemyLabel} (HP: ${activeClash.enemyHp}/${activeClash.enemyMaxHp}). ${enemyLabel} reels from the impact before surging back with a fierce counter-offensive!`;
+          } else {
+            cleanedProse = `Across ${locLabel}, the atmosphere shifts in immediate response to ${playerProfile?.name || "the protagonist"}'s action. ${
+              !isProtagonistAlone && finalSpeakerName !== "Narrator"
+                ? `${finalSpeakerName} studies the unfolding situation closely before responding. "We've made our move. Let's see how the currents of this sector answer."`
+                : "Every shadow and current of mana in the vicinity reacts to the momentum of the choice."
+            }`;
+          }
+        }
 
         // Server-side Anti-Repetition Circuit Breaker: detect and break dialogue/narrative loops
         const loopCheck = detectRepetitionLoop(
@@ -992,17 +1032,28 @@ ${visualInspectionInstruction}`;
         }
 
         // Evaluate hostile encounter escalation ONLY when LLM escalates a hostile story moment
-        const resolvedEncounter = resolveHostileEncounterEscalation({
-          llmStoryClash: responseData.state_updates?.story_clash || null,
-          existingClash: activeClash || null,
-          storyText: cleanedProse,
-          actionText: action || "",
-          location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
-          genre: storyContext?.genre || "Dark Fantasy LitRPG",
-          assistingCompanionName: presentHeroineNames[0] || undefined,
-        });
-        if (resolvedEncounter) {
-          responseData.state_updates.story_clash = resolvedEncounter;
+        // and the player did not just conclude or disengage from an active clash
+        const isClashJustEnded =
+          activeClash?.status === "victory" ||
+          activeClash?.status === "retreat" ||
+          (action || "").includes("[Combat Victory") ||
+          (action || "").includes("[Subterfuge/Disengage]");
+
+        if (isClashJustEnded) {
+          responseData.state_updates.story_clash = null;
+        } else {
+          const resolvedEncounter = resolveHostileEncounterEscalation({
+            llmStoryClash: responseData.state_updates?.story_clash || null,
+            existingClash: activeClash || null,
+            storyText: cleanedProse,
+            actionText: action || "",
+            location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
+            genre: storyContext?.genre || "Dark Fantasy LitRPG",
+            assistingCompanionName: presentHeroineNames[0] || undefined,
+          });
+          if (resolvedEncounter) {
+            responseData.state_updates.story_clash = resolvedEncounter;
+          }
         }
 
         // Sanitize suggested choices and guarantee intent tags

@@ -94,8 +94,104 @@ export function CloudSyncModal({
   const [customSupaKey, setCustomSupaKey] = useState("");
   const [supaConfigured, setSupaConfigured] = useState(false);
 
+  // Automatic OAuth return welcome & confirmation screen state
+  const [oauthWelcomeOpen, setOauthWelcomeOpen] = useState(false);
+  const [showConnectedConfirmation, setShowConnectedConfirmation] = useState(false);
+  const [initialSyncComplete, setInitialSyncComplete] = useState(false);
+
+  const performInitialAccountSync = async (activeUser: CloudAccountUser) => {
+    setSyncBusy(true);
+    setInitialSyncComplete(false);
+    try {
+      // 1. Check remote Cloud Vault first
+      const remote = await fetchCloudProgression(activeUser);
+      if (remote.bundle) {
+        // Smart-merge any cloud saves, character roster, custom worlds, and codex relics into local device
+        await applyProgressionBundle(remote.bundle, "merge");
+      }
+
+      // 2. Push unified progression bundle back to Cloud Vault so both device & cloud are 100% in sync
+      const pushRes = await syncProgressionToCloud(activeUser);
+      const syncedTimestamp = pushRes.updatedAt || remote.updatedAt || new Date().toISOString();
+
+      // 3. Refresh local + cloud snapshots for the confirmation screen
+      const unifiedLocal = await collectProgressionBundle({ optimizeForCloud: false });
+      setLocalBundle(unifiedLocal);
+      setCloudBundle(unifiedLocal);
+      setCloudUpdatedAt(syncedTimestamp);
+      setLastSyncedAt(syncedTimestamp);
+      setInitialSyncComplete(true);
+      soundEffects.playQuestComplete();
+
+      if (onProgressionRestored) {
+        onProgressionRestored();
+      }
+    } catch (err) {
+      console.warn("Initial OAuth account sync warning:", err);
+      const fallbackLocal = await collectProgressionBundle({ optimizeForCloud: false });
+      setLocalBundle(fallbackLocal);
+      setInitialSyncComplete(true);
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
+  // Detect OAuth redirect return on mount even when parent's `isOpen` is false
   useEffect(() => {
-    if (!isOpen) return;
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    const hasOAuthParam = url.searchParams.has("oauth_connected");
+    const hasPendingSession = Boolean(window.sessionStorage?.getItem("astra_oauth_pending"));
+    const hasAuthHash =
+      window.location.hash.includes("access_token=") ||
+      window.location.hash.includes("refresh_token=");
+
+    if (!hasOAuthParam && !hasPendingSession && !hasAuthHash) return;
+
+    let cancelled = false;
+
+    const verifyAndSyncOAuthReturn = async () => {
+      const creds = getSupabaseCredentials();
+      setSupaConfigured(creds.isConfigured);
+      setCustomSupaUrl(creds.url);
+      setCustomSupaKey(creds.anonKey);
+      setAutoSync(isCloudAutoSyncEnabled());
+
+      // Wait briefly if needed for Supabase URL session exchange to complete
+      let activeUser = await getActiveCloudUser();
+      if (!activeUser) {
+        await new Promise((r) => setTimeout(r, 450));
+        activeUser = await getActiveCloudUser();
+      }
+
+      if (cancelled || !activeUser) return;
+
+      // Clean up OAuth query param and sessionStorage flag now that session is established
+      try {
+        window.sessionStorage?.removeItem("astra_oauth_pending");
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("oauth_connected");
+        window.history.replaceState({}, "", cleanUrl.pathname + cleanUrl.search);
+      } catch {}
+
+      setUser(activeUser);
+      setActiveTab("cloud");
+      setOauthWelcomeOpen(true);
+      setShowConnectedConfirmation(true);
+
+      await performInitialAccountSync(activeUser);
+    };
+
+    verifyAndSyncOAuthReturn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen && !oauthWelcomeOpen) return;
     setStatusBanner(null);
     setPendingImportBundle(null);
     setAutoSync(isCloudAutoSyncEnabled());
@@ -106,8 +202,10 @@ export function CloudSyncModal({
     setCustomSupaUrl(creds.url);
     setCustomSupaKey(creds.anonKey);
 
-    refreshSnapshots();
-  }, [isOpen]);
+    if (!showConnectedConfirmation) {
+      refreshSnapshots();
+    }
+  }, [isOpen, oauthWelcomeOpen]);
 
   const refreshSnapshots = async () => {
     setSyncBusy(true);
@@ -134,7 +232,14 @@ export function CloudSyncModal({
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen && !oauthWelcomeOpen) return null;
+
+  const handleCloseModal = () => {
+    soundEffects.playClick();
+    setOauthWelcomeOpen(false);
+    setShowConnectedConfirmation(false);
+    onClose();
+  };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,15 +262,9 @@ export function CloudSyncModal({
         setPassword("");
         if (res.message) {
           setStatusBanner({ type: "info", text: res.message });
-        } else {
-          setStatusBanner({
-            type: "success",
-            text: `Signed in as ${res.user.displayName} (${res.user.email}). Checking Cloud Vault...`,
-          });
         }
-        const remote = await fetchCloudProgression(res.user);
-        setCloudBundle(remote.bundle);
-        setCloudUpdatedAt(remote.updatedAt);
+        setShowConnectedConfirmation(true);
+        await performInitialAccountSync(res.user);
       }
     } finally {
       setAuthLoading(false);
@@ -364,10 +463,7 @@ export function CloudSyncModal({
           </div>
           <button
             type="button"
-            onClick={() => {
-              soundEffects.playClick();
-              onClose();
-            }}
+            onClick={handleCloseModal}
             className="p-1.5 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
@@ -610,6 +706,101 @@ export function CloudSyncModal({
                         : "Sign In & Connect Cloud Vault"}
                     </button>
                   </form>
+                </div>
+              ) : showConnectedConfirmation ? (
+                /* OAUTH & ACCOUNT CONNECTED + SAVES SYNCED CONFIRMATION SCREEN */
+                <div className="bg-gradient-to-b from-emerald-950/40 via-zinc-900/90 to-sky-950/30 border border-emerald-500/40 rounded-3xl p-5 sm:p-6 text-center space-y-5 animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_40px_rgba(16,185,129,0.15)]">
+                  {/* Glowing Emblem */}
+                  <div className="relative mx-auto w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center shadow-[0_0_25px_rgba(16,185,129,0.35)]">
+                    {syncBusy && !initialSyncComplete ? (
+                      <RefreshCw className="w-8 h-8 text-sky-300 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-9 h-9 text-emerald-400" />
+                    )}
+                    <span className="absolute -bottom-1.5 -right-1.5 px-1.5 py-0.5 rounded-md bg-sky-500 text-zinc-950 font-mono font-black text-[9px] uppercase tracking-wider shadow">
+                      {user.provider}
+                    </span>
+                  </div>
+
+                  {/* Title & Identity */}
+                  <div className="space-y-1.5">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px] font-mono font-bold uppercase tracking-widest">
+                      <Sparkles className="w-3 h-3" />
+                      {syncBusy && !initialSyncComplete
+                        ? "Synchronizing Astral Cloud Vault..."
+                        : "All Saves & Character Roster Synced"}
+                    </div>
+                    <h3 className="text-lg sm:text-xl font-bold text-white font-mono">
+                      Signed In to Astra Chronicles
+                    </h3>
+                    <p className="text-xs text-zinc-300">
+                      Welcome, <span className="text-sky-300 font-semibold">{user.displayName}</span>{" "}
+                      <span className="text-zinc-500 font-mono">({user.email})</span>
+                    </p>
+                    <p className="text-[11px] text-zinc-400 max-w-md mx-auto leading-relaxed">
+                      Your account is linked and Auto-Sync is active. Your Save Slots (0–3), Saved Character Roster, Custom Worlds, and Codex Relics are backed up across devices.
+                    </p>
+                  </div>
+
+                  {/* Synced Progression Summary Grid */}
+                  {localBundle && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-left">
+                      <div className="bg-black/45 border border-white/10 rounded-2xl p-3">
+                        <span className="text-[10px] font-mono uppercase text-zinc-400 block">
+                          Save Slots
+                        </span>
+                        <span className="text-sm font-bold text-emerald-300 font-mono mt-0.5 block">
+                          {localBundle.summary.populatedSlots} / 4 Synced
+                        </span>
+                      </div>
+                      <div className="bg-black/45 border border-white/10 rounded-2xl p-3">
+                        <span className="text-[10px] font-mono uppercase text-zinc-400 block">
+                          Character Roster
+                        </span>
+                        <span className="text-sm font-bold text-amber-300 font-mono mt-0.5 block">
+                          {localBundle.characterRoster?.length ?? 0} Saved
+                        </span>
+                      </div>
+                      <div className="bg-black/45 border border-white/10 rounded-2xl p-3">
+                        <span className="text-[10px] font-mono uppercase text-zinc-400 block">
+                          Custom Worlds
+                        </span>
+                        <span className="text-sm font-bold text-sky-300 font-mono mt-0.5 block">
+                          {localBundle.summary.customWorldCount} Worlds
+                        </span>
+                      </div>
+                      <div className="bg-black/45 border border-white/10 rounded-2xl p-3">
+                        <span className="text-[10px] font-mono uppercase text-zinc-400 block">
+                          Codex Vault
+                        </span>
+                        <span className="text-sm font-bold text-purple-300 font-mono mt-0.5 block">
+                          {localBundle.summary.codexLootCount} Relics
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Primary & Secondary CTAs */}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCloseModal}
+                      className="w-full sm:flex-1 py-3 px-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-[0_0_20px_rgba(16,185,129,0.35)] active:scale-98 flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Continue to Astra Chronicles
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playClick();
+                        setShowConnectedConfirmation(false);
+                      }}
+                      className="w-full sm:w-auto py-3 px-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-zinc-200 font-mono font-semibold text-xs transition-all cursor-pointer"
+                    >
+                      Manage Cloud Vault & Slots
+                    </button>
+                  </div>
                 </div>
               ) : (
                 /* AUTHENTICATED CLOUD SYNC DASHBOARD */

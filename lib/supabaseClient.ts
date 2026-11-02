@@ -255,17 +255,42 @@ export async function authenticateWithEmail(params: {
 export async function signInWithOAuthProvider(
   provider: OAuthProviderType
 ): Promise<{ redirected: boolean; error?: string }> {
+  const { url, anonKey, isConfigured } = getSupabaseCredentials();
   const supabase = getSupabaseClient();
-  if (!supabase) {
+  if (!supabase || !isConfigured) {
     return {
       redirected: false,
       error: `To use ${provider.toUpperCase()} OAuth, configure NEXT_PUBLIC_SUPABASE_URL & NEXT_PUBLIC_SUPABASE_ANON_KEY (or paste them in Cloud Settings below), or sign in immediately with Email & Password.`,
     };
   }
 
+  // Pre-flight check Supabase Auth settings so the browser never navigates to a raw 400 "Unsupported provider: provider is not enabled" JSON page
   try {
-    const redirectTo =
-      typeof window !== "undefined" ? window.location.href.split("#")[0] : undefined;
+    const settingsRes = await fetch(`${url.replace(/\/+$/, "")}/auth/v1/settings`, {
+      headers: { apikey: anonKey },
+    });
+    if (settingsRes.ok) {
+      const settings = await settingsRes.json();
+      if (settings?.external && settings.external[provider] === false) {
+        const callbackUrl = `${url.replace(/\/+$/, "")}/auth/v1/callback`;
+        return {
+          redirected: false,
+          error: `${provider.toUpperCase()} is not enabled in your Supabase Dashboard yet. Go to Supabase Dashboard → Authentication → Providers → ${provider.toUpperCase()}, toggle it ON, and paste your Client ID & Secret (Callback URL: ${callbackUrl}). Or use the Email Cross-Save Account form below right now!`,
+        };
+      }
+    }
+  } catch {}
+
+  try {
+    let redirectTo: string | undefined = undefined;
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem("astra_oauth_pending", provider);
+      } catch {}
+      const currentUrl = new URL(window.location.href.split("#")[0]);
+      currentUrl.searchParams.set("oauth_connected", provider);
+      redirectTo = currentUrl.toString();
+    }
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
