@@ -65,8 +65,12 @@ function openRosterDB(): Promise<IDBDatabase> {
  * Sanitizes a raw object into a strict identity-only SavedCharacterBlueprint,
  * stripping any accidental level, stats, or item fields.
  */
-export function normalizeCharacterBlueprint(raw: any): SavedCharacterBlueprint | null {
-  if (!raw || typeof raw !== "object" || typeof raw.name !== "string" || !raw.name.trim()) {
+export function normalizeCharacterBlueprint(rawInput: unknown): SavedCharacterBlueprint | null {
+  if (!rawInput || typeof rawInput !== "object") {
+    return null;
+  }
+  const raw = rawInput as Record<string, unknown>;
+  if (typeof raw.name !== "string" || !raw.name.trim()) {
     return null;
   }
   const nowIso = new Date().toISOString();
@@ -80,20 +84,26 @@ export function normalizeCharacterBlueprint(raw: any): SavedCharacterBlueprint |
     role: typeof raw.role === "string" && raw.role.trim() ? raw.role.trim() : "Voidstrider",
     race: typeof raw.race === "string" && raw.race.trim() ? raw.race.trim() : "Human",
     racialTraits: Array.isArray(raw.racialTraits)
-      ? raw.racialTraits.filter((t: any) => typeof t === "string" && t.trim()).map((t: string) => t.trim())
+      ? raw.racialTraits
+          .filter((t: unknown): t is string => typeof t === "string" && Boolean(t.trim()))
+          .map((t: string) => t.trim())
       : [],
     personality:
       typeof raw.personality === "string" && raw.personality.trim()
         ? raw.personality.trim()
         : "Stoic Pragmatist",
     personalityTraits: Array.isArray(raw.personalityTraits)
-      ? raw.personalityTraits.filter((t: any) => typeof t === "string" && t.trim()).map((t: string) => t.trim())
+      ? raw.personalityTraits
+          .filter((t: unknown): t is string => typeof t === "string" && Boolean(t.trim()))
+          .map((t: string) => t.trim())
       : ["Calculated", "Composed", "Observant", "Resolute"],
     avatar: typeof raw.avatar === "string" ? raw.avatar : "",
     visualDescription:
       typeof raw.visualDescription === "string" ? raw.visualDescription : undefined,
     visualDna:
-      raw.visualDna && typeof raw.visualDna === "object" ? raw.visualDna : undefined,
+      raw.visualDna && typeof raw.visualDna === "object"
+        ? (raw.visualDna as CharacterVisualDNA)
+        : undefined,
     narrationStyle:
       typeof raw.narrationStyle === "string" ? raw.narrationStyle : undefined,
     originWorldTitle:

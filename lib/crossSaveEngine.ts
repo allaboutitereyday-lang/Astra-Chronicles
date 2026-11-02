@@ -377,9 +377,9 @@ export async function downloadAstraBundleFile(
 
 export async function parseAstraBundleFile(file: File): Promise<AstraProgressionBundle> {
   const text = await file.text();
-  let parsed: any;
+  let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(text);
+    parsed = JSON.parse(text) as Record<string, unknown>;
   } catch {
     throw new Error("Could not parse .astra save file. Ensure it is a valid JSON/Astra archive.");
   }
@@ -392,7 +392,7 @@ export async function parseAstraBundleFile(file: File): Promise<AstraProgression
       1: null,
       2: null,
       3: null,
-      [slotId]: parsed as SaveSlotPayload,
+      [slotId]: parsed as unknown as SaveSlotPayload,
     };
     const summary = buildProgressionSummary({
       saveSlots,
@@ -405,7 +405,7 @@ export async function parseAstraBundleFile(file: File): Promise<AstraProgression
     return {
       magic: "ASTRA_CHRONICLES_PROGRESSION_BUNDLE",
       version: "1.0",
-      exportedAt: parsed.savedAtISO || new Date().toISOString(),
+      exportedAt: typeof parsed.savedAtISO === "string" ? parsed.savedAtISO : new Date().toISOString(),
       deviceLabel: "Single Slot Export",
       summary,
       saveSlots,
@@ -421,18 +421,20 @@ export async function parseAstraBundleFile(file: File): Promise<AstraProgression
     throw new Error("Invalid .astra progression file: missing saveSlots payload.");
   }
 
-  if (!parsed.summary) {
-    parsed.summary = buildProgressionSummary({
-      saveSlots: parsed.saveSlots || {},
-      timelineEchoesByStory: parsed.timelineEchoesByStory || {},
-      regressionHistoryByStory: parsed.regressionHistoryByStory || {},
-      customStories: parsed.customStories || [],
-      codexLoot: parsed.codexLoot || [],
-      codexScenes: parsed.codexScenes || [],
+  const bundleObj = parsed as unknown as AstraProgressionBundle;
+
+  if (!bundleObj.summary) {
+    bundleObj.summary = buildProgressionSummary({
+      saveSlots: bundleObj.saveSlots || {},
+      timelineEchoesByStory: bundleObj.timelineEchoesByStory || {},
+      regressionHistoryByStory: bundleObj.regressionHistoryByStory || {},
+      customStories: bundleObj.customStories || [],
+      codexLoot: bundleObj.codexLoot || [],
+      codexScenes: bundleObj.codexScenes || [],
     });
   }
 
-  return parsed as AstraProgressionBundle;
+  return bundleObj;
 }
 
 // ============================================================================
@@ -527,10 +529,10 @@ export async function syncProgressionToCloud(
       updatedAt: syncedAt,
       provider: "local_server",
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       success: false,
-      error: err?.message || "Network error while syncing progression.",
+      error: err instanceof Error ? err.message : "Network error while syncing progression.",
     };
   }
 }
@@ -590,12 +592,12 @@ export async function fetchCloudProgression(
       bundle: null,
       provider: "local_server",
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
     return {
       found: false,
       updatedAt: null,
       bundle: null,
-      error: err?.message || "Could not reach cloud server.",
+      error: err instanceof Error ? err.message : "Could not reach cloud server.",
     };
   }
 }

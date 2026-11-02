@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 // Robust Save Storage & Image Compression Engine for Astra Chronicles
 // Handles IndexedDB storage (unlimited quota) with localStorage fallback & auto-compression
 

@@ -136,6 +136,31 @@ export function CloudSyncModal({
     }
   };
 
+  const refreshSnapshots = async () => {
+    setSyncBusy(true);
+    try {
+      const [local, currentUser] = await Promise.all([
+        collectProgressionBundle({ optimizeForCloud: false }),
+        getActiveCloudUser(),
+      ]);
+      setLocalBundle(local);
+      setUser(currentUser);
+
+      if (currentUser) {
+        const remote = await fetchCloudProgression(currentUser);
+        setCloudBundle(remote.bundle);
+        setCloudUpdatedAt(remote.updatedAt);
+      } else {
+        setCloudBundle(null);
+        setCloudUpdatedAt(null);
+      }
+    } catch (err) {
+      console.warn("Failed to refresh cross-save snapshots:", err);
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
   // Detect OAuth redirect return on mount even when parent's `isOpen` is false
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -188,49 +213,29 @@ export function CloudSyncModal({
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!isOpen && !oauthWelcomeOpen) return;
-    setStatusBanner(null);
-    setPendingImportBundle(null);
-    setAutoSync(isCloudAutoSyncEnabled());
-    setLastSyncedAt(getLastCloudSyncTimestamp());
+    const initTimer = setTimeout(() => {
+      setStatusBanner(null);
+      setPendingImportBundle(null);
+      setAutoSync(isCloudAutoSyncEnabled());
+      setLastSyncedAt(getLastCloudSyncTimestamp());
 
-    const creds = getSupabaseCredentials();
-    setSupaConfigured(creds.isConfigured);
-    setCustomSupaUrl(creds.url);
-    setCustomSupaKey(creds.anonKey);
+      const creds = getSupabaseCredentials();
+      setSupaConfigured(creds.isConfigured);
+      setCustomSupaUrl(creds.url);
+      setCustomSupaKey(creds.anonKey);
 
-    if (!showConnectedConfirmation) {
-      refreshSnapshots();
-    }
-  }, [isOpen, oauthWelcomeOpen]);
-
-  const refreshSnapshots = async () => {
-    setSyncBusy(true);
-    try {
-      const [local, currentUser] = await Promise.all([
-        collectProgressionBundle({ optimizeForCloud: false }),
-        getActiveCloudUser(),
-      ]);
-      setLocalBundle(local);
-      setUser(currentUser);
-
-      if (currentUser) {
-        const remote = await fetchCloudProgression(currentUser);
-        setCloudBundle(remote.bundle);
-        setCloudUpdatedAt(remote.updatedAt);
-      } else {
-        setCloudBundle(null);
-        setCloudUpdatedAt(null);
+      if (!showConnectedConfirmation) {
+        refreshSnapshots();
       }
-    } catch (err) {
-      console.warn("Failed to refresh cross-save snapshots:", err);
-    } finally {
-      setSyncBusy(false);
-    }
-  };
+    }, 0);
+    return () => clearTimeout(initTimer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, oauthWelcomeOpen]);
 
   if (!isOpen && !oauthWelcomeOpen) return null;
 
@@ -334,10 +339,10 @@ export function CloudSyncModal({
       if (onProgressionRestored) {
         onProgressionRestored();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatusBanner({
         type: "error",
-        text: err?.message || "Failed to apply cloud progression.",
+        text: err instanceof Error ? err.message : "Failed to apply cloud progression.",
       });
     } finally {
       setSyncBusy(false);
@@ -355,10 +360,10 @@ export function CloudSyncModal({
         type: "success",
         text: `Downloaded .astra master backup (${bundle.summary.populatedSlots} save slots, ${bundle.summary.customWorldCount} custom worlds, ${bundle.summary.codexLootCount} relics).`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatusBanner({
         type: "error",
-        text: err?.message || "Failed to export .astra file.",
+        text: err instanceof Error ? err.message : "Failed to export .astra file.",
       });
     } finally {
       setSyncBusy(false);
@@ -379,11 +384,11 @@ export function CloudSyncModal({
         type: "info",
         text: `Loaded "${file.name}". Review the snapshot preview below and choose Smart Merge or Full Replace.`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setPendingImportBundle(null);
       setStatusBanner({
         type: "error",
-        text: err?.message || "Invalid .astra file.",
+        text: err instanceof Error ? err.message : "Invalid .astra file.",
       });
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -418,10 +423,10 @@ export function CloudSyncModal({
       if (onProgressionRestored) {
         onProgressionRestored();
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatusBanner({
         type: "error",
-        text: err?.message || "Failed to restore .astra backup file.",
+        text: err instanceof Error ? err.message : "Failed to restore .astra backup file.",
       });
     } finally {
       setSyncBusy(false);

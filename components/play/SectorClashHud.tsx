@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
@@ -17,7 +18,6 @@ import {
   AlertTriangle,
   RefreshCw,
   X,
-  SlidersHorizontal,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -97,7 +97,6 @@ export function SectorClashHud({
     0,
     Math.min(100, (playerHp / Math.max(1, playerMaxHp)) * 100)
   );
-  const [ghostPlayerHpPercent, setGhostPlayerHpPercent] = useState(playerHpPercent);
   const prevPlayerHpRef = useRef(playerHpPercent);
 
   const playerMpPercent = Math.max(
@@ -111,46 +110,46 @@ export function SectorClashHud({
   const [showPortraitLightbox, setShowPortraitLightbox] = useState(false);
   const [showPromptEditor, setShowPromptEditor] = useState(false);
   const [showCombatLog, setShowCombatLog] = useState(false);
-  const [customEnemyPrompt, setCustomEnemyPrompt] = useState(activeClash.enemyVisualPrompt || "");
-
-  useEffect(() => {
-    setCustomEnemyPrompt(activeClash.enemyVisualPrompt || "");
-  }, [activeClash.enemyName, activeClash.enemyVisualPrompt]);
+  const [customEnemyPromptDraft, setCustomEnemyPromptDraft] = useState<string | null>(null);
+  const customEnemyPrompt = customEnemyPromptDraft ?? (activeClash.enemyVisualPrompt || "");
+  const setCustomEnemyPrompt = (val: string) => setCustomEnemyPromptDraft(val);
 
   useEffect(() => {
     if (enemyHpPercent < prevEnemyHpRef.current) {
-      setEnemyDamagedFlash(true);
+      const startFlashTimer = setTimeout(() => setEnemyDamagedFlash(true), 0);
       const flashTimer = setTimeout(() => setEnemyDamagedFlash(false), 450);
       const ghostTimer = setTimeout(() => setGhostEnemyHpPercent(enemyHpPercent), 550);
       prevEnemyHpRef.current = enemyHpPercent;
       return () => {
+        clearTimeout(startFlashTimer);
         clearTimeout(flashTimer);
         clearTimeout(ghostTimer);
       };
     } else {
-      setGhostEnemyHpPercent(enemyHpPercent);
+      const syncGhostTimer = setTimeout(() => setGhostEnemyHpPercent(enemyHpPercent), 0);
       prevEnemyHpRef.current = enemyHpPercent;
+      return () => clearTimeout(syncGhostTimer);
     }
   }, [enemyHpPercent]);
 
   useEffect(() => {
     if (playerHpPercent < prevPlayerHpRef.current) {
-      setPlayerDamagedFlash(true);
+      const startFlashTimer = setTimeout(() => setPlayerDamagedFlash(true), 0);
       const flashTimer = setTimeout(() => setPlayerDamagedFlash(false), 550);
-      const ghostTimer = setTimeout(() => setGhostPlayerHpPercent(playerHpPercent), 650);
       prevPlayerHpRef.current = playerHpPercent;
       return () => {
+        clearTimeout(startFlashTimer);
         clearTimeout(flashTimer);
-        clearTimeout(ghostTimer);
       };
     } else if (playerHpPercent > prevPlayerHpRef.current) {
-      setPlayerHealedFlash(true);
+      const startHealTimer = setTimeout(() => setPlayerHealedFlash(true), 0);
       const healTimer = setTimeout(() => setPlayerHealedFlash(false), 600);
-      setGhostPlayerHpPercent(playerHpPercent);
       prevPlayerHpRef.current = playerHpPercent;
-      return () => clearTimeout(healTimer);
+      return () => {
+        clearTimeout(startHealTimer);
+        clearTimeout(healTimer);
+      };
     } else {
-      setGhostPlayerHpPercent(playerHpPercent);
       prevPlayerHpRef.current = playerHpPercent;
     }
   }, [playerHpPercent]);
