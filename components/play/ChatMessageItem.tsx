@@ -32,6 +32,7 @@ export interface ChatMessageData {
 export interface ChatMessageItemProps {
   msg: ChatMessageData;
   isLatestCharacterTurn: boolean;
+  isLatestUserTurn?: boolean;
   isEditing: boolean;
   isTypingUser: boolean;
   streamedContent?: string;
@@ -43,7 +44,7 @@ export interface ChatMessageItemProps {
   defaultFallbackSprite: string;
   onStartEdit: (msg: ChatMessageData) => void;
   onCancelEdit: () => void;
-  onSaveEdit: (id: string, newText: string) => void;
+  onSaveEdit: (id: string, newText: string, shouldRegenerate?: boolean) => void;
   onRegenerateTurn: () => void;
   onSkipTypewriter: (msg: ChatMessageData, isLatestCharacterTurn: boolean) => void;
 }
@@ -51,6 +52,7 @@ export interface ChatMessageItemProps {
 export const ChatMessageItem = memo(function ChatMessageItem({
   msg,
   isLatestCharacterTurn,
+  isLatestUserTurn = false,
   isEditing,
   isTypingUser,
   streamedContent,
@@ -89,13 +91,15 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       <div className="flex items-center gap-2 mb-1 px-1">
         {msg.sender === "user" ? (
           <>
-            {!isEditing && (
+            {!isEditing && !msg.isPending && (
               <button
+                type="button"
                 onClick={() => onStartEdit(msg)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-zinc-500 hover:text-zinc-200 cursor-pointer"
+                className="opacity-85 hover:opacity-100 transition-all px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm"
                 title="Edit action"
               >
-                <Edit3 className="w-3.5 h-3.5" />
+                <Edit3 className="w-3 h-3" />
+                <span>Edit</span>
               </button>
             )}
             <span className="text-[11px] text-zinc-500 font-mono select-none">
@@ -156,21 +160,25 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             </span>
 
             {!isEditing && !msg.isPending && (
-              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 ml-1 select-none">
+              <div className="opacity-90 hover:opacity-100 transition-all flex items-center gap-1.5 ml-1 select-none">
                 <button
+                  type="button"
                   onClick={() => onStartEdit(msg)}
-                  className="p-1 text-zinc-500 hover:text-zinc-200 cursor-pointer"
+                  className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
                   title="Edit response"
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  <Edit3 className="w-3 h-3" />
+                  <span>Edit</span>
                 </button>
                 {isLatestCharacterTurn && !isLoading && (
                   <button
+                    type="button"
                     onClick={onRegenerateTurn}
-                    className="p-1 text-zinc-500 hover:text-rose-400 cursor-pointer"
+                    className="px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
                     title="Regenerate response"
                   >
-                    <RotateCcw className="w-3.5 h-3.5" />
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Regenerate</span>
                   </button>
                 )}
               </div>
@@ -194,11 +202,11 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               onChange={(e) => setLocalEditText(e.target.value)}
               className="w-full bg-black/60 border border-white/20 rounded-xl p-2.5 text-base sm:text-xs text-zinc-100 focus:outline-none focus:border-rose-400 font-sans resize-y min-h-[90px]"
             />
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[10px] text-zinc-500 font-mono">
                 Supports markdown (*action*, **bold**, &gt; quote)
               </span>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={onCancelEdit}
@@ -208,11 +216,21 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onSaveEdit(msg.id, localEditText)}
+                  onClick={() => onSaveEdit(msg.id, localEditText, false)}
                   className="px-2.5 py-1 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 rounded-lg flex items-center gap-1 cursor-pointer"
                 >
                   <Check className="w-3 h-3" /> Save
                 </button>
+                {msg.sender === "user" && isLatestUserTurn && !isLoading && (
+                  <button
+                    type="button"
+                    onClick={() => onSaveEdit(msg.id, localEditText, true)}
+                    className="px-2.5 py-1 text-xs font-semibold text-amber-100 bg-amber-600/80 hover:bg-amber-500 border border-amber-400/40 rounded-lg flex items-center gap-1 cursor-pointer"
+                    title="Save edited action and regenerate the AI response"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Save &amp; Regenerate
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -278,6 +296,35 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               )}
             </div>
           )}
+
+        {/* Bottom Action Toolbar for Long Narrative Bubbles & Touch Devices */}
+        {!isEditing && !msg.isPending && msg.sender === "character" && isLatestCharacterTurn && (
+          <div
+            className="mt-3 pt-2 border-t border-white/10 flex items-center justify-end gap-2 select-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => onStartEdit(msg)}
+              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+              title="Edit narrative text"
+            >
+              <Edit3 className="w-3 h-3 text-sky-400" />
+              <span>Edit Text</span>
+            </button>
+            {!isLoading && (
+              <button
+                type="button"
+                onClick={onRegenerateTurn}
+                className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 hover:border-rose-400/50 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Regenerate AI response for this turn"
+              >
+                <RotateCcw className="w-3 h-3 text-rose-400" />
+                <span>Regenerate Response</span>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

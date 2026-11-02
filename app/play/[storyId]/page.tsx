@@ -130,7 +130,13 @@ import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
 import { WorldShareModal } from "@/components/WorldShareModal";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
-import { PERSONALITY_PRESETS, PersonalityPreset, analyzeChoiceVector, getDominantTendencyLabel } from "@/lib/personalityArchitect";
+import {
+  PERSONALITY_PRESETS,
+  PersonalityPreset,
+  analyzeChoiceVector,
+  getDominantTendencyLabel,
+  buildPersonalityFallbackChoices,
+} from "@/lib/personalityArchitect";
 
 // Dynamic code splitting for heavy interactive canvas graph
 const FlowchartViewer = dynamic(
@@ -2176,10 +2182,18 @@ export default function VisualNovelGame() {
   const handleStatChange = (stat: "str" | "dex" | "int", amount: number) => {
     const currentValue = player.stats[stat];
     if (amount > 0 && statPoints > 0) {
-      setPlayer({ ...player, stats: { ...player.stats, [stat]: currentValue + 1 } });
+      setPlayer((prev) => {
+        const next = { ...prev, stats: { ...prev.stats, [stat]: currentValue + 1 } };
+        playerRef.current = next;
+        return next;
+      });
       setStatPoints((prev) => prev - 1);
     } else if (amount < 0 && currentValue > 10) {
-      setPlayer({ ...player, stats: { ...player.stats, [stat]: currentValue - 1 } });
+      setPlayer((prev) => {
+        const next = { ...prev, stats: { ...prev.stats, [stat]: currentValue - 1 } };
+        playerRef.current = next;
+        return next;
+      });
       setStatPoints((prev) => prev + 1);
     }
   };
@@ -2800,11 +2814,17 @@ export default function VisualNovelGame() {
       });
     }
 
+    const basePlayer = playerRef.current || player;
     const finalStartingPlayer: PlayerProfile = {
-      ...player,
+      ...basePlayer,
+      personality: player.personality || basePlayer.personality || "Stoic Pragmatist",
+      personalityTraits:
+        player.personalityTraits && player.personalityTraits.length > 0
+          ? player.personalityTraits
+          : basePlayer.personalityTraits || ["Calculated", "Unflinching", "Efficient", "Vigilant"],
       gear: initialGear,
       gearImages: initialGearImages,
-      inventory: ensureInventoryRelicConditions(customInventory ? [...(player.inventory || []), ...customInventory] : (player.inventory || [])),
+      inventory: ensureInventoryRelicConditions(customInventory ? [...(basePlayer.inventory || []), ...customInventory] : (basePlayer.inventory || [])),
       narrationStyle,
     };
     setPlayer(finalStartingPlayer);
@@ -2935,7 +2955,18 @@ export default function VisualNovelGame() {
         },
       ]);
 
-      const activeOpeningChoices = data.opening_choices && data.opening_choices.length === 4 ? data.opening_choices : chosen.choices;
+      const activeOpeningChoices =
+        data.opening_choices && data.opening_choices.length === 4
+          ? data.opening_choices
+          : buildPersonalityFallbackChoices({
+              personality: finalStartingPlayer.personality,
+              personalityTraits: finalStartingPlayer.personalityTraits,
+              playerRole: finalStartingPlayer.role,
+              playerRace: finalStartingPlayer.race,
+              activeSpeaker,
+              location: data.location || chosen.location,
+              isProtagonistAlone: false,
+            });
       setChoices(activeOpeningChoices);
 
       const initPartyState = party.map((comp) => {
@@ -3065,7 +3096,16 @@ export default function VisualNovelGame() {
           avatarSrc: initialSprite,
         },
       ]);
-      setChoices(chosen.choices);
+      const fallbackPersonaChoices = buildPersonalityFallbackChoices({
+        personality: finalStartingPlayer.personality,
+        personalityTraits: finalStartingPlayer.personalityTraits,
+        playerRole: finalStartingPlayer.role,
+        playerRace: finalStartingPlayer.race,
+        activeSpeaker: chosen.speaker,
+        location: chosen.location,
+        isProtagonistAlone: false,
+      });
+      setChoices(fallbackPersonaChoices);
 
       const fallbackPartyState = party.map((comp) => {
         const isSelected = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
@@ -3604,8 +3644,22 @@ export default function VisualNovelGame() {
     setEditingText("");
   }, []);
 
-  const handleSaveEdit = useCallback((id: string, nextText?: string) => {
+  const handleSaveEdit = async (id: string, nextText?: string, shouldRegenerate?: boolean) => {
     const resolvedText = nextText !== undefined ? nextText : editingText;
+    setEditingMessageId(null);
+    setEditingText("");
+
+    if (shouldRegenerate) {
+      // Find the edited user message index and prune everything from that index onward, then replay the edited action
+      const targetIdx = chatLog.findIndex((m) => m.id === id);
+      if (targetIdx !== -1 && chatLog[targetIdx].sender === "user") {
+        const previousHistory = chatLog.slice(0, targetIdx);
+        setChatLog(previousHistory);
+        await sendAction(resolvedText, true);
+        return;
+      }
+    }
+
     setChatLog((prev) => {
       const lastMsg = prev[prev.length - 1];
       if (lastMsg && lastMsg.id === id && lastMsg.sender === "character") {
@@ -3614,10 +3668,7 @@ export default function VisualNovelGame() {
       }
       return prev.map((msg) => (msg.id === id ? { ...msg, text: resolvedText } : msg));
     });
-
-    setEditingMessageId(null);
-    setEditingText("");
-  }, [editingText]);
+  };
 
   const handleSkipTypewriter = useCallback((msg: ChatMessage, isLatestCharacterTurn: boolean) => {
     if (isLatestCharacterTurn) {
@@ -3631,18 +3682,27 @@ export default function VisualNovelGame() {
   }, [gameState.dialogue, typingUserMsgId, clearUserTypewriter]);
 
   const handleRegenerateTurn = async () => {
-    if (isLoading || chatLog.length < 2) return;
+    if (isLoading || chatLog.length === 0) return;
 
-    const lastCharacterMsg = chatLog[chatLog.length - 1];
-    const lastUserMsg = chatLog[chatLog.length - 2];
+    // Locate the most recent user message to replay
+    let lastUserIdx = -1;
+    for (let i = chatLog.length - 1; i >= 0; i--) {
+      if (chatLog[i].sender === "user") {
+        lastUserIdx = i;
+        break;
+      }
+    }
 
-    if (lastCharacterMsg.sender !== "character" || lastUserMsg.sender !== "user") return;
+    if (lastUserIdx !== -1) {
+      const lastUserMsg = chatLog[lastUserIdx];
+      const previousHistory = chatLog.slice(0, lastUserIdx);
+      setChatLog(previousHistory);
+      await sendAction(lastUserMsg.text, true);
+      return;
+    }
 
-    // Prune the latest character turn and replay action
-    const previousHistory = chatLog.slice(0, -2);
-    setChatLog(previousHistory);
-
-    await sendAction(lastUserMsg.text, true);
+    // If on the opening Prologue (no user message yet), regenerate the opening scene turn
+    await handleStartGame(player.gear, player.inventory);
   };
 
   const sendAction = async (
@@ -3664,13 +3724,19 @@ export default function VisualNovelGame() {
     const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
     // Track emergent behavioral tendencies based on player action choices
+    const activePlayerSnapshot = playerRef.current || player;
     const vectorKey = analyzeChoiceVector(formattedPayload);
     const updatedTendencies = {
-      ...(player.behavioralTendencies || {}),
-      [vectorKey]: ((player.behavioralTendencies || {})[vectorKey] || 0) + 1,
+      ...(activePlayerSnapshot.behavioralTendencies || {}),
+      [vectorKey]: ((activePlayerSnapshot.behavioralTendencies || {})[vectorKey] || 0) + 1,
     };
     const playerWithTendencies: PlayerProfile = {
-      ...player,
+      ...activePlayerSnapshot,
+      personality: player.personality || activePlayerSnapshot.personality || "Stoic Pragmatist",
+      personalityTraits:
+        player.personalityTraits && player.personalityTraits.length > 0
+          ? player.personalityTraits
+          : activePlayerSnapshot.personalityTraits || ["Calculated", "Unflinching", "Efficient", "Vigilant"],
       behavioralTendencies: updatedTendencies,
     };
     setPlayer(playerWithTendencies);
@@ -7789,58 +7855,69 @@ export default function VisualNovelGame() {
                 ref={dialogueFeedRef}
                 className="flex-1 p-4 md:p-5 overflow-y-auto space-y-4 select-text pb-14"
               >
-              {chatLog.map((msg, idx) => {
-                const isLast = idx === chatLog.length - 1;
-                const isLatestCharacterTurn = isLast && msg.sender === "character";
-                const isTypingUser = msg.id === typingUserMsgId;
-                const isEditing = editingMessageId === msg.id;
+              {(() => {
+                let latestCharIdx = -1;
+                let latestUserIdx = -1;
+                for (let i = chatLog.length - 1; i >= 0; i--) {
+                  if (latestCharIdx === -1 && chatLog[i].sender === "character") latestCharIdx = i;
+                  if (latestUserIdx === -1 && chatLog[i].sender === "user") latestUserIdx = i;
+                  if (latestCharIdx !== -1 && latestUserIdx !== -1) break;
+                }
 
-                const isMsgAmbient =
-                  msg.sender === "character" &&
-                  ["narrator", "system", "inner monologue"].some((s) =>
-                    msg.speakerName.toLowerCase().includes(s)
+                return chatLog.map((msg, idx) => {
+                  const isLatestCharacterTurn = idx === latestCharIdx;
+                  const isLatestUserTurn = idx === latestUserIdx;
+                  const isTypingUser = msg.id === typingUserMsgId;
+                  const isEditing = editingMessageId === msg.id;
+
+                  const isMsgAmbient =
+                    msg.sender === "character" &&
+                    ["narrator", "system", "inner monologue"].some((s) =>
+                      msg.speakerName.toLowerCase().includes(s)
+                    );
+                  const resolvedSpriteSrc =
+                    msg.sender === "character" && !isMsgAmbient
+                      ? (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                        getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) ||
+                        DEFAULT_FALLBACK_SPRITE
+                      : DEFAULT_FALLBACK_SPRITE;
+
+                  return (
+                    <ChatMessageItem
+                      key={msg.id}
+                      msg={msg}
+                      isLatestCharacterTurn={isLatestCharacterTurn}
+                      isLatestUserTurn={isLatestUserTurn}
+                      isTypingUser={isTypingUser}
+                      isEditing={isEditing}
+                      isLoading={isLoading}
+                      playerAvatar={playerAvatar}
+                      playerName={player.name}
+                      resolvedSpriteSrc={resolvedSpriteSrc}
+                      defaultFallbackSprite={DEFAULT_FALLBACK_SPRITE}
+                      streamedContent={
+                        isLatestCharacterTurn
+                          ? displayedText
+                          : isTypingUser
+                          ? displayedUserText
+                          : undefined
+                      }
+                      isStreaming={
+                        isLatestCharacterTurn
+                          ? displayedText.length < gameState.dialogue.length
+                          : isTypingUser
+                          ? displayedUserText.length < msg.text.length
+                          : false
+                      }
+                      onStartEdit={handleStartEdit}
+                      onCancelEdit={handleCancelEdit}
+                      onSaveEdit={handleSaveEdit}
+                      onRegenerateTurn={handleRegenerateTurn}
+                      onSkipTypewriter={handleSkipTypewriter}
+                    />
                   );
-                const resolvedSpriteSrc =
-                  msg.sender === "character" && !isMsgAmbient
-                    ? (msg.avatarSrc && msg.avatarSrc.trim()) ||
-                      getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) ||
-                      DEFAULT_FALLBACK_SPRITE
-                    : DEFAULT_FALLBACK_SPRITE;
-
-                return (
-                  <ChatMessageItem
-                    key={msg.id}
-                    msg={msg}
-                    isLatestCharacterTurn={isLatestCharacterTurn}
-                    isTypingUser={isTypingUser}
-                    isEditing={isEditing}
-                    isLoading={isLoading}
-                    playerAvatar={playerAvatar}
-                    playerName={player.name}
-                    resolvedSpriteSrc={resolvedSpriteSrc}
-                    defaultFallbackSprite={DEFAULT_FALLBACK_SPRITE}
-                    streamedContent={
-                      isLatestCharacterTurn
-                        ? displayedText
-                        : isTypingUser
-                        ? displayedUserText
-                        : undefined
-                    }
-                    isStreaming={
-                      isLatestCharacterTurn
-                        ? displayedText.length < gameState.dialogue.length
-                        : isTypingUser
-                        ? displayedUserText.length < msg.text.length
-                        : false
-                    }
-                    onStartEdit={handleStartEdit}
-                    onCancelEdit={handleCancelEdit}
-                    onSaveEdit={handleSaveEdit}
-                    onRegenerateTurn={handleRegenerateTurn}
-                    onSkipTypewriter={handleSkipTypewriter}
-                  />
-                );
-              })}
+                });
+              })()}
               </div>
 
               {/* RETURN TO TOP & RETURN TO BOTTOM QUICK SCROLL BUTTONS */}

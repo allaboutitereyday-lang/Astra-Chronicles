@@ -66,6 +66,156 @@ export const PERSONALITY_PRESETS: PersonalityPreset[] = [
   },
 ];
 
+export interface PersonaVoiceProfile {
+  personaTitle: string;
+  traitsList: string[];
+  speechCadence: string;
+  attitudeAndWorldview: string;
+  preferredTagPrefixes: [string, string, string, string];
+  exampleSpokenLines: [string, string, string];
+}
+
+/**
+ * Resolves a rich, actionable voice & dialogue blueprint for any chosen personality preset or custom persona.
+ */
+export function getPersonaVoiceProfile(
+  personality?: string,
+  personalityTraits?: string[]
+): PersonaVoiceProfile {
+  const rawName = (personality || "Stoic Pragmatist").trim();
+  const lower = rawName.toLowerCase();
+  const traits =
+    Array.isArray(personalityTraits) && personalityTraits.length > 0
+      ? personalityTraits.filter(Boolean)
+      : ["Calculated", "Unflinching", "Efficient", "Vigilant"];
+
+  if (lower.includes("noble") || lower.includes("protector") || lower.includes("gallant") || lower.includes("hero")) {
+    return {
+      personaTitle: rawName,
+      traitsList: traits,
+      speechCadence:
+        "Principled, earnest, steady, and protective. Speaks with resolute conviction, warmth toward allies, and unyielding defiance toward cruelty or dishonor.",
+      attitudeAndWorldview:
+        "Prioritizes shielding the vulnerable, keeping sworn word, and facing threats from the front rather than resorting to underhanded deceit.",
+      preferredTagPrefixes: ["Noble/Protective", "Valiant/Resolve", "Honorable/Direct", "Righteous/Stand"],
+      exampleSpokenLines: [
+        "'Stand behind me. Whatever comes through that threshold answers to my steel first.'",
+        "'You don't have to carry this burden alone—tell me who set this trap and we end it together.'",
+        "'I won't trade innocent lives for a convenient escape. We hold the line here.'",
+      ],
+    };
+  }
+
+  if (lower.includes("cynic") || lower.includes("outlaw") || lower.includes("mercenary") || lower.includes("rogue")) {
+    return {
+      personaTitle: rawName,
+      traitsList: traits,
+      speechCadence:
+        "Dry, street-smart, sardonic, and unsentimental. Uses deadpan wit, sharp skepticism, and pragmatic bargaining; never buys into grand idealistic speeches.",
+      attitudeAndWorldview:
+        "Looks for the hidden catch, the exit route, and the leverage in every conversation. Prioritizes survival, payback, and practical results.",
+      preferredTagPrefixes: ["Cynical/Deadpan", "Outlaw/Leverage", "Skeptical/Sharp", "Pragmatic/Cutthroat"],
+      exampleSpokenLines: [
+        "'Spare me the noble speech—just tell me how much this little miracle is going to cost us.'",
+        "'Funny how every time someone says \"trust me,\" there's a knife or a bounty waiting in the next room.'",
+        "'We take the side passage, let the guards choke on the smoke, and settle the score on our own terms.'",
+      ],
+    };
+  }
+
+  if (lower.includes("scholar") || lower.includes("enigmatic") || lower.includes("intellectual") || lower.includes("arcane")) {
+    return {
+      personaTitle: rawName,
+      traitsList: traits,
+      speechCadence:
+        "Articulate, perceptive, composed, and intensely curious. Speaks with analytical precision, dissecting hidden motives, rune structures, and causal anomalies.",
+      attitudeAndWorldview:
+        "Treats every crisis as an intricate puzzle or theorem to be solved through observation, forbidden lore, and psychological deduction.",
+      preferredTagPrefixes: ["Scholar/Analytical", "Inquisitive/Lore", "Observant/Deduction", "Arcane/Calculated"],
+      exampleSpokenLines: [
+        "'Fascinating—the fracture pattern on that ward wasn't caused by force; someone rewrote its anchor from the inside.'",
+        "'Your pulse spiked the moment the spire was mentioned. Tell me what theorem you're hiding.'",
+        "'Brute force will only destabilize the rift. Give me ten seconds to invert the resonance node.'",
+      ],
+    };
+  }
+
+  if (lower.includes("daredevil") || lower.includes("passionate") || lower.includes("hot-blooded") || lower.includes("reckless") || lower.includes("fierce")) {
+    return {
+      personaTitle: rawName,
+      traitsList: traits,
+      speechCadence:
+        "Bold, fiery, fearless, and electric with momentum. Speaks with a defiant grin, raw emotional honesty, and thrilling confidence in the face of overwhelming odds.",
+      attitudeAndWorldview:
+        "Thrives on high stakes and direct confrontation; refuses to cower or retreat when a daring charge can shatter the enemy's tempo.",
+      preferredTagPrefixes: ["Daredevil/Bold", "Defiant/Charge", "Fierce/Grit", "Fearless/Escalation"],
+      exampleSpokenLines: [
+        "'Three to one? Good—that means we don't even have to aim carefully! Let's break right through them!'",
+        "'Stop overthinking the odds! Grab my hand—we're jumping the chasm before the bridge collapses!'",
+        "'If they want our heads, they're welcome to step up and try taking them!'",
+      ],
+    };
+  }
+
+  if (lower.includes("trickster") || lower.includes("sly") || lower.includes("charming") || lower.includes("playful") || lower.includes("flirt")) {
+    return {
+      personaTitle: rawName,
+      traitsList: traits,
+      speechCadence:
+        "Playful, quippy, charming, and dangerously clever. Uses teasing banter, theatrical misdirection, and smooth confidence to disarm allies and infuriate enemies.",
+      attitudeAndWorldview:
+        "Turns tense standoffs into a game of wits, bluffing with a smirk while quietly palming the trump card.",
+      preferredTagPrefixes: ["Trickster/Banter", "Charming/Audacious", "Deceptive/Feint", "Cunning/Playful"],
+      exampleSpokenLines: [
+        "'Now, now—is that any way to greet the only person standing between you and a very messy ambush?'",
+        "'Care to make a wager? If I unlock that seal in thirty seconds, you owe me the real story over drinks.'",
+        "'Keep smiling and look toward the balcony—I already relieved their captain of the vault key.'",
+      ],
+    };
+  }
+
+  if (lower.includes("stoic") || lower.includes("pragmatist")) {
+    return {
+      personaTitle: rawName,
+      traitsList: traits,
+      speechCadence:
+        "laconic, calm, unflinching, and razor-direct. Speaks in measured, deliberate sentences with zero melodrama or wasted breath.",
+      attitudeAndWorldview:
+        "Evaluates threats, exits, and tactical efficiency with icy composure. Actions speak louder than boastful words.",
+      preferredTagPrefixes: ["Stoic/Calculated", "Pragmatic/Direct", "Vigilant/Tactical", "Unflinching/Cold"],
+      exampleSpokenLines: [
+        "'Save your breath. Two patrols ahead—we move when the torchlight shifts.'",
+        "'State your terms plainly. If this deal compromises our position, I walk.'",
+        "'Hold the left flank. I'll silence the lookout before the alarm sounds.'",
+      ],
+    };
+  }
+
+  // Custom Persona synthesis
+  const t1 = traits[0] || "Expressive";
+  const t2 = traits[1] || "Focused";
+  const t3 = traits[2] || "Decisive";
+  const t4 = traits[3] || "Resolute";
+
+  return {
+    personaTitle: rawName,
+    traitsList: traits,
+    speechCadence: `Distinctly embodies a "${rawName}" persona defined by [${traits.join(", ")}]. Every spoken line and gesture must unmistakably reflect these specific traits.`,
+    attitudeAndWorldview: `Approaches every conflict, mystery, and interpersonal exchange through the lens of a "${rawName}" (${traits.join(", ")}).`,
+    preferredTagPrefixes: [
+      `${t1}/Action`,
+      `${t2}/Tactical`,
+      `${t3}/Dialogue`,
+      `${t4}/Feat`,
+    ],
+    exampleSpokenLines: [
+      `Speak and act with unmistakable ${t1.toLowerCase()} and ${t2.toLowerCase()} energy suited to a ${rawName}.`,
+      `Express ${t3.toLowerCase()} conviction in both spoken dialogue and physical body language.`,
+      `Respond to the scene's tension with authentic ${rawName} flair.`,
+    ],
+  };
+}
+
 export interface DynamicChoiceContext {
   playerName: string;
   playerRole: string;
@@ -86,13 +236,12 @@ export interface DynamicChoiceContext {
 
 /**
  * Builds the authoritative Dynamic Choice Authoring Directive for LLM prompts.
- * Enforces dynamic adaptation to scene stakes, player personality, moral counterpoints, and racial/class traits.
+ * Guarantees that all 4 generated dialogue/action options sound unmistakably like the player's chosen personality.
  */
 export function buildDynamicChoiceDirective(ctx: DynamicChoiceContext): string {
-  const personaName = ctx.personality || "Pragmatic Adventurer";
-  const traits = (ctx.personalityTraits && ctx.personalityTraits.length > 0)
-    ? ctx.personalityTraits.join(", ")
-    : "Alert, Self-reliant, Resourceful";
+  const voiceProfile = getPersonaVoiceProfile(ctx.personality, ctx.personalityTraits);
+  const personaName = voiceProfile.personaTitle;
+  const traits = voiceProfile.traitsList.join(", ");
 
   // Identify dominant emergent tendency if tracked
   let dominantTendency = "";
@@ -103,55 +252,177 @@ export function buildDynamicChoiceDirective(ctx: DynamicChoiceContext): string {
     }
   }
 
-  const raceAnatomy = (ctx.racialTraits && ctx.racialTraits.length > 0)
-    ? ctx.racialTraits.join(", ")
-    : (ctx.playerRace && ctx.playerRace.toLowerCase() !== "human" ? `${ctx.playerRace} physiology` : "Standard physiology");
+  const raceAnatomy =
+    ctx.racialTraits && ctx.racialTraits.length > 0
+      ? ctx.racialTraits.join(", ")
+      : ctx.playerRace && ctx.playerRace.toLowerCase() !== "human"
+      ? `${ctx.playerRace} physiology`
+      : "Standard physiology";
 
-  const abilitiesSnippet = (ctx.abilities && ctx.abilities.length > 0)
-    ? ctx.abilities.slice(0, 3).join(", ")
-    : "Martial prowess";
+  const abilitiesSnippet =
+    ctx.abilities && ctx.abilities.length > 0
+      ? ctx.abilities.slice(0, 3).join(", ")
+      : "Martial prowess";
 
   const companionClause = ctx.isProtagonistAlone
     ? `The protagonist is PHYSICALLY ALONE in ${ctx.location}. Never address or converse with absent companions.`
-    : `Accompanied by: ${ctx.presentHeroineNames.join(", ")}. Choices can converse with, protect, command, or banter with present allies.`;
+    : `Accompanied by: ${ctx.presentHeroineNames.join(", ")}. Choices should include spoken dialogue in single quotes ('...') addressed to ${ctx.activeSpeaker} that sounds unmistakably like a "${personaName}".`;
 
-  return `--- DYNAMIC 4-CHOICE SCENE & PERSONALITY DIRECTIVE (MANDATORY) ---
-The player is actively CRAFTING the identity and personality of ${ctx.playerName}:
-- Archetype & Class: ${ctx.playerRole} | Lineage: ${ctx.playerRace || "Human"}
-- Crafted Personality / Demeanor: "${personaName}"
-- Key Persona Traits: [${traits}]
-${dominantTendency ? `- Emergent Behavioral Alignment: [${dominantTendency} TENDENCY]\n` : ""}- Physical Lineage & Anatomical Traits: [${raceAnatomy}]
-- Tactical Stance / Active Arts: [${(ctx.activeStance || "Neutral").toUpperCase()} Stance | ${abilitiesSnippet}]
+  const [tag1, tag2, tag3, tag4] = voiceProfile.preferredTagPrefixes;
+
+  return `--- DYNAMIC 4-CHOICE PERSONALITY & VOICE ALIGNMENT DIRECTIVE (MANDATORY) ---
+The player explicitly designed ${ctx.playerName}'s personality in Character Creation. ALL 4 dialogue & action choices MUST be written in ${ctx.playerName}'s chosen persona voice:
+- Chosen Personality Archetype: "${personaName}"
+- Core Personality Traits: [${traits}]
+- Speech Cadence & Vocal Tone: ${voiceProfile.speechCadence}
+- Worldview & Demeanor: ${voiceProfile.attitudeAndWorldview}
+- Example Persona Voice Reference:
+  * ${voiceProfile.exampleSpokenLines[0]}
+  * ${voiceProfile.exampleSpokenLines[1]}
+${dominantTendency ? `- Emergent Behavioral Alignment: [${dominantTendency} TENDENCY]\n` : ""}- Class & Lineage: ${ctx.playerRole} | ${ctx.playerRace || "Human"} (${raceAnatomy})
+- Active Stance & Arts: [${(ctx.activeStance || "Neutral").toUpperCase()} Stance | ${abilitiesSnippet}]
 - Scene Context: ${companionClause}
 
-SCENE-AWARE & STORY-PROGRESSIVE AUTHORING INSTRUCTIONS (CRITICAL):
-Do NOT generate static, repetitive, or passive options that keep the characters standing in the same place talking.
-Every single choice MUST actively push the story forward, alter the physical or tactical state, and channel ${ctx.playerName}'s crafted persona ("${personaName}" — [${traits}]):
+CRITICAL PERSONALITY ALIGNMENT RULES FOR ALL 4 CHOICES:
+1. DO NOT generate generic, personality-neutral RPG options! Every single choice MUST sound like it was spoken and performed by a "${personaName}" with traits [${traits}].
+2. INCLUDE SPOKEN DIALOGUE IN SINGLE QUOTES ('...'): Whenever ${ctx.playerName} speaks in a choice, write their actual spoken line in single quotes ('...') using the vocabulary, attitude, and emotional temperature of "${personaName}" (${traits})—never generic filler!
+3. ADVANCE THE SCENE: Every choice must both express ${ctx.playerName}'s "${personaName}" personality AND push the plot/physical action forward in ${ctx.location}:
 
-1. [OPTION 1 - DECISIVE SCENE TRAVERSAL / PHYSICAL PROGRESSION]:
-   - Physically moves ${ctx.playerName}${ctx.isProtagonistAlone ? "" : ` and ${ctx.presentHeroineNames[0] || "their companion"}`} to a new vantage point, across an obstacle, or through a threshold in ${ctx.location} (e.g. vaulting across rooftops, slipping into an undercroft grate, breaching a chamber door, advancing down a shadowed corridor).
-   - Must combine concrete physical movement with ${ctx.playerName}'s "${personaName}" demeanor.
+   - CHOICE 1 [${tag1}] (Signature "${personaName}" Dialogue & Decisive Progression):
+     Lead with a signature "${personaName}" spoken line ('...') and physical move that advances the scene or shifts the confrontation in ${ctx.location}.
+   - CHOICE 2 [${tag2}] (Persona-Filtered Tactical / Environmental Action):
+     Engage the immediate threat, obstacle, or surroundings in ${ctx.location} in the distinct style of a "${personaName}" (${traits[0] || "Focused"}).
+   - CHOICE 3 [${tag3}] (Persona-Driven Interpersonal Escalation with ${ctx.isProtagonistAlone ? "the Environment" : ctx.activeSpeaker}):
+     ${ctx.isProtagonistAlone ? `Reflect ${ctx.playerName}'s "${personaName}" inner drive while investigating a critical clue or threshold.` : `Respond directly to ${ctx.activeSpeaker}'s words/mood using ${ctx.playerName}'s "${personaName}" interpersonal style (e.g., ${voiceProfile.speechCadence.split(".")[0]}), pushing the conversation to a decisive turn.`}
+   - CHOICE 4 [${ctx.playerRace && ctx.playerRace !== "Human" ? `${ctx.playerRace.split("/")[0].trim()}/Feat` : tag4}] (Lineage Anatomy / Class Ability with "${personaName}" Flair):
+     Unleash ${ctx.playerName}'s ${raceAnatomy} or ${ctx.playerRole} abilities (${abilitiesSnippet}) while maintaining their "${personaName}" attitude.
 
-2. [OPTION 2 - TACTICAL COUNTERMEASURE / ENVIRONMENTAL ENGAGEMENT]:
-   - Actively manipulates the environment or confronts the immediate threat/puzzle (e.g. setting an ambush, extinguishing lanterns for stealth, disarming a ward, seizing high ground, or drawing steel to intercept pursuers).
+FORMAT REQUIREMENTS:
+- Every choice MUST strictly follow: "[Tone/Action]: 'Spoken dialogue in persona voice' + concrete physical action" (or pure physical action + inner thought if silent/alone).
+- Exactly 4 options inside the JSON array ("suggested_choices" or "opening_choices" or "choices") with zero Markdown asterisks.`;
+}
 
-3. [OPTION 3 - PROGRESSIVE INTERPERSONAL / PLOT ESCALATION DIALOGUE]:
-   - Pushes the conversation into NEW territory: demanding actionable intel, deciding on a specific escape/attack route, striking a binding bargain, or confronting an unspoken secret.
-   - STRICT ANTI-REPETITION RULE: NEVER generate redundant reassurance or vows already spoken (e.g. do NOT repeat "You're safe with me", "Hold tight", or "I won't let them take you"). Once comfort is given, move immediately to action or strategy!
+/**
+ * Generates 4 personality-authentic fallback choices when an LLM endpoint is offline or falls back.
+ */
+export function buildPersonalityFallbackChoices(params: {
+  personality?: string;
+  personalityTraits?: string[];
+  playerRole?: string;
+  playerRace?: string;
+  activeSpeaker?: string;
+  location?: string;
+  isProtagonistAlone?: boolean;
+}): string[] {
+  const profile = getPersonaVoiceProfile(params.personality, params.personalityTraits);
+  const speaker = params.activeSpeaker || "them";
+  const loc = params.location || "this sector";
+  const role = params.playerRole || "Adventurer";
+  const lower = profile.personaTitle.toLowerCase();
 
-4. [OPTION 4 - LINEAGE ANATOMY, CLASS ABILITY, OR STANCE FEAT]:
-   - Unleashes ${ctx.playerName}'s non-human physiology (${raceAnatomy}), signature class powers (${abilitiesSnippet}), or [${(ctx.activeStance || "Neutral").toUpperCase()}] stance to overcome the current obstacle in a way only a ${ctx.playerRace || "Human"} ${ctx.playerRole} can (e.g. digitigrade rooftop leap, predatory scent-lock, arcane blade surge).
+  if (params.isProtagonistAlone) {
+    if (lower.includes("trickster") || lower.includes("sly")) {
+      return [
+        `[Trickster/Audacious]: 'Well, nobody rolled out a red carpet.' Slip past the perimeter of ${loc} with a silent grin.`,
+        `[Cunning/Recon]: Test the shadows and disarm any hidden tripwires left along the approach.`,
+        `[Observant/Playful]: Inspect the most suspicious threshold in ${loc} for concealed loot or leverage.`,
+        `[${role}/Feat]: Channel your ${role} instincts to vault onto a higher vantage point.`,
+      ];
+    }
+    if (lower.includes("noble") || lower.includes("protector")) {
+      return [
+        `[Noble/Vigilant]: 'If danger lurks in ${loc}, I'll meet it head-on.' Advance steadily down the main passage.`,
+        `[Protective/Survey]: Search the surroundings for any survivors or signs of a recent struggle.`,
+        `[Honorable/Resolve]: Ready your weapon openly and secure the forward threshold.`,
+        `[${role}/Feat]: Call upon your ${role} training to fortify your stance against unseen threats.`,
+      ];
+    }
+    if (lower.includes("cynic") || lower.includes("outlaw")) {
+      return [
+        `[Cynical/Streetwise]: 'Quiet places like ${loc} always hide a payday or an ambush.' Stick to cover and advance.`,
+        `[Outlaw/Tactical]: Check the exits first and mark an escape route before touching anything.`,
+        `[Skeptical/Probe]: Pry open the nearest sealed access point to see what the locals are hiding.`,
+        `[${role}/Feat]: Use your ${role} skills to sweep ${loc} from the blind spots.`,
+      ];
+    }
+    if (lower.includes("scholar")) {
+      return [
+        `[Scholar/Analytical]: 'The structural resonance in ${loc} is deliberate.' Trace the anomaly toward its source.`,
+        `[Inquisitive/Lore]: Examine the inscriptions and ambient residue for clues to this sector's history.`,
+        `[Observant/Methodical]: Test the environmental stability before stepping across the threshold.`,
+        `[${role}/Feat]: Attune your ${role} senses to decode the hidden patterns in ${loc}.`,
+      ];
+    }
+    if (lower.includes("daredevil")) {
+      return [
+        `[Daredevil/Bold]: 'No point waiting around in the dark!' Kick open the forward path in ${loc} and press ahead.`,
+        `[Fierce/Momentum]: Sprint up to the highest vantage in ${loc} to draw out whatever is hiding.`,
+        `[Defiant/Challenge]: Strike your weapon against the stone to test the echoes and claim the ground.`,
+        `[${role}/Feat]: Unleash a burst of ${role} power to clear the obstacle ahead.`,
+      ];
+    }
+    return [
+      `[Stoic/Calculated]: 'Clear the sector first.' Advance methodically toward the next threshold in ${loc}.`,
+      `[Vigilant/Recon]: Sweep the blind corners of ${loc} for traps, wards, or ambush vectors.`,
+      `[Pragmatic/Tactical]: Secure high ground and assess the fastest route forward.`,
+      `[${role}/Feat]: Engage your ${role} capabilities to bypass the obstruction in ${loc}.`,
+    ];
+  }
 
-FORMAT & VARIETY REQUIREMENTS:
-- Every choice MUST strictly follow the dual-tag pattern: "[Tone/Action]: Action summary with fresh dialogue or decisive movement"
-  Examples:
-  - "[Traversal/Agile]: 'The canal roofs—now!' Vault across the gap toward the lower district."
-  - "[Tactics/Ambush]: Kick over the brazier to flood the alley with smoke and prepare a counter-strike."
-  - "[Command/Strategic]: 'Perci, which tunnel leads to the safehouse? Point the way while I hold the flank.'"
-  - "[${ctx.playerRace && ctx.playerRace !== "Human" ? ctx.playerRace.split("/")[0].trim() : "Class"}/Feat]: Tap your ${raceAnatomy} and launch into a high-speed burst past the cordon."
-- All 4 options MUST have completely different verbs, intentions, and outcomes.
-- Exactly 4 options. No bare brackets like [Combat]. Always use the [Tone/Action]: format.
-- Output MUST be plain text inside the JSON "suggested_choices" (or "choices") string array without Markdown asterisks.`;
+  // When accompanied by a companion / heroine
+  if (lower.includes("trickster") || lower.includes("sly")) {
+    return [
+      `[Trickster/Banter]: 'You always know how to pick the liveliest spots, don't you?' Flash ${speaker} a knowing smirk and motion toward the forward path.`,
+      `[Charming/Gambit]: 'Care to make a wager on what's waiting past that door?' Step alongside ${speaker} and ready a clever feint.`,
+      `[Deceptive/Cunning]: 'Keep their eyes on you for three seconds—I've got an angle.' Slip toward the flank in ${loc}.`,
+      `[${role}/Flair]: Show off your ${role} finesse to turn the situation in ${loc} to your advantage.`,
+    ];
+  }
+
+  if (lower.includes("noble") || lower.includes("protector")) {
+    return [
+      `[Noble/Protective]: 'Stay close to me—we face whatever lies ahead in ${loc} together.' Step slightly in front of ${speaker} to take point.`,
+      `[Honorable/Earnest]: 'You have my word I won't let this fall apart. Tell me what you need most right now.' Meet ${speaker}'s gaze steadily.`,
+      `[Valiant/Advance]: 'We cannot leave this unresolved.' Lead the way toward the heart of the disturbance in ${loc}.`,
+      `[${role}/Guardian]: Channel your ${role} strength to shield ${speaker} and secure the path forward.`,
+    ];
+  }
+
+  if (lower.includes("cynic") || lower.includes("outlaw")) {
+    return [
+      `[Cynical/Deadpan]: 'Let me guess—that was the easy part?' Shoot ${speaker} a dry look and check the exit out of ${loc}.`,
+      `[Outlaw/Leverage]: 'Before we go any further, tell me what's actually in this for us.' Press ${speaker} for the real stakes.`,
+      `[Pragmatic/Cutthroat]: 'Talking won't clear this sector. Let's hit them before they organize.' Move toward the vantage point.`,
+      `[${role}/Opportunist]: Use your ${role} edge to seize control of the situation in ${loc}.`,
+    ];
+  }
+
+  if (lower.includes("scholar")) {
+    return [
+      `[Scholar/Analytical]: 'Notice the pattern here—nothing about this setup in ${loc} is accidental.' Share your deduction with ${speaker}.`,
+      `[Inquisitive/Probe]: 'There's a crucial detail you haven't mentioned yet. Walk me through the exact sequence.' Observe ${speaker} closely.`,
+      `[Methodical/Strategy]: 'If we time our move with the ambient shift, we bypass their defense entirely.' Point out the route ahead.`,
+      `[${role}/Precision]: Apply your ${role} expertise to unravel the obstacle standing before you and ${speaker}.`,
+    ];
+  }
+
+  if (lower.includes("daredevil")) {
+    return [
+      `[Daredevil/Bold]: 'Now things are finally getting interesting! Ready to break through, ${speaker}?' Grin and surge toward the front.`,
+      `[Defiant/Fierce]: 'Let them come—we'll carve our own way out of ${loc}!' Draw your weapon and challenge the threat head-on.`,
+      `[Passionate/Direct]: 'No holding back between us! Tell me where to strike and consider it done!' Catch ${speaker}'s eyes with fiery intensity.`,
+      `[${role}/Overdrive]: Unleash your ${role} power at full throttle to blitz the path ahead.`,
+    ];
+  }
+
+  // Default: Stoic Pragmatist / Custom Persona
+  const traitTag = profile.traitsList[0] || "Stoic";
+  return [
+    `[${traitTag}/Direct]: 'We're losing time. Follow my lead through the next threshold.' Motion for ${speaker} to advance through ${loc}.`,
+    `[Pragmatic/Tactical]: 'Give me the short version—what's our primary threat ahead?' Keep your eyes scanning ${loc} while addressing ${speaker}.`,
+    `[Vigilant/Position]: Shift to cover the exposed flank in ${loc} and prepare a decisive counter-move.`,
+    `[${role}/Execution]: Deploy your ${role} discipline to secure the objective alongside ${speaker}.`,
+  ];
 }
 
 /**
@@ -164,25 +435,73 @@ export function analyzeChoiceVector(choiceText: string): string {
   const match = lower.match(/^\[([a-z0-9_\-\s]+)\/([a-z0-9_\-\s]+)\]/);
   const tagContent = match ? `${match[1]} ${match[2]}` : lower.slice(0, 30);
 
-  if (tagContent.includes("combat") || tagContent.includes("aggressive") || tagContent.includes("strike") || tagContent.includes("lunge") || tagContent.includes("blade")) {
+  if (
+    tagContent.includes("combat") ||
+    tagContent.includes("aggressive") ||
+    tagContent.includes("strike") ||
+    tagContent.includes("lunge") ||
+    tagContent.includes("blade") ||
+    tagContent.includes("fierce")
+  ) {
     return "combat";
   }
-  if (tagContent.includes("cynic") || tagContent.includes("rogue") || tagContent.includes("stealth") || tagContent.includes("subterfuge") || tagContent.includes("shadow")) {
+  if (
+    tagContent.includes("cynic") ||
+    tagContent.includes("outlaw") ||
+    tagContent.includes("rogue") ||
+    tagContent.includes("stealth") ||
+    tagContent.includes("subterfuge") ||
+    tagContent.includes("trickster") ||
+    tagContent.includes("deceptive")
+  ) {
     return "subterfuge";
   }
-  if (tagContent.includes("arcana") || tagContent.includes("scholar") || tagContent.includes("analytic") || tagContent.includes("survey") || tagContent.includes("spell")) {
+  if (
+    tagContent.includes("arcana") ||
+    tagContent.includes("scholar") ||
+    tagContent.includes("analytic") ||
+    tagContent.includes("survey") ||
+    tagContent.includes("inquisitive") ||
+    tagContent.includes("observant")
+  ) {
     return "analytical";
   }
-  if (tagContent.includes("empath") || tagContent.includes("gentle") || tagContent.includes("protect") || tagContent.includes("care") || tagContent.includes("comfort")) {
+  if (
+    tagContent.includes("empath") ||
+    tagContent.includes("gentle") ||
+    tagContent.includes("protect") ||
+    tagContent.includes("noble") ||
+    tagContent.includes("valiant") ||
+    tagContent.includes("honorable")
+  ) {
     return "empathetic";
   }
-  if (tagContent.includes("diplomat") || tagContent.includes("inquire") || tagContent.includes("pact") || tagContent.includes("bargain") || tagContent.includes("negotiate")) {
+  if (
+    tagContent.includes("diplomat") ||
+    tagContent.includes("inquire") ||
+    tagContent.includes("pact") ||
+    tagContent.includes("bargain") ||
+    tagContent.includes("charm") ||
+    tagContent.includes("banter")
+  ) {
     return "diplomatic";
   }
-  if (tagContent.includes("defiant") || tagContent.includes("bold") || tagContent.includes("dare") || tagContent.includes("challenge") || tagContent.includes("taunt")) {
+  if (
+    tagContent.includes("defiant") ||
+    tagContent.includes("bold") ||
+    tagContent.includes("dare") ||
+    tagContent.includes("challenge") ||
+    tagContent.includes("taunt")
+  ) {
     return "defiant";
   }
-  if (tagContent.includes("lupine") || tagContent.includes("beast") || tagContent.includes("scent") || tagContent.includes("fang") || tagContent.includes("instinct")) {
+  if (
+    tagContent.includes("lupine") ||
+    tagContent.includes("beast") ||
+    tagContent.includes("scent") ||
+    tagContent.includes("fang") ||
+    tagContent.includes("instinct")
+  ) {
     return "instinctive";
   }
 
@@ -204,4 +523,3 @@ export function getDominantTendencyLabel(tendencies?: Record<string, number>): s
 
   return topCategories.join(" • ");
 }
-

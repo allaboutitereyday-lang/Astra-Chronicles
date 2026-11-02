@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getChoicesStyleDirective, getNarrationProseDirective } from "@/lib/narrationStyles";
 import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
-import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
+import {
+  buildDynamicChoiceDirective,
+  buildPersonalityFallbackChoices,
+  getPersonaVoiceProfile,
+} from "@/lib/personalityArchitect";
 import { buildAntiRepetitionDirective } from "@/lib/repetitionGuard";
 
 export const runtime = "nodejs";
@@ -56,23 +60,17 @@ export async function POST(req: Request) {
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      // Graceful fallback if API key is unconfigured
-      const loc = gameState?.location || "this area";
-      const role = playerProfile?.role || "wanderer";
+      // Graceful personality-aware fallback if API key is unconfigured
       return NextResponse.json({
-        choices: isProtagonistAlone
-          ? [
-              `[Survey/Analytical]: Scrutinize the surroundings in ${loc} for hidden runes, traps, or anomalies.`,
-              `[Tactics/Survival]: Stay low, steady your breathing, and establish a quiet defensive perimeter.`,
-              `[System/Analytical]: Query the LitRPG interface to analyze causal stability and active directives.`,
-              `[Combat/Aggressive]: Draw your weapon and advance cautiously into the quiet expanse.`,
-            ]
-          : [
-              `[Inquire/Diplomatic]: Press ${sanitizedSpeaker} on the deeper implications of what was just disclosed in ${loc}.`,
-              `[Pragmatism/Tactical]: Evaluate the tactical stakes and propose a calculated compromise with ${sanitizedSpeaker}.`,
-              `[Combat/Defiant]: Step forward as a ${role}, draw your blade with a metallic scrape, and assert your terms.`,
-              `[Empathy/Gentle]: Read ${sanitizedSpeaker}'s expression and look for unspoken motives behind their demeanor.`,
-            ],
+        choices: buildPersonalityFallbackChoices({
+          personality: playerProfile?.personality,
+          personalityTraits: playerProfile?.personalityTraits,
+          playerRole: playerProfile?.role,
+          playerRace: playerProfile?.race,
+          activeSpeaker: sanitizedSpeaker,
+          location: gameState?.location || "this area",
+          isProtagonistAlone,
+        }),
       });
     }
 
@@ -153,13 +151,18 @@ Format Requirement:
   "choices": [string, string, string, string]
 }`;
 
+    const personaVoice = getPersonaVoiceProfile(
+      playerProfile?.personality,
+      playerProfile?.personalityTraits
+    );
+
     const messages = [
       { role: "system", content: systemPrompt },
       { 
         role: "user", 
         content: isProtagonistAlone
-          ? `Generate 4 dynamic, story-advancing choices for ${playerProfile?.name} exploring ${gameState?.location} alone.`
-          : `Generate 4 distinct, story-advancing choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}.`
+          ? `Generate 4 dynamic, story-advancing choices for ${playerProfile?.name} exploring ${gameState?.location} alone, voiced strictly in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality.`
+          : `Generate 4 distinct, story-advancing choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}, voiced strictly in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.`
       }
     ];
 
@@ -205,23 +208,15 @@ Format Requirement:
     }
 
     if (!dynamicChoices) {
-      // High-quality contextual algorithmic fallback
-      const speaker = sanitizedSpeaker || "Companion";
-      const loc = gameState?.location || "the area";
-      const role = playerProfile?.role || "Wanderer";
-      dynamicChoices = isProtagonistAlone
-        ? [
-            `[Survey/Analytical]: Scrutinize the surroundings in ${loc} for hidden runes, traps, or anomalies.`,
-            `[Tactics/Survival]: Stay low, steady your breathing, and establish a quiet defensive perimeter.`,
-            `[System/Analytical]: Query the LitRPG interface to analyze causal stability and active directives.`,
-            `[Combat/Aggressive]: Draw your weapon and advance cautiously toward the perimeter disturbance.`,
-          ]
-        : [
-            `[Inquire/Diplomatic]: Press ${speaker} on the deeper implications of what was just disclosed.`,
-            `[Pragmatism/Tactical]: Evaluate the physical stakes in ${loc} and propose a balanced counter-term.`,
-            `[Combat/Defiant]: Ready your stance as a ${role} and demand immediate clarity on the next move.`,
-            `[Empathy/Gentle]: Scrutinize ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
-          ];
+      dynamicChoices = buildPersonalityFallbackChoices({
+        personality: playerProfile?.personality,
+        personalityTraits: playerProfile?.personalityTraits,
+        playerRole: playerProfile?.role,
+        playerRace: playerProfile?.race,
+        activeSpeaker: sanitizedSpeaker || "Companion",
+        location: gameState?.location || "the area",
+        isProtagonistAlone,
+      });
     }
 
     // Guarantee all choices conform strictly to [Tone/Action]: format and clean prose

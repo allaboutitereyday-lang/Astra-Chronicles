@@ -24,7 +24,7 @@ import {
   buildActiveSpeakerPersonaLock,
 } from "@/lib/characterPersonas";
 import { detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
-import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
+import { buildDynamicChoiceDirective, getPersonaVoiceProfile } from "@/lib/personalityArchitect";
 import {
   buildPlausibilityCapabilityEnvelope,
   sanitizePlausibilityEvaluation,
@@ -138,6 +138,11 @@ export async function POST(req: Request) {
       sanitizedContextSpeaker
     );
 
+    const personaVoice = getPersonaVoiceProfile(
+      playerProfile?.personality,
+      playerProfile?.personalityTraits
+    );
+
     // Dynamic player input directive
     const inputHandlingInstruction = isCustom
       ? `[INPUT TYPE: CUSTOM PLAYER ACTION]
@@ -148,11 +153,15 @@ The user wrote their own action verbatim: "${action}".
       : `[INPUT TYPE: PRESET CHOICE VECTOR SELECTED]
 The user selected this choice/action vector: "${action}".
 - CRITICAL: The user did NOT type this text verbatim. This prompt vector represents their tactical and narrative intent following the format "[Tone/Action]: Short summary of character action/dialogue".
-- In "player_execution", you MUST write a substantial, immersive narrative sequence from the protagonist's perspective (${playerProfile.name}, Role: ${playerProfile.role}, Stance: ${activeStance || "neutral"}).
+- In "player_execution", you MUST write a substantial, immersive narrative sequence from the protagonist's perspective (${playerProfile.name}, Role: ${playerProfile.role}, Chosen Personality: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}], Stance: ${activeStance || "neutral"}).
+- PERSONALITY VOICE MANDATE FOR "player_execution":
+  * Speech Cadence: ${personaVoice.speechCadence}
+  * Demeanor: ${personaVoice.attitudeAndWorldview}
+  * Every spoken line and physical gesture in "player_execution" MUST sound unmistakably like a "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}).
 - LENGTH & SUBSTANCE REQUIREMENT: Must be MORE than just a couple of sentences! Write a full, vivid passage of at least 3 to 6 sentences across 1 to 2 rich paragraphs.
 - CONTENT REQUIREMENTS FOR "player_execution":
-  1. Spoken Dialogue: Include ${playerProfile.name}'s actual spoken dialogue in quotation marks ("...") addressing the companion, enemies, or situation.
-  2. Physical Action & Gestures: Describe ${playerProfile.name}'s physical movements, weapon/gear handling, posture, footsteps, and spatial maneuvering matching their role (${playerProfile.role}).
+  1. Spoken Dialogue: Include ${playerProfile.name}'s actual spoken dialogue in quotation marks ("...") addressing the companion, enemies, or situation in their "${personaVoice.personaTitle}" voice.
+  2. Physical Action & Gestures: Describe ${playerProfile.name}'s physical movements, weapon/gear handling, posture, footsteps, and spatial maneuvering matching their role (${playerProfile.role}) and "${personaVoice.personaTitle}" demeanor.
   3. Tactical & Sensory Presence: Depict their sensory observations (breathing, cold air, blade weight, tension) and inner focus as they commit to the move.
   4. STRICT NEGATIVE CONSTRAINTS:
      - NEVER output only 1 or 2 brief sentences.
@@ -594,6 +603,7 @@ Respond strictly in valid JSON matching this schema:
 
 --- CURRENT CAMPAIGN STATE & DYNAMIC TURN CONTEXT ---
 - Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
+- Chosen Personality & Traits: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}] — (${personaVoice.speechCadence})
 - Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
 - Lineage / Race: ${playerProfile.race || "Human"}
 - Racial Anatomy & Traits: ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? playerProfile.racialTraits.join(", ") : "Standard human physiology"}
@@ -701,8 +711,8 @@ ${visualInspectionInstruction}`;
     }
 
     const userPromptContent = isCustom
-      ? `Player Action: ${action}`
-      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a substantial 3-6 sentence narrative passage of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "...". Do NOT output bracket tags like [Combat/Aggressive]: in "player_execution". Advance companion/world response in "narrative_text".]`;
+      ? `Player Action: ${action}\n[PERSONALITY & CHOICE DIRECTIVE: Generate the next 4 "suggested_choices" strictly aligned with ${playerProfile.name}'s chosen "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.]`
+      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a substantial 3-6 sentence narrative passage of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "..." matching their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality. Do NOT output bracket tags like [Combat/Aggressive]: in "player_execution". Advance companion/world response in "narrative_text", and write all 4 "suggested_choices" in ${playerProfile.name}'s "${personaVoice.personaTitle}" voice.]`;
 
     let responseData = null;
     let lastError = null;

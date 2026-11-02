@@ -10,7 +10,11 @@ import {
   getCompanionKnowledge,
   enforceSpokenDialogueMasking,
 } from "@/lib/knowledgeGating";
-import { buildDynamicChoiceDirective } from "@/lib/personalityArchitect";
+import {
+  buildDynamicChoiceDirective,
+  buildPersonalityFallbackChoices,
+  getPersonaVoiceProfile,
+} from "@/lib/personalityArchitect";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -161,6 +165,11 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
        visualDescription.toLowerCase().includes("without clothing"))
     );
 
+    const personaVoice = getPersonaVoiceProfile(
+      playerProfile.personality,
+      playerProfile.personalityTraits
+    );
+
     const openingChoiceDirective = buildDynamicChoiceDirective({
       playerName: playerProfile.name,
       playerRole: playerProfile.role,
@@ -215,14 +224,12 @@ ${heroineDossier.baselineChoices.map((c) => `- ${c}`).join("\n")}
      : ""}
 
 ${knowledgeGatePrompt}
-3. OPENING CHOICES GUIDELINE: The 4 generated options in "opening_choices" MUST STRICTLY follow this guideline:
-   [Tone/Action]: Short summary of character action/dialogue
-   Examples:
-   - [Combat/Aggressive]: Step forward, draw your blade with a metallic rasp, and demand passage.
-   - [Arcana/Analytical]: Channel ether into your fingertips and call out the instability in her containment glyph.
-   - [Subterfuge/Cunning]: Flash the clandestine counter-cipher with your left hand while keeping to the shadows.
-   - [Composure/Diplomatic]: Stand your ground calmly, meet her gaze without blinking, and propose a mutual bargain.
-   DO NOT generate single tags like [Combat] or [Subterfuge] without the Action tone. Every single choice MUST be in "[Tone/Action]: Short summary" format.
+3. OPENING CHOICES PERSONALITY ALIGNMENT (CRITICAL): The 4 generated options in "opening_choices" MUST be written in the exact voice, attitude, and vocabulary of ${playerProfile.name}'s chosen Character Creation personality:
+   - Chosen Personality: "${personaVoice.personaTitle}"
+   - Core Traits: [${personaVoice.traitsList.join(", ")}]
+   - Speech Cadence: ${personaVoice.speechCadence}
+   - Format: "[Tone/Action]: 'Spoken dialogue in ${personaVoice.personaTitle} voice' + concrete physical action"
+   - Every single option in "opening_choices" MUST reflect how a "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) reacts to ${startingHeroine} in ${startingLocation}. Do NOT copy generic baseline choices verbatim—infuse every choice with ${playerProfile.name}'s "${personaVoice.personaTitle}" personality!
 
 --- COMPATIBILITY & BASE AFFECTION RULES ---
 - Base affection must start LOW overall (range: 5 to 25). Heroines in this world are guarded and cynical.
@@ -290,13 +297,14 @@ Respond strictly in valid JSON matching this schema:
 
     const promptText = `Protagonist (Narrator Reference Only — Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsName ? playerProfile.name : `[UNKNOWN TO ${startingHeroine.toUpperCase()} — Refer to as "stranger" or "traveler" in spoken dialogue]`}
 Internal Class (Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsClass ? playerProfile.role : `[UNKNOWN TO ${startingHeroine.toUpperCase()} — Judge only visible gear]`}
+Chosen Personality Archetype: "${personaVoice.personaTitle}" (Traits: ${personaVoice.traitsList.join(", ")})
 Attributes: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
 Visible Gear: ${playerProfile.gear.weapon || "Bare Hands"} / ${playerProfile.gear.armor || "Wanderer Attire"}
 Starting Abilities: ${abilitiesDesc}
 Starting Location: ${startingLocation}
 Starting Heroine: ${startingHeroine}
 
-Generate the dynamic opening prologue according to the instructions.`;
+Generate the dynamic opening prologue according to the instructions. Ensure all 4 "opening_choices" unmistakably express ${playerProfile.name}'s "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.`;
 
     function supportsVision(modelName?: string): boolean {
       if (!modelName) return false;
@@ -452,7 +460,15 @@ Generate the dynamic opening prologue according to the instructions.`;
         initial_affection: 15,
         initial_mood: heroineDossier.initialMood || "Guarded & Observant",
         expression_key: heroineDossier.defaultExpression || "neutral",
-        opening_choices: heroineDossier.baselineChoices,
+        opening_choices: buildPersonalityFallbackChoices({
+          personality: playerProfile?.personality,
+          personalityTraits: playerProfile?.personalityTraits,
+          playerRole: playerProfile?.role,
+          playerRace: playerProfile?.race,
+          activeSpeaker: heroineDossier.name,
+          location: heroineDossier.defaultLocation || startingLocation,
+          isProtagonistAlone: false,
+        }),
         initial_quest: heroineDossier.initialQuest,
         system_announcement: `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`,
         plausibility: 80,
