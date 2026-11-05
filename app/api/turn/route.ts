@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
-import { getNarrationProseDirective } from "@/lib/narrationStyles";
+import { getNarrationProseDirective, NarrativeDepthMode } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
 import { sanitizeVisualNovelProse, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
 import { generateCrossTalkBanterDirective, evaluateInterpersonalFriction } from "@/lib/companionFriction";
@@ -24,7 +24,12 @@ import {
   buildActiveSpeakerPersonaLock,
 } from "@/lib/characterPersonas";
 import { detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
-import { buildDynamicChoiceDirective, getPersonaVoiceProfile } from "@/lib/personalityArchitect";
+import {
+  buildDynamicChoiceDirective,
+  getPersonaVoiceProfile,
+  buildProtagonistOriginAndIdentityDirective,
+  buildPersonalityFallbackChoices,
+} from "@/lib/personalityArchitect";
 import {
   buildPlausibilityCapabilityEnvelope,
   sanitizePlausibilityEvaluation,
@@ -36,7 +41,7 @@ import {
 } from "@/lib/repetitionGuard";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 const FALLBACK_MODELS = [
   "deepseek/deepseek-chat",
@@ -79,12 +84,23 @@ export async function POST(req: Request) {
       temperature,
       max_tokens,
       repetition_penalty,
+      narrativeDepth,
       npcKnowledgeMap = null,
     } = body;
 
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.1, Math.min(1.8, temperature)) : 0.75;
-    const effectiveMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 2048;
+    const effectiveMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 3584;
     const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.5, repetition_penalty)) : 1.1;
+    const effectiveNarrativeDepth: NarrativeDepthMode =
+      narrativeDepth === "standard" || narrativeDepth === "expansive" || narrativeDepth === "deep_novelistic"
+        ? narrativeDepth
+        : "deep_novelistic";
+    const paragraphSpecLabel =
+      effectiveNarrativeDepth === "standard"
+        ? "2 to 3 evocative paragraphs"
+        : effectiveNarrativeDepth === "expansive"
+        ? "3 to 5 detailed paragraphs (approx. 300–450 words)"
+        : "5 to 7+ rich, novel-length paragraphs (450–800+ words) with multi-stage dialogue";
 
     // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
     // auto-route to cloud!
@@ -158,13 +174,12 @@ The user selected this choice/action vector: "${action}".
   * Speech Cadence: ${personaVoice.speechCadence}
   * Demeanor: ${personaVoice.attitudeAndWorldview}
   * Every spoken line and physical gesture in "player_execution" MUST sound unmistakably like a "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}).
-- LENGTH & SUBSTANCE REQUIREMENT: Must be MORE than just a couple of sentences! Write a full, vivid passage of at least 3 to 6 sentences across 1 to 2 rich paragraphs.
+- LENGTH & SUBSTANCE REQUIREMENT: Write **2 full, vivid paragraphs (6 to 10 sentences total)** separated by "\\n\\n".
 - CONTENT REQUIREMENTS FOR "player_execution":
-  1. Spoken Dialogue: Include ${playerProfile.name}'s actual spoken dialogue in quotation marks ("...") addressing the companion, enemies, or situation in their "${personaVoice.personaTitle}" voice.
-  2. Physical Action & Gestures: Describe ${playerProfile.name}'s physical movements, weapon/gear handling, posture, footsteps, and spatial maneuvering matching their role (${playerProfile.role}) and "${personaVoice.personaTitle}" demeanor.
-  3. Tactical & Sensory Presence: Depict their sensory observations (breathing, cold air, blade weight, tension) and inner focus as they commit to the move.
-  4. STRICT NEGATIVE CONSTRAINTS:
-     - NEVER output only 1 or 2 brief sentences.
+  1. Paragraph 1 (Physical Action, Tactical Stance & Sensory Presence): Describe ${playerProfile.name}'s physical movements, weapon/gear handling, posture, footsteps, spatial maneuvering, and sensory observations matching their role (${playerProfile.role}) and "${personaVoice.personaTitle}" demeanor.
+  2. Paragraph 2 (Spoken Dialogue & Psychological Delivery): Include ${playerProfile.name}'s actual spoken dialogue in quotation marks ("...") addressing the companion, enemies, or situation in their "${personaVoice.personaTitle}" voice, anchored to facial expression and vocal tone.
+  3. STRICT NEGATIVE CONSTRAINTS:
+     - NEVER output only 1 short paragraph or 1–2 brief sentences. Always write 2 distinct paragraphs separated by "\\n\\n".
      - NEVER include bracket tags like "[Combat/Aggressive]:", "[Arcana/Analytical]:", "[Subterfuge/Cunning]:" in "player_execution". Strip all tag markers.
      - NEVER summarize with meta commentary like "The player chooses to...". Write directly as immersive narrative prose and dialogue.
 - Follow up in "narrative_text" with how the world and companion respond to this execution.`;
@@ -359,12 +374,19 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
       sanitizedContextSpeaker,
       companionAffection,
       activeSpeakerKnowledge.knowsName,
-      playerProfile?.name || "Wanderer"
+      playerProfile?.name || "Wanderer",
+      playerProfile?.gender || "Male"
     );
+
+    const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
 
     const dynamicChoiceDirective = buildDynamicChoiceDirective({
       playerName: playerProfile.name,
       playerRole: playerProfile.role,
+      playerGender: playerProfile.gender,
+      playerAge: playerProfile.age,
+      worldOrigin: playerProfile.worldOrigin,
+      worldOriginDetails: playerProfile.worldOriginDetails,
       playerRace: playerProfile.race,
       racialTraits: playerProfile.racialTraits,
       personality: playerProfile.personality,
@@ -394,7 +416,7 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
 
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
-${getNarrationProseDirective(effectiveTone)}
+${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
 
 ${dynamicRomanceDirective}
 
@@ -403,7 +425,7 @@ ${companionDossiers}
 
 --- MECHANICAL RULES ---
 1. Speaker Attribution: "speaker" MUST NEVER BE the protagonist. If accompanied, set "speaker" to the canonical name of the talking heroine (${presentHeroineNames.join(", ") || "Heroine"}). If alone, set to "Narrator", "Inner Monologue", or "System".
-2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive, multi-sentence passage (minimum 3-6 sentences across 1-2 paragraphs) featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
+2. Protagonist Action Depth ("player_execution"): When a preset choice is selected, "player_execution" MUST be an expansive **2-paragraph passage (6–10 sentences separated by "\\n\\n")** featuring ${playerProfile.name}'s physical movements, tactical posture, and spoken dialogue in quotation marks "...". It must NEVER be a single sentence or copy bracket tags. If the input is custom, set "player_execution" to null.
 3. Favor & Emotional Pacing: Set affection_delta to 0 by default. When physically alone or locked at threshold, affection_delta MUST BE 0.
 4. Progression & Contextual Equipment/Loot Directive (MANDATORY & IMMEDIATE):
    - CONTEXTUAL EQUIPMENT & WEAPON PICKUPS:
@@ -428,7 +450,7 @@ ${companionDossiers}
    - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
    - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
    - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
-   - PARAGRAPHING: Structure "narrative_text" into 2 to 3 evocative paragraphs separated by clean line breaks. Avoid monolithic walls of text.
+   - PARAGRAPHING & DEPTH: Structure "narrative_text" into ${paragraphSpecLabel} separated by clean double line breaks ("\\n\\n"). Interleave multiple distinct spoken dialogue segments with physical choreography, psychological subtext, and atmospheric detail.
 7. Anti-Sycophancy & Tone Rigidity:
    - Companions MUST NOT default to subservient, agreeable, or overly eager personalities.
    - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer cynical reality checks according to their persona.
@@ -512,8 +534,8 @@ MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
 Respond strictly in valid JSON matching this schema:
 {
   "speaker": string,
-  "player_execution": string | null, // When preset choice is selected: a substantial, immersive plain-text passage (at least 3-6 sentences across 1-2 paragraphs) with flawless grammar and ZERO Markdown asterisks, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in double quotation marks "...". Null only for custom player inputs.
-  "narrative_text": string, // 2-3 immersive plain-text paragraphs containing environmental details, character dialogue in double quotation marks ("..."), and action beats. Flawless grammar and syntax. ZERO Markdown asterisks (* or **). MUST STRICTLY adhere to the prose cadence, tone, vocabulary, and negative constraints of the active Narration Style.
+  "player_execution": string | null, // When preset choice is selected: a rich 2-paragraph plain-text passage (6–10 sentences separated by "\\n\\n") with flawless grammar and ZERO Markdown asterisks, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in double quotation marks "...". Null only for custom player inputs.
+  "narrative_text": string, // ${paragraphSpecLabel} separated by "\\n\\n", containing rich environmental sensory details, psychological subtext, physical micro-expressions, and multiple character dialogue segments in double quotation marks ("..."). Flawless grammar and syntax. ZERO Markdown asterisks (* or **). MUST STRICTLY adhere to the active Narration Style and Narrative Depth Directive.
   "mechanics": string | null, // Concise LitRPG system or tactical mechanics readout for this turn (e.g. "[SYSTEM: Stance Resonance Active • Causal Plausibility Stable]"), or null if none.
   "death_event": {
     "is_fatal": boolean,
@@ -603,6 +625,8 @@ Respond strictly in valid JSON matching this schema:
 
 --- CURRENT CAMPAIGN STATE & DYNAMIC TURN CONTEXT ---
 - Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
+- Gender & Age: ${playerProfile.gender || "Male"} | Age: ${playerProfile.age || "22"}
+- World Origin & System Familiarity: ${playerProfile.worldOrigin || "Born & Raised (Native)"}${playerProfile.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
 - Chosen Personality & Traits: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}] — (${personaVoice.speechCadence})
 - Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
 - Lineage / Race: ${playerProfile.race || "Human"}
@@ -615,6 +639,8 @@ Respond strictly in valid JSON matching this schema:
 - Active Location: ${gameState.location}
 - Active Speaker Context: ${sanitizedContextSpeaker}
 - Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE (No companions present)" : `Accompanied by: ${presentHeroineNames.join(", ")}`}
+
+${originAndIdentityDirective}
 
 ${playerVitals.directiveBlock}
 
@@ -652,6 +678,10 @@ ${partyMembers.map((c: any) => {
 
 --- CHRONOLOGICAL RECORD OF PREVIOUS INTERACTIONS & MEMORIES ---
 ${
+  Array.isArray(playerProfile?.pinnedMemories) && playerProfile.pinnedMemories.length > 0
+    ? `[PINNED CORE CANON FACTS — PERMANENT & NON-NEGOTIABLE (NEVER FORGET OR CONTRADICT)]:\n${playerProfile.pinnedMemories.map((pm: string, idx: number) => `  ★ [Pinned Canon #${idx + 1}]: ${pm}`).join("\n")}\n\n`
+    : ""
+}${
   Array.isArray(plotMemories) && plotMemories.length > 0
     ? plotMemories.map((m: string, idx: number) => `  [Chronicle Beat ${idx + 1}]: ${m}`).join("\n")
     : "  * Journey commenced. First mutual encounter."
@@ -711,8 +741,8 @@ ${visualInspectionInstruction}`;
     }
 
     const userPromptContent = isCustom
-      ? `Player Action: ${action}\n[PERSONALITY & CHOICE DIRECTIVE: Generate the next 4 "suggested_choices" strictly aligned with ${playerProfile.name}'s chosen "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.]`
-      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a substantial 3-6 sentence narrative passage of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "..." matching their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality. Do NOT output bracket tags like [Combat/Aggressive]: in "player_execution". Advance companion/world response in "narrative_text", and write all 4 "suggested_choices" in ${playerProfile.name}'s "${personaVoice.personaTitle}" voice.]`;
+      ? `Player Action: ${action}\n[NARRATIVE DEPTH & PERSONALITY DIRECTIVE: In "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" featuring deep sensory grounding, psychological subtext, physical micro-expressions, and multi-part spoken dialogue in quotation marks "...". Generate the next 4 "suggested_choices" strictly aligned with ${playerProfile.name}'s chosen "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.]`
+      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a rich 2-paragraph narrative passage (6–10 sentences separated by "\\n\\n") of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "..." matching their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality. Do NOT output bracket tags like [Combat/Aggressive]: in "player_execution". Then, in "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" for the companion/world response with multi-stage dialogue and deep sensory subtext, and write all 4 "suggested_choices" in ${playerProfile.name}'s "${personaVoice.personaTitle}" voice.]`;
 
     let responseData = null;
     let lastError = null;
@@ -859,10 +889,42 @@ ${visualInspectionInstruction}`;
           const firstBrace = content.indexOf("{");
           const lastBrace = content.lastIndexOf("}");
           if (firstBrace !== -1 && lastBrace > firstBrace) {
-            responseData = JSON.parse(content.slice(firstBrace, lastBrace + 1));
-          } else {
-            throw new Error("Malformed JSON response from model");
+            try {
+              responseData = JSON.parse(content.slice(firstBrace, lastBrace + 1));
+            } catch {
+              responseData = null;
+            }
           }
+          // If JSON was truncated at max_tokens, salvage narrative_text from the raw stream
+          if (!responseData || (!responseData.narrative_text && !responseData.narrative)) {
+            const narrativeMatch = content.match(/"narrative_text"\s*:\s*"((?:[^"\\]|\\.)*)/);
+            const speakerMatch = content.match(/"speaker"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+            if (narrativeMatch && narrativeMatch[1] && narrativeMatch[1].length > 40) {
+              const salvagedText = narrativeMatch[1]
+                .replace(/\\n/g, "\n")
+                .replace(/\\"/g, '"')
+                .replace(/\\\\/g, "\\");
+              responseData = {
+                ...(responseData || {}),
+                speaker: speakerMatch?.[1] || sanitizedContextSpeaker,
+                narrative_text: salvagedText,
+              };
+            } else if (!responseData) {
+              throw new Error("Malformed JSON response from model");
+            }
+          }
+        }
+
+        if (!responseData || typeof responseData !== "object") {
+          throw new Error("Empty or non-object JSON response from model");
+        }
+
+        // Normalize array-typed narrative_text or player_execution if the model returned an array of paragraphs
+        if (Array.isArray(responseData.narrative_text)) {
+          responseData.narrative_text = responseData.narrative_text.filter((p: any) => typeof p === "string").join("\n\n");
+        }
+        if (Array.isArray(responseData.player_execution)) {
+          responseData.player_execution = responseData.player_execution.filter((p: any) => typeof p === "string").join("\n\n");
         }
 
         // Fail-safe post-processing: sanitize and guarantee substantial player_execution for preset choices
@@ -1056,11 +1118,22 @@ ${visualInspectionInstruction}`;
           }
         }
 
-        // Sanitize suggested choices and guarantee intent tags
-        if (Array.isArray(responseData.suggested_choices)) {
-          responseData.suggested_choices = responseData.suggested_choices.map((c: string) =>
-            ensureChoiceIntentTag(sanitizeVisualNovelProse(c))
-          );
+        // Sanitize suggested choices and guarantee intent tags (with personality fallback if truncated)
+        if (Array.isArray(responseData.suggested_choices) && responseData.suggested_choices.length > 0) {
+          responseData.suggested_choices = responseData.suggested_choices
+            .filter((c: any) => typeof c === "string" && c.trim().length > 0)
+            .map((c: string) => ensureChoiceIntentTag(sanitizeVisualNovelProse(c)));
+        }
+        if (!Array.isArray(responseData.suggested_choices) || responseData.suggested_choices.length === 0) {
+          responseData.suggested_choices = buildPersonalityFallbackChoices({
+            personality: playerProfile?.personality,
+            personalityTraits: playerProfile?.personalityTraits,
+            playerRole: playerProfile?.role,
+            playerRace: playerProfile?.race,
+            activeSpeaker: responseData.speaker || sanitizedContextSpeaker,
+            location: responseData.state_updates?.current_location || gameState?.location || "this sector",
+            isProtagonistAlone,
+          });
         }
 
         // Fail-safe post-processing: enforce speaker attribution and solitude rules
@@ -1116,6 +1189,7 @@ ${visualInspectionInstruction}`;
         break;
       } catch (err: any) {
         console.warn(`Error using model ${model}:`, err.message);
+        responseData = null;
         lastError = err;
       }
     }

@@ -6,6 +6,7 @@ import {
   buildDynamicChoiceDirective,
   buildPersonalityFallbackChoices,
   getPersonaVoiceProfile,
+  buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
 import { buildAntiRepetitionDirective } from "@/lib/repetitionGuard";
 
@@ -99,6 +100,10 @@ export async function POST(req: Request) {
     const choiceDirective = buildDynamicChoiceDirective({
       playerName: playerProfile?.name || "Protagonist",
       playerRole: playerProfile?.role || "Adventurer",
+      playerGender: playerProfile?.gender,
+      playerAge: playerProfile?.age,
+      worldOrigin: playerProfile?.worldOrigin,
+      worldOriginDetails: playerProfile?.worldOriginDetails,
       playerRace: playerProfile?.race,
       racialTraits: playerProfile?.racialTraits,
       personality: playerProfile?.personality,
@@ -113,6 +118,8 @@ export async function POST(req: Request) {
       isProtagonistAlone,
       presentHeroineNames,
     });
+
+    const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
 
     const systemPrompt = `You are the Interactive Decision Architect and Game Master for "${storyTitle}", set in ${settingName}.
 Atmospheric Tone: ${effectiveTone}.
@@ -139,6 +146,8 @@ Chronological Memories & Past Interactions:
 ${canonicalMemories}
 
 ${buildAntiRepetitionDirective(recentHistory, playerProfile?.name || "Protagonist", gameState?.location || "Current Sector")}
+
+${originAndIdentityDirective}
 
 ${choiceDirective}
 

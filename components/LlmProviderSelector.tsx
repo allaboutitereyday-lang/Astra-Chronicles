@@ -1,8 +1,10 @@
 "use client";
 
 import React from "react";
-import { Cloud, Sparkles, X, Settings2, Check, Zap } from "lucide-react";
+import { Cloud, Sparkles, X, Settings2, Check, Zap, BookOpen } from "lucide-react";
+import type { NarrativeDepthMode } from "@/lib/narrationStyles";
 
+export type { NarrativeDepthMode };
 export type TargetEnvironment = "local" | "cloud";
 
 export interface LlmConfig {
@@ -11,14 +13,42 @@ export interface LlmConfig {
   temperature?: number;
   max_tokens?: number;
   repetition_penalty?: number;
+  narrativeDepth?: NarrativeDepthMode;
 }
+
+export const NARRATIVE_DEPTH_OPTIONS: Array<{
+  id: NarrativeDepthMode;
+  label: string;
+  badge: string;
+  description: string;
+}> = [
+  {
+    id: "deep_novelistic",
+    label: "Deep Novelistic (5–7+ Paragraphs)",
+    badge: "Maximum Depth",
+    description: "Multi-beat literary scenes with deep sensory grounding, psychological subtext, physical micro-tells, and multi-stage spoken dialogue.",
+  },
+  {
+    id: "expansive",
+    label: "Expansive (3–5 Paragraphs)",
+    badge: "Rich Pacing",
+    description: "Detailed environmental choreography, multi-sentence character reactions, and extended conversational interplay.",
+  },
+  {
+    id: "standard",
+    label: "Standard (2–3 Paragraphs)",
+    badge: "Classic VN",
+    description: "Concise visual novel pacing with focused scene descriptions and direct dialogue exchanges.",
+  },
+];
 
 export const DEFAULT_LLM_CONFIG: LlmConfig = {
   targetEnvironment: "cloud",
   modelId: "orchestrated-hybrid",
   temperature: 0.85,
-  max_tokens: 1024,
+  max_tokens: 3584,
   repetition_penalty: 1.1,
+  narrativeDepth: "deep_novelistic",
 };
 
 export function getStoredLlmConfig(): LlmConfig {
@@ -33,6 +63,17 @@ export function getStoredLlmConfig(): LlmConfig {
         // If modelId is empty or an old local model, default to Smart Hybrid
         if (!parsed.modelId || (!parsed.modelId.includes("/") && parsed.modelId !== "orchestrated-hybrid")) {
           parsed.modelId = DEFAULT_LLM_CONFIG.modelId;
+        }
+        // Migrate legacy 1024 max_tokens cap to the expanded 3584 budget
+        if (!parsed.max_tokens || parsed.max_tokens <= 1024) {
+          parsed.max_tokens = DEFAULT_LLM_CONFIG.max_tokens;
+        }
+        if (
+          parsed.narrativeDepth !== "standard" &&
+          parsed.narrativeDepth !== "expansive" &&
+          parsed.narrativeDepth !== "deep_novelistic"
+        ) {
+          parsed.narrativeDepth = DEFAULT_LLM_CONFIG.narrativeDepth;
         }
         return parsed;
       }
@@ -143,8 +184,9 @@ export async function sendRoleplayTurn(
       modelId: resolvedModel,
       messages,
       temperature: config.temperature ?? 0.85,
-      max_tokens: config.max_tokens ?? 1024,
+      max_tokens: config.max_tokens ?? 3584,
       repetition_penalty: config.repetition_penalty ?? 1.1,
+      narrativeDepth: config.narrativeDepth ?? "deep_novelistic",
     }),
   });
 
@@ -174,12 +216,21 @@ export function LlmProviderSelector({
 }: LlmProviderSelectorProps) {
   const [showSettings, setShowSettings] = React.useState(defaultOpenSettings);
   const selectedModel = CLOUD_MODELS.find((m) => m.id === config.modelId) || CLOUD_MODELS[0];
+  const currentDepth: NarrativeDepthMode = config.narrativeDepth || "deep_novelistic";
+  const selectedDepthOption = NARRATIVE_DEPTH_OPTIONS.find((d) => d.id === currentDepth) || NARRATIVE_DEPTH_OPTIONS[0];
 
   const handleModelChange = (selectedModelId: string) => {
     onChange({
       ...config,
       targetEnvironment: "cloud",
       modelId: selectedModelId,
+    });
+  };
+
+  const handleDepthChange = (depth: NarrativeDepthMode) => {
+    onChange({
+      ...config,
+      narrativeDepth: depth,
     });
   };
 
@@ -196,6 +247,7 @@ export function LlmProviderSelector({
       temperature: DEFAULT_LLM_CONFIG.temperature,
       max_tokens: DEFAULT_LLM_CONFIG.max_tokens,
       repetition_penalty: DEFAULT_LLM_CONFIG.repetition_penalty,
+      narrativeDepth: DEFAULT_LLM_CONFIG.narrativeDepth,
     });
   };
 
@@ -273,6 +325,33 @@ export function LlmProviderSelector({
         </p>
       </div>
 
+      {/* Narrative Depth & Response Length Selector */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-[11px] font-mono text-zinc-400 flex items-center gap-1.5">
+            <BookOpen className="w-3 h-3 text-rose-400" />
+            <span>Narrative Depth &amp; Response Length</span>
+          </label>
+          <span className="text-[10px] font-mono text-rose-300">
+            {selectedDepthOption.badge}
+          </span>
+        </div>
+        <select
+          value={currentDepth}
+          onChange={(e) => handleDepthChange(e.target.value as NarrativeDepthMode)}
+          className="w-full bg-zinc-900 border border-white/15 rounded-xl px-3 py-2.5 text-base sm:text-xs text-white font-sans focus:border-rose-500 focus:outline-none transition-colors cursor-pointer"
+        >
+          {NARRATIVE_DEPTH_OPTIONS.map((opt) => (
+            <option key={opt.id} value={opt.id} className="bg-zinc-900 text-white">
+              {opt.label} [{opt.badge}]
+            </option>
+          ))}
+        </select>
+        <p className="mt-1.5 text-[11px] text-zinc-400 leading-relaxed font-sans">
+          {selectedDepthOption.description}
+        </p>
+      </div>
+
       {/* Interactive Model Settings Panel */}
       {showSettings && (
         <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-rose-500/30 space-y-3.5 animate-in fade-in duration-200">
@@ -322,17 +401,17 @@ export function LlmProviderSelector({
             </div>
             <input
               type="range"
-              min="256"
-              max="2048"
-              step="64"
+              min="512"
+              max="4096"
+              step="128"
               value={currentTokens}
               onChange={(e) => handleParamChange("max_tokens", parseInt(e.target.value, 10))}
               className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
             />
             <div className="flex justify-between text-[9px] font-mono text-zinc-500">
-              <span>256 (Snappy)</span>
-              <span>1024 (Standard Scene)</span>
+              <span>512 (Compact)</span>
               <span>2048 (Expansive)</span>
+              <span>4096 (Deep Novelistic)</span>
             </div>
           </div>
 

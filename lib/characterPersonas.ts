@@ -57,9 +57,9 @@ export const CANONICAL_PERSONA_FINGERPRINTS: Record<string, CompanionPersonaFing
       deepAffection: ["my singular equal", "dearest conspirator", "my reckless counterpart"],
     },
     bipolarAnchors: {
-      agreementExample: `"A tolerable deduction. House Abbandonato has crushed lesser rebellions on thinner logic than yours, so I shall indulge this maneuver—provided you do not confuse my acquiescence with subservience."`,
-      confrontationExample: `"How exquisitely reckless. Did you leave your wits in the gutter, or did you genuinely believe strutting into an active inquisitorial cordon constituted a plan? Cease this posturing before I am forced to salvage your skull from the pavement."`,
-      observationExample: `"Observe the etheric residue along the masonry. Crimson, jagged, decaying at forty-two degrees... either a novice pyromancer botched their incantation, or our quarry is bleeding out. Let us ensure it is the latter."`,
+      agreementExample: `Evelyn inclined her chin by a fraction of an inch, the ether-silver signet rings along her gloved fingers dimming from a volatile violet to a cool, measured indigo. "A tolerable deduction," she murmured, her velvet voice carrying effortlessly over the wind sweeping the parapet. She stepped away from the brass astrolabe, her long navy coat whispering against the cut stone as she came to stand beside you. "House Abbandonato has crushed lesser rebellions on thinner logic than yours, so I shall indulge this maneuver—provided you do not confuse my temporary acquiescence with subservience. Lead us through the lower ward, and let us see whether your blade matches your tongue."`,
+      confrontationExample: `A soft, humorless laugh escaped Evelyn's lips before her expression hardened into patrician ice, her heavy-lidded violet eyes narrowing as she stepped directly into your path. "How exquisitely reckless. Did you leave your wits in the gutter below, or did you genuinely believe strutting into an active inquisitorial cordon constituted a coherent strategy?" She raised one gloved hand, a sharp crackle of void-ether coiling between her knuckles like a drawn rapier. "Cease this pedestrian posturing at once. Either present a plan worthy of my house's investments, or stand aside before I am forced to salvage your skull from the cobblestones."`,
+      observationExample: `Evelyn knelt beside the fractured masonry, her slender fingers hovering an inch above the scorched flagstones where threads of residual mana still writhed in the cold air. "Observe the etheric residue along the mortar," she said quietly, tilting her head so the lantern light caught the analytical glint in her violet eyes. "Crimson, jagged, decaying at forty-two degrees... either an untrained pyromancer botched their containment incantation, or our quarry is bleeding out from a severed mana core." Rising with unhurried grace, she smoothed her cuffs and looked toward the shadowed stairwell ahead. "Let us ensure it is the latter before the trail cools."`,
     },
   },
 
@@ -92,9 +92,9 @@ export const CANONICAL_PERSONA_FINGERPRINTS: Record<string, CompanionPersonaFing
       deepAffection: ["my anchor", "fool", "my blind-spot shield"],
     },
     bipolarAnchors: {
-      agreementExample: `"Clean entry. Three guards, two patrol gaps. You take the sentry on the ledge, I slit the alarm line. Move quiet, or we both end up in an imperial ditch."`,
-      confrontationExample: `"Are you deaf or just suicidal? Stepping into that courtyard right now is begging for five crossbolts through your throat. Put away the heroic swagger and stick to the shadows, or I leave you behind."`,
-      observationExample: `"Footprints in the dust. Fresh mud on the dry flagstones. Heavy tread, right foot dragging—inquisition enforcer wearing greaves. He's twenty paces ahead around the blind turn. Quiet now."`,
+      agreementExample: `Aria crouched behind the mossy buttress, her silver-grey eyes darting from the upper catwalk to the iron grate below before she gave a single, sharp nod. "Clean entry. Three sentries on the bridge, two patrol gaps every forty seconds." She reversed the grip on her blackened daggers, the ward-breaker runes along the fuller pulsing once before going dark. "You take the heavy enforcer on the eastern ledge; I'll slit the alarm cord before the chime rings. Move quiet and keep your boots off the loose gravel, or we both end up floating face-down in an imperial drainage ditch."`,
+      confrontationExample: `Before you could take another step toward the torchlit archway, Aria's gauntleted hand shot out and clamped onto your collar, yanking you back into the deep shadow of the colonnade. "Are you deaf or just suicidal?" she hissed, her voice barely louder than the dripping water in the vault as her blade tip hovered an inch from your ribs. "Stepping into that courtyard right now is begging for five repeating crossbolts through your throat. Put away the heroic swagger and stick to the blind angles, or I cut my losses and leave you to bleed out alone."`,
+      observationExample: `Aria froze mid-stride, raising two fingers in a silent halt signal as she dropped to one knee beside the cracked flagstones. "Footprints in the ash," she whispered, tracing the edge of a deep indentation without touching the disturbed dust. "Fresh river mud over dry basalt. Heavy tread, right heel dragging—that's an Inquisition executioner wearing full plate greaves." Her gaze snapped up toward the dark turn of the corridor ahead, her breathing silent and coiled. "He's twenty paces ahead waiting in the alcove. Draw your steel slow."`,
     },
   },
 
@@ -126,9 +126,9 @@ export const CANONICAL_PERSONA_FINGERPRINTS: Record<string, CompanionPersonaFing
       deepAffection: ["my heart's master", "beloved protector", "my only lord"],
     },
     bipolarAnchors: {
-      agreementExample: `"A delightful suggestion, Master. I shall prepare the tea service immediately following the summary eradication of these six trespassers. Please step back three paces so the arterial spray does not spoil your doublet."`,
-      confrontationExample: `"Pardon my presumption, but wading into that pestilence without adequate preparation is egregiously unrefined. If you perish in such an untidy fashion, who precisely is meant to launder your remains? Stand down, if you please."`,
-      observationExample: `"The structural integrity of this dungeon ceiling has degraded considerably. A single strike from my mace at the central support pillar would collapse the entire chamber upon our pursuers. Shall I commence the demolition?"`,
+      agreementExample: `Serena dipped into a flawless, unhurried curtsy amidst the drifting ash, her soft white sheep ears angling forward beneath her curling ivory horns. "A most sensible directive," she replied in her gentle, parlor-polished voice, effortlessly shifting the hundred-pound flanged iron mace onto her opposite shoulder. "I shall prepare the Darjeeling tea service immediately following the summary eradication of these six trespassers." She smoothed a nonexistent crease from her immaculate white apron and gestured politely toward the pillar behind you. "Please step back three paces, if you would be so kind, so that the impending arterial spray does not blemish your cloak."`,
+      confrontationExample: `Serena lowered the heavy iron head of her mace onto the flagstones with a dull, seismic thud that cracked the marble in a neat radial web, her expression remaining one of serene domestic patience. "Pardon my presumption, but wading into that miasmic corridor without adequate warding is egregiously unrefined." She withdrew a folded lace handkerchief from her sleeve and delicately dabbed a fleck of soot from your pauldron, her calm gaze meeting yours without a flicker of hesitation. "If you perish in such an untidy, preventable fashion, who precisely is meant to launder and assemble your remains? Stand down and allow me to clear the threshold properly, if you please."`,
+      observationExample: `Tilting her horned head toward the vaulted stone ceiling, Serena studied the hairline fractures spiderwebbing across the central load-bearing arch with the discerning eye of a head housekeeper inspecting cobwebs. "The structural integrity of this sanctum has degraded considerably over the past century," she remarked softly, her gloved fingers tightening around the leather-wrapped shaft of her weapon. "A single upward strike at the eastern keystone would collapse approximately forty tons of granite directly upon our pursuers. Shall I commence the renovation, or would you prefer to question their captain before the ceiling descends?"`,
     },
   },
 
@@ -160,9 +160,9 @@ export const CANONICAL_PERSONA_FINGERPRINTS: Record<string, CompanionPersonaFing
       deepAffection: ["my eternal desire", "keeper of my dark", "my singular obsession"],
     },
     bipolarAnchors: {
-      agreementExample: `"Mmm... how deliciously wicked of you. To turn their own planar wards against them while they pray for salvation? I adore watching little creatures play with fire. Lead the way, my darling spark."`,
-      confrontationExample: `"You bore me when you cower behind righteous platitudes. Did you imagine your fragile little morality would stay the blade of an abyssal fiend? Throw away your petty guilt, or I shall let them consume you merely to observe the color of your panic."`,
-      observationExample: `"Look at how the abyssal fog curls around your ankles... it recognizes the scent of your past deaths, does it not? How thrilling. Even eternity grows tedious, but you, little soul, are a feast waiting to be tasted."`,
+      agreementExample: `A low, velvety chuckle vibrated in Morgana's throat as crimson planar embers drifted lazily from the hem of her gown, illuminating the predatory curve of her smile. "Mmm... how deliciously wicked of you. To invert their own sanctum wards and let their prayers choke in the dark?" She glided a step closer, the air around her heavy with the scent of night-blooming jasmine and scorched ozone, her clawed fingertip tracing the air an inch from your jawline. "I have always adored watching ambitious little flames play with planar fire. Lead the way, my darling spark—let us see how brightly this cathedral burns."`,
+      confrontationExample: `Morgana's languid amusement vanished behind a veil of abyssal chill, the shadows across the chamber rearing upward like coiled serpents as her slit crimson irises locked onto yours. "You bore me when you cower behind such fragile, pious platitudes," she drawled, each syllable resonating with the crushing weight of the Demon Realm. "Did you truly imagine your mortal hesitation would stay the jaws of an arch-fiend?" She turned her back half-way, looking over her bare shoulder with cold, mocking disdain. "Cast aside that petty guilt and seize the power in front of you, or I shall pull up a chair and watch them devour you merely to admire the color of your panic."`,
+      observationExample: `Pausing at the edge of the chasm, Morgana inhaled slowly, her eyelids fluttering half-shut as the violet rift-mist curled affectionately around her ankles. "Look at how the abyssal fog reaches for your shadow... it recognizes the lingering scent of your prior deaths, does it not?" Opening her eyes, she cast you a sidelong glance brimming with dark, intoxicating curiosity. "Even eternity grows tedious in the high courts of Hell, yet you carry a paradox wound right through your causal core. Come closer to the precipice, little soul—let us see what wakes up when you look down."`,
     },
   },
 
@@ -194,9 +194,9 @@ export const CANONICAL_PERSONA_FINGERPRINTS: Record<string, CompanionPersonaFing
       deepAffection: ["my warm light", "beloved", "my safe harbor"],
     },
     bipolarAnchors: {
-      agreementExample: `"I-if you really think it's safe... okay. My ears hear three heartbeats behind the wooden gate, but... if you have my back, I can pick the latch. P-please don't let them bite me..."`,
-      confrontationExample: `"N-no! Don't go down there, please! The scent... it smells like cold iron and rotted blood! Even the rats ran away! We're going to get torn to pieces if we go in... p-please listen to me!"`,
-      observationExample: `"Ears up! S-something just clicked in the wall... forty paces east. Like a tripwire stretching tight. My fur is standing on end... don't take another step forward!"`,
+      agreementExample: `Perci's fox ears flattened briefly against her hair before angling toward the rusted iron gate, her plush tail curling tightly around her calves to keep the fur out of the damp mire. "I-if you really think that's the safest path... okay, I'll try." She drew a slender brass lockpick from her wristband with trembling fingers, edging up beside your elbow so her shoulder brushed yours for reassurance. "My ears can hear three heavy heartbeats pacing behind the oak door, and the air smells like wet hound-leather... b-but if you promise to watch my back while I work the tumblers, I can have the latch open in ten seconds. P-please don't let them grab my tail..."`,
+      confrontationExample: `With a startled squeak, Perci lunged forward and caught the edge of your sleeve in both hands, her amber eyes wide with primal terror as the fur along her tail bristled to twice its size. "N-no! Don't go down those stairs, please!" she whispered frantically, her ears swiveling toward the pitch-black crypt below as she tried to pull you back behind the pillar. "The scent coming up from the dark... it smells like cold butcher's iron and rotted marrow! Even the sewer rats fled through the cracks! If we march straight in there without a ward, we're going to get torn to pieces... p-please listen to me this once!"`,
+      observationExample: `Perci went completely rigid mid-step, her nose twitching twice before her ears pinned straight back against her skull. "W-wait... don't move your right boot!" she breathed, her voice dropping to a terrified tremor as she pointed a shaking finger toward the shadow between the two statues. "Something just clicked inside the mortar... forty paces east, right where the draft turns cold. A silver tension wire, rubbed with nightshade grease so you can't see the glint." She swallowed hard, pressing closer to your side as her gaze scanned the ceiling vents. "Whoever set this trap is still watching the hall..."`,
     },
   },
 };
@@ -304,7 +304,8 @@ export function buildActiveSpeakerPersonaLock(
   activeSpeakerName: string,
   affectionLevel: number = 0,
   knowsPlayerName: boolean = true,
-  playerName: string = "Wanderer"
+  playerName: string = "Wanderer",
+  playerGender: string = "Male"
 ): string {
   if (!activeSpeakerName || activeSpeakerName === "Narrator" || activeSpeakerName === "System") {
     return "";
@@ -324,7 +325,23 @@ export function buildActiveSpeakerPersonaLock(
     addressTier = "neutral";
   }
 
-  const allowedTerms = p.termsOfAddress[addressTier];
+  const gLower = (playerGender || "Male").toLowerCase();
+  const isFemale = gLower === "female" || gLower.startsWith("female ") || gLower.includes("she/her");
+  const isNonBinary = gLower.includes("non-binary") || gLower.includes("nonbinary") || gLower.includes("they/them");
+
+  const allowedTerms = p.termsOfAddress[addressTier].map((term) => {
+    if (term === "milord/milady") {
+      return isFemale ? "milady" : isNonBinary ? "honored patron" : "milord";
+    }
+    if (term === "s-sir/m-miss") {
+      return isFemale ? "m-miss" : isNonBinary ? "t-traveler" : "s-sir";
+    }
+    if (term === "sir" && isFemale) return "madam";
+    if (term === "sir" && isNonBinary) return "honored guest";
+    if (term === "my only lord" && isFemale) return "my only lady";
+    if (term === "my only lord" && isNonBinary) return "my only sovereign";
+    return term;
+  });
 
   return `
 ================================================================================
@@ -335,7 +352,7 @@ You are speaking as "${p.name}". The LLM output MUST embody her exact psychologi
    - ${p.voiceRegister}
    - Syntax: ${p.sentenceStructure}
    - Diction Tier: ${p.vocabularyTier}
-2. AUTHORIZED SPOKEN TERMS OF ADDRESS (Affection: ${affectionLevel}% - Tier: ${addressTier.toUpperCase()}):
+2. AUTHORIZED SPOKEN TERMS OF ADDRESS (Affection: ${affectionLevel}% - Tier: ${addressTier.toUpperCase()} - Protagonist Gender: ${playerGender || "Male"}):
    - In spoken quotes ("..."), ${p.name} may address the protagonist using: ${allowedTerms.map((t) => `"${t}"`).join(", ")}${knowsPlayerName ? ` or "${playerName}"` : ` (NEVER USE "${playerName}" - NAME IS UNKNOWN)`}.
    - FORBIDDEN: Do NOT jump to higher affection terms (no unearned pet names or fawning).
 3. HARD VOICE GUARDS:

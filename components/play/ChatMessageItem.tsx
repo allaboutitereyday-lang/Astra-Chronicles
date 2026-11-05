@@ -10,6 +10,7 @@ import {
   Check,
   Heart,
   Zap,
+  Bookmark,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
@@ -48,6 +49,7 @@ export interface ChatMessageItemProps {
   onRegenerateTurn: () => void;
   onSkipTypewriter: (msg: ChatMessageData, isLatestCharacterTurn: boolean) => void;
   onViewPortrait?: (imageUrl: string, name?: string) => void;
+  onPinMemory?: (text: string, speakerName: string) => void;
 }
 
 export const ChatMessageItem = memo(function ChatMessageItem({
@@ -69,6 +71,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onRegenerateTurn,
   onSkipTypewriter,
   onViewPortrait,
+  onPinMemory,
 }: ChatMessageItemProps) {
   const [localEditText, setLocalEditText] = useState(msg.text);
 
@@ -85,151 +88,154 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     );
 
   return (
-    <div
-      className={`flex flex-col group ${
-        msg.sender === "user" ? "items-end" : "items-start"
-      }`}
-    >
-      <div className="flex items-center gap-2 mb-1 px-1">
-        {msg.sender === "user" ? (
-          <>
-            {!isEditing && !msg.isPending && (
-              <button
-                type="button"
-                onClick={() => onStartEdit(msg)}
-                className="opacity-85 hover:opacity-100 transition-all px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm"
-                title="Edit action"
-              >
-                <Edit3 className="w-3 h-3" />
-                <span>Edit</span>
-              </button>
-            )}
-            <span className="text-[11px] text-zinc-500 font-mono select-none">
-              {msg.timestamp}
-            </span>
-            <span className="text-xs font-semibold text-zinc-200 select-none">
-              {msg.speakerName}
-            </span>
-            <div
-              onClick={() => {
-                const targetImg =
-                  (msg.avatarSrc && msg.avatarSrc.trim()) ||
-                  (playerAvatar && playerAvatar.trim()) ||
-                  "";
-                if (targetImg && onViewPortrait) {
-                  onViewPortrait(targetImg, msg.speakerName || playerName);
-                }
-              }}
-              title={
-                (msg.avatarSrc && msg.avatarSrc.trim()) ||
-                (playerAvatar && playerAvatar.trim())
-                  ? "Click to view full character portrait"
-                  : undefined
-              }
-              className={`w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0 select-none ${
-                ((msg.avatarSrc && msg.avatarSrc.trim()) ||
-                  (playerAvatar && playerAvatar.trim())) &&
-                onViewPortrait
-                  ? "cursor-pointer hover:ring-2 hover:ring-sky-400/60 hover:scale-105 transition-transform"
-                  : ""
-              }`}
-            >
-              {(msg.avatarSrc && msg.avatarSrc.trim()) ||
-              (playerAvatar && playerAvatar.trim()) ? (
-                <img
-                  src={
-                    (msg.avatarSrc && msg.avatarSrc.trim()) ||
-                    playerAvatar ||
-                    defaultFallbackSprite
-                  }
-                  alt="User"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-4 h-4 text-sky-300" />
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            {isMsgAmbient ? (
-              <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-950 shadow-md flex items-center justify-center shrink-0 select-none">
-                {msg.speakerName.toLowerCase().includes("system") ? (
-                  <Terminal className="w-4 h-4 text-sky-400" />
-                ) : (
-                  <BookOpen className="w-4 h-4 text-sky-400" />
-                )}
-              </div>
-            ) : (
+    <div className="flex flex-col items-stretch w-full group">
+      <div className="flex items-center justify-between gap-2 mb-1.5 px-1">
+        <div className="flex items-center gap-2 min-w-0">
+          {msg.sender === "user" ? (
+            <>
               <div
                 onClick={() => {
-                  const targetImg = resolvedSpriteSrc || defaultFallbackSprite;
+                  const targetImg =
+                    (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                    (playerAvatar && playerAvatar.trim()) ||
+                    "";
                   if (targetImg && onViewPortrait) {
-                    onViewPortrait(targetImg, msg.speakerName);
+                    onViewPortrait(targetImg, msg.speakerName || playerName);
                   }
                 }}
-                title="Click to view full character portrait"
-                className={`w-9 h-9 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none ${
+                title={
+                  (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                  (playerAvatar && playerAvatar.trim())
+                    ? "Click to view full character portrait"
+                    : undefined
+                }
+                className={`w-8 h-8 rounded-full overflow-hidden border-2 border-sky-400/80 bg-zinc-800 shadow-md flex items-center justify-center shrink-0 select-none ${
+                  ((msg.avatarSrc && msg.avatarSrc.trim()) ||
+                    (playerAvatar && playerAvatar.trim())) &&
                   onViewPortrait
-                    ? "cursor-pointer hover:ring-2 hover:ring-rose-400/60 hover:scale-105 transition-transform"
+                    ? "cursor-pointer hover:ring-2 hover:ring-sky-400/60 hover:scale-105 transition-transform"
                     : ""
                 }`}
               >
-                <img
-                  src={resolvedSpriteSrc || defaultFallbackSprite}
-                  alt={msg.speakerName}
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = defaultFallbackSprite;
-                  }}
-                  className="w-full h-full object-cover object-top"
-                />
-              </div>
-            )}
-            <span
-              className={`text-xs font-semibold select-none ${
-                isMsgAmbient ? "text-sky-300" : "text-rose-300"
-              }`}
-            >
-              {msg.speakerName}
-            </span>
-            <span className="text-[11px] text-zinc-500 font-mono select-none">
-              {msg.timestamp}
-            </span>
-
-            {!isEditing && !msg.isPending && (
-              <div className="opacity-90 hover:opacity-100 transition-all flex items-center gap-1.5 ml-1 select-none">
-                <button
-                  type="button"
-                  onClick={() => onStartEdit(msg)}
-                  className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
-                  title="Edit response"
-                >
-                  <Edit3 className="w-3 h-3" />
-                  <span>Edit</span>
-                </button>
-                {isLatestCharacterTurn && !isLoading && (
-                  <button
-                    type="button"
-                    onClick={onRegenerateTurn}
-                    className="px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
-                    title="Regenerate response"
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                    <span>Regenerate</span>
-                  </button>
+                {(msg.avatarSrc && msg.avatarSrc.trim()) ||
+                (playerAvatar && playerAvatar.trim()) ? (
+                  <img
+                    src={
+                      (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                      playerAvatar ||
+                      defaultFallbackSprite
+                    }
+                    alt="User"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-4 h-4 text-sky-300" />
                 )}
               </div>
+              <span className="text-xs font-semibold text-sky-200 select-none truncate">
+                {msg.speakerName}
+              </span>
+              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300 uppercase tracking-wider shrink-0 select-none">
+                Protagonist
+              </span>
+              <span className="text-[11px] text-zinc-500 font-mono select-none shrink-0">
+                {msg.timestamp}
+              </span>
+            </>
+          ) : (
+            <>
+              {isMsgAmbient ? (
+                <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-cyan-400/80 bg-zinc-950 shadow-md flex items-center justify-center shrink-0 select-none">
+                  {msg.speakerName.toLowerCase().includes("system") ? (
+                    <Terminal className="w-4 h-4 text-cyan-400" />
+                  ) : (
+                    <BookOpen className="w-4 h-4 text-cyan-400" />
+                  )}
+                </div>
+              ) : (
+                <div
+                  onClick={() => {
+                    const targetImg = resolvedSpriteSrc || defaultFallbackSprite;
+                    if (targetImg && onViewPortrait) {
+                      onViewPortrait(targetImg, msg.speakerName);
+                    }
+                  }}
+                  title="Click to view full character portrait"
+                  className={`w-8 h-8 rounded-full overflow-hidden border-2 border-rose-400/80 bg-zinc-900 shadow-md flex items-center justify-center shrink-0 select-none ${
+                    onViewPortrait
+                      ? "cursor-pointer hover:ring-2 hover:ring-rose-400/60 hover:scale-105 transition-transform"
+                      : ""
+                  }`}
+                >
+                  <img
+                    src={resolvedSpriteSrc || defaultFallbackSprite}
+                    alt={msg.speakerName}
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = defaultFallbackSprite;
+                    }}
+                    className="w-full h-full object-cover object-top"
+                  />
+                </div>
+              )}
+              <span
+                className={`text-xs font-semibold select-none truncate ${
+                  isMsgAmbient ? "text-cyan-300" : "text-rose-300"
+                }`}
+              >
+                {msg.speakerName}
+              </span>
+              <span className="text-[11px] text-zinc-500 font-mono select-none shrink-0">
+                {msg.timestamp}
+              </span>
+            </>
+          )}
+        </div>
+
+        {!isEditing && !msg.isPending && (
+          <div className="opacity-85 hover:opacity-100 transition-all flex items-center gap-1.5 select-none shrink-0">
+            {onPinMemory && msg.text && msg.text.trim().length > 10 && (
+              <button
+                type="button"
+                onClick={() => onPinMemory(msg.text, msg.speakerName)}
+                className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-amber-950/60 border border-white/10 hover:border-amber-500/40 text-zinc-400 hover:text-amber-200 text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                title="Pin a key canon summary of this turn into Pinned Core Memories"
+              >
+                <Bookmark className="w-3 h-3 text-amber-400" />
+                <span className="hidden sm:inline">Pin</span>
+              </button>
             )}
-          </>
+            <button
+              type="button"
+              onClick={() => onStartEdit(msg)}
+              className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+              title={msg.sender === "user" ? "Edit action" : "Edit response"}
+            >
+              <Edit3 className="w-3 h-3" />
+              <span>Edit</span>
+            </button>
+            {msg.sender === "character" && isLatestCharacterTurn && !isLoading && (
+              <button
+                type="button"
+                onClick={onRegenerateTurn}
+                className="px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                title="Regenerate response"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Regenerate</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
 
       <div
-        className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm select-text transition-colors ${
+        className={`w-full rounded-2xl px-4 py-3.5 text-sm leading-relaxed shadow-md select-text transition-colors ${
           msg.sender === "user"
-            ? "bg-gradient-to-br from-rose-600 to-pink-600 text-white rounded-tr-none"
-            : "bg-zinc-900/95 border border-white/10 text-zinc-200 rounded-tl-none font-normal"
+            ? "bg-gradient-to-r from-sky-950/35 via-zinc-900/95 to-zinc-900/90 border border-sky-500/25 border-l-4 border-l-sky-400 text-zinc-200"
+            : isMsgAmbient
+            ? "bg-zinc-900/95 border border-cyan-500/20 border-l-4 border-l-cyan-400/80 text-zinc-200 font-normal"
+            : "bg-zinc-900/95 border border-white/10 border-l-4 border-l-rose-500/80 text-zinc-200 font-normal"
         }`}
         onClick={() => onSkipTypewriter(msg, isLatestCharacterTurn)}
       >

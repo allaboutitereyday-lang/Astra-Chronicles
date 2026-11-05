@@ -53,7 +53,11 @@ import {
   Cloud,
   Bell,
   Settings2,
-  LayoutGrid
+  LayoutGrid,
+  Bookmark,
+  ChevronUp,
+  ChevronDown,
+  Plus
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -140,6 +144,10 @@ import { WorldShareModal } from "@/components/WorldShareModal";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 import {
+  GENDER_PRESETS,
+  GenderPreset,
+  WORLD_ORIGIN_PRESETS,
+  WorldOriginPreset,
   PERSONALITY_PRESETS,
   PersonalityPreset,
   analyzeChoiceVector,
@@ -210,6 +218,10 @@ interface PlayerStats {
 interface PlayerProfile {
   name: string;
   role: string;
+  gender?: string;
+  age?: string;
+  worldOrigin?: string;
+  worldOriginDetails?: string;
   race?: string;
   racialTraits?: string[];
   level: number;
@@ -228,6 +240,8 @@ interface PlayerProfile {
   personality?: string;
   personalityTraits?: string[];
   behavioralTendencies?: Record<string, number>;
+  pinnedMemories?: string[];
+  unspentStatPoints?: number;
 }
 
 interface RoleplayState {
@@ -608,6 +622,12 @@ export default function VisualNovelGame() {
   const [llmConfig, setLlmConfig] = useState<LlmConfig>(DEFAULT_LLM_CONFIG);
   const [showLlmModal, setShowLlmModal] = useState<boolean>(false);
 
+  // Pre-Send Protagonist Action Drafting State
+  const [isDraftingAction, setIsDraftingAction] = useState<boolean>(false);
+  const [draftingChoiceIdx, setDraftingChoiceIdx] = useState<number | null>(null);
+  const [draftActionText, setDraftActionText] = useState<string>("");
+  const [draftActionVersion, setDraftActionVersion] = useState<number>(0);
+
   // Immersion & Transition States
   const [hasSeenWelcome, setHasSeenWelcome] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState<{
@@ -630,11 +650,17 @@ export default function VisualNovelGame() {
   const [player, setPlayer] = useState<PlayerProfile>({
     name: "Caelen",
     role: "",
+    gender: "Male",
+    age: "22",
+    worldOrigin: "Born & Raised (Native)",
+    worldOriginDetails: WORLD_ORIGIN_PRESETS[0].defaultDetails,
     race: "Human",
     racialTraits: ["Adaptable physiology", "Expressive gaze"],
     personality: "Stoic Pragmatist",
     personalityTraits: ["Calculated", "Unflinching", "Efficient", "Vigilant"],
     behavioralTendencies: {},
+    pinnedMemories: [],
+    unspentStatPoints: 0,
     level: 1,
     stats: { hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: 100, str: 10, dex: 10, int: 10 },
     gear: { weapon: "Pending...", armor: "Pending...", relic: "None" },
@@ -642,6 +668,8 @@ export default function VisualNovelGame() {
     abilityDetails: {},
     inventory: [],
   });
+  const [selectedGenderPreset, setSelectedGenderPreset] = useState<string>("male");
+  const [selectedWorldOriginPreset, setSelectedWorldOriginPreset] = useState<string>("native");
   const [selectedRacePreset, setSelectedRacePreset] = useState<string>("human");
   const [racialTraitsInput, setRacialTraitsInput] = useState<string>("Adaptable physiology, Expressive gaze");
   const [selectedPersonalityPreset, setSelectedPersonalityPreset] = useState<string>("stoic");
@@ -1573,6 +1601,106 @@ export default function VisualNovelGame() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [companionMilestones, setCompanionMilestones] = useState<Record<string, number[]>>({});
   const [companionCompletedMilestones, setCompanionCompletedMilestones] = useState<Record<string, number[]>>({});
+  const [isChoicesCollapsed, setIsChoicesCollapsed] = useState(false);
+  const [isRerollingChoices, setIsRerollingChoices] = useState(false);
+  const [showSubtextPopover, setShowSubtextPopover] = useState(false);
+  const [customMemoryInput, setCustomMemoryInput] = useState("");
+  const [loadingPhaseIdx, setLoadingPhaseIdx] = useState(0);
+  const [sectorBanner, setSectorBanner] = useState<{ name: string; sub: string } | null>(null);
+  const prevLocationRef = useRef<string>("");
+
+  useEffect(() => {
+    if (!isLoading) {
+      setLoadingPhaseIdx(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setLoadingPhaseIdx((prev) => (prev + 1) % 4);
+    }, 2200);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  useEffect(() => {
+    const loc = (gameState.location || "").trim();
+    if (!loc || !prevLocationRef.current) {
+      if (loc) prevLocationRef.current = loc;
+      return;
+    }
+    if (loc.toLowerCase() !== prevLocationRef.current.toLowerCase()) {
+      prevLocationRef.current = loc;
+      setSectorBanner({
+        name: loc,
+        sub: gameState.mood ? `Atmosphere: ${gameState.mood}` : "Sector Resonance Stabilized",
+      });
+      const timer = setTimeout(() => setSectorBanner(null), 4200);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.location, gameState.mood]);
+
+  const activeConditionPills = useMemo(() => {
+    const pills: { label: string; color: string; title: string }[] = [];
+    const weaponLower = (player.gear?.weapon || "").toLowerCase();
+    const armorLower = (player.gear?.armor || "").toLowerCase();
+    const visualLower = (player.visualDescription || "").toLowerCase();
+
+    if (!weaponLower || weaponLower.includes("none") || weaponLower.includes("unarmed") || weaponLower.includes("bare")) {
+      pills.push({
+        label: "Unarmed",
+        color: "border-amber-500/40 bg-amber-950/60 text-amber-300",
+        title: "No primary weapon equipped — relying on raw physique or innate claws/magic.",
+      });
+    }
+    if (
+      !armorLower ||
+      armorLower.includes("none") ||
+      armorLower.includes("unclad") ||
+      armorLower.includes("nude") ||
+      armorLower.includes("rags") ||
+      visualLower.includes("nude") ||
+      visualLower.includes("unclad") ||
+      visualLower.includes("without clothes")
+    ) {
+      pills.push({
+        label: "Unclad / Exposed",
+        color: "border-rose-500/40 bg-rose-950/60 text-rose-300",
+        title: "Lacking protective apparel — NPCs react to your exposed state and physical vulnerability.",
+      });
+    }
+
+    const hpRatio = player.stats.hp / Math.max(1, player.stats.maxHp);
+    if (hpRatio <= 0.35) {
+      pills.push({
+        label: "Critical Trauma",
+        color: "border-red-500/60 bg-red-950/80 text-red-300 animate-pulse",
+        title: "Severe physical wounds — physical exertion carries heightened danger.",
+      });
+    } else if (hpRatio <= 0.65) {
+      pills.push({
+        label: "Bloodied",
+        color: "border-orange-500/40 bg-orange-950/60 text-orange-300",
+        title: "Visible bruising and lacerations from recent clashes.",
+      });
+    }
+
+    const mpRatio = player.stats.mp / Math.max(1, player.stats.maxMp);
+    if (mpRatio <= 0.25) {
+      pills.push({
+        label: "Mana Strained",
+        color: "border-sky-500/40 bg-sky-950/60 text-sky-300",
+        title: "Aether reserves running low — channeling high-tier arts may cause backlash.",
+      });
+    }
+
+    if (player.race && player.race.toLowerCase() !== "human") {
+      pills.push({
+        label: `${player.race} Senses`,
+        color: "border-purple-500/40 bg-purple-950/50 text-purple-300",
+        title: (player.racialTraits || []).join(" • ") || `${player.race} physiology active in narrative.`,
+      });
+    }
+
+    return pills;
+  }, [player.gear, player.visualDescription, player.stats.hp, player.stats.maxHp, player.stats.mp, player.stats.maxMp, player.race, player.racialTraits]);
 
   // Helper to determine active threshold cap for any companion
   const getCompanionCap = (compName?: string | null): number => {
@@ -1738,6 +1866,20 @@ export default function VisualNovelGame() {
     setSelectedPersonalityPreset(matchedPersona ? matchedPersona.id : "custom");
     setPersonalityTraitsInput(loadedPersonaTraits.join(", "));
 
+    // Match gender preset or mark as custom
+    const matchedGender = GENDER_PRESETS.find(
+      (g) => g.name.toLowerCase() === (bp.gender || "Male").trim().toLowerCase()
+    );
+    setSelectedGenderPreset(matchedGender ? matchedGender.id : "custom");
+
+    // Match world origin preset or mark as custom
+    const matchedOrigin = WORLD_ORIGIN_PRESETS.find(
+      (o) =>
+        o.name.toLowerCase() === (bp.worldOrigin || "Born & Raised (Native)").trim().toLowerCase() ||
+        o.shortLabel.toLowerCase() === (bp.worldOrigin || "").trim().toLowerCase()
+    );
+    setSelectedWorldOriginPreset(matchedOrigin ? matchedOrigin.id : "custom");
+
     if (bp.narrationStyle) {
       setNarrationStyle(bp.narrationStyle);
     }
@@ -1760,6 +1902,13 @@ export default function VisualNovelGame() {
         ...prev,
         name: bp.name || "Caelen",
         role: bp.role || "",
+        gender: bp.gender || "Male",
+        age: bp.age || "22",
+        worldOrigin: bp.worldOrigin || "Born & Raised (Native)",
+        worldOriginDetails:
+          bp.worldOriginDetails ||
+          matchedOrigin?.defaultDetails ||
+          WORLD_ORIGIN_PRESETS[0].defaultDetails,
         race: bp.race || "Human",
         racialTraits: loadedTraits,
         personality: bp.personality || "Stoic Pragmatist",
@@ -2363,6 +2512,61 @@ export default function VisualNovelGame() {
       playerRef.current = next;
       return next;
     });
+  };
+
+  const handleSelectGenderPreset = (preset: GenderPreset) => {
+    setSelectedGenderPreset(preset.id);
+    if (preset.id === "custom") {
+      return;
+    }
+    setPlayer((prev) => {
+      const next = { ...prev, gender: preset.name };
+      playerRef.current = next;
+      return next;
+    });
+  };
+
+  const handleCustomGenderChange = (newGender: string) => {
+    setPlayer((prev) => {
+      const next = { ...prev, gender: newGender };
+      playerRef.current = next;
+      return next;
+    });
+    const match = GENDER_PRESETS.find(
+      (g) => g.id !== "custom" && g.name.toLowerCase() === newGender.trim().toLowerCase()
+    );
+    setSelectedGenderPreset(match ? match.id : "custom");
+  };
+
+  const handleSelectWorldOriginPreset = (preset: WorldOriginPreset) => {
+    setSelectedWorldOriginPreset(preset.id);
+    if (preset.id === "custom") {
+      return;
+    }
+    setPlayer((prev) => {
+      const next = {
+        ...prev,
+        worldOrigin: preset.name,
+        worldOriginDetails: preset.defaultDetails,
+      };
+      playerRef.current = next;
+      return next;
+    });
+  };
+
+  const handleCustomWorldOriginChange = (newOrigin: string) => {
+    setPlayer((prev) => {
+      const next = { ...prev, worldOrigin: newOrigin };
+      playerRef.current = next;
+      return next;
+    });
+    const match = WORLD_ORIGIN_PRESETS.find(
+      (o) =>
+        o.id !== "custom" &&
+        (o.name.toLowerCase() === newOrigin.trim().toLowerCase() ||
+          o.shortLabel.toLowerCase() === newOrigin.trim().toLowerCase())
+    );
+    setSelectedWorldOriginPreset(match ? match.id : "custom");
   };
 
   const handleStatChange = (stat: "str" | "dex" | "int", amount: number) => {
@@ -3039,6 +3243,7 @@ export default function VisualNovelGame() {
           temperature: llmConfig.temperature,
           max_tokens: llmConfig.max_tokens,
           repetition_penalty: llmConfig.repetition_penalty,
+          narrativeDepth: llmConfig.narrativeDepth,
         }),
       });
 
@@ -3632,14 +3837,36 @@ export default function VisualNovelGame() {
 
     const safeLoadedPlayer: PlayerProfile = {
       ...loadedPlayer,
+      gender: loadedPlayer?.gender || "Male",
+      age: loadedPlayer?.age || "22",
+      worldOrigin: loadedPlayer?.worldOrigin || "Born & Raised (Native)",
+      worldOriginDetails:
+        loadedPlayer?.worldOriginDetails || WORLD_ORIGIN_PRESETS[0].defaultDetails,
       race: loadedPlayer?.race || "Human",
       racialTraits: loadedPlayer?.racialTraits || [],
       personality: loadedPlayer?.personality || "Stoic Pragmatist",
       personalityTraits: loadedPlayer?.personalityTraits || ["Calculated", "Unflinching", "Efficient", "Vigilant"],
       behavioralTendencies: loadedPlayer?.behavioralTendencies || {},
+      pinnedMemories: Array.isArray(loadedPlayer?.pinnedMemories) ? loadedPlayer.pinnedMemories : [],
+      unspentStatPoints: typeof loadedPlayer?.unspentStatPoints === "number" ? loadedPlayer.unspentStatPoints : 0,
     };
     playerRef.current = safeLoadedPlayer;
     setPlayer(safeLoadedPlayer);
+    if (loadedPlayer?.gender) {
+      const gMatch = GENDER_PRESETS.find(
+        (g) => g.id !== "custom" && g.name.toLowerCase() === loadedPlayer.gender!.trim().toLowerCase()
+      );
+      setSelectedGenderPreset(gMatch ? gMatch.id : "custom");
+    }
+    if (loadedPlayer?.worldOrigin) {
+      const oMatch = WORLD_ORIGIN_PRESETS.find(
+        (o) =>
+          o.id !== "custom" &&
+          (o.name.toLowerCase() === loadedPlayer.worldOrigin!.trim().toLowerCase() ||
+            o.shortLabel.toLowerCase() === loadedPlayer.worldOrigin!.trim().toLowerCase())
+      );
+      setSelectedWorldOriginPreset(oMatch ? oMatch.id : "custom");
+    }
     if (loadedPlayer?.personality) {
       const match = PERSONALITY_PRESETS.find((p) => p.name.toLowerCase() === loadedPlayer.personality!.trim().toLowerCase());
       setSelectedPersonalityPreset(match ? match.id : "custom");
@@ -4091,6 +4318,7 @@ export default function VisualNovelGame() {
           temperature: llmConfig.temperature,
           max_tokens: llmConfig.max_tokens,
           repetition_penalty: llmConfig.repetition_penalty,
+          narrativeDepth: llmConfig.narrativeDepth,
           recentHistory: chatBeforeTurn.slice(-14).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
@@ -4590,7 +4818,7 @@ export default function VisualNovelGame() {
             id: `level_${Date.now()}`,
             type: "level",
             title: `LEVEL ADVANCEMENT (LV.${newLevel})`,
-            subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} STR / DEX / INT`,
+            subtitle: `+${levelsGained * 20} HP • +${levelsGained * 10} MP • +${levelsGained * 2} Free Attribute Points`,
           });
         }
 
@@ -4655,6 +4883,7 @@ export default function VisualNovelGame() {
           abilities: updatedAbilities,
           abilityDetails: updatedAbilityDetails,
           inventory: finalTurnInventory,
+          unspentStatPoints: (playerRef.current.unspentStatPoints || 0) + (levelsGained > 0 ? levelsGained * 2 : 0),
         };
 
         playerRef.current = nextPlayerState;
@@ -5550,6 +5779,257 @@ export default function VisualNovelGame() {
 
   const handleSendCustomAction = (text: string, isOOC: boolean) => {
     sendAction(text, true, null, null, isOOC);
+  };
+
+  const handleSelectPresetChoice = async (choiceText: string, idx: number) => {
+    if (isLoading || isDraftingAction) return;
+    soundEffects.playClick();
+    setIsDraftingAction(true);
+    setDraftingChoiceIdx(idx);
+
+    const activePlayer = playerRef.current || player;
+    const activeGame = gameStateRef.current || gameState;
+    const activeParty = partyRef.current || party;
+
+    try {
+      const res = await fetch("/api/expand-action", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-key": accessKey,
+        },
+        body: JSON.stringify({
+          action: choiceText,
+          playerProfile: activePlayer,
+          gameState: activeGame,
+          partyMembers: activeParty,
+          activeStance: activePlayer.activeStance || "neutral",
+          narrationStyle:
+            narrationStyle ||
+            activePlayer?.narrationStyle ||
+            currentStory?.narrationStyle ||
+            "Grimdark & Atmospheric",
+          recentHistory: chatLog.slice(-8).map((m) => ({
+            speaker: m.speakerName,
+            text: m.text,
+          })),
+          targetEnvironment: llmConfig.targetEnvironment,
+          modelId: llmConfig.modelId,
+          temperature: llmConfig.temperature,
+          repetition_penalty: llmConfig.repetition_penalty,
+          userAccessKey: accessKey,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.expanded_action && typeof data.expanded_action === "string") {
+          setDraftActionText(data.expanded_action.trim());
+          setDraftActionVersion((v) => v + 1);
+          return;
+        }
+      }
+
+      // Fallback if response wasn't ok
+      const stripped = choiceText.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+      setDraftActionText(stripped);
+      setDraftActionVersion((v) => v + 1);
+    } catch (err) {
+      console.warn("[ExpandAction] Fallback to clean choice text:", err);
+      const stripped = choiceText.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+      setDraftActionText(stripped);
+      setDraftActionVersion((v) => v + 1);
+    } finally {
+      setIsDraftingAction(false);
+      setDraftingChoiceIdx(null);
+    }
+  };
+
+  const getChoiceResonanceBadge = (choiceText: string): { label: string; color: string } | null => {
+    const lower = choiceText.toLowerCase();
+    const raceName = (player.race || "Human").trim();
+    if (
+      raceName.toLowerCase() !== "human" &&
+      (lower.includes("fang") ||
+        lower.includes("scent") ||
+        lower.includes("growl") ||
+        lower.includes("instinct") ||
+        lower.includes("predator") ||
+        lower.includes("ears") ||
+        lower.includes("claws") ||
+        lower.includes("blood") ||
+        lower.includes(raceName.toLowerCase()))
+    ) {
+      return {
+        label: `🐺 ${raceName} Instinct`,
+        color: "border-purple-500/40 bg-purple-950/70 text-purple-300",
+      };
+    }
+    if (
+      lower.includes("[aggressive]") ||
+      lower.includes("strike") ||
+      lower.includes("grab") ||
+      lower.includes("force") ||
+      lower.includes("intimidate") ||
+      lower.includes("shove") ||
+      lower.includes("stand your ground") ||
+      lower.includes("blade")
+    ) {
+      return {
+        label: `⚔️ STR ${player.stats.str}`,
+        color: "border-rose-500/40 bg-rose-950/70 text-rose-300",
+      };
+    }
+    if (
+      lower.includes("[tactical]") ||
+      lower.includes("step") ||
+      lower.includes("evade") ||
+      lower.includes("circle") ||
+      lower.includes("flank") ||
+      lower.includes("dart") ||
+      lower.includes("reflex") ||
+      lower.includes("distance")
+    ) {
+      return {
+        label: `⚡ DEX ${player.stats.dex}`,
+        color: "border-emerald-500/40 bg-emerald-950/70 text-emerald-300",
+      };
+    }
+    if (
+      lower.includes("[Stoic") ||
+      lower.includes("[analytical]") ||
+      lower.includes("deduce") ||
+      lower.includes("inquire") ||
+      lower.includes("question") ||
+      lower.includes("analyze") ||
+      lower.includes("observe") ||
+      lower.includes("enlighten")
+    ) {
+      return {
+        label: `👁️ INT ${player.stats.int}`,
+        color: "border-sky-500/40 bg-sky-950/70 text-sky-300",
+      };
+    }
+    return null;
+  };
+
+  const handleRerollChoices = async () => {
+    if (isLoading || isRerollingChoices || isDraftingAction) return;
+    soundEffects.playClick();
+    setIsRerollingChoices(true);
+    try {
+      const res = await fetch("/api/generate-choices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storyTitle: currentStory.title,
+          location: gameState.location,
+          mood: gameState.mood,
+          speaker: gameState.speaker,
+          dialogue: gameState.dialogue,
+          playerProfile: {
+            name: player.name,
+            gender: player.gender,
+            age: player.age,
+            worldOrigin: player.worldOrigin,
+            worldOriginDetails: player.worldOriginDetails,
+            race: player.race,
+            racialTraits: player.racialTraits,
+            role: player.role,
+            personality: player.personality,
+            personalityTraits: player.personalityTraits,
+          },
+          recentHistory: chatLog.slice(-4).map((m) => ({
+            speaker: m.speakerName,
+            text: m.text,
+          })),
+          userAccessKey: accessKey,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.choices) && data.choices.length > 0) {
+          setChoices(data.choices.slice(0, 4));
+          pushNotification({
+            id: `reroll_${Date.now()}`,
+            type: "level",
+            title: "TACTICAL VECTORS REFRESHED",
+            subtitle: "Synthesized 4 alternative protagonist choices for the current scene.",
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Failed to reroll choices:", err);
+    } finally {
+      setIsRerollingChoices(false);
+    }
+  };
+
+  const handleTogglePinMemory = (factText: string) => {
+    const clean = factText.trim();
+    if (!clean) return;
+    soundEffects.playClick();
+    setPlayer((prev) => {
+      const current = prev.pinnedMemories || [];
+      const exists = current.includes(clean);
+      let next: string[];
+      if (exists) {
+        next = current.filter((m) => m !== clean);
+      } else {
+        if (current.length >= 6) {
+          pushNotification({
+            id: `pin_limit_${Date.now()}`,
+            type: "level",
+            title: "CORE CANON CAPACITY (6/6)",
+            subtitle: "Unpin an existing memory in the Chronicle drawer before pinning a new one.",
+          });
+          return prev;
+        }
+        next = [...current, clean];
+        pushNotification({
+          id: `pin_added_${Date.now()}`,
+          type: "level",
+          title: "📌 PINNED TO CORE CANON",
+          subtitle: clean,
+        });
+      }
+      const updated = { ...prev, pinnedMemories: next };
+      playerRef.current = updated;
+      return updated;
+    });
+  };
+
+  const handleAddCustomPinnedMemory = () => {
+    const clean = customMemoryInput.trim();
+    if (!clean) return;
+    handleTogglePinMemory(clean);
+    setCustomMemoryInput("");
+  };
+
+  const handlePinTurnMessage = (text: string, speakerName: string) => {
+    const raw = text.replace(/\s+/g, " ").trim();
+    const snippet =
+      raw.length > 210 ? `${raw.slice(0, 207)}...` : raw;
+    const formatted = `[${speakerName}]: ${snippet}`;
+    handleTogglePinMemory(formatted);
+  };
+
+  const handleAllocateLevelStat = (statKey: "str" | "dex" | "int") => {
+    if ((player.unspentStatPoints || 0) <= 0) return;
+    soundEffects.playClick();
+    setPlayer((prev) => {
+      if ((prev.unspentStatPoints || 0) <= 0) return prev;
+      const updated: PlayerProfile = {
+        ...prev,
+        unspentStatPoints: (prev.unspentStatPoints || 0) - 1,
+        stats: {
+          ...prev.stats,
+          [statKey]: prev.stats[statKey] + 1,
+        },
+      };
+      playerRef.current = updated;
+      return updated;
+    });
   };
 
   const handleCompleteQuest = (questId: string) => {
@@ -7031,16 +7511,21 @@ export default function VisualNovelGame() {
                           )}
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-xs font-mono font-bold text-white truncate">
                               {bp.name}
                             </span>
                             <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 shrink-0">
                               {bp.race || "Human"}
                             </span>
+                            {(bp.gender || bp.age) && (
+                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300 shrink-0">
+                                {[bp.gender, bp.age ? `${bp.age}` : ""].filter(Boolean).join(" • ")}
+                              </span>
+                            )}
                           </div>
                           <p className="text-[10px] font-mono text-indigo-300 truncate">
-                            {bp.role || "Adventurer"} • {bp.personality || "Stoic Pragmatist"}
+                            {bp.role || "Adventurer"} • {bp.worldOrigin || "Born & Raised (Native)"} • {bp.personality || "Stoic Pragmatist"}
                           </p>
                         </div>
                       </div>
@@ -7157,6 +7642,157 @@ export default function VisualNovelGame() {
                   onChange={(e) => setPlayer((prev) => ({ ...prev, role: e.target.value }))}
                   className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700"
                 />
+              </div>
+            </div>
+
+            {/* GENDER & AGE IDENTITY */}
+            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                <div className="md:col-span-7 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-mono text-zinc-300 font-bold">
+                      Gender &amp; Pronouns
+                    </label>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-300 font-bold">
+                      {player.gender || "Male"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {GENDER_PRESETS.map((g) => {
+                      const isSelected =
+                        selectedGenderPreset === g.id ||
+                        (!selectedGenderPreset && g.id === "male" && (player.gender || "Male") === "Male");
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => handleSelectGenderPreset(g)}
+                          className={`px-2 py-1.5 rounded-xl border text-xs font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                            isSelected
+                              ? "bg-sky-950/40 border-sky-500/80 text-sky-200 shadow-md ring-1 ring-sky-500/30 font-bold"
+                              : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                          }`}
+                        >
+                          <span className="text-sm leading-none">{g.icon}</span>
+                          <span className="text-[10px] truncate">{g.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedGenderPreset === "custom" && (
+                    <input
+                      type="text"
+                      value={player.gender || ""}
+                      onChange={(e) => handleCustomGenderChange(e.target.value)}
+                      placeholder="Custom gender or pronouns (e.g. Genderfluid, They/Them)..."
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:border-sky-500 focus:outline-none placeholder-zinc-600 font-mono"
+                    />
+                  )}
+                </div>
+
+                <div className="md:col-span-5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-mono text-zinc-300 font-bold">
+                      Character Age
+                    </label>
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      Years or Life Stage
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={player.age ?? "22"}
+                    onChange={(e) =>
+                      setPlayer((prev) => {
+                        const next = { ...prev, age: e.target.value };
+                        playerRef.current = next;
+                        return next;
+                      })
+                    }
+                    placeholder="e.g., 22, 19, Young Adult, 300 (Ancient)..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-sky-500 focus:outline-none placeholder-zinc-700 font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* WORLD ORIGIN & SYSTEM FAMILIARITY */}
+            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                    <Compass className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>World Origin &amp; System Familiarity</span>
+                  </label>
+                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
+                    Choose how you entered this world. Natives and Regressors possess deep intuitive knowledge of the System, mana laws, and factions, while Summoned Otherworlders experience the world with outsider eyes.
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 self-start shrink-0 whitespace-nowrap font-bold">
+                  Origin: {player.worldOrigin || "Born & Raised (Native)"}
+                </span>
+              </div>
+
+              {/* World Origin Presets */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
+                {WORLD_ORIGIN_PRESETS.map((o) => {
+                  const isSelected =
+                    selectedWorldOriginPreset === o.id ||
+                    (!selectedWorldOriginPreset && o.id === "native");
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => handleSelectWorldOriginPreset(o)}
+                      className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
+                        isSelected
+                          ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
+                          : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                      }`}
+                      title={o.description}
+                    >
+                      <span className="text-base leading-none">{o.icon}</span>
+                      <span className="text-[10px] leading-tight whitespace-nowrap">{o.shortLabel}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Inputs for World Origin Title & Backstory / System Familiarity */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1 items-start">
+                <div className="md:col-span-4">
+                  <label className="text-xs font-mono text-zinc-400 block mb-1 truncate">
+                    Origin Title
+                  </label>
+                  <input
+                    type="text"
+                    value={player.worldOrigin || ""}
+                    onChange={(e) => handleCustomWorldOriginChange(e.target.value)}
+                    placeholder="e.g. Born & Raised (Native), Summoned..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none placeholder-zinc-700 font-mono"
+                  />
+                </div>
+                <div className="md:col-span-8">
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <label className="text-xs font-mono text-zinc-400 truncate">
+                      System Familiarity &amp; Origin Backstory
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono shrink-0">Editable Lore Directive</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={player.worldOriginDetails || ""}
+                    onChange={(e) =>
+                      setPlayer((prev) => {
+                        const next = { ...prev, worldOriginDetails: e.target.value };
+                        playerRef.current = next;
+                        return next;
+                      })
+                    }
+                    placeholder="Describe how your character arrived in this world and how familiar they are with the System, status screens, and local lore..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:border-emerald-500 focus:outline-none placeholder-zinc-700 font-sans leading-relaxed resize-y"
+                  />
+                </div>
               </div>
             </div>
 
@@ -8022,7 +8658,43 @@ export default function VisualNovelGame() {
                   </div>
                 </div>
               </div>
+              {((player.unspentStatPoints || 0) > 0 || activeConditionPills.length > 0) && (
+                <div className="hidden xl:flex items-center gap-1 pl-2 border-l border-white/10">
+                  {(player.unspentStatPoints || 0) > 0 && (
+                    <span
+                      className="px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-300 text-[9px] font-mono font-bold animate-pulse"
+                      title="Click to allocate unspent Level-Up Attribute Points"
+                    >
+                      +{player.unspentStatPoints} PTS
+                    </span>
+                  )}
+                  {activeConditionPills.slice(0, 2).map((pill, pIdx) => (
+                    <span
+                      key={pIdx}
+                      title={pill.title}
+                      className={`px-1.5 py-0.5 rounded-md border text-[9px] font-mono font-medium whitespace-nowrap ${pill.color}`}
+                    >
+                      {pill.label}
+                    </span>
+                  ))}
+                </div>
+              )}
             </button>
+
+            {/* SECTOR ENTRY CINEMATIC BANNER */}
+            {sectorBanner && (
+              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-3 duration-500">
+                <div className="px-6 py-2.5 rounded-2xl bg-zinc-950/90 border border-emerald-500/40 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.25)] text-center">
+                  <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-emerald-400">
+                    ✦ Sector Transition ✦
+                  </p>
+                  <p className="text-sm sm:text-base font-serif font-bold text-white tracking-wide mt-0.5">
+                    {sectorBanner.name}
+                  </p>
+                  <p className="text-[10px] font-mono text-zinc-400 mt-0.5">{sectorBanner.sub}</p>
+                </div>
+              </div>
+            )}
 
             {/* SYSTEM Button */}
             <button
@@ -8385,7 +9057,40 @@ export default function VisualNovelGame() {
                   Solitary Arc
                 </span>
               )}
-              <span className="text-xs text-amber-400 font-mono hidden lg:inline">• Mood: {gameState.mood}</span>
+              <div className="relative hidden lg:inline-block">
+                <button
+                  type="button"
+                  onClick={() => setShowSubtextPopover((v) => !v)}
+                  title="Click to inspect companion micro-expression & psychological subtext"
+                  className="text-xs text-amber-400 hover:text-amber-300 font-mono inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/25 transition-all cursor-pointer"
+                >
+                  <span>• Mood: {gameState.mood}</span>
+                  <Eye className="w-3 h-3 text-amber-400/80" />
+                </button>
+                {showSubtextPopover && (
+                  <div className="absolute right-0 top-full mt-2 w-72 p-3 rounded-xl bg-zinc-950/95 border border-amber-500/40 shadow-2xl backdrop-blur-xl z-40 text-left space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-1">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+                        👁️ Subtext & Micro-Expression
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowSubtextPopover(false)}
+                        className="text-zinc-400 hover:text-white text-[10px]"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-zinc-200 leading-relaxed">
+                      <span className="text-amber-300 font-semibold">{gameState.speaker || "Scene"}:</span>{" "}
+                      Surface demeanor projects <span className="italic text-amber-200">{gameState.mood}</span>
+                      {isSpeakingHeroine
+                        ? ` (${isSpeakingHeroine.expressionKey} posture, ${isSpeakingHeroine.affection}% Bond). Guarded curiosity beneath the outward composure.`
+                        : ". Ambient tension lingers across the sector."}
+                    </p>
+                  </div>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => handleGenerateSceneCG(false)}
@@ -8546,6 +9251,7 @@ export default function VisualNovelGame() {
                       onSaveEdit={handleSaveEdit}
                       onRegenerateTurn={handleRegenerateTurn}
                       onSkipTypewriter={handleSkipTypewriter}
+                      onPinMemory={handlePinTurnMessage}
                       onViewPortrait={(imgUrl, speaker) => {
                         const isPlayerSpeaker =
                           !speaker ||
@@ -8563,6 +9269,32 @@ export default function VisualNovelGame() {
                   );
                 });
               })()}
+
+              {/* DIEGETIC ROTATING LOADING STATUS BANNER */}
+              {isLoading && (
+                <div className="w-full rounded-2xl border border-rose-500/30 bg-zinc-950/90 px-4 py-3 flex items-center justify-between gap-3 animate-pulse shadow-lg">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Sparkles className="w-4 h-4 text-rose-400 animate-spin shrink-0" />
+                    <span className="text-xs font-mono text-zinc-200 truncate">
+                      {loadingPhaseIdx === 0 &&
+                        `Weaving ${gameState.speaker && gameState.speaker !== "Narrator" ? `${gameState.speaker}'s` : "world"} response in ${gameState.location}...`}
+                      {loadingPhaseIdx === 1 &&
+                        `Evaluating ${player.name}'s ${player.race || "Human"} instincts & active stance...`}
+                      {loadingPhaseIdx === 2 &&
+                        `Consulting ${ (player.pinnedMemories || []).length > 0 ? `${player.pinnedMemories!.length} Pinned Core Memories & ` : "" }Chronicle Canon...`}
+                      {loadingPhaseIdx === 3 &&
+                        `Synthesizing multi-paragraph literary prose & tactical vectors...`}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-rose-400/80 uppercase tracking-wider shrink-0">
+                    {llmConfig.narrativeDepth === "deep_novelistic"
+                      ? "5-7+ Paragraphs"
+                      : llmConfig.narrativeDepth === "expansive"
+                      ? "3-5 Paragraphs"
+                      : "2-3 Paragraphs"}
+                  </span>
+                </div>
+              )}
               </div>
 
               {/* RETURN TO TOP & RETURN TO BOTTOM QUICK SCROLL BUTTONS */}
@@ -8645,40 +9377,138 @@ export default function VisualNovelGame() {
         )}
 
         {choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive) && (
-          <div className="pointer-events-auto grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 select-none shrink-0 max-h-24 sm:max-h-36 overflow-y-auto pr-0.5">
-            {choices.map((choice, idx) => {
-              const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
-              const tag = tagMatch ? tagMatch[1] : null;
-              const text = tagMatch ? tagMatch[2] : choice;
-
-              return (
+          <div className="pointer-events-auto flex flex-col gap-1 select-none shrink-0">
+            {/* Choice Tray Control Header */}
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
+                  ✦ {choices.length} Tactical Vectors
+                </span>
+                <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">
+                  (Click card to Draft & Edit • Click ⚡ to Send Immediately)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
                 <button
-                  key={`${idx}_${choice.slice(0, 16)}`}
                   type="button"
-                  onClick={() => sendAction(choice, false)}
-                  disabled={isLoading}
-                  className="group bg-zinc-900/95 hover:bg-zinc-850 border border-white/10 hover:border-rose-500/60 backdrop-blur-md px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between cursor-pointer active:scale-[0.99]"
+                  onClick={handleRerollChoices}
+                  disabled={isRerollingChoices || isDraftingAction || isLoading}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-amber-500/40 text-[10px] font-mono text-zinc-300 hover:text-amber-300 transition-all cursor-pointer disabled:opacity-50"
+                  title="Generate 4 alternative protagonist choices for this scene"
                 >
-                  <span className="text-xs sm:text-sm text-zinc-200 group-hover:text-white line-clamp-2 pr-2 leading-relaxed">
-                    {tag && (
-                      <span className="font-mono text-[10px] sm:text-xs font-semibold text-rose-400/90 group-hover:text-rose-300 mr-1.5 shrink-0">
-                        {tag}
-                      </span>
-                    )}
-                    <span>{text}</span>
-                  </span>
-                  <span className="text-rose-400/50 group-hover:text-rose-400 transition-colors shrink-0 text-xs">
-                    →
-                  </span>
+                  <RefreshCw className={`w-2.5 h-2.5 ${isRerollingChoices ? "animate-spin text-amber-400" : ""}`} />
+                  <span>{isRerollingChoices ? "Rerolling..." : "Reroll Choices"}</span>
                 </button>
-              );
-            })}
+                <button
+                  type="button"
+                  onClick={() => setIsChoicesCollapsed((v) => !v)}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-[10px] font-mono text-zinc-300 hover:text-white transition-all cursor-pointer"
+                  title={isChoicesCollapsed ? "Expand suggested choices" : "Minimize suggested choices to view more story"}
+                >
+                  {isChoicesCollapsed ? (
+                    <>
+                      <ChevronUp className="w-3 h-3 text-rose-400" />
+                      <span>Expand Choices</span>
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3 h-3 text-zinc-400" />
+                      <span>Minimize</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {!isChoicesCollapsed && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-28 sm:max-h-36 overflow-y-auto pr-0.5">
+                {choices.map((choice, idx) => {
+                  const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
+                  const tag = tagMatch ? tagMatch[1] : null;
+                  const text = tagMatch ? tagMatch[2] : choice;
+                  const isThisChoiceDrafting = isDraftingAction && draftingChoiceIdx === idx;
+                  const resonanceBadge = getChoiceResonanceBadge(choice);
+
+                  return (
+                    <div
+                      key={`${idx}_${choice.slice(0, 16)}`}
+                      className={`group bg-zinc-900/95 hover:bg-zinc-900 border backdrop-blur-md px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between gap-2 ${
+                        isThisChoiceDrafting
+                          ? "border-sky-400 ring-1 ring-sky-500/40 bg-sky-950/30"
+                          : "border-white/10 hover:border-sky-500/50"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleSelectPresetChoice(choice, idx)}
+                        disabled={isLoading || isDraftingAction}
+                        title="Click to expand into a 2-paragraph draft in the text box for editing before sending"
+                        className="flex-1 min-w-0 text-left cursor-pointer disabled:opacity-60"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                          {tag && (
+                            <span className="font-mono text-[10px] font-semibold text-rose-400/90 group-hover:text-rose-300 shrink-0">
+                              {tag}
+                            </span>
+                          )}
+                          {resonanceBadge && (
+                            <span
+                              className={`px-1.5 py-0.2 rounded border text-[9px] font-mono font-semibold ${resonanceBadge.color}`}
+                            >
+                              {resonanceBadge.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs sm:text-[13px] text-zinc-200 group-hover:text-white line-clamp-2 leading-snug">
+                          {isThisChoiceDrafting
+                            ? `Drafting 2-paragraph response for ${player.name}...`
+                            : text}
+                        </p>
+                      </button>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleSelectPresetChoice(choice, idx)}
+                          disabled={isLoading || isDraftingAction}
+                          title="Draft & Edit in text box"
+                          className="p-1.5 rounded-lg bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-400/50 text-zinc-400 hover:text-sky-300 transition-all cursor-pointer"
+                        >
+                          {isThisChoiceDrafting ? (
+                            <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-spin" />
+                          ) : (
+                            <Edit3 className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isLoading || isDraftingAction) return;
+                            const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+                            sendAction(clean, false);
+                          }}
+                          disabled={isLoading || isDraftingAction}
+                          title="⚡ Send Immediately (Skip Drafting)"
+                          className="p-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-400 text-rose-300 hover:text-white transition-all cursor-pointer"
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         <ActionInputBar
           onSend={handleSendCustomAction}
           isLoading={isLoading}
+          isDraftingAction={isDraftingAction}
+          draftText={draftActionText}
+          draftVersion={draftActionVersion}
           playerName={player.name}
           hasParty={party.length > 0}
           onOpenGifting={() => {
@@ -9041,6 +9871,19 @@ export default function VisualNovelGame() {
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold">
                       Persona: {player.personality || "Stoic Pragmatist"}
                     </span>
+                    {(player.gender || player.age) && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/30 text-sky-300 font-bold">
+                        {[player.gender, player.age ? `Age ${player.age}` : ""].filter(Boolean).join(" • ")}
+                      </span>
+                    )}
+                    {player.worldOrigin && (
+                      <span
+                        className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold"
+                        title={player.worldOriginDetails || undefined}
+                      >
+                        Origin: {player.worldOrigin}
+                      </span>
+                    )}
                     {player.behavioralTendencies && Object.keys(player.behavioralTendencies).length > 0 && (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/30 text-purple-300 font-bold" title="Dominant Choice Alignment">
                         Alignment: {getDominantTendencyLabel(player.behavioralTendencies)}
@@ -9135,21 +9978,52 @@ export default function VisualNovelGame() {
               </div>
             </div>
 
+            {activeConditionPills.length > 0 && (
+              <div>
+                <h3 className="text-xs font-mono uppercase text-zinc-400 mb-2">Active Narrative Conditions</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeConditionPills.map((pill, idx) => (
+                    <span
+                      key={idx}
+                      title={pill.title}
+                      className={`px-2.5 py-1 rounded-xl border text-[11px] font-mono font-semibold ${pill.color}`}
+                    >
+                      {pill.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
-              <h3 className="text-xs font-mono uppercase text-zinc-400 mb-2">Attributes</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-mono uppercase text-zinc-400">Attributes</h3>
+                {(player.unspentStatPoints || 0) > 0 && (
+                  <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-500/15 border border-amber-500/40 px-2 py-0.5 rounded-lg animate-pulse">
+                    +{player.unspentStatPoints} Unspent Stat Points
+                  </span>
+                )}
+              </div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="bg-zinc-900 border border-white/5 p-2.5 rounded-xl text-center">
-                  <p className="text-[10px] text-zinc-400 font-mono">STR</p>
-                  <p className="text-base font-bold text-white">{player.stats.str}</p>
-                </div>
-                <div className="bg-zinc-900 border border-white/5 p-2.5 rounded-xl text-center">
-                  <p className="text-[10px] text-zinc-400 font-mono">DEX</p>
-                  <p className="text-base font-bold text-white">{player.stats.dex}</p>
-                </div>
-                <div className="bg-zinc-900 border border-white/5 p-2.5 rounded-xl text-center">
-                  <p className="text-[10px] text-zinc-400 font-mono">INT</p>
-                  <p className="text-base font-bold text-white">{player.stats.int}</p>
-                </div>
+                {(["str", "dex", "int"] as const).map((statKey) => (
+                  <div
+                    key={statKey}
+                    className="bg-zinc-900 border border-white/5 p-2.5 rounded-xl text-center relative flex flex-col items-center justify-center"
+                  >
+                    <p className="text-[10px] text-zinc-400 font-mono uppercase">{statKey}</p>
+                    <p className="text-base font-bold text-white">{player.stats[statKey]}</p>
+                    {(player.unspentStatPoints || 0) > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleAllocateLevelStat(statKey)}
+                        className="mt-1.5 inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 text-[10px] font-mono font-bold transition-all cursor-pointer"
+                        title={`Allocate +1 ${statKey.toUpperCase()}`}
+                      >
+                        <Plus className="w-2.5 h-2.5" />1
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -9427,17 +10301,96 @@ export default function VisualNovelGame() {
               </button>
             </div>
 
-            <p className="text-xs text-zinc-400 leading-relaxed">Major milestones and irreversible plot beats recorded by the chronicle engine:</p>
+            {/* PINNED CORE MEMORIES (PERMANENT AI CONTEXT) */}
+            <div className="rounded-2xl border border-amber-500/35 bg-amber-950/15 p-3.5 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-amber-300 flex items-center gap-1.5">
+                  <Bookmark className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                  Pinned Core Canon ({(player.pinnedMemories || []).length}/6)
+                </span>
+                <span className="text-[10px] font-mono text-amber-400/80">Never Forgotten</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                Facts pinned here are permanently injected into every turn so the AI never forgets your physical state, origin, vows, or secrets.
+              </p>
+
+              <div className="flex gap-1.5">
+                <input
+                  type="text"
+                  value={customMemoryInput}
+                  onChange={(e) => setCustomMemoryInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddCustomPinnedMemory();
+                    }
+                  }}
+                  placeholder="Pin a custom canon fact (e.g., Currently unclad in Gray Zone)..."
+                  className="flex-1 bg-black/60 border border-white/15 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomPinnedMemory}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold cursor-pointer transition-all"
+                >
+                  Pin
+                </button>
+              </div>
+
+              {(player.pinnedMemories || []).length > 0 ? (
+                <div className="space-y-1.5 pt-1">
+                  {(player.pinnedMemories || []).map((fact, pIdx) => (
+                    <div
+                      key={pIdx}
+                      className="flex items-start justify-between gap-2 bg-black/50 border border-amber-500/30 rounded-xl px-3 py-2 text-xs text-amber-100"
+                    >
+                      <span className="leading-relaxed select-text">📌 {fact}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleTogglePinMemory(fact)}
+                        className="text-zinc-400 hover:text-rose-400 text-[10px] font-mono shrink-0 mt-0.5 cursor-pointer"
+                        title="Unpin from Core Canon"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-zinc-500 italic">
+                  No core memories pinned yet. Click &ldquo;Pin&rdquo; on any turn message or add one above.
+                </p>
+              )}
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed pt-1">
+              Major milestones and irreversible plot beats recorded by the chronicle engine:
+            </p>
 
             <div className="space-y-3">
-              {memories.map((entry, idx) => (
-                <div key={idx} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-xl text-xs text-zinc-200 leading-relaxed flex gap-3 select-text">
-                  <span className="font-mono text-sky-400 font-bold select-none">#{idx + 1}</span>
-                  <div className="flex-1">
-                    <MarkdownRenderer content={entry} className="text-xs" />
+              {memories.map((entry, idx) => {
+                const isPinned = (player.pinnedMemories || []).includes(entry.trim());
+                return (
+                  <div key={idx} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-xl text-xs text-zinc-200 leading-relaxed flex gap-3 select-text items-start">
+                    <span className="font-mono text-sky-400 font-bold select-none">#{idx + 1}</span>
+                    <div className="flex-1">
+                      <MarkdownRenderer content={entry} className="text-xs" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePinMemory(entry)}
+                      className={`px-2 py-1 rounded-lg border text-[10px] font-mono shrink-0 cursor-pointer transition-all ${
+                        isPinned
+                          ? "border-amber-400/60 bg-amber-500/20 text-amber-300"
+                          : "border-white/10 bg-white/5 text-zinc-400 hover:text-amber-300 hover:border-amber-500/40"
+                      }`}
+                      title={isPinned ? "Unpin from Core Canon" : "Pin to Core Canon"}
+                    >
+                      {isPinned ? "Pinned" : "📌 Pin"}
+                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

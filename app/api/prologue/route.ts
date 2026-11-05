@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
-import { getNarrationProseDirective } from "@/lib/narrationStyles";
+import { getNarrationProseDirective, NarrativeDepthMode } from "@/lib/narrationStyles";
 import { describeProtagonistAvatar } from "@/lib/visionEncoder";
 import { sanitizeVisualNovelProse, sanitizeSpokenDialogue, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
 import { HEROINE_INTRODUCTION_DOSSIERS, HeroineIntroductionDossier } from "@/lib/heroineDossiers";
@@ -14,6 +14,7 @@ import {
   buildDynamicChoiceDirective,
   buildPersonalityFallbackChoices,
   getPersonaVoiceProfile,
+  buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
 
 export const runtime = "nodejs";
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
       temperature,
       max_tokens,
       repetition_penalty,
+      narrativeDepth,
       npcKnowledgeMap,
     } = body;
 
@@ -59,8 +61,22 @@ export async function POST(req: Request) {
     );
 
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.1, Math.min(1.8, temperature)) : 0.75;
-    const effectiveMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 2048;
+    const effectiveMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 3584;
     const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.5, repetition_penalty)) : 1.1;
+    const effectiveNarrativeDepth: NarrativeDepthMode =
+      narrativeDepth === "standard" || narrativeDepth === "expansive" || narrativeDepth === "deep_novelistic"
+        ? narrativeDepth
+        : "deep_novelistic";
+    const sceneSetupParagraphSpec =
+      effectiveNarrativeDepth === "standard"
+        ? "1-2 plain-text paragraphs"
+        : effectiveNarrativeDepth === "expansive"
+        ? "2-3 rich plain-text paragraphs"
+        : "3-4 rich, novel-length plain-text paragraphs (separated by \\n\\n)";
+    const dialogueParagraphSpec =
+      effectiveNarrativeDepth === "standard"
+        ? "1-2 paragraphs of spoken lines"
+        : "2-3 rich paragraphs weaving multi-part spoken lines in double quotation marks (\"...\") with physical gestures, micro-expressions, and spatial movement";
 
     // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
     // auto-route to cloud!
@@ -170,9 +186,15 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
       playerProfile.personalityTraits
     );
 
+    const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
+
     const openingChoiceDirective = buildDynamicChoiceDirective({
       playerName: playerProfile.name,
       playerRole: playerProfile.role,
+      playerGender: playerProfile.gender,
+      playerAge: playerProfile.age,
+      worldOrigin: playerProfile.worldOrigin,
+      worldOriginDetails: playerProfile.worldOriginDetails,
       playerRace: playerProfile.race,
       racialTraits: playerProfile.racialTraits,
       personality: playerProfile.personality,
@@ -197,7 +219,7 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
 
     const systemPrompt = `You are the Game Master and Director for "${storyTitle}", an interactive visual novel set on ${settingName}.
 
-${getNarrationProseDirective(effectiveTone)}
+${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
 
 You are generating the bespoke dynamic prologue and opening encounter.
 
@@ -242,6 +264,8 @@ ${knowledgeGatePrompt}
 - Biological Traits & Anatomy: ${playerProfile?.racialTraits && playerProfile.racialTraits.length > 0 ? playerProfile.racialTraits.join(", ") : "Standard human physiology"}
 - PROLOGUE SPECIES MANDATE: ${startingHeroine} and the surrounding world MUST naturally perceive and react to ${playerProfile?.name || "The protagonist"}'s lineage (${playerProfile?.race || "Human"}). If they possess non-human traits (e.g. lupine/canine fur, fangs, wolf ears, tail, claws, horns, wings, or scales), describe these physical traits naturally in the prose and sensory details (scent, ear movements, predatory tension, body heat, or bristling fur), reflecting ${startingHeroine}'s authentic cultural and emotional reaction to encountering such an entity.
 
+${originAndIdentityDirective}
+
 --- VISUAL INSPECTION DIRECTIVE ---
 ${visualDescription
   ? `Detailed visual appearance of ${playerProfile.name} (derived from uploaded avatar):
@@ -265,8 +289,8 @@ Respond strictly in valid JSON matching this schema:
 {
   "speaker": "${startingHeroine}",
   "location": "${startingLocation}",
-  "scene_setup": string, // 1-2 plain-text paragraphs detailing the location, sounds, and how the player arrives/stands before the heroine, with flawless grammar and ZERO Markdown asterisks (* or **)
-  "dialogue": string, // The heroine's spoken lines addressing the protagonist. MUST BE IN DOUBLE QUOTATION MARKS ("...") with zero Markdown asterisks.
+  "scene_setup": string, // ${sceneSetupParagraphSpec} detailing the location, weather, acoustics, ambient hazards, and how the player arrives/stands before the heroine, with flawless grammar and ZERO Markdown asterisks (* or **)
+  "dialogue": string, // ${dialogueParagraphSpec} addressing the protagonist. MUST BE IN DOUBLE QUOTATION MARKS ("...") with zero Markdown asterisks.
   "mechanics": string, // Authoritative LitRPG system initialization readout (e.g. "[SYSTEM: Dimensional synchronization complete. Causal Plausibility: 80%.]")
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
@@ -296,6 +320,8 @@ Respond strictly in valid JSON matching this schema:
       : "None unlocked yet";
 
     const promptText = `Protagonist (Narrator Reference Only — Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsName ? playerProfile.name : `[UNKNOWN TO ${startingHeroine.toUpperCase()} — Refer to as "stranger" or "traveler" in spoken dialogue]`}
+Gender & Age: ${playerProfile.gender || "Male"} | Age: ${playerProfile.age || "22"}
+World Origin & System Familiarity: ${playerProfile.worldOrigin || "Born & Raised (Native)"}${playerProfile.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
 Internal Class (Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsClass ? playerProfile.role : `[UNKNOWN TO ${startingHeroine.toUpperCase()} — Judge only visible gear]`}
 Chosen Personality Archetype: "${personaVoice.personaTitle}" (Traits: ${personaVoice.traitsList.join(", ")})
 Attributes: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}

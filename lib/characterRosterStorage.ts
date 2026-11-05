@@ -18,6 +18,10 @@ export interface SavedCharacterBlueprint {
   id: string;
   name: string;
   role: string; // Class / Archetype
+  gender?: string;
+  age?: string;
+  worldOrigin?: string;
+  worldOriginDetails?: string;
   race: string;
   racialTraits: string[];
   personality: string;
@@ -82,6 +86,16 @@ export function normalizeCharacterBlueprint(rawInput: unknown): SavedCharacterBl
         : `char_${raw.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}_${nowMs}`,
     name: raw.name.trim(),
     role: typeof raw.role === "string" && raw.role.trim() ? raw.role.trim() : "Voidstrider",
+    gender: typeof raw.gender === "string" && raw.gender.trim() ? raw.gender.trim() : "Male",
+    age: typeof raw.age === "string" && raw.age.trim() ? raw.age.trim() : "22",
+    worldOrigin:
+      typeof raw.worldOrigin === "string" && raw.worldOrigin.trim()
+        ? raw.worldOrigin.trim()
+        : "Born & Raised (Native)",
+    worldOriginDetails:
+      typeof raw.worldOriginDetails === "string" && raw.worldOriginDetails.trim()
+        ? raw.worldOriginDetails.trim()
+        : undefined,
     race: typeof raw.race === "string" && raw.race.trim() ? raw.race.trim() : "Human",
     racialTraits: Array.isArray(raw.racialTraits)
       ? raw.racialTraits
@@ -143,6 +157,10 @@ export function createBlueprintFromPlayer(params: {
     id: deterministicId,
     name: cleanName,
     role: cleanRole,
+    gender: player.gender || "Male",
+    age: player.age || "22",
+    worldOrigin: player.worldOrigin || "Born & Raised (Native)",
+    worldOriginDetails: player.worldOriginDetails,
     race: cleanRace,
     racialTraits: Array.isArray(player.racialTraits) ? [...player.racialTraits] : [],
     personality: player.personality || "Stoic Pragmatist",

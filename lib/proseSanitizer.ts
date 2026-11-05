@@ -138,10 +138,11 @@ export function cleanPunctuationSpacing(text: string): string {
   if (!text) return "";
 
   return text
-    .replace(/\s+([,.;!?…])/g, "$1") // Space before punctuation: "word ." -> "word."
+    .replace(/[ \t]+([,.;!?…])/g, "$1") // Space before punctuation: "word ." -> "word."
     .replace(/([,.;!?…])\1{2,}/g, "$1$1") // Cap excessive punctuation: "!!!!" -> "!!"
-    .replace(/\s{2,}/g, " ") // Collapse duplicate spaces
-    .replace(/(\n\s*){3,}/g, "\n\n") // Collapse excessive blank lines
+    .replace(/[ \t]{2,}/g, " ") // Collapse duplicate horizontal spaces without stripping \n\n paragraph breaks
+    .replace(/\n[ \t]+\n/g, "\n\n") // Clean whitespace-only lines
+    .replace(/\n{3,}/g, "\n\n") // Collapse 3+ newlines into clean double newline paragraph breaks
     .trim();
 }
 

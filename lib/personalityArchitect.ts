@@ -7,6 +7,147 @@ export interface PersonalityPreset {
   defaultTraits: string[];
 }
 
+export interface GenderPreset {
+  id: string;
+  name: string;
+  shortLabel: string;
+  pronouns: string;
+  icon: string;
+}
+
+export const GENDER_PRESETS: GenderPreset[] = [
+  { id: "male", name: "Male", shortLabel: "Male", pronouns: "he/him", icon: "♂️" },
+  { id: "female", name: "Female", shortLabel: "Female", pronouns: "she/her", icon: "♀️" },
+  { id: "nonbinary", name: "Non-Binary", shortLabel: "Non-Binary", pronouns: "they/them", icon: "⚧️" },
+  { id: "custom", name: "Custom", shortLabel: "Custom", pronouns: "custom", icon: "✨" },
+];
+
+export interface WorldOriginPreset {
+  id: string;
+  name: string;
+  shortLabel: string;
+  icon: string;
+  badge: string;
+  description: string;
+  defaultDetails: string;
+}
+
+export const WORLD_ORIGIN_PRESETS: WorldOriginPreset[] = [
+  {
+    id: "native",
+    name: "Born & Raised (Native)",
+    shortLabel: "Native-Born",
+    icon: "🏛️",
+    badge: "Deep World & System Mastery",
+    description:
+      "Born and raised in this world. You grew up with the System, classes, mana laws, and local factions as everyday reality.",
+    defaultDetails:
+      "Born and raised natively in this realm. Deeply familiar with how the LitRPG System, status windows, classes, mana circuits, and regional factions operate; never bewildered by basic System mechanics or common world lore.",
+  },
+  {
+    id: "summoned",
+    name: "Summoned (Otherworlder)",
+    shortLabel: "Summoned",
+    icon: "🌀",
+    badge: "Transmigrated Outsider",
+    description:
+      "Pulled across dimensional boundaries in your own body by a rift, summoning ritual, or System decree.",
+    defaultDetails:
+      "Summoned from another world in their original body. Brings an outsider's sharp perspective and adaptability, discovering local customs and faction politics firsthand while newly bound to the System.",
+  },
+  {
+    id: "reincarnated",
+    name: "Reincarnated (Past-Life Soul)",
+    shortLabel: "Reincarnated",
+    icon: "✨",
+    badge: "Dual-Life Intuition",
+    description:
+      "Died in a previous world and was reborn here from infancy with intact past-life memories and maturity.",
+    defaultDetails:
+      "Reincarnated into this world with intact memories of a prior life. Combines lived native familiarity with local culture alongside calculating past-life maturity and an uncanny knack for exploiting System mechanics.",
+  },
+  {
+    id: "regressor",
+    name: "Regressor (Timeline Survivor)",
+    shortLabel: "Regressor",
+    icon: "⏳",
+    badge: "Future Foreknowledge",
+    description:
+      "Lived and perished in the ruined future of this world before a Causal Anchor rewound your soul to the beginning.",
+    defaultDetails:
+      "Returned through time after surviving until the catastrophic end of a previous timeline. Possesses battle-hardened veteran composure, deep mastery of hidden System laws, and haunting foreknowledge.",
+  },
+  {
+    id: "custom",
+    name: "Custom Origin",
+    shortLabel: "Custom",
+    icon: "📜",
+    badge: "Bespoke Arrival",
+    description:
+      "Define your own unique arrival background, upbringing, and level of familiarity with the world and System.",
+    defaultDetails: "",
+  },
+];
+
+/**
+ * Builds the authoritative Protagonist Identity (Gender, Age) & World Origin / System Familiarity
+ * directive injected into `/api/prologue`, `/api/turn`, `/api/expand-action`, and `/api/generate-choices`.
+ */
+export function buildProtagonistOriginAndIdentityDirective(playerProfile?: {
+  name?: string;
+  gender?: string;
+  age?: string;
+  worldOrigin?: string;
+  worldOriginDetails?: string;
+  role?: string;
+  race?: string;
+}): string {
+  const name = playerProfile?.name || "The Protagonist";
+  const rawGender = (playerProfile?.gender || "Male").trim();
+  const rawAge = (playerProfile?.age || "22").trim();
+  const rawOrigin = (playerProfile?.worldOrigin || "Born & Raised (Native)").trim();
+  const rawOriginDetails = (playerProfile?.worldOriginDetails || "").trim();
+
+  const lowerGender = rawGender.toLowerCase();
+  let pronounGuide = `Use gender-appropriate pronouns and terms of address matching "${rawGender}".`;
+  if (lowerGender === "male" || lowerGender.startsWith("male ") || lowerGender.includes("he/him")) {
+    pronounGuide = `Refer to ${name} with male pronouns (he/him/his) in third-person narrative prose. Companions and NPCs must use male-appropriate honorifics and terms of address (e.g., "sir", "milord", "boy", "man", "brother", "gentleman").`;
+  } else if (lowerGender === "female" || lowerGender.startsWith("female ") || lowerGender.includes("she/her")) {
+    pronounGuide = `Refer to ${name} with female pronouns (she/her/hers) in third-person narrative prose. Companions and NPCs must use female-appropriate honorifics and terms of address (e.g., "miss", "milady", "lady", "girl", "woman", "sister").`;
+  } else if (lowerGender.includes("non-binary") || lowerGender.includes("nonbinary") || lowerGender.includes("they/them")) {
+    pronounGuide = `Refer to ${name} with gender-neutral pronouns (they/them/their) in third-person narrative prose. Companions and NPCs must use gender-neutral honorifics and terms of address (e.g., "traveler", "wanderer", "honored guest", "contractor").`;
+  }
+
+  const lowerOrigin = rawOrigin.toLowerCase();
+  let originMechanicsDirective = "";
+  if (lowerOrigin.includes("native") || lowerOrigin.includes("born")) {
+    originMechanicsDirective = `- NATIVE WORLD & SYSTEM FAMILIARITY (CRITICAL): ${name} was BORN AND RAISED in this world!
+  * ${name} is deeply familiar with how the LitRPG System, classes (${playerProfile?.role || "Adventurer"}), mana circuits, status windows, and major world factions operate.
+  * NEVER portray ${name} as confused by the existence of the System, mana, monsters, or basic cultural norms of this world.
+  * In "player_execution" and "suggested_choices", ${name} speaks and thinks like a seasoned inhabitant of this realm who understands its rules, dangers, and institutions firsthand.`;
+  } else if (lowerOrigin.includes("summon") || lowerOrigin.includes("otherworld") || lowerOrigin.includes("transmigrat")) {
+    originMechanicsDirective = `- SUMMONED OTHERWORLDER PERSPECTIVE (CRITICAL): ${name} was SUMMONED / PULLED FROM ANOTHER WORLD in their own body!
+  * ${name} is not native to this realm. While newly bound to the LitRPG System, they view this world's factions, aristocratic hierarchies, and arcane anomalies with an outsider's sharp, unindoctrinated perspective.
+  * ${name} may ask perceptive questions about local politics or test how their newly awakened System abilities function in practice, and observant companions may notice subtle anomalies in their mannerisms, speech, or unanchored causal aura.`;
+  } else if (lowerOrigin.includes("reincarnat")) {
+    originMechanicsDirective = `- REINCARNATED PAST-LIFE SOUL (CRITICAL): ${name} died in a previous world and was REINCARNATED into this realm with intact past-life memories!
+  * ${name} grew up in this world and knows its language, geography, and LitRPG System rules natively, while also possessing the calculating maturity, lateral thinking, and psychological poise of someone who has already lived a full prior life.
+  * In "player_execution" and "suggested_choices", reflect both native knowledge of the System and clever, unconventional problem-solving.`;
+  } else if (lowerOrigin.includes("regress")) {
+    originMechanicsDirective = `- TIMELINE REGRESSOR FOREKNOWLEDGE (CRITICAL): ${name} lived through the ruined future of this world, perished, and regressed to the beginning!
+  * ${name} possesses veteran mastery of the LitRPG System's hidden mechanics, combat instincts far beyond a normal novice, and haunting familiarity with the realm's looming calamities.`;
+  } else {
+    originMechanicsDirective = `- BESPOKE WORLD ORIGIN (${rawOrigin}):
+  * Portray ${name}'s familiarity with the world and the LitRPG System strictly in accordance with their origin: "${rawOrigin}"${rawOriginDetails ? ` — ${rawOriginDetails}` : ""}.`;
+  }
+
+  return `--- PROTAGONIST DEMOGRAPHICS, WORLD ORIGIN & SYSTEM FAMILIARITY DIRECTIVE ---
+- Gender & Pronouns: ${rawGender} — ${pronounGuide}
+- Age & Physical Bearing: ${rawAge} (Reflect this age and life stage naturally in physical descriptions and how NPCs perceive ${name}).
+- World Origin / Arrival Background: ${rawOrigin}${rawOriginDetails ? `\n- Origin Backstory & Knowledge Context: ${rawOriginDetails}` : ""}
+${originMechanicsDirective}`;
+}
+
 export const PERSONALITY_PRESETS: PersonalityPreset[] = [
   {
     id: "stoic",
@@ -219,6 +360,10 @@ export function getPersonaVoiceProfile(
 export interface DynamicChoiceContext {
   playerName: string;
   playerRole: string;
+  playerGender?: string;
+  playerAge?: string;
+  worldOrigin?: string;
+  worldOriginDetails?: string;
   playerRace?: string;
   racialTraits?: string[];
   personality?: string;
@@ -269,9 +414,12 @@ export function buildDynamicChoiceDirective(ctx: DynamicChoiceContext): string {
     : `Accompanied by: ${ctx.presentHeroineNames.join(", ")}. Choices should include spoken dialogue in single quotes ('...') addressed to ${ctx.activeSpeaker} that sounds unmistakably like a "${personaName}".`;
 
   const [tag1, tag2, tag3, tag4] = voiceProfile.preferredTagPrefixes;
+  const originLabel = ctx.worldOrigin || "Born & Raised (Native)";
 
   return `--- DYNAMIC 4-CHOICE PERSONALITY & VOICE ALIGNMENT DIRECTIVE (MANDATORY) ---
-The player explicitly designed ${ctx.playerName}'s personality in Character Creation. ALL 4 dialogue & action choices MUST be written in ${ctx.playerName}'s chosen persona voice:
+The player explicitly designed ${ctx.playerName}'s personality and world origin in Character Creation. ALL 4 dialogue & action choices MUST be written in ${ctx.playerName}'s chosen persona voice and reflect their world origin:
+- Protagonist Demographics: Gender: ${ctx.playerGender || "Male"} | Age: ${ctx.playerAge || "22"}
+- World Origin & System Familiarity: ${originLabel}${ctx.worldOriginDetails ? ` (${ctx.worldOriginDetails})` : ""}
 - Chosen Personality Archetype: "${personaName}"
 - Core Personality Traits: [${traits}]
 - Speech Cadence & Vocal Tone: ${voiceProfile.speechCadence}

@@ -26,7 +26,7 @@ function renderFormattedParagraph(paragraph: string, isUser: boolean) {
           key={idx}
           className={
             isUser
-              ? "text-white font-medium"
+              ? "text-sky-100 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
               : "text-rose-100 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
           }
         >
@@ -67,12 +67,12 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
 
   return (
     <div
-      className={`text-sm leading-relaxed space-y-2.5 ${
-        isUser ? "text-white" : "text-zinc-200"
+      className={`text-sm leading-relaxed space-y-3 ${
+        isUser ? "text-zinc-200" : "text-zinc-200"
       } ${className}`}
     >
       {/* Structured Narrative Prose Container */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {paragraphs.map((para, pIdx) => {
           const isLastParagraph = pIdx === paragraphs.length - 1;
           return (

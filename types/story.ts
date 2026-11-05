@@ -311,6 +311,10 @@ export interface CharacterVisualDNA {
 export interface PlayerProfile {
   name: string;
   role: string;
+  gender?: string; // Character Gender (e.g. "Male", "Female", "Non-Binary", or custom)
+  age?: string; // Character Age (e.g. "22", "28", "120")
+  worldOrigin?: string; // How the protagonist entered the world (e.g. "Born & Raised (Native)", "Summoned (Otherworlder)", "Reincarnated", "Regressor")
+  worldOriginDetails?: string; // Detailed description of world familiarity and system knowledge
   race?: string; // Character Lineage / Race (e.g. "Human", "Lycan", "Demonkin", or custom)
   racialTraits?: string[]; // Specific anatomical & biological characteristics
   level: number;
@@ -336,6 +340,8 @@ export interface PlayerProfile {
   personality?: string; // Core persona / demeanor (e.g. "Stoic Pragmatist", "Cynical Outlaw")
   personalityTraits?: string[]; // Specific behavioral traits (e.g. ["Calculated", "Deadpan Wit", "Protective"])
   behavioralTendencies?: Record<string, number>; // Dynamic counter of choice vectors taken over turns
+  pinnedMemories?: string[]; // Player-pinned permanent canon facts that never roll off context
+  unspentStatPoints?: number; // Unspent attribute points earned on level-up
 }
 
 export interface VisitedStoryNode {

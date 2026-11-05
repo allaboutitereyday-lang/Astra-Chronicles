@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import {
   UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE,
   UNIVERSE_STATE_AND_MEMORY_CHECKLIST,
+  getNarrativeDepthDirective,
+  NarrativeDepthMode,
 } from "@/lib/narrationStyles";
 import { sanitizeVisualNovelProse, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
 
@@ -29,9 +31,16 @@ export async function POST(req: Request) {
       messages = [],
       prompt,
       temperature = 0.85,
-      max_tokens = 1024,
+      max_tokens = 3584,
       repetition_penalty = 1.1,
+      narrativeDepth = "deep_novelistic",
     } = body;
+
+    const effectiveDepth: NarrativeDepthMode =
+      narrativeDepth === "standard" || narrativeDepth === "expansive" || narrativeDepth === "deep_novelistic"
+        ? narrativeDepth
+        : "deep_novelistic";
+    const depthDirective = getNarrativeDepthDirective(effectiveDepth);
 
     // Standardize OpenAI-style messages array
     const rawMessages =
@@ -50,7 +59,7 @@ export async function POST(req: Request) {
           if (!content.includes("UNIVERSAL LITERARY RIGOR")) {
             return {
               ...m,
-              content: `${content}\n\n${UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE}\n\n${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
+              content: `${content}\n\n${depthDirective}\n\n${UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE}\n\n${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
             };
           }
         }
@@ -60,6 +69,8 @@ export async function POST(req: Request) {
       formattedMessages.unshift({
         role: "system",
         content: `You are the Game Master, Narrator, and Companion Roleplay Engine for Astra Chronicles.
+
+${depthDirective}
 
 ${UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE}
 

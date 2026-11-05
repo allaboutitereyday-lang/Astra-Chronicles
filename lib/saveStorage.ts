@@ -73,6 +73,16 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
     ...p,
     name: typeof p.name === "string" && p.name.trim() ? p.name.trim() : "Kaelen",
     role: typeof p.role === "string" && p.role.trim() ? p.role.trim() : "Voidstrider",
+    gender: typeof p.gender === "string" && p.gender.trim() ? p.gender.trim() : "Male",
+    age: typeof p.age === "string" && p.age.trim() ? p.age.trim() : "22",
+    worldOrigin:
+      typeof p.worldOrigin === "string" && p.worldOrigin.trim()
+        ? p.worldOrigin.trim()
+        : "Born & Raised (Native)",
+    worldOriginDetails:
+      typeof p.worldOriginDetails === "string" && p.worldOriginDetails.trim()
+        ? p.worldOriginDetails.trim()
+        : undefined,
     race: typeof p.race === "string" && p.race.trim() ? p.race.trim() : "Human",
     racialTraits: Array.isArray(p.racialTraits) ? p.racialTraits : [],
     personality:
@@ -108,6 +118,10 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
         ? p.unlockedStances
         : ["neutral", "flame", "frost", "shadow", "graviton", "phase"],
     activeStance: p.activeStance || raw.activeStance || "neutral",
+    pinnedMemories: Array.isArray(p.pinnedMemories)
+      ? p.pinnedMemories.filter((m: any) => typeof m === "string" && m.trim().length > 0)
+      : [],
+    unspentStatPoints: typeof p.unspentStatPoints === "number" ? Math.max(0, p.unspentStatPoints) : 0,
   };
 
   const gs = raw.gameState && typeof raw.gameState === "object" ? raw.gameState : {};

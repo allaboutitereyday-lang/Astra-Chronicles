@@ -6,6 +6,8 @@
 
 export type NarrationStyleKey = "grimdark" | "light_novel" | "noir" | "custom";
 
+export type NarrativeDepthMode = "standard" | "expansive" | "deep_novelistic";
+
 export interface NarrationStyleDefinition {
   id: NarrationStyleKey;
   label: string;
@@ -35,7 +37,7 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
       "NEVER introduce unearned heroic platitudes, bubbly optimism, or cheesy catchphrases.",
       "Strictly preserve a sense of high mortal stakes and looming catastrophic danger.",
     ],
-    proseExample: `The sleet carried the reek of scorched marrow and wet ash. Elena adjusted her grip on the frost-bitten hilt, her knuckles raw and white against the darkwood. "One more step toward that rift," she murmured, her voice flat and devoid of warmth, "and I'll let the shadows finish what they started."`,
+    proseExample: `The sleet carried the reek of scorched marrow and wet ash across the shattered courtyard, stinging exposed skin like needles of blown glass. Elena did not lower her guard as the lantern light caught the dried crimson crust along her gauntlet; instead, she shifted her boots over the slick flagstones until the crumbling parapet guarded her flank, her knuckles blanching white against the frost-bitten darkwood of her hilt.\n\n"You speak of sanctuary as though the word still has currency in this sector," she murmured, her voice flat and scraped raw by the freezing wind. Her heavy-lidded gaze tracked the slightest twitch of your sword hand, measuring the distance between your throat and her steel. "Three inquisitorial patrols marched into that rift since sundown. Only their horses came back—skinless and screaming."\n\nShe took a slow, deliberate half-step closer, the ambient hum of the fractured leyline casting long violet shadows across the hollow of her cheek. "If you intend to cross that threshold, you won't do it on blind valor. Tell me what anchors your soul against the rot down there, or turn back before the fog decides to keep us both."`,
   },
   light_novel: {
     id: "light_novel",
@@ -52,7 +54,7 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
       "DO NOT drag the pacing down with sluggish, dreary internal monologues.",
       "Avoid slow or depressing fatalism; keep the narrative spirited, colorful, and engaging.",
     ],
-    proseExample: `Azure mana ignited along the blade in a dazzling spiral of crystalline sparks, casting a brilliant glow over Aria's defiant smirk. She spun her daggers with effortless flair, her twin tails whipping in the vortex. "Honestly! You call that an opening strike?" Her eyes glinted with mischievous fire as she vaulted into the air. "Watch closely, Partner—I won't bail you out twice!"`,
+    proseExample: `Azure mana ignited along the twin blades in a dazzling spiral of crystalline sparks, casting a brilliant sapphire glow across the marble terrace and illuminating Aria's defiant smirk. The shockwave of the parried spell sent a flurry of silver petals whirling into the starlit sky as she landed on the balustrade with effortless, catlike grace.\n\n"Honestly! You call that an opening vanguard maneuver?" She spun her right dagger in a reverse-grip flourish, her twin tails whipping in the lingering gale as she looked down at you with a mixture of exasperated disbelief and grudging amusement. "If I had arrived three seconds later, that construct would have singed your cloak right off your shoulders!"\n\nHopping lightly down onto the flagstones beside you, she nudged your pauldron with the pommel of her blade, her silver eyes glinting with fierce, competitive fire as the ancient spire doors began to rumble open ahead. "Don't think this makes us even, Partner. Keep your aura synced to mine on the next rush—because whoever clears the upper sanctum last is buying dinner at the guildhall tonight!"`,
   },
   noir: {
     id: "noir",
@@ -69,9 +71,42 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
       "DO NOT describe idyllic fairy-tale wonder. Everything in this city has a price tag and a darker motive.",
       "Avoid flashy superhero posturing; maintain a grounded, hardboiled street-level edge.",
     ],
-    proseExample: `The downpour in Sector Four didn't wash away sins; it just melted the cheap glamours off the gargoyles. Morgana leaned against the damp brickwork, exhaling a thin curl of clove smoke into the violet street-glow. "In this city, kid, secrets aren't free, and curiosity usually comes with a coroner's stamp. Tell me what you're really after before the syndicate decides to close your tab."`,
+    proseExample: `The downpour in Sector Four never washed away a man's sins; it only melted the cheap alchemical glamours off the tenement gargoyles and turned the gutter runoff the color of bruised plums. Morgana leaned one shoulder against the damp brickwork beneath a flickering violet ward-sign, the ember of her clove cigarette flaring bright before she exhaled a slow ribbon of smoke into the cold drizzle.\n\n"You walk awfully loud for someone carrying an unsealed syndicate cipher in their coat pocket," she drawled, her voice a low, smoky alto that barely carried over the hiss of the steam grates. Her dark eyes slid from your rain-soaked boots up to your collar, reading the tension in your jaw with the practiced detachment of a card sharp spotting a tell. "In this district, curiosity usually comes with a coroner's stamp and an unmarked stone by the canal."\n\nShe flicked the spent ash into a puddle where it died with a sharp hiss, then unlatched the iron speakeasy door half an inch, letting the warm scent of ozone and aged rye spill into the alley. "Still, I suppose I've backed worse odds on a Tuesday night. Step inside out of the street-glow and tell me what you're really buying—before the hounds on the roof decide to close your tab for good."`,
   },
 };
+
+/**
+ * Returns the explicit length, paragraphing, and multi-beat scene depth directive
+ * corresponding to the active NarrativeDepthMode.
+ */
+export function getNarrativeDepthDirective(depth: NarrativeDepthMode = "deep_novelistic"): string {
+  if (depth === "standard") {
+    return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [STANDARD VISUAL NOVEL PACING (2–3 PARAGRAPHS)] ---
+- Structure "narrative_text" into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks (\\n\\n).
+- Balance atmospheric sensory details, character body language, and spoken dialogue in double quotation marks ("...").`;
+  }
+
+  if (depth === "expansive") {
+    return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [EXPANSIVE SCENE & DIALOGUE (3–5 PARAGRAPHS)] ---
+- Structure "narrative_text" into 3 to 5 rich, detailed paragraphs (approx. 300–450 words) separated by clean line breaks (\\n\\n).
+- Include multiple spoken dialogue beats interleaved with physical movement, environmental reactions, and psychological nuance.`;
+  }
+
+  return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [DEEP NOVELISTIC MULTI-BEAT ARCHITECTURE (5–7+ PARAGRAPHS)] ---
+CRITICAL LENGTH & DEPTH MANDATE: You MUST write an expansive, deeply immersive, novel-length scene response in "narrative_text" spanning **5 to 7 substantial paragraphs (450 to 800+ words)** separated by clean double line breaks (\\n\\n). NEVER summarize briefly or stop after 2–3 short paragraphs!
+Unfold every turn across these four mandatory narrative beats:
+1. BEAT 1 — IMMEDIATE KINETIC & ENVIRONMENTAL CONSEQUENCE (Paragraphs 1–2):
+   - Ground the scene in rich, visceral sensory detail (lighting, acoustics, weather, air temperature, scent, spatial geometry, and tactile textures).
+   - Depict the immediate physical, magical, or tactical ripples of the protagonist's action and words across the environment.
+2. BEAT 2 — PSYCHOLOGICAL SUBTEXT & MICRO-EXPRESSIONS (Paragraphs 2–3):
+   - Before or as the active character speaks, portray their internal emotional and analytical reaction through vivid physical tells: micro-expressions, gaze tracking, breathing cadence, posture adjustments, weapon or garment handling, and unspoken tension.
+   - Show—do not merely tell—how they weigh the protagonist's motives, competence, or audacity.
+3. BEAT 3 — MULTI-STAGE DIALOGUE & PHYSICAL CHOREOGRAPHY (Paragraphs 3–5):
+   - NEVER limit a character to a single isolated quote at the end of the turn!
+   - Write **at least 2 to 3 distinct spoken dialogue segments** in double quotation marks ("...") woven across multiple paragraphs, broken up by physical pacing, stepping closer or circling, interacting with the surroundings, and shifting vocal cadence.
+4. BEAT 4 — WORLD ESCALATION & NARRATIVE HOOK (Paragraphs 5–7):
+   - Advance the physical scene, interpersonal chemistry, or tactical stakes forward so the environment evolves dynamically and concludes on an evocative, high-tension beat that naturally sets up the next decision.`;
+}
 
 /**
  * Universal directive enforcing impeccable grammar, mandatory quotation marks,
@@ -90,7 +125,7 @@ export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY
    - DO NOT use Markdown asterisks (*italics* or **bold**), underscores, headers (#), blockquotes (>), or Markdown tables inside narrative prose or dialogue fields.
    - Convey physical gestures, sensory textures, and kinetic impacts through vivid literary diction and sentence rhythm rather than asterisks or bold tags.
    - Place all LitRPG system notifications, stat checks, or mechanical readouts inside the dedicated "mechanics" / "system_announcement" JSON fields—never inline inside story paragraphs.
-   - Structure prose into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks (\\n\\n).
+   - Separate all paragraphs cleanly using double line breaks (\\n\\n).
 4. PRE-FLIGHT SPELLCHECK & SELF-VERIFICATION (MANDATORY):
    - Before outputting your response, perform an internal self-check:
      * SPELLCHECK & DICTION: Verify that all vocabulary, character names, and descriptive words are spelled accurately with zero letter omissions or mangled words.
@@ -165,7 +200,10 @@ export function getNarrationStyleBadge(rawTone?: string): string {
  * Strictly forces the LLM to write in the chosen prose style and explicitly enforces negative constraints,
  * universal grammar rules, quotation mark enforcement, and visual novel markdown formatting.
  */
-export function getNarrationProseDirective(rawTone?: string): string {
+export function getNarrationProseDirective(
+  rawTone?: string,
+  narrativeDepth: NarrativeDepthMode = "deep_novelistic"
+): string {
   const key = resolveNarrationStyleKey(rawTone);
 
   let styleBody = "";
@@ -184,7 +222,7 @@ YOU MUST STRICTLY ADHERE TO THIS PROSE STYLE FOR ALL NARRATIVE TEXT, ENVIRONMENT
 5. STRICT NEGATIVE CONSTRAINTS (CRITICAL - DO NOT VIOLATE):
 ${def.negativeConstraints.map((nc) => `   - ${nc}`).join("\n")}
 6. TARGET PROSE CADENCE REFERENCE (MATCH THIS EXACT TONE & REGISTER):
-   "${def.proseExample}"`;
+   ${def.proseExample}`;
   } else {
     const customTone = rawTone?.trim() || "Grimdark & Atmospheric";
     styleBody = `--- MANDATORY PROSE & NARRATION DIRECTIVE: [${customTone.toUpperCase()}] ---
@@ -195,6 +233,8 @@ YOU MUST STRICTLY ADHERE TO THE TONE AND PROSE CONVENTIONS OF "${customTone}":
   }
 
   return `${styleBody}
+
+${getNarrativeDepthDirective(narrativeDepth)}
 
 ${UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE}
 
