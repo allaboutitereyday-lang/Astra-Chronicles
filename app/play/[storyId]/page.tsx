@@ -127,6 +127,7 @@ import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/Sc
 import { GeneratedGearPiece } from "@/app/api/generate-starting-gear/route";
 import { getNarrationStyleBadge } from "@/lib/narrationStyles";
 import { CloudSyncModal } from "@/components/CloudSyncModal";
+import { WorldGuidebookModal } from "@/components/WorldGuidebookModal";
 import { triggerBackgroundCloudSync, downloadAstraBundleFile } from "@/lib/crossSaveEngine";
 import {
   LlmConfig,
@@ -667,6 +668,7 @@ export default function VisualNovelGame() {
   const [selectedSovereignConduit, setSelectedSovereignConduit] = useState<string>("iron_chancellery_somatic");
   const [creationTab, setCreationTab] = useState<"identity" | "origin" | "conduit" | "prologue">("identity");
   const [showRosterDrawer, setShowRosterDrawer] = useState<boolean>(false);
+  const [showWorldGuidebook, setShowWorldGuidebook] = useState<boolean>(false);
 
   const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
   const [fullPortraitViewer, setFullPortraitViewer] = useState<{
@@ -3539,15 +3541,27 @@ export default function VisualNovelGame() {
       const sceneSetup = (data.scene_setup || chosen.sceneSetup || "").trim();
       const openingPrologueText = sceneSetup ? `${sceneSetup}\n\n${formattedDialogue}` : formattedDialogue;
 
+      const initialPresentList: string[] =
+        Array.isArray(chosen.presentCompanions) && chosen.presentCompanions.length > 0
+          ? chosen.presentCompanions
+          : Array.isArray(data.present_companions) && data.present_companions.length > 0
+          ? data.present_companions
+          : [activeSpeaker];
+
       setParty((prevParty) =>
         prevParty.map((comp) => {
-          const isSelected = comp.name.toLowerCase().includes(activeSpeaker.toLowerCase());
+          const isPrimary = comp.name.toLowerCase().includes(activeSpeaker.toLowerCase());
+          const isPresentInScene =
+            isPrimary ||
+            initialPresentList.some((name) =>
+              comp.name.toLowerCase().includes(name.toLowerCase())
+            );
           return {
             ...comp,
-            isPresent: isSelected,
-            encountered: isSelected, // Only the starting heroine is known initially!
-            affection: isSelected ? initialAffection : comp.affection,
-            expressionKey: isSelected ? activeExpression : "neutral",
+            isPresent: isPresentInScene,
+            encountered: isPresentInScene,
+            affection: isPrimary ? initialAffection : comp.affection,
+            expressionKey: isPrimary ? activeExpression : "neutral",
           };
         })
       );
@@ -3558,7 +3572,7 @@ export default function VisualNovelGame() {
         dialogue: openingPrologueText,
         mood: data.initial_mood || "Guarded & Observant",
         bgImage: initialBg,
-        presentCompanions: [activeSpeaker],
+        presentCompanions: initialPresentList,
       });
 
       setChatLog([
@@ -3587,13 +3601,18 @@ export default function VisualNovelGame() {
       setChoices(activeOpeningChoices);
 
       const initPartyState = party.map((comp) => {
-        const isSelected = comp.name.toLowerCase().includes(activeSpeaker.toLowerCase());
+        const isPrimary = comp.name.toLowerCase().includes(activeSpeaker.toLowerCase());
+        const isPresentInScene =
+          isPrimary ||
+          initialPresentList.some((name) =>
+            comp.name.toLowerCase().includes(name.toLowerCase())
+          );
         return {
           ...comp,
-          isPresent: isSelected,
-          encountered: isSelected,
-          affection: isSelected ? initialAffection : comp.affection,
-          expressionKey: isSelected ? activeExpression : "neutral",
+          isPresent: isPresentInScene,
+          encountered: isPresentInScene,
+          affection: isPrimary ? initialAffection : comp.affection,
+          expressionKey: isPrimary ? activeExpression : "neutral",
         };
       });
 
@@ -3613,7 +3632,7 @@ export default function VisualNovelGame() {
             dialogue: openingPrologueText,
             mood: data.initial_mood || "Guarded & Observant",
             bgImage: initialBg,
-            presentCompanions: [activeSpeaker],
+            presentCompanions: initialPresentList,
           },
           party: initPartyState,
           player: finalStartingPlayer,
@@ -3681,15 +3700,25 @@ export default function VisualNovelGame() {
       const sceneSetup = (chosen.sceneSetup || "").trim();
       const openingPrologueText = sceneSetup ? `${sceneSetup}\n\n${formattedDialogue}` : formattedDialogue;
 
+      const fallbackPresentList: string[] =
+        Array.isArray(chosen.presentCompanions) && chosen.presentCompanions.length > 0
+          ? chosen.presentCompanions
+          : [chosen.speaker];
+
       setParty((prevParty) =>
         prevParty.map((comp) => {
-          const isSelected = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
+          const isPrimary = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
+          const isPresentInScene =
+            isPrimary ||
+            fallbackPresentList.some((name) =>
+              comp.name.toLowerCase().includes(name.toLowerCase())
+            );
           return {
             ...comp,
-            isPresent: isSelected,
-            encountered: isSelected,
-            affection: isSelected ? 15 : comp.affection,
-            expressionKey: isSelected ? chosen.expressionKey : "neutral",
+            isPresent: isPresentInScene,
+            encountered: isPresentInScene,
+            affection: isPrimary ? 15 : comp.affection,
+            expressionKey: isPrimary ? chosen.expressionKey : "neutral",
           };
         })
       );
@@ -3700,7 +3729,7 @@ export default function VisualNovelGame() {
         dialogue: openingPrologueText,
         mood: "Guarded & Observant",
         bgImage: initialBg,
-        presentCompanions: [chosen.speaker],
+        presentCompanions: fallbackPresentList,
       });
 
       setChatLog([
@@ -3725,13 +3754,18 @@ export default function VisualNovelGame() {
       setChoices(fallbackPersonaChoices);
 
       const fallbackPartyState = party.map((comp) => {
-        const isSelected = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
+        const isPrimary = comp.name.toLowerCase().includes(chosen.speaker.toLowerCase());
+        const isPresentInScene =
+          isPrimary ||
+          fallbackPresentList.some((name) =>
+            comp.name.toLowerCase().includes(name.toLowerCase())
+          );
         return {
           ...comp,
-          isPresent: isSelected,
-          encountered: isSelected,
-          affection: isSelected ? 15 : comp.affection,
-          expressionKey: isSelected ? chosen.expressionKey : "neutral",
+          isPresent: isPresentInScene,
+          encountered: isPresentInScene,
+          affection: isPrimary ? 15 : comp.affection,
+          expressionKey: isPrimary ? chosen.expressionKey : "neutral",
         };
       });
 
@@ -3751,7 +3785,7 @@ export default function VisualNovelGame() {
             dialogue: openingPrologueText,
             mood: "Guarded & Observant",
             bgImage: initialBg,
-            presentCompanions: [chosen.speaker],
+            presentCompanions: fallbackPresentList,
           },
           party: fallbackPartyState,
           player: finalStartingPlayer,
@@ -7502,6 +7536,17 @@ export default function VisualNovelGame() {
             <button
               onClick={() => {
                 soundEffects.playClick();
+                setShowWorldGuidebook(true);
+              }}
+              className="w-full sm:w-auto py-3.5 px-5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 hover:border-amber-400 text-amber-200 hover:text-white rounded-2xl font-mono text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
+              title="Read World Lore, Heroines, Locations, Stats & Keywords"
+            >
+              <BookOpen className="w-4 h-4 text-amber-400" /> World Guide
+            </button>
+
+            <button
+              onClick={() => {
+                soundEffects.playClick();
                 setShowSaveModal(true);
               }}
               className="w-full sm:w-auto py-3.5 px-5 bg-black/60 hover:bg-black/90 border border-white/15 hover:border-sky-500/50 text-zinc-300 hover:text-white rounded-2xl font-mono text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
@@ -7532,6 +7577,11 @@ export default function VisualNovelGame() {
 
         {renderSaveModal()}
         {renderAuthModal()}
+        <WorldGuidebookModal
+          isOpen={showWorldGuidebook}
+          onClose={() => setShowWorldGuidebook(false)}
+          story={currentStory}
+        />
         <ScreenTransitionOverlay {...screenTransition} />
       </div>
     );
@@ -7587,7 +7637,7 @@ export default function VisualNovelGame() {
           <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
         </div>
 
-        <div className="relative z-10 w-full max-w-3xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-5 my-auto">
+        <div className="relative z-10 w-full max-w-4xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-5 my-auto">
           <div className="space-y-3 border-b border-white/10 pb-3.5">
             {/* Top Utility Navigation Bar */}
             <div className="flex items-center justify-between gap-2">
@@ -7607,6 +7657,18 @@ export default function VisualNovelGame() {
                   title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
                 >
                   {isAudioMuted ? <VolumeX className="w-3.5 h-3.5 text-zinc-500" /> : <Volume2 className="w-3.5 h-3.5 text-rose-400" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setShowWorldGuidebook(true);
+                  }}
+                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 hover:border-amber-400 text-xs text-amber-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer font-bold"
+                  title="Open World Lore Guidebook (Characters, Locations, Stats & Keywords)"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="font-mono text-xs">World Guide</span>
                 </button>
                 <button
                   onClick={() => {
@@ -8199,7 +8261,7 @@ export default function VisualNovelGame() {
 
                 {currentStory.id === "sovereign-spire" ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       {SOVEREIGN_ORIGIN_PRESETS.map((so) => {
                         const isSelected =
                           selectedWorldOriginPreset === so.id ||
@@ -8209,19 +8271,19 @@ export default function VisualNovelGame() {
                             key={so.id}
                             type="button"
                             onClick={() => handleSelectSovereignOriginPreset(so)}
-                            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                            className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
                               isSelected
                                 ? "bg-emerald-950/50 border-emerald-400 text-white shadow-xl ring-1 ring-emerald-400/40"
                                 : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
                             }`}
                           >
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between gap-1.5">
-                                <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-                                  <span className="text-base">{so.icon}</span>
+                            <div className="space-y-2">
+                              <div className="space-y-1.5">
+                                <span className="text-xs sm:text-sm font-mono font-bold text-white flex items-center gap-1.5 leading-snug">
+                                  <span className="text-base shrink-0">{so.icon}</span>
                                   <span>{so.shortLabel}</span>
                                 </span>
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-black/70 border border-rose-500/40 text-rose-300 font-bold shrink-0">
+                                <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded-lg bg-black/70 border border-rose-500/40 text-rose-300 font-bold">
                                   {so.rankTierLabel}
                                 </span>
                               </div>
@@ -8229,7 +8291,7 @@ export default function VisualNovelGame() {
                                 {so.actOneStakes}
                               </p>
                             </div>
-                            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-300 pt-2 border-t border-white/10">
+                            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-300 pt-2.5 border-t border-white/10">
                               <span>Quota: {so.semesterDebtQuota} Cores</span>
                               <span className="text-amber-300 font-bold">{so.startingCrowns} Crowns</span>
                             </div>
@@ -8266,34 +8328,41 @@ export default function VisualNovelGame() {
                             {activeOrigin.defaultDetails}
                           </p>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                            <div className="p-3 rounded-xl bg-black/50 border border-rose-500/25 space-y-1">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                            <div className="p-3.5 rounded-xl bg-black/50 border border-rose-500/25 space-y-1.5">
                               <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold block">
                                 Act I Political &amp; Rival Pressure
                               </span>
-                              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                              <p className="text-xs text-zinc-300 leading-relaxed">
                                 {activeOrigin.actOneStakes}
                               </p>
                             </div>
-                            <div className="p-3 rounded-xl bg-black/50 border border-emerald-500/25 space-y-1.5">
+                            <div className="p-3.5 rounded-xl bg-black/50 border border-emerald-500/25 space-y-2">
                               <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block">
                                 High-Resonance Dyad Heroines
                               </span>
-                              <div className="flex flex-wrap gap-1.5">
+                              <div className="flex flex-col gap-1.5">
                                 {activeOrigin.highResonanceHeroines.map((hName) => {
                                   const hDossier = SOVEREIGN_HEROINE_DOSSIERS[hName];
                                   return (
-                                    <span
+                                    <div
                                       key={hName}
-                                      className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/35 text-[11px] font-mono text-emerald-200 font-bold"
+                                      className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-between gap-2"
                                     >
-                                      ★ {hName} {hDossier ? `(${hDossier.epithet})` : ""}
-                                    </span>
+                                      <span className="text-[11px] font-mono text-emerald-200 font-bold shrink-0">
+                                        ★ {hName}
+                                      </span>
+                                      {hDossier && (
+                                        <span className="text-[10px] font-mono text-emerald-300/80 truncate">
+                                          {hDossier.epithet}
+                                        </span>
+                                      )}
+                                    </div>
                                   );
                                 })}
                               </div>
                               <p className="text-[10px] text-zinc-400 font-sans">
-                                These Heroines are highlighted with an &ldquo;Origin Resonance&rdquo; badge on the Act I Prelude tab.
+                                Highlighted with an &ldquo;Origin Resonance&rdquo; badge on the Act I Prelude tab.
                               </p>
                             </div>
                           </div>
@@ -8642,33 +8711,36 @@ export default function VisualNovelGame() {
                 </div>
 
                 {player.abilities.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                  <div className="grid grid-cols-1 gap-2.5 pt-1">
                     {player.abilities.map((abName, i) => {
                       const detail = player.abilityDetails?.[abName];
                       return (
                         <div
                           key={i}
                           onClick={() => handleInspectAbility(abName)}
-                          className="bg-zinc-900/90 hover:bg-zinc-800/90 border border-amber-500/30 hover:border-amber-400/60 p-3 rounded-xl transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
+                          className="bg-zinc-900/90 hover:bg-zinc-800/90 border border-amber-500/30 hover:border-amber-400/60 p-3.5 rounded-xl transition-all cursor-pointer group shadow-sm flex flex-col gap-1.5"
+                          title="Click to inspect full ability modal"
                         >
-                          <div>
-                            <div className="flex items-center justify-between gap-1 mb-1">
-                              <span className="font-bold text-xs text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
-                                <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
-                                <span className="truncate">{abName}</span>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-bold text-xs sm:text-sm text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span>{abName}</span>
+                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[10px] font-mono text-sky-400 bg-sky-950/50 border border-sky-500/25 px-2 py-0.5 rounded">
+                                {detail?.cost || "Cost: 10 MP"}
                               </span>
-                              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 text-amber-300 border border-amber-500/20 shrink-0">
+                              <span className="text-[10px] font-mono text-zinc-300 bg-black/50 border border-white/10 px-2 py-0.5 rounded">
+                                {detail?.cooldown || "Instant"}
+                              </span>
+                              <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold">
                                 {detail?.type || "Active"}
                               </span>
                             </div>
-                            <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-                              {detail?.description || "Click to inspect full ability mechanics..."}
-                            </p>
                           </div>
-                          <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-2 mt-2 border-t border-white/5">
-                            <span className="text-sky-400">{detail?.cost || "Cost: 10 MP"}</span>
-                            <span className="text-zinc-400">{detail?.cooldown || "Instant"}</span>
-                          </div>
+                          <p className="text-xs text-zinc-300 leading-relaxed">
+                            {detail?.description || "Click to inspect full ability mechanics..."}
+                          </p>
                         </div>
                       );
                     })}
@@ -8810,6 +8882,11 @@ export default function VisualNovelGame() {
                         ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
                         : undefined;
                     const isColdOpen = p.id === "prologue_act1_seal_gate";
+                    const isEntranceCeremony = p.id === "prologue_entrance_ceremony";
+                    const ensembleHeroines =
+                      Array.isArray(p.presentCompanions) && p.presentCompanions.length > 1
+                        ? p.presentCompanions
+                        : null;
                     const activeOriginPreset =
                       currentStory.id === "sovereign-spire"
                         ? SOVEREIGN_ORIGIN_PRESETS.find(
@@ -8821,6 +8898,7 @@ export default function VisualNovelGame() {
                     const isOriginResonant = Boolean(
                       activeOriginPreset &&
                         (isColdOpen ||
+                          isEntranceCeremony ||
                           activeOriginPreset.highResonanceHeroines.includes(p.speaker))
                     );
                     const spriteUrl = getSpriteSrc(
@@ -8840,33 +8918,61 @@ export default function VisualNovelGame() {
                           isSelected
                             ? "bg-rose-950/45 border-rose-500 text-white shadow-lg ring-1 ring-rose-500/35"
                             : "bg-zinc-950/90 border-white/10 text-zinc-400 hover:border-white/25"
-                        } ${isColdOpen ? "sm:col-span-2 bg-gradient-to-r from-rose-950/50 via-zinc-950/95 to-amber-950/40" : ""}`}
+                        } ${
+                          isColdOpen || isEntranceCeremony
+                            ? "sm:col-span-2 bg-gradient-to-r from-rose-950/50 via-zinc-950/95 to-amber-950/40"
+                            : ""
+                        }`}
                       >
                         <div className="flex items-start gap-3">
-                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 border border-white/15 shrink-0">
-                            <img
-                              src={spriteUrl}
-                              alt={p.speaker}
-                              className="w-full h-full object-cover object-top"
-                            />
-                          </div>
+                          {ensembleHeroines ? (
+                            <div className="flex items-center -space-x-2.5 shrink-0 pt-0.5">
+                              {ensembleHeroines.slice(0, 4).map((hName) => (
+                                <img
+                                  key={hName}
+                                  src={getSpriteSrc(hName, "neutral")}
+                                  alt={hName}
+                                  title={hName}
+                                  className="w-10 h-12 rounded-xl object-cover object-top bg-zinc-900 border-2 border-zinc-950 ring-1 ring-amber-400/40 shadow-md"
+                                />
+                              ))}
+                              {ensembleHeroines.length > 4 && (
+                                <div className="w-8 h-12 rounded-xl bg-amber-950/90 border border-amber-400/50 flex items-center justify-center text-[10px] font-mono font-bold text-amber-200 shadow-md">
+                                  +{ensembleHeroines.length - 4}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 border border-white/15 shrink-0">
+                              <img
+                                src={spriteUrl}
+                                alt={p.speaker}
+                                className="w-full h-full object-cover object-top"
+                              />
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-1.5 flex-wrap mb-0.5">
                               <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider truncate">
                                 {p.location}
                               </span>
                               <div className="flex items-center gap-1 shrink-0">
+                                {isEntranceCeremony && (
+                                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/25 border border-amber-400/60 text-amber-200">
+                                    ★ Entrance Ceremony • {ensembleHeroines?.length || 6} Heroines Present
+                                  </span>
+                                )}
                                 {isColdOpen && (
                                   <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200">
                                     ★ Flagship Act I Cold-Open
                                   </span>
                                 )}
-                                {isOriginResonant && !isColdOpen && (
+                                {isOriginResonant && !isColdOpen && !isEntranceCeremony && (
                                   <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
                                     Origin Resonance
                                   </span>
                                 )}
-                                {dossier && (
+                                {dossier && !isEntranceCeremony && (
                                   <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/35 text-indigo-200">
                                     {dossier.conduit}
                                   </span>
@@ -8876,10 +8982,16 @@ export default function VisualNovelGame() {
                             <p className="font-semibold text-sm text-zinc-100 leading-snug">
                               {p.title}
                             </p>
-                            {dossier && (
-                              <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
-                                {dossier.epithet} • {dossier.wing.replace(/_/g, " ")} • Dyad: {dossier.dyadPassiveName}
+                            {ensembleHeroines ? (
+                              <p className="text-[10px] font-mono text-amber-300/95 mt-0.5">
+                                Present Heroines: {ensembleHeroines.join(" • ")}
                               </p>
+                            ) : (
+                              dossier && (
+                                <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
+                                  {dossier.epithet} • {dossier.wing.replace(/_/g, " ")} • Dyad: {dossier.dyadPassiveName}
+                                </p>
+                              )
                             )}
                             <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
                               {p.dialogue}
@@ -8888,7 +9000,9 @@ export default function VisualNovelGame() {
                         </div>
                         <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1.5 border-t border-white/5">
                           <span className="truncate">
-                            {dossier
+                            {ensembleHeroines
+                              ? `All 4 Patron Wings Present • High Sovereign Vane & Proctor Sallow Presiding`
+                              : dossier
                               ? `Rival Hook: ${dossier.rivalBossTieIn}`
                               : `Companion: ${p.speaker}`}
                           </span>
@@ -8916,7 +9030,11 @@ export default function VisualNovelGame() {
                             Selected Prelude: {activeNode.title}
                           </span>
                           <span className="text-[11px] font-mono text-rose-300">
-                            Location: {activeNode.location} • Speaker: {activeNode.speaker}
+                            Location: {activeNode.location} •{" "}
+                            {Array.isArray(activeNode.presentCompanions) &&
+                            activeNode.presentCompanions.length > 1
+                              ? `Present Heroines: ${activeNode.presentCompanions.join(", ")}`
+                              : `Speaker: ${activeNode.speaker}`}
                           </span>
                         </div>
                         {activeDossier && (
@@ -9047,6 +9165,11 @@ export default function VisualNovelGame() {
         {renderTransitionOverlay()}
         {renderAbilityModal()}
         {renderCharacterPortraitViewerModal()}
+        <WorldGuidebookModal
+          isOpen={showWorldGuidebook}
+          onClose={() => setShowWorldGuidebook(false)}
+          story={currentStory}
+        />
         <ScreenTransitionOverlay {...screenTransition} />
         <LlmProviderModal
           isOpen={showLlmModal}
@@ -9282,22 +9405,22 @@ export default function VisualNovelGame() {
         </div>
 
         {/* DESKTOP TOP HUD (>= sm) */}
-        <div className="hidden sm:flex items-center justify-between gap-3 w-full">
+        <div className="hidden sm:flex items-center justify-between gap-2 w-full min-w-0">
           {/* LEFT CLUSTER: Navigation, Player Anchor & LitRPG System */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 shrink">
             <button
               onClick={handleNavigateToCatalogue}
               className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3 py-2 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer shrink-0"
               title="Return to Story Catalogue"
             >
               <ArrowLeft className="w-4 h-4 text-zinc-400" />
-              <span className="hidden md:inline font-mono text-[11px]">Catalogue</span>
+              <span className="hidden xl:inline font-mono text-[11px]">Catalogue</span>
             </button>
 
             {/* Character Identity & Status Card with Live Vitals Bars & Hit Feedback */}
             <button
               onClick={() => setShowPlayerSheet(true)}
-              className={`relative flex items-center gap-1.5 sm:gap-2.5 bg-black/85 hover:bg-black/95 backdrop-blur-md px-2 sm:px-3 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group shrink-0 ${
+              className={`relative flex items-center gap-1.5 sm:gap-2 bg-black/85 hover:bg-black/95 backdrop-blur-md px-2 sm:px-2.5 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group min-w-0 max-w-[260px] md:max-w-[330px] xl:max-w-[400px] 2xl:max-w-[520px] ${
                 vitalsFeedback && vitalsFeedback.hpDelta < 0
                   ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
                   : vitalsFeedback && vitalsFeedback.hpDelta > 0
@@ -9306,7 +9429,7 @@ export default function VisualNovelGame() {
                   ? "border-red-500/70 shadow-[0_0_16px_rgba(239,68,68,0.3)]"
                   : "border-white/10 hover:border-rose-500/50"
               }`}
-              title="Open Character Sheet & Inventory"
+              title={`Open Character Sheet & Inventory (${player.name} — Lv.${player.level} ${player.race ? `${player.race} ` : ""}${player.role})`}
             >
               {/* Floating Delta Badge on Top HUD Player Card */}
               {vitalsFeedback && (
@@ -9345,13 +9468,15 @@ export default function VisualNovelGame() {
                   player.name.charAt(0)
                 )}
               </div>
-              <div className="text-left hidden sm:block">
-                <p className="font-semibold leading-tight text-white group-hover:text-rose-300 transition-colors">
+              <div className="text-left hidden sm:block min-w-0 max-w-[115px] md:max-w-[145px] xl:max-w-[175px]">
+                <p className="font-semibold leading-tight text-white group-hover:text-rose-300 transition-colors truncate">
                   {player.name}
                 </p>
-                <p className="text-[10px] text-zinc-400 font-mono">Lv.{player.level} {player.race ? `${player.race} ` : ""}{player.role}</p>
+                <p className="text-[10px] text-zinc-400 font-mono truncate">
+                  Lv.{player.level} {player.race ? `${player.race} ` : ""}{player.role}
+                </p>
               </div>
-              <div className="flex flex-col gap-0.5 pl-1 min-w-[76px] sm:min-w-[104px]">
+              <div className="flex flex-col gap-0.5 pl-1 min-w-[76px] sm:min-w-[92px] shrink-0">
                 <div className="space-y-0.5">
                   <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
                     <span className="flex items-center gap-1 text-rose-400 font-bold">
@@ -9428,7 +9553,7 @@ export default function VisualNovelGame() {
                 </div>
               </div>
               {((player.unspentStatPoints || 0) > 0 || activeConditionPills.length > 0) && (
-                <div className="hidden xl:flex items-center gap-1 pl-2 border-l border-white/10">
+                <div className="hidden 2xl:flex items-center gap-1 pl-2 border-l border-white/10 shrink-0">
                   {(player.unspentStatPoints || 0) > 0 && (
                     <span
                       className="px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-300 text-[9px] font-mono font-bold animate-pulse"
@@ -9437,11 +9562,11 @@ export default function VisualNovelGame() {
                       +{player.unspentStatPoints} PTS
                     </span>
                   )}
-                  {activeConditionPills.slice(0, 2).map((pill, pIdx) => (
+                  {activeConditionPills.slice(0, 1).map((pill, pIdx) => (
                     <span
                       key={pIdx}
                       title={pill.title}
-                      className={`px-1.5 py-0.5 rounded-md border text-[9px] font-mono font-medium whitespace-nowrap ${pill.color}`}
+                      className={`px-1.5 py-0.5 rounded-md border text-[9px] font-mono font-medium whitespace-nowrap truncate max-w-[115px] ${pill.color}`}
                     >
                       {pill.label}
                     </span>
@@ -9472,7 +9597,7 @@ export default function VisualNovelGame() {
                 soundEffects.playClick();
                 setShowSystemModal(true);
               }}
-              className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-3 py-2 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg ${
+              className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 py-2 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${
                 systemState.activeQuests.length > 0
                   ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
                   : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
@@ -9480,7 +9605,7 @@ export default function VisualNovelGame() {
               title="Open System Administrator Interface & Quests"
             >
               <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-              <span className="text-[11px] font-mono font-bold tracking-wider hidden sm:inline">SYSTEM</span>
+              <span className="text-[11px] font-mono font-bold tracking-wider hidden md:inline">SYSTEM</span>
               {systemState.activeQuests.length > 0 && (
                 <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]">
                   {systemState.activeQuests.length}
@@ -9497,10 +9622,10 @@ export default function VisualNovelGame() {
           </div>
 
           {/* RIGHT CLUSTER: Auto-Save Pulse, LLM Engine Pill & Unified Glass Command Dock */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
             <LlmQuickPill
               config={llmConfig}
-              className="hidden sm:flex"
+              className="hidden md:flex"
               onClick={() => {
                 soundEffects.playClick();
                 setShowLlmModal(true);
@@ -9508,9 +9633,9 @@ export default function VisualNovelGame() {
             />
 
             {showAutoSaveIndicator && (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_15px_rgba(52,211,153,0.3)] backdrop-blur-md">
+              <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono animate-in fade-in zoom-in-95 duration-200 shadow-[0_0_15px_rgba(52,211,153,0.3)] backdrop-blur-md">
                 <Zap className="w-3 h-3 text-emerald-400 animate-pulse" />
-                <span>Auto-saved</span>
+                <span>Saved</span>
               </div>
             )}
 
@@ -9536,27 +9661,41 @@ export default function VisualNovelGame() {
 
             {/* Desktop Glass Command Dock (>= lg) */}
             <div className="hidden lg:flex items-center bg-black/80 backdrop-blur-md border border-white/10 p-1 rounded-2xl shadow-lg shrink-0 gap-0.5">
+              {/* World Lore & Guidebook Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setShowWorldGuidebook(true);
+                }}
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-amber-950/40 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center gap-1"
+                title="World Lore Guidebook (Characters, Locations, Stats & Keywords)"
+              >
+                <BookOpen className="w-4 h-4 text-amber-400" />
+                <span className="hidden 2xl:inline text-[10px] font-mono font-bold">Guide</span>
+              </button>
+
               {/* Interactive Flowchart Button (Task 2) */}
               <button
                 onClick={() => {
                   soundEffects.playClick();
                   setShowFlowchartModal(true);
                 }}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer flex items-center gap-1.5"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer flex items-center gap-1"
                 title="Interactive Flowchart & Timeline Anchors"
               >
                 <GitBranch className="w-4 h-4 text-cyan-400" />
-                <span className="hidden xl:inline text-[10px] font-mono">Flowchart</span>
+                <span className="hidden 2xl:inline text-[10px] font-mono">Flowchart</span>
               </button>
 
               {/* LitRPG Trials Link (Task 4) */}
               <button
                 onClick={handleNavigateToTrials}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1.5"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1"
                 title="LitRPG Daily Roguelite Trials (Auto-saves story progress)"
               >
                 <Swords className="w-4 h-4 text-blue-400" />
-                <span className="hidden xl:inline text-[10px] font-mono">Trials</span>
+                <span className="hidden 2xl:inline text-[10px] font-mono">Trials</span>
               </button>
 
               {/* Share World & Seed (Task 5) */}
@@ -9565,11 +9704,11 @@ export default function VisualNovelGame() {
                   soundEffects.playClick();
                   setShowShareModal(true);
                 }}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-400 hover:text-purple-300 transition-all cursor-pointer flex items-center gap-1.5"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-400 hover:text-purple-300 transition-all cursor-pointer flex items-center gap-1"
                 title="Share Multiverse Setup & Card"
               >
                 <Share2 className="w-4 h-4 text-purple-400" />
-                <span className="hidden xl:inline text-[10px] font-mono">Share</span>
+                <span className="hidden 2xl:inline text-[10px] font-mono">Share</span>
               </button>
 
               {/* Timeline Scars Inspector (Pitch A) */}
@@ -9580,11 +9719,11 @@ export default function VisualNovelGame() {
                     soundEffects.playClick();
                     setShowScarsModal(true);
                   }}
-                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse"
+                  className="p-2 sm:px-2 sm:py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 transition-all cursor-pointer flex items-center gap-1 shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse"
                   title="View Timeline Scars incurred from Causal Covenants"
                 >
                   <Zap className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="hidden xl:inline text-[10px] font-mono font-bold">{timelineScars.length} Scars</span>
+                  <span className="hidden 2xl:inline text-[10px] font-mono font-bold">{timelineScars.length} Scars</span>
                 </button>
               )}
 
@@ -9592,11 +9731,11 @@ export default function VisualNovelGame() {
               <button
                 onClick={() => handleGenerateSceneCG(false)}
                 disabled={isGeneratingScene}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-rose-300 hover:text-rose-200 transition-all cursor-pointer flex items-center gap-1.5 group disabled:opacity-50"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-rose-300 hover:text-rose-200 transition-all cursor-pointer flex items-center gap-1 group disabled:opacity-50"
                 title="Generate Cinematic Scene CG (Nano Banana 2.1)"
               >
                 <Sparkles className="w-4 h-4 text-rose-400 group-hover:rotate-12 transition-transform" />
-                <span className="hidden xl:inline text-[11px] font-mono font-bold">Illustrate</span>
+                <span className="hidden 2xl:inline text-[11px] font-mono font-bold">Illustrate</span>
               </button>
 
               <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
@@ -9604,7 +9743,7 @@ export default function VisualNovelGame() {
               {/* Party */}
               <button
                 onClick={() => setShowPartyDrawer(true)}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1"
                 title="Party Roster"
               >
                 <Users className="w-4 h-4 text-rose-400" />
@@ -9616,7 +9755,7 @@ export default function VisualNovelGame() {
               {/* Log / Memories */}
               <button
                 onClick={() => setShowChronicle(true)}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1.5"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1"
                 title="Chronicle Memories"
               >
                 <Scroll className="w-4 h-4 text-sky-400" />
@@ -9628,7 +9767,7 @@ export default function VisualNovelGame() {
               {/* Save Game */}
               <button
                 onClick={() => setShowSaveModal(true)}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/10 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-white/10 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1"
                 title="Save or Load Game"
               >
                 <Save className="w-4 h-4" />
@@ -9641,7 +9780,7 @@ export default function VisualNovelGame() {
                   setShowNotificationHistory(true);
                   setUnreadNotificationCount(0);
                 }}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-zinc-400 hover:text-white transition-all cursor-pointer relative flex items-center gap-1.5"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-zinc-400 hover:text-white transition-all cursor-pointer relative flex items-center gap-1"
                 title="Notification Archive & System Broadcasts"
               >
                 <Bell className="w-4 h-4 text-rose-400" />
@@ -9657,11 +9796,11 @@ export default function VisualNovelGame() {
               {/* Realm Access Key & Quota */}
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer flex items-center gap-1"
+                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer flex items-center gap-1"
                 title={userAuth ? `Active Realm Key: ${userAuth.name} (${userAuth.remainingTurns === -1 ? "∞" : `${userAuth.remainingTurns} turns remaining`})` : "Configure Access Key"}
               >
                 <Key className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden lg:inline text-[10px] font-mono">
+                <span className="hidden xl:inline text-[10px] font-mono">
                   {userAuth ? (userAuth.remainingTurns === -1 ? "∞" : userAuth.remainingTurns) : "Key"}
                 </span>
               </button>
@@ -10323,6 +10462,7 @@ export default function VisualNovelGame() {
         onOpenSystemModal={() => setShowSystemModal(true)}
         hasUnclaimedClearance={hasUnclaimedClearance}
         onOpenCodex={handleNavigateToCodex}
+        onOpenGuidebook={() => setShowWorldGuidebook(true)}
         onNavigateToTrials={handleNavigateToTrials}
         onOpenShareModal={() => setShowShareModal(true)}
         onOpenSaveModal={() => setShowSaveModal(true)}
@@ -11632,6 +11772,13 @@ export default function VisualNovelGame() {
           setLlmConfig(newConfig);
           saveStoredLlmConfig(newConfig);
         }}
+      />
+
+      {/* World Lore & Guidebook Modal */}
+      <WorldGuidebookModal
+        isOpen={showWorldGuidebook}
+        onClose={() => setShowWorldGuidebook(false)}
+        story={currentStory}
       />
     </div>
   );

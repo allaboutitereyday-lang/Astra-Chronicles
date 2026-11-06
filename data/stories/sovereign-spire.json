@@ -173,6 +173,31 @@
   },
   "startingNodes": [
     {
+      "id": "prologue_entrance_ceremony",
+      "speaker": "Beatrix Valorian",
+      "presentCompanions": [
+        "Beatrix Valorian",
+        "Cassia Valen",
+        "Ysolde Kaelen",
+        "Aurelia Solis",
+        "Miri Thorne",
+        "Kestrel Hollow"
+      ],
+      "title": "Act I Grand Convocation: The Entrance Ceremony & Blood-Ledger Roll",
+      "location": "The Sky-Crown & Sovereign Terraces",
+      "sceneSetup": "Beneath the levitating Gold-Astra chains of the Grand Convocation Amphitheater, five hundred matriculating initiates stand before the obsidian dais where High Sovereign Caelen Vane, Dean of Combat Magistra Evelyne Cross, and Chief Auditor Proctor Malakor Sallow preside over the Blood-Ledger monoliths. As each student's name is called, their starting rank (#500 to #1) and semester Aether Core debt quota sear into the towering brass slabs—along with the grim reminder that the bottom fifty ('The Dross') will be biologically foreclosed upon at midterm.\n\nAcross the tiered marble floor, key figures from all four Patron Wings are gathered within arm's reach: at the head of the Iron Chancellery column, Beatrix Valorian grounds her Solar Halberd in a shower of golden sparks while Cassia Valen quietly checks the edge-resonance of her notched longsword beside the Dross bracket; in the Obsidian Choir pews, Ysolde Kaelen pulls her black leather gloves tight over her calcified wrists as Aurelia Solis's luminous golden gaze locks onto your pulse; and along the shadowed colonnade, Gilded Loom broker Miri Thorne scribbles survival odds into her brass ledger while Whispering Veil enforcer Kestrel Hollow (Rank #142) leans against a pillar in her slouched 3rd-year coat, pupil-less glowing white eyes tracking your stance.",
+      "dialogue": "When Proctor Sallow reads your dossier aloud and the monolith flares with your anomalous Matriculation standing, a hush falls over the amphitheater before the mandatory Dyad Selection bell tolls.\n\nBeatrix Valorian steps out from the Chancellery front row, leveling the butt of her Solar Halberd on the flagstones as Cassia Valen, Ysolde Kaelen, Miri Thorne, and Kestrel Hollow all turn toward you at once. \"Five hundred initiates on the ledger,\" Beatrix announces, her golden eyes blazing with challenge, \"and the Headmaster's monolith just singled you out before the first delve even begins. Step forward and declare yourself—which Wing and whose Dyad tether do you think you're worthy of claiming?\"",
+      "expressionKey": "smug",
+      "initialAffection": 20,
+      "bgImage": "/backgrounds/sovereign-spire/sky_crown.jpg",
+      "choices": [
+        "[Iron Chancellery / Vanguard]: Step up to the marble dais, meet Beatrix Valorian's Solar Halberd challenge head-on, and catch Cassia Valen's approving nod from the front line.",
+        "[Obsidian Choir / Resonance]: Turn toward the velvet Choir pews, extending a stabilizing thread of Astra toward Ysolde Kaelen's trembling gloved wrist while Aurelia Solis steps forward to greet you.",
+        "[Loom & Veil / Underworld]: Walk toward the colonnade shadows where Miri Thorne is auditing Blood-Ledger quotas and Kestrel Hollow (#142) tests your blind-fighting reflexes with a crooked smirk.",
+        "[Audacious / Sovereign Decree]: Address the entire Convocation Hall under High Sovereign Vane's gaze, declaring that whoever signs your Dyad manifest is taking a Sovereign Circle seat before midterm."
+      ]
+    },
+    {
       "id": "prologue_act1_seal_gate",
       "speaker": "Cassia Valen",
       "title": "Act I Cold-Open: The First Seal & The Tollkeeper's Blockade",
@@ -689,6 +714,20 @@
     }
   ],
   "flowchartTree": [
+    {
+      "id": "node_entrance_ceremony",
+      "nodeKey": "prologue_entrance_ceremony",
+      "title": "Grand Convocation Entrance Ceremony",
+      "speaker": "Beatrix Valorian",
+      "location": "The Sky-Crown & Sovereign Terraces",
+      "summary": "The Academy Entrance Ceremony where your Blood-Ledger standing is unveiled before Beatrix, Cassia, Ysolde, Aurelia, Miri, and Kestrel.",
+      "connectedTo": [
+        "node_seal_gate",
+        "node_the_crucible",
+        "node_glass_conservatory",
+        "node_gilded_exchange"
+      ]
+    },
     {
       "id": "node_seal_gate",
       "nodeKey": "prologue_cassia",

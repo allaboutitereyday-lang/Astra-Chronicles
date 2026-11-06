@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   MapPin,
   Key,
+  BookOpen,
 } from "lucide-react";
 
 export interface MobileCommandSheetProps {
@@ -39,6 +40,7 @@ export interface MobileCommandSheetProps {
   onOpenSystemModal: () => void;
   hasUnclaimedClearance: boolean;
   onOpenCodex: () => void;
+  onOpenGuidebook?: () => void;
   onOpenMap?: () => void;
   locationName?: string;
   // Progression & Multiverse
@@ -73,6 +75,7 @@ export function MobileCommandSheet({
   onOpenSystemModal,
   hasUnclaimedClearance,
   onOpenCodex,
+  onOpenGuidebook,
   onOpenMap,
   locationName,
   onNavigateToTrials,
@@ -287,6 +290,26 @@ export function MobileCommandSheet({
                   </span>
                 </div>
               </button>
+
+              {onOpenGuidebook && (
+                <button
+                  type="button"
+                  onClick={() => handleAction(onOpenGuidebook)}
+                  className="p-3 rounded-2xl bg-zinc-900/90 border border-amber-500/35 hover:border-amber-400 hover:bg-amber-950/30 flex items-center gap-3 transition-all cursor-pointer text-left group shadow-sm"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform shrink-0">
+                    <BookOpen className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-amber-200">
+                      World Guidebook
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono block truncate">
+                      Lore, Cast & Terms
+                    </span>
+                  </div>
+                </button>
+              )}
 
               {onOpenMap && (
                 <button

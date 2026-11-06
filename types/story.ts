@@ -400,6 +400,7 @@ export interface StoryStartingNode {
   dialogue: string;
   expressionKey: CompanionExpressionKey;
   choices: [string, string, string, string] | string[];
+  presentCompanions?: string[];
   initialQuest?: SystemQuest;
   initialAffection?: number;
   bgImage?: string;

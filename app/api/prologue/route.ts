@@ -65,6 +65,15 @@ export async function POST(req: Request) {
       storyContext?.worldContext?.locations?.[0]?.name ||
       "Imperial Capital Imperium";
 
+    const initialPresentHeroines: string[] =
+      Array.isArray(selectedPrologueNode?.presentCompanions) &&
+      selectedPrologueNode.presentCompanions.length > 0
+        ? selectedPrologueNode.presentCompanions
+        : Array.isArray(selectedPrologue?.presentCompanions) &&
+          selectedPrologue.presentCompanions.length > 0
+        ? selectedPrologue.presentCompanions
+        : [startingHeroine || "Evelyn Abbandonato"];
+
     const initialKnowledgeMap = {
       ...createDefaultNpcKnowledgeMap(storyContext?.companions),
       ...(npcKnowledgeMap || {}),
@@ -72,7 +81,7 @@ export async function POST(req: Request) {
     const startingHeroineKnowledge = getCompanionKnowledge(initialKnowledgeMap, startingHeroine);
     const knowledgeGatePrompt = buildKnowledgeGateDirective(
       initialKnowledgeMap,
-      [startingHeroine || "Evelyn Abbandonato"],
+      initialPresentHeroines,
       playerProfile
     );
 
@@ -276,6 +285,11 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
       ? SOVEREIGN_HEROINE_DOSSIERS[startingHeroine]
       : null;
 
+    const multiHeroineEnsembleDirective =
+      initialPresentHeroines.length > 1
+        ? `\n- ENSEMBLE CONVOCATION SCENE (${initialPresentHeroines.length} KEY HEROINES PRESENT): ${initialPresentHeroines.join(", ")} are ALL physically present in this scene. While ${startingHeroine} delivers the primary challenge, weave brief sensory reactions, glances, or interjections from the other present heroines (${initialPresentHeroines.filter((h) => h !== startingHeroine).join(", ")}) so the player feels the full tension of the Entrance Ceremony!`
+        : "";
+
     const sovereignSpireActOneDirective = isSovereignSpire
       ? `
 --- THE SOVEREIGN SPIRE: ACT I MATRICULATION & CONDUIT DIRECTIVE ---
@@ -283,7 +297,7 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
 - Origin Act I Stakes: ${sovereignOriginPreset?.actOneStakes || playerProfile?.worldOriginDetails}
 - Dual-Conduit Pathway: ${playerProfile?.conduit || "SOMATIC"} (${playerProfile?.conduit === "AETHERIAL" ? "Path B: Aetherial Projection — hollow-lens Sigil-Matrices & Aether Flux" : playerProfile?.conduit === "HYBRID" ? "Hybrid Conduit — blending Nerve-Accel reflexes with modular Relics or mist-hexes" : "Path A: Somatic Tempering — Pulse-Breathing, Edge-Resonance, & Nerve-Accel"})
 - Patron Wing Alignment: ${(playerProfile?.patronWing || "IRON_CHANCELLERY").replace(/_/g, " ")}
-${sovereignHeroineMeta ? `- Dyad Partner Dossier (${sovereignHeroineMeta.name} — "${sovereignHeroineMeta.epithet}"): Wing: ${sovereignHeroineMeta.wing.replace(/_/g, " ")} | Conduit: ${sovereignHeroineMeta.conduit} | Dyad Passive: ${sovereignHeroineMeta.dyadPassiveName} (${sovereignHeroineMeta.dyadPassiveDescription}) | Act I Conflict: ${sovereignHeroineMeta.actOneConflict} | Rival Boss Tie-In: ${sovereignHeroineMeta.rivalBossTieIn}` : ""}
+${sovereignHeroineMeta ? `- Primary Speaker Dossier (${sovereignHeroineMeta.name} — "${sovereignHeroineMeta.epithet}"): Wing: ${sovereignHeroineMeta.wing.replace(/_/g, " ")} | Conduit: ${sovereignHeroineMeta.conduit} | Dyad Passive: ${sovereignHeroineMeta.dyadPassiveName} (${sovereignHeroineMeta.dyadPassiveDescription}) | Act I Conflict: ${sovereignHeroineMeta.actOneConflict} | Rival Boss Tie-In: ${sovereignHeroineMeta.rivalBossTieIn}` : ""}${multiHeroineEnsembleDirective}
 - Selected Act I Scenario Seed: "${matchingNode?.title || heroineDossier.title}"
   Scene Baseline: ${matchingNode?.sceneSetup || heroineDossier.environment}
   Dialogue Baseline: "${matchingNode?.dialogue || heroineDossier.signatureOpeningDialogue}"
@@ -293,7 +307,7 @@ ${sovereignHeroineMeta ? `- Dyad Partner Dossier (${sovereignHeroineMeta.name} �
   3. Shape the 4 "opening_choices" into distinct, high-agency Act I vectors:
      - Choice 1: [${playerProfile?.conduit || "Somatic"}/Conduit Technique] Utilizing their ${playerProfile?.conduit || "Somatic"} pathway or equipped Wing Relic (${playerProfile?.gear?.relic || "Initiate Relic"}).
      - Choice 2: [${sovereignOriginPreset?.shortLabel || "Origin Leverage"}] Leveraging their specific Matriculation Origin (${sovereignOriginPreset?.shortLabel || playerProfile?.worldOrigin}) and Rank #${playerProfile?.matriculationRank || 488} standing.
-     - Choice 3: [Dyad Resonance / Psychological Read] Reading ${startingHeroine}'s hidden tell, Soul-Grounding compatibility, or shadow agenda.
+     - Choice 3: [Dyad Resonance / Psychological Read] Reading ${startingHeroine}'s hidden tell, Soul-Grounding compatibility, or engaging one of the other present heroines (${initialPresentHeroines.join(", ")}).
      - Choice 4: [Audacious Wager / Rival Challenge] Turning the tables on the immediate Act I threat (Corwin Baines #184, Proctor Sallow, or ${startingHeroine}'s test).`
       : "";
 
@@ -312,10 +326,10 @@ ${sovereignHeroineMeta ? `- Dyad Partner Dossier (${sovereignHeroineMeta.name} �
       abilities: playerProfile.abilities,
       location: startingLocation,
       activeSpeaker: startingHeroine,
-      latestDialogue: `Opening encounter with ${startingHeroine}`,
+      latestDialogue: `Opening encounter with ${initialPresentHeroines.join(", ")}`,
       mood: "Introductory Encounter",
       isProtagonistAlone: false,
-      presentHeroineNames: [startingHeroine],
+      presentHeroineNames: initialPresentHeroines,
     });
 
     const visibleWeaponText = playerProfile.gear?.weapon && !playerProfile.gear.weapon.includes("Pending")
@@ -659,6 +673,7 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
     );
     responseData.mechanics = separatedPrologue.mechanics;
     responseData.npc_knowledge_map = initialKnowledgeMap;
+    responseData.present_companions = initialPresentHeroines;
     if (Array.isArray(responseData.opening_choices)) {
       responseData.opening_choices = responseData.opening_choices.map((c: string) =>
         ensureChoiceIntentTag(sanitizeVisualNovelProse(c))

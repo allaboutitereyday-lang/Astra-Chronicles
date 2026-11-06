@@ -38,6 +38,7 @@ import { sanitizeImageUrl, DEFAULT_BG, DEFAULT_AVATAR } from "@/lib/imageUtils";
 import { getCodexStats } from "@/lib/codexStorage";
 import { validateKeyClientSide } from "@/lib/clientKeyValidation";
 import { CloudSyncModal } from "@/components/CloudSyncModal";
+import { WorldGuidebookModal } from "@/components/WorldGuidebookModal";
 import {
   getActiveCloudUser,
   CloudAccountUser,
@@ -83,6 +84,7 @@ export default function StoryCataloguePage() {
   const [showCloudSyncModal, setShowCloudSyncModal] = useState<boolean>(false);
   const [isFirstVisitPrompt, setIsFirstVisitPrompt] = useState<boolean>(false);
   const [cloudUser, setCloudUser] = useState<CloudAccountUser | null>(null);
+  const [guidebookStory, setGuidebookStory] = useState<StoryContext | null>(null);
 
   const loadStories = async () => {
     try {
@@ -918,10 +920,23 @@ export default function StoryCataloguePage() {
                         </div>
                       </div>
 
-                      {/* Enter Realm Button */}
-                      <div className="pt-1">
-                        <div className="w-full py-2.5 px-4 rounded-xl bg-white/5 group-hover:bg-gradient-to-r group-hover:from-rose-600 group-hover:to-amber-500 text-zinc-200 group-hover:text-white border border-white/10 group-hover:border-rose-400/50 font-mono text-xs font-bold flex items-center justify-center gap-2 transition-all">
-                          <Play className="w-3.5 h-3.5 fill-current" />
+                      {/* Lore Guidebook & Enter Realm Buttons */}
+                      <div className="pt-1 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            soundEffects.playClick();
+                            setGuidebookStory(story);
+                          }}
+                          className="py-2.5 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-400/60 font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                          title="Read World Lore, Heroines, Locations, Stats & Keywords"
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span>World Guide</span>
+                        </button>
+                        <div className="py-2.5 px-3 rounded-xl bg-white/5 group-hover:bg-gradient-to-r group-hover:from-rose-600 group-hover:to-amber-500 text-zinc-200 group-hover:text-white border border-white/10 group-hover:border-rose-400/50 font-mono text-xs font-bold flex items-center justify-center gap-1.5 transition-all">
+                          <Play className="w-3.5 h-3.5 fill-current shrink-0" />
                           <span>Enter Realm</span>
                         </div>
                       </div>
@@ -1055,6 +1070,16 @@ export default function StoryCataloguePage() {
           refreshAllProgression();
         }}
       />
+
+      {/* World Lore & Guidebook Modal */}
+      {guidebookStory && (
+        <WorldGuidebookModal
+          isOpen={Boolean(guidebookStory)}
+          onClose={() => setGuidebookStory(null)}
+          story={guidebookStory}
+          onPlayStory={() => router.push(`/play/${guidebookStory.id}`)}
+        />
+      )}
     </div>
   );
 }
