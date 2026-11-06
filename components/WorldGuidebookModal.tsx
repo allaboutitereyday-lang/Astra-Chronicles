@@ -484,19 +484,137 @@ export function WorldGuidebookModal({
             <div className="space-y-6 animate-in fade-in duration-150">
               {/* Setting & Core Premise */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                <div className="lg:col-span-8 bg-zinc-900/70 border border-white/10 rounded-2xl p-5 space-y-3">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="lg:col-span-8 bg-zinc-900/70 border border-white/10 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center justify-between gap-2 flex-wrap border-b border-white/10 pb-3">
                     <span className="text-xs font-mono font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-                      <Compass className="w-4 h-4" />
-                      Setting Overview: {story.worldContext?.settingName || story.title}
+                      <Compass className="w-4 h-4 shrink-0" />
+                      <span>Setting Overview: {story.worldContext?.settingName || story.title}</span>
                     </span>
                     <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-400">
                       Tone: {story.narrationStyle || "Dark Fantasy"}
                     </span>
                   </div>
-                  <p className="text-xs sm:text-sm text-zinc-200 leading-relaxed whitespace-pre-line">
-                    {story.worldContext?.loreSummary || story.description}
-                  </p>
+
+                  {isSovereignSpire ? (
+                    <div className="space-y-4">
+                      <p className="text-xs sm:text-sm text-zinc-200 leading-relaxed">
+                        Built directly into the throat of a mile-wide abyssal fissure known as{" "}
+                        <strong className="text-white">The Pale Maw</strong>, the{" "}
+                        <strong className="text-rose-300">Sovereign Spire</strong> is both an elite Imperial military academy and a vertical containment plug. Five hundred initiates compete each semester to harvest Aether Cores from the Under-Vault below—where standing is a zero-sum ladder from{" "}
+                        <span className="font-mono text-amber-300">Rank #1</span> down to{" "}
+                        <span className="font-mono text-rose-300">Rank #500</span>.
+                      </p>
+
+                      {/* 2x2 Grid for the Four Foundational Truths */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 block">
+                          The Four Foundational Truths of the Spire
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {[
+                            {
+                              num: "01",
+                              title: "Hostages & Blood-Ledgers",
+                              badge: "Politics & Debt",
+                              color: "border-rose-500/30 bg-rose-950/20 text-rose-300",
+                              desc: "Highborn scions are held as political hostages, while Commoners sign predatory Blood-Ledger Contracts that foreclose on their bodies if they fall into The Dross (#451–#500).",
+                            },
+                            {
+                              num: "02",
+                              title: "The Calcification Threshold",
+                              badge: "Age 25 Limit",
+                              color: "border-purple-500/30 bg-purple-950/20 text-purple-300",
+                              desc: "'Vault-Lung' turns anyone over age 25 to crystal below the First Seal—making young Academy initiates the Empire's only viable miners of Astra-Miasma Relics.",
+                            },
+                            {
+                              num: "03",
+                              title: "The 10% Sovereign Charter",
+                              badge: "Zero-Sum Ladder",
+                              color: "border-amber-500/30 bg-amber-950/20 text-amber-300",
+                              desc: "Only the top 10% earn autonomous Sovereign Charters upon graduation; the remaining 90% become expendable Imperial vanguard or indentured syndicate retainers.",
+                            },
+                            {
+                              num: "04",
+                              title: "Lawless Below the First Seal",
+                              badge: "The Under-Vault",
+                              color: "border-cyan-500/30 bg-cyan-950/20 text-cyan-300",
+                              desc: "Once the Great Lift drops past the First Seal, Imperial law ceases to exist—student murders and syndicate executions are logged simply as 'spatial anomalies.'",
+                            },
+                          ].map((truth) => (
+                            <div
+                              key={truth.num}
+                              className="p-3 rounded-xl bg-black/55 border border-white/10 space-y-1.5 flex flex-col justify-between"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-mono font-bold text-white">
+                                    <span className="text-rose-400 mr-1.5">{truth.num}.</span>
+                                    {truth.title}
+                                  </span>
+                                  <span
+                                    className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${truth.color}`}
+                                  >
+                                    {truth.badge}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                  {truth.desc}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3-Column Astra Conduit & Strain Strip */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                        <div className="p-3 rounded-xl bg-rose-950/25 border border-rose-500/30 space-y-1">
+                          <span className="text-[10px] font-mono font-bold uppercase text-rose-300 block">
+                            ⚔️ Path A: Somatic Tempering
+                          </span>
+                          <p className="text-[11px] text-zinc-300 leading-snug">
+                            Internal cultivation via <strong>Pulse-Breathing</strong>,{" "}
+                            <strong>Kinetic Pulse</strong>, <strong>Edge-Resonance</strong>, and{" "}
+                            <strong>Nerve-Accel</strong> reflexes.
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-purple-950/25 border border-purple-500/30 space-y-1">
+                          <span className="text-[10px] font-mono font-bold uppercase text-purple-300 block">
+                            🔮 Path B: Aetherial Projection
+                          </span>
+                          <p className="text-[11px] text-zinc-300 leading-snug">
+                            External weaving via geometric <strong>Sigil-Matrices</strong>,{" "}
+                            <strong>Aether Flux</strong>, gravity shears, and blood-crystal wards.
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-amber-950/25 border border-amber-500/30 space-y-1">
+                          <span className="text-[10px] font-mono font-bold uppercase text-amber-300 block">
+                            🔥 Strain & Soul-Grounding
+                          </span>
+                          <p className="text-[11px] text-zinc-300 leading-snug">
+                            <strong>0–49%</strong> Stable • <strong>50–85%</strong>{" "}
+                            <em>The Brink</em> (+30% dmg) • <strong>100%</strong>{" "}
+                            <em>Calcification Lock</em> (purged via skin-to-skin{" "}
+                            <strong>Soul-Grounding</strong>).
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(story.worldContext?.loreSummary || story.description || "")
+                        .split(/\n\n|\r\n\r\n/)
+                        .filter(Boolean)
+                        .map((para, pIdx) => (
+                          <p
+                            key={pIdx}
+                            className="text-xs sm:text-sm text-zinc-200 leading-relaxed"
+                          >
+                            {para}
+                          </p>
+                        ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* World Laws Card */}
