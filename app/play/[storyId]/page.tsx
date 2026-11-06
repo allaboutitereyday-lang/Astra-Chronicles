@@ -665,6 +665,8 @@ export default function VisualNovelGame() {
   const [statPoints, setStatPoints] = useState(10);
   const [gearPreference, setGearPreference] = useState<"system" | "canon" | "none">("system");
   const [selectedSovereignConduit, setSelectedSovereignConduit] = useState<string>("iron_chancellery_somatic");
+  const [creationTab, setCreationTab] = useState<"identity" | "origin" | "conduit" | "prologue">("identity");
+  const [showRosterDrawer, setShowRosterDrawer] = useState<boolean>(false);
 
   const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
   const [fullPortraitViewer, setFullPortraitViewer] = useState<{
@@ -7652,234 +7654,813 @@ export default function VisualNovelGame() {
                 Origin Protocol
               </span>
             </div>
-          </div>
 
-          {/* CROSS-WORLD CHARACTER ROSTER (IDENTITY-ONLY BLUEPRINTS) */}
-          <div className="bg-gradient-to-r from-indigo-950/50 via-zinc-950/90 to-purple-950/50 border border-indigo-500/30 rounded-2xl p-3.5 sm:p-4 space-y-3">
-            <input
-              ref={rosterFileInputRef}
-              type="file"
-              accept=".json,application/json"
-              onChange={handleImportCharacterBlueprint}
-              className="hidden"
-            />
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-400 shrink-0" />
-                  <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                    Cross-World Character Roster
-                  </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-200 font-bold">
-                    {characterRoster.length} Saved
-                  </span>
-                </div>
-                <p className="text-[11px] text-zinc-400 mt-0.5 leading-relaxed">
-                  Save your character&apos;s identity (Name, Portrait, Race, Class, Personality &amp; Traits) to reuse across any world or starting introduction. Level and items are never carried over.
-                </p>
-              </div>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => rosterFileInputRef.current?.click()}
-                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-indigo-400/50 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1.5 transition-all cursor-pointer"
-                  title="Import a .character.json blueprint file"
-                >
-                  <Upload className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Import</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveCharacterToRoster}
-                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
-                  title="Save current character identity (Name, Portrait, Race, Class, Personality) to Roster"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>Save Character</span>
-                </button>
-              </div>
-            </div>
-
-            {rosterNotice && (
-              <div className="px-3 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>{rosterNotice}</span>
-              </div>
-            )}
-
-            {characterRoster.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1 pt-0.5">
-                {characterRoster.map((bp) => {
-                  const isActiveMatch =
-                    player.name.trim().toLowerCase() === bp.name.trim().toLowerCase() &&
-                    (player.race || "Human").trim().toLowerCase() === (bp.race || "Human").trim().toLowerCase();
-                  return (
-                    <div
-                      key={bp.id}
-                      onClick={() => handleLoadCharacterFromRoster(bp)}
-                      className={`group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                        isActiveMatch
-                          ? "bg-indigo-950/60 border-indigo-400/80 text-white shadow-md"
-                          : "bg-zinc-900/85 hover:bg-zinc-900 border-white/10 hover:border-indigo-500/50 text-zinc-300"
-                      }`}
-                      title={`Click to load ${bp.name} (${bp.race} ${bp.role}) into ${currentStory.title}`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          onClick={(e) => {
-                            if (bp.avatar && bp.avatar.trim()) {
-                              handleOpenPlayerFullPortrait(
-                                e,
-                                bp.avatar,
-                                bp.name,
-                                `${bp.race || "Human"} • ${bp.role || "Adventurer"}`
-                              );
-                            }
-                          }}
-                          title={
-                            bp.avatar && bp.avatar.trim()
-                              ? `Click to view full image of ${bp.name}`
-                              : undefined
-                          }
-                          className={`relative w-10 h-10 rounded-xl overflow-hidden bg-zinc-950 border border-white/15 flex items-center justify-center shrink-0 ${
-                            bp.avatar && bp.avatar.trim()
-                              ? "cursor-pointer hover:border-rose-400/70 hover:scale-105 transition-all"
-                              : ""
-                          }`}
-                        >
-                          {bp.avatar && bp.avatar.trim() ? (
-                            <img src={bp.avatar} alt={bp.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <User className="w-5 h-5 text-indigo-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-mono font-bold text-white truncate">
-                              {bp.name}
-                            </span>
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 shrink-0">
-                              {bp.race || "Human"}
-                            </span>
-                            {(bp.gender || bp.age) && (
-                              <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300 shrink-0">
-                                {[bp.gender, bp.age ? `${bp.age}` : ""].filter(Boolean).join(" • ")}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-mono text-indigo-300 truncate">
-                            {bp.role || "Adventurer"} • {bp.worldOrigin || "Born & Raised (Native)"} • {bp.personality || "Stoic Pragmatist"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) => handleExportCharacterBlueprint(bp, e)}
-                          className="p-1.5 rounded-lg bg-black/50 hover:bg-indigo-950 text-zinc-400 hover:text-indigo-300 border border-white/10 transition-colors cursor-pointer"
-                          title="Export Character JSON"
-                        >
-                          <Download className="w-3 h-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteCharacterFromRoster(bp.id, bp.name, e)}
-                          className="p-1.5 rounded-lg bg-black/50 hover:bg-rose-950 text-zinc-400 hover:text-rose-300 border border-white/10 transition-colors cursor-pointer"
-                          title="Remove from Roster"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
+            {/* 4-Step Tab Navigation Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 pt-2">
+              {(
+                [
+                  {
+                    id: "identity" as const,
+                    step: "01",
+                    label: "Identity & Persona",
+                    sub: `${player.name || "Caelen"} • ${player.race || "Human"}`,
+                  },
+                  {
+                    id: "origin" as const,
+                    step: "02",
+                    label:
+                      currentStory.id === "sovereign-spire"
+                        ? "Matriculation Origin"
+                        : "World Origin",
+                    sub:
+                      currentStory.id === "sovereign-spire"
+                        ? `Rank #${player.matriculationRank || 488}`
+                        : player.worldOrigin?.split("(")[0]?.trim() || "Native",
+                  },
+                  {
+                    id: "conduit" as const,
+                    step: "03",
+                    label:
+                      currentStory.id === "sovereign-spire"
+                        ? "Conduit & Wing"
+                        : "Class & Arsenal",
+                    sub:
+                      currentStory.id === "sovereign-spire"
+                        ? `${player.conduit || "SOMATIC"} • ${gearPreference.toUpperCase()}`
+                        : player.role || "Choose Class",
+                  },
+                  {
+                    id: "prologue" as const,
+                    step: "04",
+                    label:
+                      currentStory.id === "sovereign-spire"
+                        ? "Act I Prelude"
+                        : "Starting Scenario",
+                    sub: prologues[selectedPrologue]?.speaker || "Select Node",
+                  },
+                ]
+              ).map((tab) => {
+                const isActive = creationTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setCreationTab(tab.id);
+                    }}
+                    className={`px-3 py-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${
+                      isActive
+                        ? "bg-gradient-to-br from-rose-950/70 via-zinc-900 to-amber-950/50 border-rose-500/80 text-white shadow-lg ring-1 ring-rose-500/30"
+                        : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-mono font-bold text-rose-400">
+                        STEP {tab.step}
+                      </span>
+                      {isActive && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-[11px] font-mono text-zinc-500 bg-black/40 border border-dashed border-white/10 rounded-xl px-3 py-2 text-center">
-                No saved characters yet. Customize your protagonist below and click &ldquo;Save Character&rdquo; to use them across any world or prologue!
-              </div>
-            )}
+                    <span className="text-xs font-mono font-bold truncate">
+                      {tab.label}
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-400 truncate">
+                      {tab.sub}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 flex items-center gap-4">
-            <button
-              type="button"
-              onClick={(e) => {
-                if (playerAvatar && playerAvatar.trim()) {
-                  handleOpenPlayerFullPortrait(e);
-                }
-              }}
-              title={
-                playerAvatar && playerAvatar.trim()
-                  ? "Click to view full character image"
-                  : "Upload a character portrait to preview"
-              }
-              className={`group relative w-16 h-16 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 transition-all ${
-                playerAvatar && playerAvatar.trim()
-                  ? "cursor-pointer hover:border-rose-500/70 hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
-                  : "cursor-default"
-              }`}
-            >
-              {playerAvatar && playerAvatar.trim() ? (
-                <>
-                  <img
-                    src={playerAvatar}
-                    alt="Character Avatar"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                  />
-                  <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <Eye className="w-4 h-4 text-white" />
-                  </div>
-                </>
-              ) : (
-                <User className="w-8 h-8 text-zinc-600" />
-              )}
-            </button>
-            <div className="flex-1">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <label className="text-xs font-mono text-zinc-300 block">
-                  Character Portrait (Visual AI Input)
-                </label>
-                {playerAvatar && playerAvatar.trim() && (
+          {/* =========================================================
+              TAB 1: IDENTITY, LINEAGE & PERSONA
+             ========================================================= */}
+          {creationTab === "identity" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Collapsible Cross-World Character Roster */}
+              <div className="bg-gradient-to-r from-indigo-950/50 via-zinc-950/90 to-purple-950/50 border border-indigo-500/30 rounded-2xl p-3.5 sm:p-4 space-y-3">
+                <input
+                  ref={rosterFileInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  onChange={handleImportCharacterBlueprint}
+                  className="hidden"
+                />
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={(e) => handleOpenPlayerFullPortrait(e)}
-                    className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/40 text-rose-200 hover:text-white flex items-center gap-1 cursor-pointer transition-all"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setShowRosterDrawer((prev) => !prev);
+                    }}
+                    className="flex items-center gap-2 text-left cursor-pointer min-w-0"
                   >
-                    <Eye className="w-3 h-3 text-rose-400" />
-                    <span>View Full Image</span>
+                    <Users className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                      Cross-World Character Roster
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/40 text-indigo-200 font-bold">
+                      {characterRoster.length} Saved
+                    </span>
+                    {showRosterDrawer ? (
+                      <ChevronUp className="w-3.5 h-3.5 text-zinc-400" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                    )}
                   </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => rosterFileInputRef.current?.click()}
+                      className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-indigo-400/50 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Import a .character.json blueprint file"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Import</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveCharacterToRoster}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[11px] font-mono font-bold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+                      title="Save current character identity (Name, Portrait, Race, Class, Personality) to Roster"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>Save Character</span>
+                    </button>
+                  </div>
+                </div>
+
+                {rosterNotice && (
+                  <div className="px-3 py-1.5 rounded-xl bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs font-mono flex items-center gap-2">
+                    <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>{rosterNotice}</span>
+                  </div>
+                )}
+
+                {showRosterDrawer && (
+                  <div className="space-y-2 pt-1 border-t border-white/10">
+                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                      Load a saved protagonist blueprint (Name, Portrait, Lineage, &amp; Persona) into {currentStory.title}.
+                    </p>
+                    {characterRoster.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-44 overflow-y-auto pr-1 pt-0.5">
+                        {characterRoster.map((bp) => {
+                          const isActiveMatch =
+                            player.name.trim().toLowerCase() === bp.name.trim().toLowerCase() &&
+                            (player.race || "Human").trim().toLowerCase() === (bp.race || "Human").trim().toLowerCase();
+                          return (
+                            <div
+                              key={bp.id}
+                              onClick={() => handleLoadCharacterFromRoster(bp)}
+                              className={`group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
+                                isActiveMatch
+                                  ? "bg-indigo-950/60 border-indigo-400/80 text-white shadow-md"
+                                  : "bg-zinc-900/85 hover:bg-zinc-900 border-white/10 hover:border-indigo-500/50 text-zinc-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  onClick={(e) => {
+                                    if (bp.avatar && bp.avatar.trim()) {
+                                      handleOpenPlayerFullPortrait(
+                                        e,
+                                        bp.avatar,
+                                        bp.name,
+                                        `${bp.race || "Human"} • ${bp.role || "Adventurer"}`
+                                      );
+                                    }
+                                  }}
+                                  className="relative w-10 h-10 rounded-xl overflow-hidden bg-zinc-950 border border-white/15 flex items-center justify-center shrink-0"
+                                >
+                                  {bp.avatar && bp.avatar.trim() ? (
+                                    <img src={bp.avatar} alt={bp.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <User className="w-5 h-5 text-indigo-400" />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs font-mono font-bold text-white truncate">
+                                      {bp.name}
+                                    </span>
+                                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 shrink-0">
+                                      {bp.race || "Human"}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] font-mono text-indigo-300 truncate">
+                                    {bp.role || "Adventurer"} • {bp.personality || "Stoic Pragmatist"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleExportCharacterBlueprint(bp, e)}
+                                  className="p-1.5 rounded-lg bg-black/50 hover:bg-indigo-950 text-zinc-400 hover:text-indigo-300 border border-white/10 transition-colors cursor-pointer"
+                                  title="Export Character JSON"
+                                >
+                                  <Download className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleDeleteCharacterFromRoster(bp.id, bp.name, e)}
+                                  className="p-1.5 rounded-lg bg-black/50 hover:bg-rose-950 text-zinc-400 hover:text-rose-300 border border-white/10 transition-colors cursor-pointer"
+                                  title="Remove from Roster"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-[11px] font-mono text-zinc-500 bg-black/40 border border-dashed border-white/10 rounded-xl px-3 py-2 text-center">
+                        No saved characters yet. Customize your protagonist below and click &ldquo;Save Character&rdquo;!
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-rose-600/30 file:text-rose-200 hover:file:bg-rose-600/50 cursor-pointer"
-              />
-              <p className="text-[11px] text-zinc-500 mt-1">
-                {playerAvatar && playerAvatar.trim()
-                  ? "Click your profile image anytime to view the full uncropped portrait."
-                  : "Visual AI will inspect your portrait to detect species anatomy, facial features, armor, and traits."}
-              </p>
-            </div>
-          </div>
 
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-mono text-zinc-400 block mb-1">Character Name</label>
-                <input
-                  type="text"
-                  value={player.name}
-                  onChange={(e) => setPlayer((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none"
-                />
+              {/* Portrait & Name Row */}
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      if (playerAvatar && playerAvatar.trim()) {
+                        handleOpenPlayerFullPortrait(e);
+                      }
+                    }}
+                    title={
+                      playerAvatar && playerAvatar.trim()
+                        ? "Click to view full character image"
+                        : "Upload a character portrait to preview"
+                    }
+                    className={`group relative w-16 h-16 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 transition-all ${
+                      playerAvatar && playerAvatar.trim()
+                        ? "cursor-pointer hover:border-rose-500/70 hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                        : "cursor-default"
+                    }`}
+                  >
+                    {playerAvatar && playerAvatar.trim() ? (
+                      <>
+                        <img
+                          src={playerAvatar}
+                          alt="Character Avatar"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Eye className="w-4 h-4 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <User className="w-8 h-8 text-zinc-600" />
+                    )}
+                  </button>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs font-mono text-zinc-300 font-bold">
+                        Protagonist Portrait (Visual AI Anchor)
+                      </label>
+                      {playerAvatar && playerAvatar.trim() && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                          className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/40 text-rose-200 hover:text-white flex items-center gap-1 cursor-pointer transition-all"
+                        >
+                          <Eye className="w-3 h-3 text-rose-400" />
+                          <span>View Full Image</span>
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarUpload}
+                      className="text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-rose-600/30 file:text-rose-200 hover:file:bg-rose-600/50 cursor-pointer"
+                    />
+                    <p className="text-[11px] text-zinc-500">
+                      Visual AI scans your portrait to anchor species features, eye color, and attire in generated scenes.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-white/5 items-end">
+                  <div className="md:col-span-5">
+                    <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
+                      Character Name
+                    </label>
+                    <input
+                      type="text"
+                      value={player.name}
+                      onChange={(e) => setPlayer((prev) => ({ ...prev, name: e.target.value }))}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                  <div className="md:col-span-4 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-mono text-zinc-300 font-bold">Gender</label>
+                      <span className="text-[10px] font-mono text-sky-300">{player.gender || "Male"}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-1">
+                      {GENDER_PRESETS.map((g) => {
+                        const isSelected =
+                          selectedGenderPreset === g.id ||
+                          (!selectedGenderPreset && g.id === "male" && (player.gender || "Male") === "Male");
+                        return (
+                          <button
+                            key={g.id}
+                            type="button"
+                            onClick={() => handleSelectGenderPreset(g)}
+                            className={`px-1.5 py-1.5 rounded-xl border text-xs font-mono transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                              isSelected
+                                ? "bg-sky-950/40 border-sky-500/80 text-sky-200 font-bold"
+                                : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20"
+                            }`}
+                          >
+                            <span className="text-xs leading-none">{g.icon}</span>
+                            <span className="text-[10px] truncate">{g.shortLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
+                      Age
+                    </label>
+                    <input
+                      type="text"
+                      value={player.age ?? "22"}
+                      onChange={(e) =>
+                        setPlayer((prev) => {
+                          const next = { ...prev, age: e.target.value };
+                          playerRef.current = next;
+                          return next;
+                        })
+                      }
+                      placeholder="e.g., 19, 22..."
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-sky-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+                {selectedGenderPreset === "custom" && (
+                  <input
+                    type="text"
+                    value={player.gender || ""}
+                    onChange={(e) => handleCustomGenderChange(e.target.value)}
+                    placeholder="Custom gender or pronouns (e.g. Genderfluid, They/Them)..."
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:border-sky-500 focus:outline-none placeholder-zinc-600 font-mono"
+                  />
+                )}
               </div>
-              <div>
-                <label className="text-xs font-mono text-zinc-400 block mb-1">
+
+              {/* LINEAGE & ANATOMICAL VISION PROFILE */}
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Lineage &amp; Anatomical Physiology</span>
+                    </label>
+                    <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
+                      Heroines react to non-human anatomy (fangs, wolf ears, draconic scales, abyssal eyes) during close-quarters sensory scenes.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 self-start shrink-0 whitespace-nowrap font-bold">
+                    Race: {player.race || "Human"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                  {RACE_PRESETS.map((p) => {
+                    const isSelected = selectedRacePreset === p.id || (!selectedRacePreset && p.id === "human" && player.race === "Human");
+                    const displayLabel = (p as any).shortLabel || p.name.split("/")[0].trim();
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleSelectRacePreset(p)}
+                        className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
+                          isSelected
+                            ? "bg-amber-950/40 border-amber-500/80 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
+                            : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                        }`}
+                        title={p.description}
+                      >
+                        <span className="text-base leading-none">{p.icon}</span>
+                        <span className="text-[10px] leading-tight whitespace-nowrap">{displayLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
+                  <div>
+                    <label className="text-xs font-mono text-zinc-400 block mb-1">Lineage / Race Name</label>
+                    <input
+                      type="text"
+                      value={player.race || ""}
+                      onChange={(e) => handleCustomRaceChange(e.target.value)}
+                      placeholder="e.g. Human, Lycan, Void Chimera..."
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <label className="text-xs font-mono text-zinc-400 truncate">Anatomical Traits</label>
+                      <span className="text-[10px] text-zinc-500 font-mono">Comma-separated</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={racialTraitsInput}
+                      onChange={(e) => handleRacialTraitsChange(e.target.value)}
+                      placeholder="e.g. sharp canine fangs, silver eyes..."
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* CHARACTER DEMEANOR & CRAFTED PERSONA */}
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>Character Demeanor &amp; Persona</span>
+                    </label>
+                    <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
+                      Shapes your protagonist&apos;s dialogue voice, inner monologue, and how the 4 tactical action choices are phrased each turn.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 self-start shrink-0 whitespace-nowrap font-bold">
+                    Persona: {player.personality || "Stoic Pragmatist"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                  {PERSONALITY_PRESETS.map((p) => {
+                    const isSelected = selectedPersonalityPreset === p.id || (!selectedPersonalityPreset && p.id === "stoic" && player.personality === "Stoic Pragmatist");
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleSelectPersonalityPreset(p)}
+                        className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
+                          isSelected
+                            ? "bg-rose-950/40 border-rose-500/80 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
+                            : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                        }`}
+                        title={p.description}
+                      >
+                        <span className="text-base leading-none">{p.icon}</span>
+                        <span className="text-[10px] leading-tight whitespace-nowrap">{p.shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
+                  <div>
+                    <label className="text-xs font-mono text-zinc-400 block mb-1">Core Demeanor</label>
+                    <input
+                      type="text"
+                      value={player.personality || ""}
+                      onChange={(e) => handleCustomPersonalityChange(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-mono text-zinc-400 block mb-1">Roleplay Traits</label>
+                    <input
+                      type="text"
+                      value={personalityTraitsInput}
+                      onChange={(e) => handlePersonalityTraitsChange(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 1 Footer Navigation */}
+              <div className="flex items-center justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setCreationTab("origin");
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-mono font-bold shadow-lg transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span>
+                    Next: {currentStory.id === "sovereign-spire" ? "Matriculation Origin & Standing" : "World Origin"} →
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================
+              TAB 2: MATRICULATION ORIGIN & BLOOD-LEDGER STANDING
+             ========================================================= */}
+          {creationTab === "origin" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <label className="text-sm font-mono text-emerald-300 font-bold flex items-center gap-2">
+                      <Compass className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        {currentStory.id === "sovereign-spire"
+                          ? "Matriculation Origin & Blood-Ledger Standing"
+                          : "World Origin & System Familiarity"}
+                      </span>
+                    </label>
+                    <p className="text-xs text-zinc-400 font-sans mt-1 leading-relaxed">
+                      {currentStory.id === "sovereign-spire"
+                        ? "Select how you were enrolled into the Sovereign Spire. Each origin shapes your starting Matriculation Rank (#500–#1), semester Aether Core debt quota, faculty scrutiny, and which Heroines naturally trust or test you in Act I."
+                        : "Choose how you entered this world and how deeply you understand the System and its factions."}
+                    </p>
+                  </div>
+                  {currentStory.id === "sovereign-spire" && (
+                    <div className="flex items-center gap-1.5 self-start shrink-0">
+                      <span className="text-xs font-mono px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 whitespace-nowrap font-bold">
+                        Rank #{player.matriculationRank || 488} • {player.semesterDebtQuota || 400} Core Quota
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {currentStory.id === "sovereign-spire" ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {SOVEREIGN_ORIGIN_PRESETS.map((so) => {
+                        const isSelected =
+                          selectedWorldOriginPreset === so.id ||
+                          player.sovereignOrigin === so.id;
+                        return (
+                          <button
+                            key={so.id}
+                            type="button"
+                            onClick={() => handleSelectSovereignOriginPreset(so)}
+                            className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
+                              isSelected
+                                ? "bg-emerald-950/50 border-emerald-400 text-white shadow-xl ring-1 ring-emerald-400/40"
+                                : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
+                            }`}
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-1.5">
+                                <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                                  <span className="text-base">{so.icon}</span>
+                                  <span>{so.shortLabel}</span>
+                                </span>
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-black/70 border border-rose-500/40 text-rose-300 font-bold shrink-0">
+                                  {so.rankTierLabel}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                {so.actOneStakes}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-300 pt-2 border-t border-white/10">
+                              <span>Quota: {so.semesterDebtQuota} Cores</span>
+                              <span className="text-amber-300 font-bold">{so.startingCrowns} Crowns</span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Detailed Impact Breakdown Card for Selected Sovereign Origin */}
+                    {(() => {
+                      const activeOrigin =
+                        SOVEREIGN_ORIGIN_PRESETS.find(
+                          (so) =>
+                            so.id === selectedWorldOriginPreset ||
+                            so.id === player.sovereignOrigin
+                        ) || SOVEREIGN_ORIGIN_PRESETS[0];
+                      return (
+                        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/35 via-zinc-950/95 to-rose-950/25 border border-emerald-500/35 space-y-3">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{activeOrigin.icon}</span>
+                              <div>
+                                <h3 className="text-xs sm:text-sm font-mono font-bold text-white">
+                                  How &ldquo;{activeOrigin.shortLabel}&rdquo; Shapes Your Opening Scenario
+                                </h3>
+                                <p className="text-[11px] font-mono text-emerald-300">
+                                  Starting Rank #{activeOrigin.startingRank} • Semester Debt Quota: {activeOrigin.semesterDebtQuota} Aether Cores • {activeOrigin.startingCrowns} Imperial Crowns
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-zinc-200 font-sans leading-relaxed">
+                            {activeOrigin.defaultDetails}
+                          </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                            <div className="p-3 rounded-xl bg-black/50 border border-rose-500/25 space-y-1">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold block">
+                                Act I Political &amp; Rival Pressure
+                              </span>
+                              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                {activeOrigin.actOneStakes}
+                              </p>
+                            </div>
+                            <div className="p-3 rounded-xl bg-black/50 border border-emerald-500/25 space-y-1.5">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block">
+                                High-Resonance Dyad Heroines
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {activeOrigin.highResonanceHeroines.map((hName) => {
+                                  const hDossier = SOVEREIGN_HEROINE_DOSSIERS[hName];
+                                  return (
+                                    <span
+                                      key={hName}
+                                      className="px-2.5 py-1 rounded-lg bg-emerald-500/15 border border-emerald-500/35 text-[11px] font-mono text-emerald-200 font-bold"
+                                    >
+                                      ★ {hName} {hDossier ? `(${hDossier.epithet})` : ""}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                              <p className="text-[10px] text-zinc-400 font-sans">
+                                These Heroines are highlighted with an &ldquo;Origin Resonance&rdquo; badge on the Act I Prelude tab.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
+                    {WORLD_ORIGIN_PRESETS.map((o) => {
+                      const isSelected =
+                        selectedWorldOriginPreset === o.id ||
+                        (!selectedWorldOriginPreset && o.id === "native");
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => handleSelectWorldOriginPreset(o)}
+                          className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
+                            isSelected
+                              ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
+                              : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                          }`}
+                          title={o.description}
+                        >
+                          <span className="text-base leading-none">{o.icon}</span>
+                          <span className="text-[10px] leading-tight whitespace-nowrap">{o.shortLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Editable Origin Backstory & Custom Overrides */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-white/10 items-start">
+                  <div className="md:col-span-4">
+                    <label className="text-xs font-mono text-zinc-400 block mb-1">
+                      Origin Title (Editable)
+                    </label>
+                    <input
+                      type="text"
+                      value={player.worldOrigin || ""}
+                      onChange={(e) => handleCustomWorldOriginChange(e.target.value)}
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                  <div className="md:col-span-8">
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <label className="text-xs font-mono text-zinc-400">
+                        Origin Backstory &amp; Narrative Directive
+                      </label>
+                      <span className="text-[10px] text-zinc-500 font-mono">Injected into AI Prologue</span>
+                    </div>
+                    <textarea
+                      rows={3}
+                      value={player.worldOriginDetails || ""}
+                      onChange={(e) =>
+                        setPlayer((prev) => {
+                          const next = { ...prev, worldOriginDetails: e.target.value };
+                          playerRef.current = next;
+                          return next;
+                        })
+                      }
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:border-emerald-500 focus:outline-none font-sans leading-relaxed resize-y"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 Footer Navigation */}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setCreationTab("identity");
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs font-mono cursor-pointer transition-all"
+                >
+                  ← Back: Identity
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setCreationTab("conduit");
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-amber-600 hover:from-emerald-500 hover:to-amber-500 text-white text-xs font-mono font-bold shadow-lg transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span>
+                    Next: {currentStory.id === "sovereign-spire" ? "Conduit, Wing & Relic Loadout" : "Class & Arsenal"} →
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================
+              TAB 3: DUAL-CONDUIT, PATRON WING & STARTING ARSENAL
+             ========================================================= */}
+          {creationTab === "conduit" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {currentStory.id === "sovereign-spire" ? (
+                <div className="bg-gradient-to-br from-amber-950/35 via-zinc-950/90 to-indigo-950/35 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <label className="text-sm font-mono text-amber-300 font-bold flex items-center gap-2">
+                        <Swords className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span>Dual-Conduit &amp; Patron Wing Doctrine</span>
+                      </label>
+                      <p className="text-xs text-zinc-400 font-sans mt-0.5 leading-relaxed">
+                        Choose your Astra biological pathway and Patron Wing pledge. Determines how you fight in the Crucible, your starting techniques, and your socketed Vault Relic.
+                      </p>
+                    </div>
+                    <span className="text-xs font-mono px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-200 font-bold self-start shrink-0">
+                      {player.conduit || "SOMATIC"} CONDUIT
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {SOVEREIGN_CONDUIT_PRESETS.map((preset) => {
+                      const isSelected = selectedSovereignConduit === preset.id;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => handleSelectSovereignConduitPreset(preset)}
+                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                            isSelected
+                              ? "bg-amber-950/50 border-amber-400 text-white shadow-xl ring-1 ring-amber-400/35"
+                              : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-amber-500/40"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                                <span className="text-base">{preset.icon}</span>
+                                <span>{preset.shortLabel}</span>
+                              </span>
+                              <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-black/70 border border-amber-500/35 text-amber-300 shrink-0">
+                                {preset.conduit} • {preset.wingLabel.replace("The ", "")}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">
+                              {preset.description}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-2 border-t border-white/10">
+                            <span className="text-amber-300 truncate">
+                              Relic: {preset.canonLoadout.relic}
+                            </span>
+                            <span className="text-sky-300 font-bold shrink-0 ml-2">
+                              {preset.statSpread.str}/{preset.statSpread.dex}/{preset.statSpread.int}
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Custom Class Title Override */}
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
+                <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
                   {currentStory.id === "sovereign-spire"
-                    ? "Conduit Archetype & Patron Wing"
+                    ? "Active Class / Conduit Title (Editable)"
                     : "Custom Class / Archetype"}
                 </label>
                 <input
@@ -7891,953 +8472,573 @@ export default function VisualNovelGame() {
                   }
                   value={player.role}
                   onChange={(e) => setPlayer((prev) => ({ ...prev, role: e.target.value }))}
-                  className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700"
+                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
                 />
               </div>
-            </div>
 
-            {currentStory.id === "sovereign-spire" && (
-              <div className="bg-gradient-to-br from-amber-950/35 via-zinc-950/90 to-indigo-950/35 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <label className="text-xs font-mono text-amber-300 font-bold flex items-center gap-1.5">
-                      <Swords className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>Dual-Conduit &amp; Patron Wing Doctrine</span>
-                    </label>
-                    <p className="text-[11px] text-zinc-400 font-sans mt-0.5 leading-relaxed">
-                      Select your Astra biological pathway and Patron Wing pledge. Auto-configures your starting Conduit techniques, attribute spread, and Canon Wing Relic loadout.
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5 self-start shrink-0">
-                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/35 text-amber-200 font-bold">
-                      {player.conduit || "SOMATIC"} CONDUIT
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {SOVEREIGN_CONDUIT_PRESETS.map((preset) => {
-                    const isSelected = selectedSovereignConduit === preset.id;
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => handleSelectSovereignConduitPreset(preset)}
-                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
-                          isSelected
-                            ? "bg-amber-950/45 border-amber-400/80 text-white shadow-lg ring-1 ring-amber-400/30"
-                            : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-amber-500/40"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-                              <span>{preset.icon}</span>
-                              <span>{preset.shortLabel}</span>
-                            </span>
-                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 border border-amber-500/30 text-amber-300 shrink-0">
-                              {preset.conduit} • {preset.wingLabel.replace("The ", "")}
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-2">
-                            {preset.description}
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-1.5 border-t border-white/5">
-                          <span className="text-amber-300/90 truncate">
-                            Relic: {preset.canonLoadout.relic}
-                          </span>
-                          <span className="text-sky-300 shrink-0 ml-2">
-                            {preset.statSpread.str}/{preset.statSpread.dex}/{preset.statSpread.int}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* GENDER & AGE IDENTITY */}
-            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <div className="md:col-span-7 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-mono text-zinc-300 font-bold">
-                      Gender &amp; Pronouns
-                    </label>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 border border-sky-500/30 text-sky-300 font-bold">
-                      {player.gender || "Male"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {GENDER_PRESETS.map((g) => {
-                      const isSelected =
-                        selectedGenderPreset === g.id ||
-                        (!selectedGenderPreset && g.id === "male" && (player.gender || "Male") === "Male");
-                      return (
-                        <button
-                          key={g.id}
-                          type="button"
-                          onClick={() => handleSelectGenderPreset(g)}
-                          className={`px-2 py-1.5 rounded-xl border text-xs font-mono transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                            isSelected
-                              ? "bg-sky-950/40 border-sky-500/80 text-sky-200 shadow-md ring-1 ring-sky-500/30 font-bold"
-                              : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                          }`}
-                        >
-                          <span className="text-sm leading-none">{g.icon}</span>
-                          <span className="text-[10px] truncate">{g.shortLabel}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {selectedGenderPreset === "custom" && (
-                    <input
-                      type="text"
-                      value={player.gender || ""}
-                      onChange={(e) => handleCustomGenderChange(e.target.value)}
-                      placeholder="Custom gender or pronouns (e.g. Genderfluid, They/Them)..."
-                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:border-sky-500 focus:outline-none placeholder-zinc-600 font-mono"
-                    />
-                  )}
-                </div>
-
-                <div className="md:col-span-5 space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-mono text-zinc-300 font-bold">
-                      Character Age
-                    </label>
-                    <span className="text-[10px] font-mono text-zinc-500">
-                      Years or Life Stage
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    value={player.age ?? "22"}
-                    onChange={(e) =>
-                      setPlayer((prev) => {
-                        const next = { ...prev, age: e.target.value };
-                        playerRef.current = next;
-                        return next;
-                      })
-                    }
-                    placeholder="e.g., 22, 19, Young Adult, 300 (Ancient)..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-sky-500 focus:outline-none placeholder-zinc-700 font-mono"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* WORLD ORIGIN & SYSTEM FAMILIARITY */}
-            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                    <Compass className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>
-                      {currentStory.id === "sovereign-spire"
-                        ? "Matriculation Origin & Blood-Ledger Standing"
-                        : "World Origin & System Familiarity"}
-                    </span>
-                  </label>
-                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
+              {/* Attribute Allocation */}
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
+                <div className="flex justify-between items-center mb-2.5">
+                  <label className="text-xs font-mono text-zinc-300 font-bold">
                     {currentStory.id === "sovereign-spire"
-                      ? "Choose how you were enrolled into the Sovereign Spire. Determines your starting Matriculation Rank (#500–#1), semester Aether Core debt quota, faculty scrutiny, and heroine resonance."
-                      : "Choose how you entered this world. Natives and Regressors possess deep intuitive knowledge of the System, mana laws, and factions, while Summoned Otherworlders experience the world with outsider eyes."}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 self-start shrink-0">
-                  {currentStory.id === "sovereign-spire" && (
-                    <span className="text-[10px] font-mono px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/35 text-rose-300 whitespace-nowrap font-bold">
-                      Rank #{player.matriculationRank || 488} • {player.semesterDebtQuota || 400} Core Quota
-                    </span>
-                  )}
-                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 whitespace-nowrap font-bold">
-                    {player.worldOrigin?.split("(")[0]?.trim() || "Born & Raised"}
+                      ? "Dual-Conduit Attribute Allocation"
+                      : "Attribute Allocation"}
+                  </label>
+                  <span className="text-xs font-mono font-bold text-sky-400">
+                    Unspent Points: {statPoints}
                   </span>
                 </div>
-              </div>
-
-              {/* World Origin Presets */}
-              {currentStory.id === "sovereign-spire" ? (
-                <div className="space-y-2.5">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {SOVEREIGN_ORIGIN_PRESETS.map((so) => {
-                      const isSelected =
-                        selectedWorldOriginPreset === so.id ||
-                        player.sovereignOrigin === so.id;
-                      return (
-                        <button
-                          key={so.id}
-                          type="button"
-                          onClick={() => handleSelectSovereignOriginPreset(so)}
-                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
-                            isSelected
-                              ? "bg-emerald-950/45 border-emerald-400/80 text-white shadow-lg ring-1 ring-emerald-400/30"
-                              : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-1.5 mb-1">
-                              <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-                                <span>{so.icon}</span>
-                                <span>{so.shortLabel}</span>
-                              </span>
-                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/60 border border-rose-500/30 text-rose-300 shrink-0">
-                                {so.rankTierLabel}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-zinc-400 leading-relaxed line-clamp-2">
-                              {so.actOneStakes}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between text-[9px] font-mono text-emerald-300/90 pt-1.5 border-t border-white/5">
-                            <span className="truncate">
-                              Synergy: {so.highResonanceHeroines.map((h) => h.split(" ")[0]).join(", ")}
-                            </span>
-                            <span className="text-amber-300 shrink-0 ml-1">
-                              {so.startingCrowns} Crowns
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
-                  {WORLD_ORIGIN_PRESETS.map((o) => {
-                    const isSelected =
-                      selectedWorldOriginPreset === o.id ||
-                      (!selectedWorldOriginPreset && o.id === "native");
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                  {(["str", "dex", "int"] as const).map((stat) => {
+                    const customDef = currentStory.rpgRules?.statDefinitions?.[stat];
+                    const shortTitle = customDef
+                      ? customDef.split("(")[0].trim()
+                      : stat === "str"
+                      ? "Strength"
+                      : stat === "dex"
+                      ? "Dexterity"
+                      : "Intelligence";
                     return (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => handleSelectWorldOriginPreset(o)}
-                        className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                          isSelected
-                            ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
-                            : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                        }`}
-                        title={o.description}
+                      <div
+                        key={stat}
+                        title={customDef || shortTitle}
+                        className="flex items-center justify-between gap-2 bg-zinc-900/90 rounded-xl px-3 py-2.5 border border-white/5 min-w-0"
                       >
-                        <span className="text-base leading-none">{o.icon}</span>
-                        <span className="text-[10px] leading-tight whitespace-nowrap">{o.shortLabel}</span>
-                      </button>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-mono font-bold text-zinc-200 uppercase leading-tight">
+                            {stat}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-mono truncate leading-tight">
+                            {shortTitle}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleStatChange(stat, -1)}
+                            className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
+                          >
+                            -
+                          </button>
+                          <span className="text-sm font-bold text-white w-6 text-center font-mono">
+                            {player.stats[stat]}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleStatChange(stat, 1)}
+                            className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-              )}
-
-              {/* Inputs for World Origin Title & Backstory / System Familiarity */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1 items-start">
-                <div className="md:col-span-4">
-                  <label className="text-xs font-mono text-zinc-400 block mb-1 truncate">
-                    Origin Title
-                  </label>
-                  <input
-                    type="text"
-                    value={player.worldOrigin || ""}
-                    onChange={(e) => handleCustomWorldOriginChange(e.target.value)}
-                    placeholder="e.g. Blood-Ledger Debtor, Disgraced Heir..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none placeholder-zinc-700 font-mono"
-                  />
-                </div>
-                <div className="md:col-span-8">
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <label className="text-xs font-mono text-zinc-400 truncate">
-                      System Familiarity &amp; Origin Backstory
-                    </label>
-                    <span className="text-[10px] text-zinc-500 font-mono shrink-0">Editable Lore Directive</span>
-                  </div>
-                  <textarea
-                    rows={2}
-                    value={player.worldOriginDetails || ""}
-                    onChange={(e) =>
-                      setPlayer((prev) => {
-                        const next = { ...prev, worldOriginDetails: e.target.value };
-                        playerRef.current = next;
-                        return next;
-                      })
-                    }
-                    placeholder="Describe how your character arrived in this world and how familiar they are with the System, status screens, and local lore..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-zinc-200 focus:border-emerald-500 focus:outline-none placeholder-zinc-700 font-sans leading-relaxed resize-y"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* LINEAGE & ANATOMICAL VISION PROFILE */}
-            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span>Lineage & Anatomical Physiology</span>
-                  </label>
-                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
-                    Select a preset or create a custom race. Visual AI scans your avatar portrait for non-human anatomy (fur, fangs, wolf ears, horns, scales).
-                  </p>
-                </div>
-                <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 self-start shrink-0 whitespace-nowrap font-bold">
-                  Race: {player.race || "Human"}
-                </span>
               </div>
 
-              {/* Race Presets */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
-                {RACE_PRESETS.map((p) => {
-                  const isSelected = selectedRacePreset === p.id || (!selectedRacePreset && p.id === "human" && player.race === "Human");
-                  const displayLabel = (p as any).shortLabel || p.name.split("/")[0].trim();
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSelectRacePreset(p)}
-                      className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                        isSelected
-                          ? "bg-amber-950/40 border-amber-500/80 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
-                          : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                      }`}
-                      title={p.description}
-                    >
-                      <span className="text-base leading-none">{p.icon}</span>
-                      <span className="text-[10px] leading-tight whitespace-nowrap">{displayLabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Inputs for Lineage Name & Anatomical Traits */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
-                <div>
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <label className="text-xs font-mono text-zinc-400 truncate">
-                      Lineage / Race Name
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    value={player.race || ""}
-                    onChange={(e) => handleCustomRaceChange(e.target.value)}
-                    placeholder="e.g. Lycan, Void Chimera, Kitsune..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none placeholder-zinc-700 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <label className="text-xs font-mono text-zinc-400 truncate">
-                      Anatomical & Biological Traits
-                    </label>
-                    <span className="text-[10px] text-zinc-500 font-mono shrink-0">Comma-separated</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={racialTraitsInput}
-                    onChange={(e) => handleRacialTraitsChange(e.target.value)}
-                    placeholder="e.g. canine ears, razor fangs, dense silver fur, bushy tail..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none placeholder-zinc-700 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Traits Tag Pills Preview */}
-              {player.racialTraits && player.racialTraits.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] font-mono text-zinc-500">Active Traits:</span>
-                  {player.racialTraits.map((trait, tIdx) => (
-                    <button
-                      key={tIdx}
-                      type="button"
-                      onClick={() => {
-                        const updated = (player.racialTraits || []).filter((_, i) => i !== tIdx);
-                        setRacialTraitsInput(updated.join(", "));
-                        setPlayer((prev) => {
-                          const next = { ...prev, racialTraits: updated };
-                          playerRef.current = next;
-                          return next;
-                        });
-                      }}
-                      title="Click to remove trait"
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-rose-950/50 border border-white/10 hover:border-rose-500/40 text-amber-200/90 hover:text-rose-200 flex items-center gap-1 transition-colors cursor-pointer group"
-                    >
-                      <span className="text-amber-400 group-hover:text-rose-400">•</span>
-                      <span>{trait}</span>
-                      <span className="text-zinc-600 group-hover:text-rose-400 ml-0.5">×</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* CHARACTER DEMEANOR & CRAFTED PERSONA */}
-            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                    <span>Character Demeanor & Persona</span>
-                  </label>
-                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
-                    Craft your protagonist's personality and voice. The 4 action choices each turn dynamically reflect your demeanor, moral instincts, and conversational style.
-                  </p>
-                </div>
-                <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-300 self-start shrink-0 whitespace-nowrap font-bold">
-                  Persona: {player.personality || "Stoic Pragmatist"}
-                </span>
-              </div>
-
-              {/* Personality Presets */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
-                {PERSONALITY_PRESETS.map((p) => {
-                  const isSelected = selectedPersonalityPreset === p.id || (!selectedPersonalityPreset && p.id === "stoic" && player.personality === "Stoic Pragmatist");
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleSelectPersonalityPreset(p)}
-                      className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                        isSelected
-                          ? "bg-rose-950/40 border-rose-500/80 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
-                          : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                      }`}
-                      title={p.description}
-                    >
-                      <span className="text-base leading-none">{p.icon}</span>
-                      <span className="text-[10px] leading-tight whitespace-nowrap">{p.shortLabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Inputs for Personality Name & Traits */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
-                <div>
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <label className="text-xs font-mono text-zinc-400 truncate">
-                      Core Demeanor / Persona
-                    </label>
-                  </div>
-                  <input
-                    type="text"
-                    value={player.personality || ""}
-                    onChange={(e) => handleCustomPersonalityChange(e.target.value)}
-                    placeholder="e.g. Stoic Pragmatist, Cynical Outlaw, Noble Protector..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-1 mb-1">
-                    <label className="text-xs font-mono text-zinc-400 truncate">
-                      Key Personality & Roleplay Traits
-                    </label>
-                    <span className="text-[10px] text-zinc-500 font-mono shrink-0">Comma-separated</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={personalityTraitsInput}
-                    onChange={(e) => handlePersonalityTraitsChange(e.target.value)}
-                    placeholder="e.g. Calculated, Deadpan Wit, Protective, Sharp-Tongued..."
-                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Traits Tag Pills Preview */}
-              {player.personalityTraits && player.personalityTraits.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] font-mono text-zinc-500">Active Persona Traits:</span>
-                  {player.personalityTraits.map((trait, tIdx) => (
-                    <button
-                      key={tIdx}
-                      type="button"
-                      onClick={() => {
-                        const updated = (player.personalityTraits || []).filter((_, i) => i !== tIdx);
-                        setPersonalityTraitsInput(updated.join(", "));
-                        setPlayer((prev) => {
-                          const next = { ...prev, personalityTraits: updated };
-                          playerRef.current = next;
-                          return next;
-                        });
-                      }}
-                      title="Click to remove trait"
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-rose-950/50 border border-white/10 hover:border-rose-500/40 text-rose-200/90 hover:text-rose-100 flex items-center gap-1 transition-colors cursor-pointer group"
-                    >
-                      <span className="text-rose-400 group-hover:text-rose-300">•</span>
-                      <span>{trait}</span>
-                      <span className="text-zinc-600 group-hover:text-rose-300 ml-0.5">×</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
-              <div className="flex justify-between items-center mb-2.5">
-                <label className="text-xs font-mono text-zinc-400">
-                  {currentStory.id === "sovereign-spire"
-                    ? "Dual-Conduit Attribute Allocation"
-                    : "Attribute Allocation"}
+              {/* Starting Loadout & Whisper Flaw Preview */}
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+                <label className="text-xs font-mono text-zinc-300 font-bold block">
+                  Starting Armament &amp; Relic Loadout
                 </label>
-                <span className="text-xs font-mono font-bold text-sky-400">Points: {statPoints}</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                {(["str", "dex", "int"] as const).map((stat) => {
-                  const customDef = currentStory.rpgRules?.statDefinitions?.[stat];
-                  const shortTitle = customDef
-                    ? customDef.split("(")[0].trim()
-                    : stat === "str"
-                    ? "Strength"
-                    : stat === "dex"
-                    ? "Dexterity"
-                    : "Intelligence";
-                  return (
-                    <div
-                      key={stat}
-                      title={customDef || shortTitle}
-                      className="flex items-center justify-between gap-2 bg-zinc-900/90 rounded-xl px-3 py-2.5 border border-white/5 min-w-0"
+                <div className={`grid grid-cols-1 ${currentStory.id === "sovereign-spire" ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2`}>
+                  {currentStory.id === "sovereign-spire" && (
+                    <button
+                      type="button"
+                      onClick={() => setGearPreference("canon")}
+                      className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        gearPreference === "canon"
+                          ? "bg-indigo-900/50 border-indigo-400 text-indigo-100 shadow-md ring-1 ring-indigo-400/30 font-bold"
+                          : "bg-zinc-900 border-white/10 text-zinc-400 hover:border-white/30"
+                      }`}
                     >
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-xs font-mono font-bold text-zinc-200 uppercase leading-tight">{stat}</span>
-                        <span className="text-[10px] text-zinc-400 font-mono truncate leading-tight">
-                          {shortTitle}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleStatChange(stat, -1)}
-                          className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
-                        >
-                          -
-                        </button>
-                        <span className="text-sm font-bold text-white w-6 text-center font-mono">
-                          {player.stats[stat]}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleStatChange(stat, 1)}
-                          className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-xs font-mono text-zinc-400 block">Starting Loadout</label>
-              <div className={`grid grid-cols-1 ${currentStory.id === "sovereign-spire" ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2`}>
-                {currentStory.id === "sovereign-spire" && (
+                      <Swords className="w-3.5 h-3.5 text-indigo-400" />
+                      <span>Canon Wing Loadout</span>
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => setGearPreference("canon")}
+                    onClick={() => setGearPreference("system")}
                     className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      gearPreference === "canon"
-                        ? "bg-indigo-900/50 border-indigo-400 text-indigo-100 shadow-md ring-1 ring-indigo-400/30 font-bold"
-                        : "bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/30"
+                      gearPreference === "system"
+                        ? "bg-rose-900/40 border-rose-500 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
+                        : "bg-zinc-900 border-white/10 text-zinc-500 hover:border-white/30"
                     }`}
                   >
-                    <Swords className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Canon Wing Loadout</span>
+                    <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                    <span>System Choice (3 Cards)</span>
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setGearPreference("system")}
-                  className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                    gearPreference === "system"
-                      ? "bg-rose-900/40 border-rose-500 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
-                      : "bg-zinc-950 border-white/10 text-zinc-500 hover:border-white/30"
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-                  <span>System Choice (3 Cards)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGearPreference("none")}
-                  className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                    gearPreference === "none"
-                      ? "bg-amber-900/40 border-amber-500 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
-                      : "bg-zinc-950 border-white/10 text-zinc-500 hover:border-white/30"
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Unarmed &amp; Unarmored</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setGearPreference("none")}
+                    className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      gearPreference === "none"
+                        ? "bg-amber-900/40 border-amber-500 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
+                        : "bg-zinc-900 border-white/10 text-zinc-500 hover:border-white/30"
+                    }`}
+                  >
+                    <Shield className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Unarmed &amp; Unarmored</span>
+                  </button>
+                </div>
+
+                {currentStory.id === "sovereign-spire" && gearPreference === "canon" && (() => {
+                  const activeConduit =
+                    SOVEREIGN_CONDUIT_PRESETS.find((c) => c.id === selectedSovereignConduit) ||
+                    SOVEREIGN_CONDUIT_PRESETS[0];
+                  return (
+                    <div className="p-3.5 rounded-xl bg-indigo-950/35 border border-indigo-500/35 text-xs font-mono space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-indigo-200">
+                        <span className="font-bold">
+                          ⚔️ {activeConduit.canonLoadout.weapon}
+                        </span>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-lg bg-purple-950/80 border border-purple-500/40 text-purple-200 font-bold">
+                          Socket [{activeConduit.canonLoadout.relicSlot}] • Set: {activeConduit.canonLoadout.setId}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-300 font-sans">
+                        <span className="text-indigo-300 font-mono font-bold">Armor:</span> {activeConduit.canonLoadout.armor} • <span className="text-purple-300 font-mono font-bold">Relic:</span> {activeConduit.canonLoadout.relic}
+                      </p>
+                      <p className="text-[11px] text-zinc-300 font-sans pt-1 border-t border-white/10">
+                        <span className="text-rose-400 font-mono font-bold">Whisper Flaw:</span> {activeConduit.canonLoadout.whisperFlaw}
+                      </p>
+                    </div>
+                  );
+                })()}
               </div>
 
-              {currentStory.id === "sovereign-spire" && gearPreference === "canon" && (() => {
+              {/* Starting Abilities */}
+              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                      <Zap className="w-4 h-4 text-amber-400" /> Starting Conduit Techniques
+                    </label>
+                    <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
+                      Click any technique to inspect its cost and cooldown, or roll bespoke AI abilities for <span className="text-zinc-300 font-mono">{player.role || "your class"}</span>.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {player.abilities.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAbilities}
+                        className="px-2.5 py-1 text-[11px] font-mono text-zinc-400 hover:text-rose-400 border border-white/10 hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isRollingAbilities}
+                      onClick={handleRollAbilities}
+                      className="px-3.5 py-1.5 bg-gradient-to-r from-amber-600/80 to-rose-600/80 hover:from-amber-500 hover:to-rose-500 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                    >
+                      <Dices className={`w-3.5 h-3.5 ${isRollingAbilities ? "animate-spin" : ""}`} />
+                      <span>{isRollingAbilities ? "Synthesizing..." : "Roll Custom Abilities"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {player.abilities.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                    {player.abilities.map((abName, i) => {
+                      const detail = player.abilityDetails?.[abName];
+                      return (
+                        <div
+                          key={i}
+                          onClick={() => handleInspectAbility(abName)}
+                          className="bg-zinc-900/90 hover:bg-zinc-800/90 border border-amber-500/30 hover:border-amber-400/60 p-3 rounded-xl transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1 mb-1">
+                              <span className="font-bold text-xs text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+                                <span className="truncate">{abName}</span>
+                              </span>
+                              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 text-amber-300 border border-amber-500/20 shrink-0">
+                                {detail?.type || "Active"}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                              {detail?.description || "Click to inspect full ability mechanics..."}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-2 mt-2 border-t border-white/5">
+                            <span className="text-sky-400">{detail?.cost || "Cost: 10 MP"}</span>
+                            <span className="text-zinc-400">{detail?.cooldown || "Instant"}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-2.5 px-3 border border-dashed border-white/10 rounded-xl bg-zinc-950/40">
+                    <p className="text-xs text-zinc-500 font-sans italic">
+                      Select a Conduit Doctrine above or click &ldquo;Roll Custom Abilities&rdquo; to generate techniques.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Step 3 Footer Navigation */}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setCreationTab("origin");
+                  }}
+                  className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs font-mono cursor-pointer transition-all"
+                >
+                  ← Back: Origin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setCreationTab("prologue");
+                  }}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white text-xs font-mono font-bold shadow-lg transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span>Next: Choose Act I Prelude &amp; Dyad Partner →</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* =========================================================
+              TAB 4: ACT I PRELUDE, DYAD PARTNER & LAUNCH
+             ========================================================= */}
+          {creationTab === "prologue" && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              {/* Live Build Impact Banner: How Your Choices Shape the Opening Scene */}
+              {currentStory.id === "sovereign-spire" && (() => {
+                const activeOrigin =
+                  SOVEREIGN_ORIGIN_PRESETS.find(
+                    (so) =>
+                      so.id === selectedWorldOriginPreset ||
+                      so.id === player.sovereignOrigin
+                  ) || SOVEREIGN_ORIGIN_PRESETS[0];
                 const activeConduit =
                   SOVEREIGN_CONDUIT_PRESETS.find((c) => c.id === selectedSovereignConduit) ||
                   SOVEREIGN_CONDUIT_PRESETS[0];
+                const activeNode = prologues[selectedPrologue] || prologues[0];
+                const activeDossier = activeNode
+                  ? SOVEREIGN_HEROINE_DOSSIERS[activeNode.speaker]
+                  : undefined;
+                const isResonant = Boolean(
+                  activeNode &&
+                    (activeNode.id === "prologue_act1_seal_gate" ||
+                      activeOrigin.highResonanceHeroines.includes(activeNode.speaker))
+                );
+
                 return (
-                  <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-[11px] font-mono space-y-1">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-indigo-200">
-                      <span className="font-bold">
-                        {activeConduit.wingLabel} Issue: {activeConduit.canonLoadout.weapon}
+                  <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-rose-950/40 via-zinc-950/95 to-indigo-950/40 border border-rose-500/35 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="text-[11px] font-mono uppercase tracking-wider text-rose-300 font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                        <span>How Your Choices Shape This Opening Scenario</span>
                       </span>
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-purple-950/80 border border-purple-500/40 text-purple-200">
-                        Socket [{activeConduit.canonLoadout.relicSlot}]: {activeConduit.canonLoadout.relic}
-                      </span>
+                      {isResonant && (
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-200 font-bold">
+                          ★ High Origin Synergy Active
+                        </span>
+                      )}
                     </div>
-                    <p className="text-[10px] text-zinc-400 font-sans">
-                      <span className="text-rose-300 font-mono">Whisper Flaw:</span> {activeConduit.canonLoadout.whisperFlaw}
-                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px]">
+                      <div className="p-2.5 rounded-xl bg-black/50 border border-white/10">
+                        <span className="text-[10px] font-mono text-emerald-400 block font-bold">
+                          {activeOrigin.icon} {activeOrigin.shortLabel} ({activeOrigin.rankTierLabel})
+                        </span>
+                        <p className="text-zinc-300 mt-0.5 leading-snug">
+                          {activeOrigin.actOneStakes}
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/50 border border-white/10">
+                        <span className="text-[10px] font-mono text-amber-300 block font-bold">
+                          {activeConduit.icon} {activeConduit.shortLabel} ({activeConduit.conduit})
+                        </span>
+                        <p className="text-zinc-300 mt-0.5 leading-snug">
+                          Pledged to {activeConduit.wingLabel}. Armed with {activeConduit.canonLoadout.relic} ([{activeConduit.canonLoadout.relicSlot}]).
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-black/50 border border-white/10">
+                        <span className="text-[10px] font-mono text-rose-300 block font-bold">
+                          🤝 Dyad Target: {activeNode?.speaker}
+                        </span>
+                        <p className="text-zinc-300 mt-0.5 leading-snug">
+                          {activeDossier
+                            ? `${activeDossier.actOneConflict}`
+                            : "Cold-open confrontation at the Seal-Gate before the Placement Trials."}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
-            </div>
 
-            {/* STARTING ABILITIES (LLM ROLL) */}
-            <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-4 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                    <Zap className="w-4 h-4 text-amber-400" /> Starting Abilities (System Roll)
-                  </label>
-                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
-                    Awaken 1-2 random starting abilities generated by the LLM for <span className="text-zinc-300 font-mono">{player.role || "your class"}</span>.
-                  </p>
+              {/* Scenario Cards Grid */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                  <div>
+                    <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>
+                        {currentStory.id === "sovereign-spire"
+                          ? "Act I Introduction Scenario & Dyad Partner"
+                          : "Select Starting Scenario & Companion"}
+                      </span>
+                    </label>
+                    {currentStory.id === "sovereign-spire" && (
+                      <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
+                        Select a scenario below to read its full prelude setup, Dyad passive, and your 4 opening tactical choices.
+                      </p>
+                    )}
+                  </div>
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 self-start shrink-0 font-bold">
+                    {prologues.length} Scenarios Available
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {player.abilities.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleClearAbilities}
-                      className="px-2.5 py-1 text-[11px] font-mono text-zinc-400 hover:text-rose-400 border border-white/10 hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
-                      title="Clear starting abilities"
-                    >
-                      Clear
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    disabled={isRollingAbilities}
-                    onClick={handleRollAbilities}
-                    className="px-3.5 py-1.5 bg-gradient-to-r from-amber-600/80 to-rose-600/80 hover:from-amber-500 hover:to-rose-500 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
-                  >
-                    <Dices className={`w-3.5 h-3.5 ${isRollingAbilities ? "animate-spin" : ""}`} />
-                    <span>{isRollingAbilities ? "Synthesizing..." : player.abilities.length > 0 ? "Reroll Abilities" : "Roll Abilities"}</span>
-                  </button>
-                </div>
-              </div>
 
-              {/* Display Rolled Abilities */}
-              {player.abilities.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  {player.abilities.map((abName, i) => {
-                    const detail = player.abilityDetails?.[abName];
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1.5">
+                  {prologues.map((p, i) => {
+                    const isSelected = selectedPrologue === i;
+                    const dossier =
+                      currentStory.id === "sovereign-spire"
+                        ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
+                        : undefined;
+                    const isColdOpen = p.id === "prologue_act1_seal_gate";
+                    const activeOriginPreset =
+                      currentStory.id === "sovereign-spire"
+                        ? SOVEREIGN_ORIGIN_PRESETS.find(
+                            (so) =>
+                              so.id === selectedWorldOriginPreset ||
+                              so.id === player.sovereignOrigin
+                          )
+                        : undefined;
+                    const isOriginResonant = Boolean(
+                      activeOriginPreset &&
+                        (isColdOpen ||
+                          activeOriginPreset.highResonanceHeroines.includes(p.speaker))
+                    );
+                    const spriteUrl = getSpriteSrc(
+                      p.speaker,
+                      (p as any).expressionKey || "neutral"
+                    );
+
                     return (
-                      <div
+                      <button
                         key={i}
-                        onClick={() => handleInspectAbility(abName)}
-                        className="bg-zinc-900/90 hover:bg-zinc-800/90 border border-amber-500/30 hover:border-amber-400/60 p-3 rounded-xl transition-all cursor-pointer group shadow-sm flex flex-col justify-between"
-                        title="Click to view full ability description"
+                        type="button"
+                        onClick={() => {
+                          soundEffects.playClick();
+                          setSelectedPrologue(i);
+                        }}
+                        className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                          isSelected
+                            ? "bg-rose-950/45 border-rose-500 text-white shadow-lg ring-1 ring-rose-500/35"
+                            : "bg-zinc-950/90 border-white/10 text-zinc-400 hover:border-white/25"
+                        } ${isColdOpen ? "sm:col-span-2 bg-gradient-to-r from-rose-950/50 via-zinc-950/95 to-amber-950/40" : ""}`}
                       >
-                        <div>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="font-bold text-xs text-white group-hover:text-amber-300 transition-colors flex items-center gap-1">
-                              <Sparkles className="w-3 h-3 text-amber-400" />
-                              {abName}
-                            </span>
-                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 text-amber-300 border border-amber-500/20">
-                              {detail?.type || "Active"}
-                            </span>
+                        <div className="flex items-start gap-3">
+                          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 border border-white/15 shrink-0">
+                            <img
+                              src={spriteUrl}
+                              alt={p.speaker}
+                              className="w-full h-full object-cover object-top"
+                            />
                           </div>
-                          <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-                            {detail?.description || "Click to inspect full ability mechanics..."}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1.5 flex-wrap mb-0.5">
+                              <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider truncate">
+                                {p.location}
+                              </span>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {isColdOpen && (
+                                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200">
+                                    ★ Flagship Act I Cold-Open
+                                  </span>
+                                )}
+                                {isOriginResonant && !isColdOpen && (
+                                  <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
+                                    Origin Resonance
+                                  </span>
+                                )}
+                                {dossier && (
+                                  <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/35 text-indigo-200">
+                                    {dossier.conduit}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <p className="font-semibold text-sm text-zinc-100 leading-snug">
+                              {p.title}
+                            </p>
+                            {dossier && (
+                              <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
+                                {dossier.epithet} • {dossier.wing.replace(/_/g, " ")} • Dyad: {dossier.dyadPassiveName}
+                              </p>
+                            )}
+                            <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                              {p.dialogue}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-2 mt-2 border-t border-white/5">
-                          <span className="text-sky-400">{detail?.cost || "Cost: 10 MP"}</span>
-                          <span className="text-zinc-400">{detail?.cooldown || "Instant"}</span>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1.5 border-t border-white/5">
+                          <span className="truncate">
+                            {dossier
+                              ? `Rival Hook: ${dossier.rivalBossTieIn}`
+                              : `Companion: ${p.speaker}`}
+                          </span>
+                          <span className="text-rose-300/90 shrink-0 ml-2">
+                            {p.choices.length} Entry Vectors
+                          </span>
                         </div>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
-              ) : (
-                <div className="text-center py-2.5 px-3 border border-dashed border-white/10 rounded-xl bg-zinc-950/40">
-                  <p className="text-xs text-zinc-500 font-sans italic">
-                    Optional: Click "Roll Abilities" to let the System generate 1-2 random starting techniques based on <span className="text-zinc-300 font-mono">{player.role || "your class"}</span>.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
 
-          <div>
-            <label className="text-xs font-mono text-zinc-400 block mb-1">Narration Atmosphere & Tone</label>
-            <select
-              value={narrationStyle}
-              onChange={(e) => {
-                const val = e.target.value;
-                setNarrationStyle(val);
-                setPlayer((prev) => ({ ...prev, narrationStyle: val }));
-              }}
-              className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none"
-            >
-              <option>Grimdark & Atmospheric (Tense, visceral, sensory)</option>
-              <option>Light Novel High Fantasy (Dynamic pacing, witty banter, heroic)</option>
-              <option>Noir Arcana (Brooding, cynical, sharp monologues)</option>
-            </select>
-          </div>
+                {/* Selected Act I Scenario & Full Unclamped Entry Vectors Preview Drawer */}
+                {prologues[selectedPrologue] && (() => {
+                  const activeNode = prologues[selectedPrologue];
+                  const activeDossier =
+                    currentStory.id === "sovereign-spire"
+                      ? SOVEREIGN_HEROINE_DOSSIERS[activeNode.speaker]
+                      : undefined;
+                  return (
+                    <div className="p-4 rounded-2xl bg-zinc-950/95 border border-rose-500/35 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                        <div>
+                          <span className="text-xs sm:text-sm font-mono font-bold text-white block">
+                            Selected Prelude: {activeNode.title}
+                          </span>
+                          <span className="text-[11px] font-mono text-rose-300">
+                            Location: {activeNode.location} • Speaker: {activeNode.speaker}
+                          </span>
+                        </div>
+                        {activeDossier && (
+                          <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 font-bold">
+                            Dyad Passive: {activeDossier.dyadPassiveName} — {activeDossier.dyadPassiveDescription}
+                          </span>
+                        )}
+                      </div>
+                      {activeNode.sceneSetup && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-bold block">
+                            Opening Scene Setup
+                          </span>
+                          <p className="text-xs text-zinc-200 font-sans leading-relaxed">
+                            {activeNode.sceneSetup}
+                          </p>
+                        </div>
+                      )}
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold block">
+                          Opening Tactical Entry Vectors (Available on Turn 1)
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {activeNode.choices.map((ch, cIdx) => (
+                            <div
+                              key={cIdx}
+                              className="px-3 py-2 rounded-xl bg-zinc-900/90 border border-white/10 text-[11px] font-mono text-zinc-200 leading-snug"
+                            >
+                              <span className="text-rose-400 font-bold mr-1.5">#{cIdx + 1}</span>
+                              {ch}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
-          {/* AI Story & Roleplay Model Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-xs font-mono text-zinc-400">AI Roleplay Model (OpenRouter Cloud)</label>
-              <button
-                type="button"
-                onClick={() => {
-                  soundEffects.playClick();
-                  setShowLlmModal(true);
-                }}
-                className="text-[10px] font-mono text-rose-400 hover:text-rose-300 underline cursor-pointer flex items-center gap-1"
-                title="Configure LLM model parameters and generation settings"
-              >
-                <Settings2 className="w-3 h-3" />
-                <span>Model Settings</span>
-              </button>
-            </div>
-            <div className="p-3 rounded-xl bg-zinc-950/80 border border-white/10 flex items-center justify-between gap-3 shadow-lg">
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className={`p-2 rounded-lg border shrink-0 ${
-                  llmConfig.modelId === "orchestrated-hybrid"
-                    ? "bg-gradient-to-tr from-rose-950/80 to-cyan-950/80 border-rose-500/40 text-rose-400"
-                    : "bg-cyan-950/60 border-cyan-500/30 text-cyan-400"
-                }`}>
-                  {llmConfig.modelId === "orchestrated-hybrid" ? (
-                    <Sparkles className="w-4 h-4 text-rose-400" />
-                  ) : (
-                    <Cloud className="w-4 h-4" />
-                  )}
+              {/* Compact Narration Tone & AI Model Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="bg-zinc-950/80 border border-white/10 rounded-xl p-3">
+                  <label className="text-[11px] font-mono text-zinc-400 block mb-1.5">
+                    Narration Atmosphere &amp; Tone
+                  </label>
+                  <select
+                    value={narrationStyle}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNarrationStyle(val);
+                      setPlayer((prev) => ({ ...prev, narrationStyle: val }));
+                    }}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-rose-500 focus:outline-none font-mono"
+                  >
+                    <option>Grimdark & Atmospheric (Tense, visceral, sensory)</option>
+                    <option>Light Novel High Fantasy (Dynamic pacing, witty banter, heroic)</option>
+                    <option>Noir Arcana (Brooding, cynical, sharp monologues)</option>
+                  </select>
                 </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-mono font-bold text-white truncate">
+
+                <div className="bg-zinc-950/80 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-mono text-zinc-400 block">
+                      AI Roleplay Engine
+                    </span>
+                    <span className="text-xs font-mono font-bold text-white truncate block mt-0.5">
                       {CLOUD_MODELS.find((m) => m.id === llmConfig.modelId)?.shortName || llmConfig.modelId.split("/").pop()}
                     </span>
-                    <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded-full border shrink-0 ${
-                      llmConfig.modelId === "orchestrated-hybrid"
-                        ? "bg-rose-950/70 border-rose-500/40 text-rose-300"
-                        : "bg-cyan-950 border-cyan-500/40 text-cyan-400"
-                    }`}>
-                      {llmConfig.modelId === "orchestrated-hybrid" ? "Multi-Model" : "Cloud"}
-                    </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 truncate font-sans">
-                    {CLOUD_MODELS.find((m) => m.id === llmConfig.modelId)?.name || "Uncensored Roleplay & Story Engine"}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  soundEffects.playClick();
-                  setShowLlmModal(true);
-                }}
-                className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-rose-500/40 text-xs font-mono text-zinc-200 transition-all cursor-pointer shrink-0"
-              >
-                Switch Model
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-              <div>
-                <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                  <span>
-                    {currentStory.id === "sovereign-spire"
-                      ? "Act I Introduction Scenario & Dyad Partner"
-                      : "Select Starting Scenario & Companion"}
-                  </span>
-                </label>
-                {currentStory.id === "sovereign-spire" && (
-                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
-                    Begin with the Flagship Act I Cold-Open at the Seal-Gate or tether directly to one of the 8 Heroines across the four Patron Wings.
-                  </p>
-                )}
-              </div>
-              <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 self-start shrink-0 font-bold">
-                {prologues.length} Scenarios Available
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1.5">
-              {prologues.map((p, i) => {
-                const isSelected = selectedPrologue === i;
-                const dossier =
-                  currentStory.id === "sovereign-spire"
-                    ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
-                    : undefined;
-                const isColdOpen = p.id === "prologue_act1_seal_gate";
-                const activeOriginPreset =
-                  currentStory.id === "sovereign-spire"
-                    ? SOVEREIGN_ORIGIN_PRESETS.find(
-                        (so) =>
-                          so.id === selectedWorldOriginPreset ||
-                          so.id === player.sovereignOrigin
-                      )
-                    : undefined;
-                const isOriginResonant = Boolean(
-                  activeOriginPreset &&
-                    (isColdOpen ||
-                      activeOriginPreset.highResonanceHeroines.includes(p.speaker))
-                );
-                const spriteUrl = getSpriteSrc(
-                  p.speaker,
-                  (p as any).expressionKey || "neutral"
-                );
-
-                return (
                   <button
-                    key={i}
                     type="button"
                     onClick={() => {
                       soundEffects.playClick();
-                      setSelectedPrologue(i);
+                      setShowLlmModal(true);
                     }}
-                    className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                      isSelected
-                        ? "bg-rose-950/45 border-rose-500 text-white shadow-lg ring-1 ring-rose-500/35"
-                        : "bg-zinc-950/90 border-white/10 text-zinc-400 hover:border-white/25"
-                    } ${isColdOpen ? "sm:col-span-2 bg-gradient-to-r from-rose-950/50 via-zinc-950/95 to-amber-950/40" : ""}`}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-white/15 hover:border-rose-500/40 text-xs font-mono text-zinc-200 transition-all cursor-pointer shrink-0 flex items-center gap-1"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 border border-white/15 shrink-0">
-                        <img
-                          src={spriteUrl}
-                          alt={p.speaker}
-                          className="w-full h-full object-cover object-top"
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1.5 flex-wrap mb-0.5">
-                          <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider truncate">
-                            {p.location}
-                          </span>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {isColdOpen && (
-                              <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200">
-                                ★ Flagship Act I Cold-Open
-                              </span>
-                            )}
-                            {isOriginResonant && !isColdOpen && (
-                              <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
-                                Origin Resonance
-                              </span>
-                            )}
-                            {dossier && (
-                              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/35 text-indigo-200">
-                                {dossier.conduit}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <p className="font-semibold text-sm text-zinc-100 leading-snug">
-                          {p.title}
-                        </p>
-                        {dossier && (
-                          <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
-                            {dossier.epithet} • {dossier.wing.replace(/_/g, " ")} • Dyad: {dossier.dyadPassiveName}
-                          </p>
-                        )}
-                        <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
-                          {p.dialogue}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1.5 border-t border-white/5">
-                      <span className="truncate">
-                        {dossier
-                          ? `Rival Hook: ${dossier.rivalBossTieIn}`
-                          : `Companion: ${p.speaker}`}
-                      </span>
-                      <span className="text-rose-300/90 shrink-0 ml-2">
-                        {p.choices.length} Entry Vectors
-                      </span>
-                    </div>
+                    <Settings2 className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Model</span>
                   </button>
-                );
-              })}
-            </div>
-
-            {/* Selected Act I Scenario & Entry Vectors Preview Drawer */}
-            {prologues[selectedPrologue] && (() => {
-              const activeNode = prologues[selectedPrologue];
-              const activeDossier =
-                currentStory.id === "sovereign-spire"
-                  ? SOVEREIGN_HEROINE_DOSSIERS[activeNode.speaker]
-                  : undefined;
-              return (
-                <div className="p-3.5 sm:p-4 rounded-2xl bg-zinc-950/90 border border-rose-500/30 space-y-2.5">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-white">
-                        Selected Prelude: {activeNode.title}
-                      </span>
-                    </div>
-                    {activeDossier && (
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-200">
-                        Dyad Passive: {activeDossier.dyadPassiveName} ({activeDossier.dyadPassiveDescription})
-                      </span>
-                    )}
-                  </div>
-                  {activeNode.sceneSetup && (
-                    <p className="text-xs text-zinc-300 font-sans leading-relaxed line-clamp-3">
-                      {activeNode.sceneSetup}
-                    </p>
-                  )}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
-                    {activeNode.choices.map((ch, cIdx) => (
-                      <div
-                        key={cIdx}
-                        className="px-2.5 py-1.5 rounded-lg bg-zinc-900/90 border border-white/5 text-[11px] font-mono text-zinc-300 truncate"
-                        title={ch}
-                      >
-                        <span className="text-rose-400 mr-1.5">#{cIdx + 1}</span>
-                        {ch}
-                      </div>
-                    ))}
-                  </div>
                 </div>
-              );
-            })()}
-          </div>
+              </div>
 
-          {gearPreference === "canon" && currentStory.id === "sovereign-spire" ? (
-            <button
-              onClick={handleStartWithCanonWingLoadout}
-              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-rose-600 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono"
-            >
-              <Swords className="w-4 h-4" /> Enter The Sovereign Spire (Equip Canon Wing Loadout) →
-            </button>
-          ) : gearPreference === "system" ? (
-            <button
-              onClick={handleProceedToGear}
-              className="w-full py-3.5 bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 hover:from-rose-500 hover:to-pink-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono"
-            >
-              <Sparkles className="w-4 h-4 fill-white" /> Next: Manifest System Gear (3 Cards) →
-            </button>
-          ) : (
-            <button
-              onClick={() => handleStartGame()}
-              className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono"
-            >
-              <Play className="w-4 h-4 fill-white" /> Enter {currentStory.worldContext?.settingName || currentStory.title || "Astra Continent"} (Unarmed)
-            </button>
+              {/* Step 4 Launch Footer */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setCreationTab("conduit");
+                  }}
+                  className="px-4 py-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs font-mono cursor-pointer transition-all shrink-0"
+                >
+                  ← Back: Conduit &amp; Gear
+                </button>
+
+                <div className="flex-1">
+                  {gearPreference === "canon" && currentStory.id === "sovereign-spire" ? (
+                    <button
+                      onClick={handleStartWithCanonWingLoadout}
+                      className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-rose-600 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono text-xs sm:text-sm"
+                    >
+                      <Swords className="w-4 h-4" /> Enter The Sovereign Spire (Equip Canon Wing Loadout) →
+                    </button>
+                  ) : gearPreference === "system" ? (
+                    <button
+                      onClick={handleProceedToGear}
+                      className="w-full py-3.5 bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 hover:from-rose-500 hover:to-pink-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono text-xs sm:text-sm"
+                    >
+                      <Sparkles className="w-4 h-4 fill-white" /> Next: Manifest System Gear (3 Cards) →
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleStartGame()}
+                      className="w-full py-3.5 bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono text-xs sm:text-sm"
+                    >
+                      <Play className="w-4 h-4 fill-white" /> Enter {currentStory.worldContext?.settingName || currentStory.title || "Astra Continent"} (Unarmed)
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
