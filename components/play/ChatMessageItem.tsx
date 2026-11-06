@@ -11,6 +11,7 @@ import {
   Heart,
   Zap,
   Bookmark,
+  Trash2,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
@@ -50,6 +51,7 @@ export interface ChatMessageItemProps {
   onSkipTypewriter: (msg: ChatMessageData, isLatestCharacterTurn: boolean) => void;
   onViewPortrait?: (imageUrl: string, name?: string) => void;
   onPinMemory?: (text: string, speakerName: string) => void;
+  onDeleteMessage?: (id: string) => void;
 }
 
 export const ChatMessageItem = memo(function ChatMessageItem({
@@ -72,6 +74,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onSkipTypewriter,
   onViewPortrait,
   onPinMemory,
+  onDeleteMessage,
 }: ChatMessageItemProps) {
   const [localEditText, setLocalEditText] = useState(msg.text);
 
@@ -214,6 +217,17 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               <Edit3 className="w-3 h-3" />
               <span>Edit</span>
             </button>
+            {onDeleteMessage && !isLoading && (
+              <button
+                type="button"
+                onClick={() => onDeleteMessage(msg.id)}
+                className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-red-950/60 border border-white/10 hover:border-red-500/40 text-zinc-400 hover:text-red-200 text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                title={msg.sender === "user" ? "Delete action" : "Delete AI response"}
+              >
+                <Trash2 className="w-3 h-3 text-red-400" />
+                <span className="hidden sm:inline">Delete</span>
+              </button>
+            )}
             {msg.sender === "character" && isLatestCharacterTurn && !isLoading && (
               <button
                 type="button"
@@ -356,6 +370,17 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               <Edit3 className="w-3 h-3 text-sky-400" />
               <span>Edit Text</span>
             </button>
+            {onDeleteMessage && !isLoading && (
+              <button
+                type="button"
+                onClick={() => onDeleteMessage(msg.id)}
+                className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-400/50 text-red-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Delete this AI response"
+              >
+                <Trash2 className="w-3 h-3 text-red-400" />
+                <span>Delete</span>
+              </button>
+            )}
             {!isLoading && (
               <button
                 type="button"

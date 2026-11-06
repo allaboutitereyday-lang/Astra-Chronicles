@@ -1016,6 +1016,7 @@ ${visualInspectionInstruction}`;
           speakerName: finalSpeakerName,
           location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
           isProtagonistAlone,
+          recentHistory,
         });
 
         responseData.player_execution = loopResolved.playerExecution;

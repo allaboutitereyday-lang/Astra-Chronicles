@@ -4543,6 +4543,50 @@ export default function VisualNovelGame() {
     });
   };
 
+  const handleDeleteMessage = useCallback(
+    (id: string) => {
+      if (isLoading) return;
+      soundEffects.playClick();
+      if (editingMessageId === id) {
+        setEditingMessageId(null);
+        setEditingText("");
+      }
+
+      setChatLog((prev) => {
+        const nextLog = prev.filter((msg) => msg.id !== id);
+        chatLogRef.current = nextLog;
+
+        // Find the new latest character message to keep the visual novel stage & typewriter in sync
+        let nextLatestChar: ChatMessage | undefined;
+        for (let i = nextLog.length - 1; i >= 0; i--) {
+          if (nextLog[i].sender === "character") {
+            nextLatestChar = nextLog[i];
+            break;
+          }
+        }
+
+        if (nextLatestChar) {
+          setGameState((gs) => {
+            const nextGs = {
+              ...gs,
+              speaker: nextLatestChar!.speakerName || gs.speaker,
+              dialogue: nextLatestChar!.text,
+            };
+            gameStateRef.current = nextGs;
+            performAutoSave({ chatLog: nextLog, gameState: nextGs });
+            return nextGs;
+          });
+          setDisplayedText(nextLatestChar.text);
+        } else {
+          performAutoSave({ chatLog: nextLog });
+        }
+
+        return nextLog;
+      });
+    },
+    [isLoading, editingMessageId]
+  );
+
   const handleSkipTypewriter = useCallback((msg: ChatMessage, isLatestCharacterTurn: boolean) => {
     if (isLatestCharacterTurn) {
       setDisplayedText(gameState.dialogue);
@@ -10410,6 +10454,7 @@ export default function VisualNovelGame() {
                       onStartEdit={handleStartEdit}
                       onCancelEdit={handleCancelEdit}
                       onSaveEdit={handleSaveEdit}
+                      onDeleteMessage={handleDeleteMessage}
                       onRegenerateTurn={handleRegenerateTurn}
                       onSkipTypewriter={handleSkipTypewriter}
                       onPinMemory={handlePinTurnMessage}

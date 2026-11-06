@@ -151,14 +151,16 @@ export function detectRepetitionLoop(
   if (newExecution && newExecution.trim().length > 20) {
     const newExecQuotes = extractQuotesAndSentences(newExecution).quotes;
     for (const prevText of recentTexts) {
-      if (computeWordSimilarity(newExecution, prevText) >= 0.52) {
+      if (computeWordSimilarity(newExecution, prevText) >= 0.82) {
         isExecutionRepeated = true;
         break;
       }
       const prevQuotes = extractQuotesAndSentences(prevText).quotes;
       for (const nq of newExecQuotes) {
+        if (nq.length < 36 || nq.split(/\s+/).length < 6) continue;
         for (const pq of prevQuotes) {
-          if (computeWordSimilarity(nq, pq) >= 0.65) {
+          if (pq.length < 36 || pq.split(/\s+/).length < 6) continue;
+          if (computeWordSimilarity(nq, pq) >= 0.85) {
             isExecutionRepeated = true;
             break;
           }
@@ -170,14 +172,16 @@ export function detectRepetitionLoop(
   if (newNarrative && newNarrative.trim().length > 20) {
     const newNarrQuotes = extractQuotesAndSentences(newNarrative).quotes;
     for (const prevText of recentTexts) {
-      if (computeWordSimilarity(newNarrative, prevText) >= 0.50) {
+      if (computeWordSimilarity(newNarrative, prevText) >= 0.82) {
         isNarrativeRepeated = true;
         break;
       }
       const prevQuotes = extractQuotesAndSentences(prevText).quotes;
       for (const nq of newNarrQuotes) {
+        if (nq.length < 36 || nq.split(/\s+/).length < 6) continue;
         for (const pq of prevQuotes) {
-          if (computeWordSimilarity(nq, pq) >= 0.65) {
+          if (pq.length < 36 || pq.split(/\s+/).length < 6) continue;
+          if (computeWordSimilarity(nq, pq) >= 0.85) {
             isNarrativeRepeated = true;
             break;
           }
@@ -190,8 +194,9 @@ export function detectRepetitionLoop(
 }
 
 /**
- * Server-side circuit breaker: if the LLM still outputs a repeated paragraph or quote loop,
- * dynamically rewrites/accelerates the beat so the player never sees duplicate text.
+ * Server-side circuit breaker: if the LLM outputs an exact repeated paragraph or quote loop,
+ * preserves the valid non-repeated sentences of the LLM response instead of replacing the scene
+ * with an unrelated generic fallback.
  */
 export function breakStagnationLoop(params: {
   playerExecution: string | null;
@@ -205,6 +210,7 @@ export function breakStagnationLoop(params: {
   speakerName: string;
   location: string;
   isProtagonistAlone: boolean;
+  recentHistory?: TurnHistoryEntry[];
 }): {
   playerExecution: string | null;
   narrativeText: string;
@@ -216,28 +222,41 @@ export function breakStagnationLoop(params: {
     isNarrativeRepeated,
     action,
     playerName,
-    playerRole,
-    playerRace,
     speakerName,
     location,
     isProtagonistAlone,
+    recentHistory = [],
   } = params;
 
   const cleanAction = action.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
-  const raceDescriptor =
-    playerRace && playerRace.toLowerCase() !== "human"
-      ? `${playerRace.toLowerCase()} instincts`
-      : `${playerRole.toLowerCase()} reflexes`;
+  const recentTexts = recentHistory.slice(-4).map((h) => h.text || "");
 
   if (isExecutionRepeated && playerExecution) {
-    playerExecution = `Without wasting another breath, ${playerName} channels ${raceDescriptor} into immediate forward momentum, cutting through the shadows of ${location}. Every stride is decisive and calculated, leaving the previous vantage point behind as ${playerName} commits fully to the next move. "${cleanAction || "Stay on my heels—we're breaking through the perimeter now."}"`;
+    // Filter out any sentence that is near-identical to recent history while keeping fresh sentences
+    const sentences = playerExecution.split(/(?<=[.!?])\s+/).filter(Boolean);
+    const freshSentences = sentences.filter(
+      (s) => !recentTexts.some((prev) => computeWordSimilarity(s, prev) >= 0.8)
+    );
+    if (freshSentences.length >= 2) {
+      playerExecution = freshSentences.join(" ");
+    } else if (!playerExecution.trim()) {
+      playerExecution = `${playerName} leans into the moment across ${location}, following through decisively. "${cleanAction}"`;
+    }
   }
 
-  if (isNarrativeRepeated) {
-    if (isProtagonistAlone || speakerName === "Narrator" || speakerName === "System") {
-      narrativeText = `The air across ${location} shifts sharply as ${playerName} advances into a new sector. Distant echoes fade behind the stonework while fresh tactical pathways open ahead—a narrow stone Causeway leading toward the lower vaults and an elevated ridge overlooking the district lantern-posts. The quiet tension demands an immediate choice of route.`;
-    } else {
-      narrativeText = `The moment of hesitation shatters as sharp steel clangs against stone just behind their previous position. ${speakerName} matches ${playerName}'s pace as they burst past the threshold into a shadowed passageway of ${location}, breathing hard as the layout opens into two diverging routes ahead. "They've cut off the main avenue," ${speakerName} says urgently, pointing toward a concealed iron grate and a narrow stone archway beyond. "Which way are we taking—through the undercroft or across the high bridge?"`;
+  if (isNarrativeRepeated && narrativeText) {
+    // Keep all fresh paragraphs/sentences from the LLM's actual response rather than overwriting the scene
+    const paragraphs = narrativeText.split(/\n\s*\n/).filter(Boolean);
+    const freshParagraphs = paragraphs.filter(
+      (p) => !recentTexts.some((prev) => computeWordSimilarity(p, prev) >= 0.82)
+    );
+    if (freshParagraphs.length > 0) {
+      narrativeText = freshParagraphs.join("\n\n");
+    } else if (!narrativeText.trim()) {
+      narrativeText =
+        isProtagonistAlone || speakerName === "Narrator" || speakerName === "System"
+          ? `The atmosphere in ${location} shifts as ${playerName}'s words hang in the air, opening a new beat in the conversation.`
+          : `${speakerName} pauses, caught off guard by ${playerName}'s boldness in ${location}, before composing a fresh response.`;
     }
   }
 
