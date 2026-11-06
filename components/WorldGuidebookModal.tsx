@@ -1202,9 +1202,9 @@ export function WorldGuidebookModal({
               {/* Heroines Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {filteredCompanions.map((comp) => {
+                  const portSolarisDossier = PORT_SOLARIS_HEROINE_DOSSIERS[comp.name];
                   const dossier =
-                    SOVEREIGN_HEROINE_DOSSIERS[comp.name] ||
-                    PORT_SOLARIS_HEROINE_DOSSIERS[comp.name];
+                    SOVEREIGN_HEROINE_DOSSIERS[comp.name] || portSolarisDossier;
                   const portrait = sanitizeImageUrl(
                     comp.baseImageUrl || comp.expressions?.neutral,
                     DEFAULT_AVATAR
@@ -1233,7 +1233,16 @@ export function WorldGuidebookModal({
                             )}
                             {dossier && (
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/30 text-cyan-300">
-                                {dossier.conduit}
+                                {dossier.conduit.replace(/_/g, " ")}
+                              </span>
+                            )}
+                            {portSolarisDossier && (
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                {portSolarisDossier.isBoardingHouseTenant &&
+                                portSolarisDossier.assignedRoomNumber
+                                  ? `Room 20${portSolarisDossier.assignedRoomNumber}`
+                                  : "Island Resident"}{" "}
+                                • {portSolarisDossier.preferredShopRole.replace(/_/g, " ")}
                               </span>
                             )}
                           </div>

@@ -48,6 +48,7 @@ export interface HeroineProfile {
   name: string;
   epithet: string;
   faction: IslandFaction;
+  wing: IslandFaction;
   conduit: FlairConduit;
   preferredShopRole: ShopRole;
   intimacyRank: 0 | 1 | 2 | 3 | 4 | 5; // Rank 3 = Moves into Boarding House; Rank 5 = True Route
@@ -455,6 +456,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Seraphina Vane",
     epithet: "The Tsundere Resort Heiress",
     faction: "PLATINUM_BOARD",
+    wing: "PLATINUM_BOARD",
     conduit: "SOCIAL_PANACHE",
     preferredShopRole: "FLOOR_HOST",
     intimacyRank: 1,
@@ -477,6 +479,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Vivienne Laurent",
     epithet: "The Sheltered 'Ice Queen' VIP",
     faction: "PLATINUM_BOARD",
+    wing: "PLATINUM_BOARD",
     conduit: "SOCIAL_PANACHE",
     preferredShopRole: "PROMOTER",
     intimacyRank: 1,
@@ -498,6 +501,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Mia Bellini",
     epithet: "The Childhood Friend & Next-Door Baker",
     faction: "BOARDWALK_GUILD",
+    wing: "BOARDWALK_GUILD",
     conduit: "PHYSICAL_TEMPO",
     preferredShopRole: "CHEF",
     intimacyRank: 2,
@@ -519,6 +523,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Colette Moreau",
     epithet: "The Perfectionist Sommelier",
     faction: "BOARDWALK_GUILD",
+    wing: "BOARDWALK_GUILD",
     conduit: "HYBRID",
     preferredShopRole: "MIXOLOGIST",
     intimacyRank: 1,
@@ -541,6 +546,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Pippa Reyes",
     epithet: "The Cheeky Beach Prodigy",
     faction: "BREAKERS_UNION",
+    wing: "BREAKERS_UNION",
     conduit: "PHYSICAL_TEMPO",
     preferredShopRole: "PROMOTER",
     intimacyRank: 2,
@@ -563,6 +569,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Kaede Tachibana",
     epithet: "The Stoic Kendo & Surf Rival",
     faction: "BREAKERS_UNION",
+    wing: "BREAKERS_UNION",
     conduit: "PHYSICAL_TEMPO",
     preferredShopRole: "BOUNCER",
     intimacyRank: 1,
@@ -585,6 +592,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Roxy Vance",
     epithet: "The Teasing Paparazzi Editor",
     faction: "DRIFTWOOD_SYNDICATE",
+    wing: "DRIFTWOOD_SYNDICATE",
     conduit: "SOCIAL_PANACHE",
     preferredShopRole: "PROMOTER",
     intimacyRank: 1,
@@ -606,6 +614,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Chloe Lin",
     epithet: "The Sleepy Arcade & Tax Savant",
     faction: "DRIFTWOOD_SYNDICATE",
+    wing: "DRIFTWOOD_SYNDICATE",
     conduit: "HYBRID",
     preferredShopRole: "FLOOR_HOST",
     intimacyRank: 2,
@@ -628,6 +637,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Nadia Saint-Clair",
     epithet: "The Velvet Appraiser",
     faction: "PLATINUM_BOARD",
+    wing: "PLATINUM_BOARD",
     conduit: "SOCIAL_PANACHE",
     preferredShopRole: "FLOOR_HOST",
     intimacyRank: 1,
@@ -650,6 +660,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     name: "Zuri Delacroix",
     epithet: "The Matcha Alchemist",
     faction: "BOARDWALK_GUILD",
+    wing: "BOARDWALK_GUILD",
     conduit: "HYBRID",
     preferredShopRole: "CHEF",
     intimacyRank: 2,
