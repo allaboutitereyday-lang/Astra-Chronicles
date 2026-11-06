@@ -2,13 +2,10 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { 
   Heart, 
   MapPin, 
   Sparkles, 
-  Send, 
-  MessageSquareCode, 
   Compass, 
   User, 
   Shield, 
@@ -21,7 +18,6 @@ import {
   Navigation,
   Save,
   FolderOpen,
-  Award,
   Package,
   Users,
   RotateCcw,
@@ -47,7 +43,6 @@ import {
   Lock,
   Eye,
   EyeOff,
-  ShieldCheck,
   Gift,
   Skull,
   Cloud,
@@ -75,12 +70,11 @@ import {
   CompanionRivalryRecord,
   ActiveStoryClashState
 } from "@/types/system";
-import { checkCovenantAvailability, executeCausalCovenant } from "@/lib/causalCovenant";
+import { checkCovenantAvailability } from "@/lib/causalCovenant";
 import dynamic from "next/dynamic";
-import { evaluateInterpersonalFriction, resolveCampUltimatum, RIVALRY_PAIRS_CATALOG } from "@/lib/companionFriction";
-import { initiateStoryClash, getStoryClashChoices, resolveClashTurn, FormattedClashChoice } from "@/lib/storyClashEngine";
-import { SystemNotificationToast } from "@/components/SystemNotificationToast";
-import { AcquisitionNotification, AcquisitionAlertData } from "@/components/AcquisitionNotification";
+import { resolveCampUltimatum } from "@/lib/companionFriction";
+import { initiateStoryClash, resolveClashTurn } from "@/lib/storyClashEngine";
+import { AcquisitionAlertData } from "@/components/AcquisitionNotification";
 import { GameNotificationStack, GameNotificationItem } from "@/components/GameNotificationStack";
 import { 
   saveGameSlot, 
@@ -88,9 +82,7 @@ import {
   loadAllGameSlots, 
   deleteGameSlot, 
   compressAvatarImage,
-  loadPersistentTimelineEchoes,
   appendPersistentTimelineEcho,
-  loadPersistentRegressionHistory,
   appendPersistentDeathRegression,
   normalizeSaveSlotData
 } from "@/lib/saveStorage";
@@ -105,11 +97,11 @@ import {
 import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA } from "@/types/story";
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
-import { extractProtagonistVisualDna } from "@/lib/visionEncoder";
+import { isFallbackVisualDescription } from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { ActionInputBar } from "@/components/play/ActionInputBar";
 import { ChatMessageItem } from "@/components/play/ChatMessageItem";
-import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, GiftItemRecord, CombatStanceType, detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
+import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, CombatStanceType, detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { decodeMultiverseSeed } from "@/lib/multiverseShare";
 import { getStoryById } from "@/lib/storyStorage";
@@ -140,7 +132,6 @@ import {
 } from "@/components/LlmProviderSelector";
 import { SystemQuestModal } from "@/components/SystemQuestModal";
 import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
-import { RelicSynergyPanel } from "@/components/RelicSynergyPanel";
 import { WorldShareModal } from "@/components/WorldShareModal";
 import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
@@ -501,7 +492,7 @@ function normalizeSystemState(raw?: SystemState | null): SystemState {
     };
   }
 
-  let activeQuests = Array.isArray(raw.activeQuests) ? [...raw.activeQuests] : [];
+  const activeQuests = Array.isArray(raw.activeQuests) ? [...raw.activeQuests] : [];
   const completedQuests = Array.isArray(raw.completedQuests) ? [...raw.completedQuests] : [];
 
   // Self-heal: If any quest in completedQuests was not claimed and has incomplete objectives, restore it to active
@@ -2445,6 +2436,64 @@ export default function VisualNovelGame() {
     } catch {}
   }, [showSaveModal]);
 
+  const syncAvatarAnalysisFromServer = async (
+    avatarDataUrl: string | null | undefined,
+    name?: string,
+    role?: string,
+    race?: string,
+    racialTraits?: string[],
+    existingDescription?: string
+  ) => {
+    if (!avatarDataUrl) return;
+    try {
+      const res = await fetch("/api/analyze-avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          avatarBase64: avatarDataUrl,
+          name: name || playerRef.current.name || "The Protagonist",
+          role: role || playerRef.current.role || "Adventurer",
+          race: race || playerRef.current.race || "Human",
+          racialTraits: racialTraits || playerRef.current.racialTraits || [],
+          existingDescription: existingDescription || undefined,
+        }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.visualDescription || data.visualDna) {
+        setPlayer((prev) => {
+          const next = {
+            ...prev,
+            visualDna: data.visualDna || prev.visualDna,
+            visualDescription: data.visualDescription || data.visualDna?.fullPromptAnchor || prev.visualDescription,
+          };
+          playerRef.current = next;
+          performAutoSave({ player: next, playerAvatar: avatarDataUrl });
+          return next;
+        });
+      }
+    } catch (err) {
+      console.warn("[AvatarUpload] Server vision analysis skipped:", err);
+    }
+  };
+
+  const healedAvatarRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!playerAvatar) return;
+    const avatarSig = `${playerAvatar.slice(0, 64)}_${playerAvatar.length}`;
+    if (healedAvatarRef.current === avatarSig) return;
+    if (!player.visualDescription || isFallbackVisualDescription(player.visualDescription)) {
+      healedAvatarRef.current = avatarSig;
+      syncAvatarAnalysisFromServer(
+        playerAvatar,
+        player.name,
+        player.role,
+        player.race || "Human",
+        player.racialTraits || []
+      );
+    }
+  }, [playerAvatar, player.visualDescription, player.name, player.role, player.race, player.racialTraits]);
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -2455,29 +2504,20 @@ export default function VisualNovelGame() {
       const optimized = await compressAvatarImage(raw, 384);
       setPlayerAvatar(optimized);
 
-      // Asynchronously extract and anchor Visual DNA for image consistency
-      extractProtagonistVisualDna(
+      // Clear any stale/fallback visualDescription immediately and analyze on server with Vision model
+      setPlayer((prev) => {
+        const next = { ...prev, visualDescription: undefined };
+        playerRef.current = next;
+        return next;
+      });
+
+      syncAvatarAnalysisFromServer(
         optimized,
         playerRef.current.name,
         playerRef.current.role,
-        playerRef.current.visualDescription,
-        accessKey,
         playerRef.current.race || "Human",
         playerRef.current.racialTraits || []
-      ).then((dna) => {
-        setPlayer((prev) => {
-          const next = {
-            ...prev,
-            visualDna: dna,
-            visualDescription: dna.fullPromptAnchor,
-          };
-          playerRef.current = next;
-          performAutoSave({ player: next, playerAvatar: optimized });
-          return next;
-        });
-      }).catch((err) => {
-        console.warn("[AvatarUpload] Visual DNA extraction skipped:", err);
-      });
+      );
     };
     reader.readAsDataURL(file);
   };
@@ -2498,23 +2538,16 @@ export default function VisualNovelGame() {
       };
       playerRef.current = next;
 
-      // Re-anchor visual DNA if an avatar has already been uploaded
+      // Re-anchor visual DNA on server if an avatar has already been uploaded
       if (playerAvatar) {
-        extractProtagonistVisualDna(
+        syncAvatarAnalysisFromServer(
           playerAvatar,
           next.name,
           next.role,
-          next.visualDescription,
-          accessKey,
           next.race,
-          newTraits
-        ).then((dna) => {
-          setPlayer((p) => {
-            const updated = { ...p, visualDna: dna, visualDescription: dna.fullPromptAnchor };
-            playerRef.current = updated;
-            return updated;
-          });
-        }).catch(() => {});
+          newTraits,
+          next.visualDescription
+        );
       }
 
       return next;
@@ -2527,21 +2560,14 @@ export default function VisualNovelGame() {
       playerRef.current = next;
 
       if (playerAvatar) {
-        extractProtagonistVisualDna(
+        syncAvatarAnalysisFromServer(
           playerAvatar,
           next.name,
           next.role,
-          next.visualDescription,
-          accessKey,
           next.race,
-          next.racialTraits || []
-        ).then((dna) => {
-          setPlayer((p) => {
-            const updated = { ...p, visualDna: dna, visualDescription: dna.fullPromptAnchor };
-            playerRef.current = updated;
-            return updated;
-          });
-        }).catch(() => {});
+          next.racialTraits || [],
+          next.visualDescription
+        );
       }
 
       return next;
@@ -2562,21 +2588,14 @@ export default function VisualNovelGame() {
       playerRef.current = next;
 
       if (playerAvatar) {
-        extractProtagonistVisualDna(
+        syncAvatarAnalysisFromServer(
           playerAvatar,
           next.name,
           next.role,
-          next.visualDescription,
-          accessKey,
           next.race || "Human",
-          parsed
-        ).then((dna) => {
-          setPlayer((p) => {
-            const updated = { ...p, visualDna: dna, visualDescription: dna.fullPromptAnchor };
-            playerRef.current = updated;
-            return updated;
-          });
-        }).catch(() => {});
+          parsed,
+          next.visualDescription
+        );
       }
 
       return next;
@@ -3537,7 +3556,7 @@ export default function VisualNovelGame() {
       const activeExpression = data.expression_key || chosen.expressionKey || "neutral";
       const initialSprite = getSpriteSrc(activeSpeaker, activeExpression);
       const rawDialogue = (data.dialogue || chosen.dialogue || "").trim();
-      const formattedDialogue = rawDialogue.startsWith('"') ? rawDialogue : `"${rawDialogue}"`;
+      const formattedDialogue = rawDialogue.includes('"') ? rawDialogue : `"${rawDialogue}"`;
       const sceneSetup = (data.scene_setup || chosen.sceneSetup || "").trim();
       const openingPrologueText = sceneSetup ? `${sceneSetup}\n\n${formattedDialogue}` : formattedDialogue;
 
@@ -4311,7 +4330,6 @@ export default function VisualNovelGame() {
         }
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -4841,7 +4859,7 @@ export default function VisualNovelGame() {
           }
         }
 
-        let newlyEquippedItems: { name: string; slot: "weapon" | "armor" | "relic"; item: InventoryItem }[] = [];
+        const newlyEquippedItems: { name: string; slot: "weapon" | "armor" | "relic"; item: InventoryItem }[] = [];
 
         if (prog.items_dropped && Array.isArray(prog.items_dropped) && prog.items_dropped.length > 0) {
           const rawDroppedList: InventoryItem[] = prog.items_dropped.map((item: any, idx: number) => ({
@@ -4957,7 +4975,7 @@ export default function VisualNovelGame() {
           });
         }
 
-        let updatedGear = { ...playerRef.current.gear };
+        const updatedGear = { ...playerRef.current.gear };
         if (prog.gear_granted) {
           if (prog.gear_granted.weapon) updatedGear.weapon = prog.gear_granted.weapon;
           if (prog.gear_granted.armor) updatedGear.armor = prog.gear_granted.armor;
@@ -5025,7 +5043,7 @@ export default function VisualNovelGame() {
         }
 
         let updatedAbilities = [...playerRef.current.abilities];
-        let updatedAbilityDetails = { ...(playerRef.current.abilityDetails || {}) };
+        const updatedAbilityDetails = { ...(playerRef.current.abilityDetails || {}) };
         if (prog.new_ability_unlocked) {
           const newSkill = prog.new_ability_unlocked.trim();
           if (!updatedAbilities.includes(newSkill)) {
@@ -5184,9 +5202,9 @@ export default function VisualNovelGame() {
         let questNotificationShown = false;
 
         setSystemState((prevSys) => {
-          let updatedActive = [...prevSys.activeQuests];
-          let updatedCompleted = [...prevSys.completedQuests];
-          let updatedDirectives = [...prevSys.systemDirectives];
+          const updatedActive = [...prevSys.activeQuests];
+          const updatedCompleted = [...prevSys.completedQuests];
+          const updatedDirectives = [...prevSys.systemDirectives];
 
           const appendDirective = (dirText: string) => {
             const clean = dirText.trim();
@@ -6358,7 +6376,7 @@ export default function VisualNovelGame() {
 
     // 2. Synchronously create the new systemState
     const nextActive = systemState.activeQuests.filter((q) => q.id !== targetQuest.id);
-    let nextCompleted = [...systemState.completedQuests];
+    const nextCompleted = [...systemState.completedQuests];
     const existingCompIdx = nextCompleted.findIndex((q) => q.id === targetQuest.id);
     if (existingCompIdx !== -1) {
       nextCompleted[existingCompIdx] = targetQuest;
@@ -6946,7 +6964,7 @@ export default function VisualNovelGame() {
               <span>Encountering {isTransitioning.speaker}</span>
             </div>
             <p className="text-sm italic text-zinc-200 leading-relaxed font-serif pt-1">
-              "{isTransitioning.quote}"
+              &ldquo;{isTransitioning.quote}&rdquo;
             </p>
           </div>
 
@@ -7085,7 +7103,7 @@ export default function VisualNovelGame() {
 
                   <a
                     href={generatedScene.imageUrl}
-                    download={`${currentStory.id}_scene_${Date.now()}.png`}
+                    download={`${currentStory.id}_scene.png`}
                     className="px-3 py-2 rounded-xl bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 text-sky-200 font-mono text-xs flex items-center gap-1.5 cursor-pointer transition-all"
                   >
                     <Download className="w-3.5 h-3.5" /> HD
@@ -11272,7 +11290,10 @@ export default function VisualNovelGame() {
               {memories.map((entry, idx) => {
                 const isPinned = (player.pinnedMemories || []).includes(entry.trim());
                 return (
-                  <div key={idx} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-xl text-xs text-zinc-200 leading-relaxed flex gap-3 select-text items-start">
+                  <div
+                    key={idx}
+                    className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-xl text-xs text-zinc-200 leading-relaxed flex gap-3 select-text items-start"
+                  >
                     <span className="font-mono text-sky-400 font-bold select-none">#{idx + 1}</span>
                     <div className="flex-1">
                       <MarkdownRenderer content={entry} className="text-xs" />
@@ -11342,7 +11363,7 @@ export default function VisualNovelGame() {
                     <span>Unlocked Timeline Insight (Causal Echo):</span>
                   </div>
                   <p className="text-rose-200 text-xs italic leading-relaxed">
-                    "{deathRegressionRecord.retainedKnowledgeSummary}"
+                    &ldquo;{deathRegressionRecord.retainedKnowledgeSummary}&rdquo;
                   </p>
                 </div>
               )}
@@ -11615,7 +11636,7 @@ export default function VisualNovelGame() {
                   Conflict Axis: {activeUltimatumRivalry.ideologicalAxis}
                 </p>
                 <p className="italic text-zinc-300">
-                  "The unresolved hostility between {activeUltimatumRivalry.companion1Name} and {activeUltimatumRivalry.companion2Name} has fractured party discipline. Both demand you declare your loyalty."
+                  &ldquo;The unresolved hostility between {activeUltimatumRivalry.companion1Name} and {activeUltimatumRivalry.companion2Name} has fractured party discipline. Both demand you declare your loyalty.&rdquo;
                 </p>
               </div>
 
@@ -11632,14 +11653,14 @@ export default function VisualNovelGame() {
                   onClick={() => handleResolveCampUltimatum("comp1")}
                   className="w-full p-3 rounded-xl border border-rose-500/30 bg-rose-950/30 hover:bg-rose-950/60 hover:border-rose-400 text-left font-mono text-xs text-rose-200 hover:text-white transition-all cursor-pointer"
                 >
-                  [Affirm/{activeUltimatumRivalry.companion1Name}]: Declare unwavering allegiance to {activeUltimatumRivalry.companion1Name}'s principles (+Major Favor).
+                  [Affirm/{activeUltimatumRivalry.companion1Name}]: Declare unwavering allegiance to {activeUltimatumRivalry.companion1Name}&rsquo;s principles (+Major Favor).
                 </button>
                 <button
                   type="button"
                   onClick={() => handleResolveCampUltimatum("comp2")}
                   className="w-full p-3 rounded-xl border border-purple-500/30 bg-purple-950/30 hover:bg-purple-950/60 hover:border-purple-400 text-left font-mono text-xs text-purple-200 hover:text-white transition-all cursor-pointer"
                 >
-                  [Affirm/{activeUltimatumRivalry.companion2Name}]: Declare unwavering allegiance to {activeUltimatumRivalry.companion2Name}'s principles (+Major Favor).
+                  [Affirm/{activeUltimatumRivalry.companion2Name}]: Declare unwavering allegiance to {activeUltimatumRivalry.companion2Name}&rsquo;s principles (+Major Favor).
                 </button>
                 <button
                   type="button"
@@ -11730,29 +11751,14 @@ export default function VisualNovelGame() {
             return next;
           });
 
-          // Asynchronously extract and anchor Visual DNA from the edited portrait
-          extractProtagonistVisualDna(
+          // Asynchronously extract and anchor Visual DNA from the edited portrait via server vision route
+          syncAvatarAnalysisFromServer(
             newAvatarUrl,
             playerRef.current.name,
             playerRef.current.role,
-            playerRef.current.visualDescription,
-            accessKey,
             playerRef.current.race || "Human",
             playerRef.current.racialTraits || []
-          ).then((dna) => {
-            setPlayer((prev) => {
-              const next = {
-                ...prev,
-                visualDna: dna,
-                visualDescription: dna.fullPromptAnchor,
-              };
-              playerRef.current = next;
-              performAutoSave({ player: next, playerAvatar: newAvatarUrl });
-              return next;
-            });
-          }).catch((err) => {
-            console.warn("[PortraitEditor] Visual DNA extraction skipped:", err);
-          });
+          );
 
           pushNotification({
             id: `avatar_updated_${Date.now()}`,

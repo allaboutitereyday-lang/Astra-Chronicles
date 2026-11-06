@@ -147,14 +147,109 @@ export function cleanPunctuationSpacing(text: string): string {
 }
 
 const CLICHE_PATTERNS = [
-  /\s*The choice (of what happens next|is yours|now rests).*?([.!?]|$)/gi,
+  /\s*The choice (of what happens next|is yours|now rests)[^.!?\n]*([.!?]|$)/gi,
   /\s*What will (you|they|he|she|Vaughn) do next\??/gi,
-  /\s*Only time will tell.*?([.!?]|$)/gi,
-  /\s*.*?waits with bated breath to see how.*?proceeds?\.?/gi,
-  /\s*The next (move|step|action) is (yours|up to you).*?([.!?]|$)/gi,
-  /\s*The future hangs in the balance.*?([.!?]|$)/gi,
+  /\s*Only time will tell[^.!?\n]*([.!?]|$)/gi,
+  /\s*(?:The (?:hall|room|chamber|crowd|assembly|world)|She|He|They)\s+waits? with bated breath to see how[^.!?\n]*proceeds?\.?/gi,
+  /\s*The next (move|step|action) is (yours|up to you)[^.!?\n]*([.!?]|$)/gi,
+  /\s*The future hangs in the balance[^.!?\n]*([.!?]|$)/gi,
   /\s*How will (you|they|he|she|Vaughn) respond\??/gi,
 ];
+
+const CATALOG_PHRASE_REPLACEMENTS: Array<[RegExp, string]> = [
+  [/\bNotched Chancellery Longsword\s*\(Edge-Resonance Tang\)/gi, "notched longsword"],
+  [/\bIron-Grey Initiate Greatcoat\s*&\s*Brigandine\b/gi, "iron-grey greatcoat"],
+  [/\bFractured Ashen Legion Spine-Node\b/gi, "fractured spine-node"],
+  [/\bRite-Etched Aetherial Catalyst Blade\b/gi, "rite-etched catalyst blade"],
+  [/\bHigh-Collared Obsidian Choir Robes\b/gi, "dark Choir vestments"],
+  [/\bChoir of Thorns Heart-Crystal\b/gi, "thorny heart-crystal"],
+  [/\bQuick-Swap Artificer Estoc\s*&\s*Wire Snares\b/gi, "artificer estoc"],
+  [/\bVial-Lined Tailor Vest\s*&\s*Brass Lenses\b/gi, "vial-lined vest"],
+  [/\bAppraiser's Overcharged Crown-Lens\b/gi, "overcharged brass lens"],
+  [/\bConcealed Punch-Dagger\s*&\s*Curved Mist-Saber\b/gi, "curved saber"],
+  [/\bTwin Mist-Sabers\s*&\s*Runic Handwraps\b/gi, "curved sabers"],
+  [/\bShadow-Weave Syndicate Jacket\b/gi, "dark coat"],
+  [/\bBlack-Bell Sensory Dampener Ring\b/gi, "tarnished dampening ring"],
+  [/\bStratum I:\s*The Sunken Cloisters\b/gi, "the Sunken Cloisters"],
+  [/\bStratum II:\s*The Weeping Ossuary\b/gi, "the Weeping Ossuary"],
+  [/\bStratum III:\s*The Chronos Scars\b/gi, "the Chronos Scars"],
+  [/\bStratum IV:\s*The Pulse\b/gi, "the Pulse"],
+  [/\bThe Seal-Gate\s*&\s*Boarding Quays\b/gi, "the Seal-Gate"],
+  [/\bThe Velvet Spill\s*&\s*The Tribunal Pit\b/gi, "the Velvet Spill"],
+  [/\bThe Sky-Crown\s*&\s*Sovereign Terraces\b/gi, "the Sky-Crown terraces"],
+  // Strip robotic inline rank parentheticals in prose/dialogue like "(Rank #184)" or "(#142)"
+  [/\s*\((?:Rank\s*)?#\d{1,3}\)/gi, ""],
+];
+
+const COMPANION_FULL_NAMES: Array<[string, string]> = [
+  ["Evelyn Abbandonato", "Evelyn"],
+  ["Aria Shadowthorn", "Aria"],
+  ["Cassia Valen", "Cassia"],
+  ["Beatrix Valorian", "Beatrix"],
+  ["Ysolde Kaelen", "Ysolde"],
+  ["Aurelia Solis", "Aurelia"],
+  ["Miri Thorne", "Miri"],
+  ["Noelle Vesper", "Noelle"],
+  ["Kestrel Hollow", "Kestrel"],
+  ["Valeria Noctis", "Valeria"],
+];
+
+/**
+ * Converts a UI equipment label (e.g. "Concealed Punch-Dagger & Curved Mist-Saber")
+ * into a natural, lowercase physical description for LLM prompts and fallback prose.
+ */
+export function humanizeGearForProse(rawGear?: string | null, fallback: string = "weapon"): string {
+  if (!rawGear || typeof rawGear !== "string") return fallback;
+  let cleaned = rawGear.trim();
+  for (const [pattern, replacement] of CATALOG_PHRASE_REPLACEMENTS) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+  cleaned = cleaned.replace(/\s*\([^)]*\)/g, "").trim();
+  if (cleaned.includes("&")) {
+    const parts = cleaned.split("&").map((p) => p.trim().toLowerCase());
+    return parts.join(" and ");
+  }
+  return cleaned.toLowerCase();
+}
+
+/**
+ * Converts a UI map-banner title (e.g. "The Seal-Gate & Boarding Quays" or "Stratum I: The Sunken Cloisters")
+ * into a natural prose phrase.
+ */
+export function humanizeLocationForProse(rawLocation?: string | null): string {
+  if (!rawLocation || typeof rawLocation !== "string") return "the chamber";
+  let cleaned = rawLocation.trim();
+  for (const [pattern, replacement] of CATALOG_PHRASE_REPLACEMENTS) {
+    cleaned = cleaned.replace(pattern, replacement);
+  }
+  return cleaned;
+}
+
+/**
+ * Replaces repetitive catalog labels and converts repeated Full Names into natural First Names.
+ */
+export function humanizeCatalogAndNameRepetition(text: string, collapseAllFullNames: boolean = false): string {
+  if (!text) return "";
+  let out = text;
+
+  for (const [pattern, replacement] of CATALOG_PHRASE_REPLACEMENTS) {
+    out = out.replace(pattern, replacement);
+  }
+
+  for (const [fullName, firstName] of COMPANION_FULL_NAMES) {
+    const regex = new RegExp(`\\b${fullName}\\b`, "g");
+    let count = 0;
+    out = out.replace(regex, (match) => {
+      count += 1;
+      if (collapseAllFullNames || count > 1) {
+        return firstName;
+      }
+      return match;
+    });
+  }
+
+  return out;
+}
 
 /**
  * Strips lazy AI meta endings and cliffhanger clichés.
@@ -186,7 +281,7 @@ export function normalizeSingleQuoteDialogue(text: string): string {
  */
 export function ensureChoiceIntentTag(choice: string): string {
   if (!choice) return "";
-  const trimmed = choice.trim();
+  const trimmed = humanizeCatalogAndNameRepetition(choice.trim(), true);
 
   // If already matches [Tone/Action]: Summary or [Tone/Action] Summary
   const dualTagMatch = trimmed.match(/^\[([A-Za-z]+)\/([A-Za-z]+)\](?::)?\s*(.+)$/);
@@ -318,6 +413,9 @@ export function sanitizeVisualNovelProse(rawText: string | null | undefined): st
 
   // 2. Strip AI cliché meta endings
   processed = stripMetaCliches(processed);
+
+  // 2b. Humanize catalog labels and collapse repetitive full names
+  processed = humanizeCatalogAndNameRepetition(processed, false);
 
   // 3. Normalize single-quote spoken dialogue (including sentences with apostrophes) into double quotes
   processed = fixSingleQuotedSpeechWithApostrophes(processed);

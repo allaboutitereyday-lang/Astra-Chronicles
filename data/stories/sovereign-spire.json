@@ -185,16 +185,16 @@
       ],
       "title": "Act I Grand Convocation: The Entrance Ceremony & Blood-Ledger Roll",
       "location": "The Sky-Crown & Sovereign Terraces",
-      "sceneSetup": "Beneath the levitating Gold-Astra chains of the Grand Convocation Amphitheater, five hundred matriculating initiates stand before the obsidian dais where High Sovereign Caelen Vane, Dean of Combat Magistra Evelyne Cross, and Chief Auditor Proctor Malakor Sallow preside over the Blood-Ledger monoliths. As each student's name is called, their starting rank (#500 to #1) and semester Aether Core debt quota sear into the towering brass slabs—along with the grim reminder that the bottom fifty ('The Dross') will be biologically foreclosed upon at midterm.\n\nAcross the tiered marble floor, key figures from all four Patron Wings are gathered within arm's reach: at the head of the Iron Chancellery column, Beatrix Valorian grounds her Solar Halberd in a shower of golden sparks while Cassia Valen quietly checks the edge-resonance of her notched longsword beside the Dross bracket; in the Obsidian Choir pews, Ysolde Kaelen pulls her black leather gloves tight over her calcified wrists as Aurelia Solis's luminous golden gaze locks onto your pulse; and along the shadowed colonnade, Gilded Loom broker Miri Thorne scribbles survival odds into her brass ledger while Whispering Veil enforcer Kestrel Hollow (Rank #142) leans against a pillar in her slouched 3rd-year coat, pupil-less glowing white eyes tracking your stance.",
-      "dialogue": "When Proctor Sallow reads your dossier aloud and the monolith flares with your anomalous Matriculation standing, a hush falls over the amphitheater before the mandatory Dyad Selection bell tolls.\n\nBeatrix Valorian steps out from the Chancellery front row, leveling the butt of her Solar Halberd on the flagstones as Cassia Valen, Ysolde Kaelen, Miri Thorne, and Kestrel Hollow all turn toward you at once. \"Five hundred initiates on the ledger,\" Beatrix announces, her golden eyes blazing with challenge, \"and the Headmaster's monolith just singled you out before the first delve even begins. Step forward and declare yourself—which Wing and whose Dyad tether do you think you're worthy of claiming?\"",
+      "sceneSetup": "Beneath the levitating golden chains of the grand amphitheater, five hundred initiates stand before the obsidian dais where High Sovereign Caelen Vane, Magistra Cross, and Proctor Sallow preside over the towering brass monoliths. As each student's name is called, their starting rank and semester core quota sear into the metal—along with the grim reminder that the bottom fifty will be foreclosed upon at midterm.\n\nAcross the tiered marble floor, figures from all four wings stand within arm's reach. At the head of the Iron Chancellery column, Beatrix Valorian grounds her war-halberd in a shower of golden sparks while Cassia Valen quietly checks the edge of her notched longsword beside the lower ranks. In the velvet Choir pews, Ysolde Kaelen tugs her black leather gloves tight over her wrists as Aurelia Solis's warm golden gaze locks onto your pulse. Along the shadowed colonnade, Miri Thorne scribbles survival odds into her ledger while Kestrel Hollow leans against a stone pillar with her dark coat slouched off one shoulder, pale pupil-less eyes tracking your every breath.",
+      "dialogue": "When Proctor Sallow reads your file aloud and the monolith flares with your matriculation standing, a hush falls over the hall before the selection bell tolls.\n\nBeatrix steps out from the front row, planting the butt of her halberd on the flagstones as Cassia, Ysolde, Miri, and Kestrel all turn toward you at once. \"Five hundred initiates on the roll,\" Beatrix announces, her golden eyes blazing with challenge, \"and the monolith just singled you out before the first descent even begins. Step forward and declare yourself—which wing and whose tether do you think you're worthy of claiming?\"",
       "expressionKey": "smug",
       "initialAffection": 20,
       "bgImage": "/backgrounds/sovereign-spire/sky_crown.jpg",
       "choices": [
-        "[Iron Chancellery / Vanguard]: Step up to the marble dais, meet Beatrix Valorian's Solar Halberd challenge head-on, and catch Cassia Valen's approving nod from the front line.",
-        "[Obsidian Choir / Resonance]: Turn toward the velvet Choir pews, extending a stabilizing thread of Astra toward Ysolde Kaelen's trembling gloved wrist while Aurelia Solis steps forward to greet you.",
-        "[Loom & Veil / Underworld]: Walk toward the colonnade shadows where Miri Thorne is auditing Blood-Ledger quotas and Kestrel Hollow (#142) tests your blind-fighting reflexes with a crooked smirk.",
-        "[Audacious / Sovereign Decree]: Address the entire Convocation Hall under High Sovereign Vane's gaze, declaring that whoever signs your Dyad manifest is taking a Sovereign Circle seat before midterm."
+        "[Iron Chancellery / Vanguard]: Step up to the marble dais, meet Beatrix's challenge head-on, and catch Cassia's quiet nod from the front line.",
+        "[Obsidian Choir / Resonance]: Turn toward the velvet pews, extending a calming thread of resonance toward Ysolde's trembling wrist as Aurelia steps forward to greet you.",
+        "[Loom & Veil / Underworld]: Walk toward the colonnade shadows where Miri is tallying the odds and Kestrel tests your reflexes with a crooked smirk.",
+        "[Audacious / Sovereign Decree]: Address the entire amphitheater under the Headmaster's gaze, declaring that whoever partners with you is taking a top seat before midterm."
       ]
     },
     {
@@ -202,16 +202,16 @@
       "speaker": "Cassia Valen",
       "title": "Act I Cold-Open: The First Seal & The Tollkeeper's Blockade",
       "location": "The Seal-Gate & Boarding Quays",
-      "sceneSetup": "Decompression steam hisses from the titanic runic blast doors of the Seal-Gate, thick with the scent of wet iron, ozone, and the calcified dust of the Under-Vault below. From the high arbiter's pulpit, Proctor Malakor Sallow closes his brass-bound Blood-Ledger with a gentle, funereal smile, reminding the incoming freshman class that anyone still sitting below Rank #450 at midterm audit will be legally foreclosed upon.\n\nDirectly in front of Boarding Cage Four, second-year Iron Chancellery bruiser Corwin Baines (Rank #184) slams his alchemical tower shield onto the ward-line, demanding a fifty-percent salvage tithe from every initiate descending into Stratum I: The Sunken Cloisters. Beside the cage chains, Cassia Valen rests her thumb on the crossguard of her notched longsword, waiting to see whether you kneel, bargain, or draw steel.",
-      "dialogue": "Baines has three Chancellery vanguards blocking the boarding ramp, and Proctor Sallow is pretending not to watch from the gallery.\n\nThe Great Lift drops into the Sunken Cloisters in two minutes. Once that cage passes the First Seal, Imperial law ceases to exist. Tell me right now—are we paying his extortion toll, or are we breaking his shield-line together?",
+      "sceneSetup": "Decompression steam hisses from the massive runic blast doors of the Seal-Gate, thick with the scent of wet iron, ozone, and calcified dust drifting up from the chasm below. From the high pulpit, Proctor Sallow closes his brass-bound ledger with a thin, funereal smile, reminding the freshman class that anyone still sitting in the bottom fifty at midterm will be legally foreclosed upon.\n\nDirectly in front of the fourth boarding cage, a burly second-year vanguard named Corwin Baines slams his heavy tower shield onto the ward-line, demanding half the salvage from every initiate descending into the flooded cloisters below. Beside the cage chains, Cassia Valen rests her thumb on the crossguard of her longsword, waiting to see whether you kneel, bargain, or draw steel.",
+      "dialogue": "Baines has three upperclassmen blocking the ramp, and Sallow is pretending not to watch from the gallery.\n\nThe lift drops in two minutes. Once that cage passes the First Seal, surface law ceases to exist. Tell me right now—are we paying his extortion toll, or are we breaking his shield-line together?",
       "expressionKey": "combat_ready",
       "initialAffection": 22,
       "bgImage": "/backgrounds/sovereign-spire/seal_gate.jpg",
       "choices": [
-        "[Somatic/Vanguard]: Step shoulder-to-shoulder with Cassia, channel Kinetic Pulse into your stance, and challenge Corwin Baines (#184) for right-of-way at the boarding ramp.",
-        "[Aetherial/Tactical]: Weave a low-profile Sigil-Matrix along the wet iron grating to destabilize Baines's tower-shield footing before he can brace.",
-        "[Origin Leverage]: Invoke your Matriculation dossier—whether tarnished noble bloodline, syndicate contract clause, or Headmaster Vane's provisional seal—to force Baines into a binding wager.",
-        "[Dyad Sync/Composed]: Lock eyes with Cassia, sign your name beside hers on the Cage Four Dyad manifest, and let her call the opening strike."
+        "[Somatic/Vanguard]: Step shoulder-to-shoulder with Cassia, steady your breathing, and challenge Baines for right-of-way at the ramp.",
+        "[Aetherial/Tactical]: Trace a low-profile sigil along the wet iron grating to destabilize Baines's footing before he can brace his shield.",
+        "[Origin Leverage]: Invoke your matriculation standing to force Baines into a binding wager in front of the whole quay.",
+        "[Dyad Sync/Composed]: Lock eyes with Cassia, sign your name beside hers on the boarding manifest, and let her call the opening strike."
       ]
     },
     {
@@ -219,16 +219,16 @@
       "speaker": "Cassia Valen",
       "title": "Cassia Valen: Live-Steel Dyad Inspection at the Seal-Gate",
       "location": "The Seal-Gate & Boarding Quays",
-      "sceneSetup": "Decompression steam hisses from the massive runic blast doors of the Seal-Gate, smelling of wet iron, ozone, and the calcified dust of the Under-Vault below. Above the open pit, brass diving-cages sway on oiled chains.\n\nStanding beside Cage Four is Cassia Valen. Her ash-blonde braid hangs over an iron-grey Chancellery coat with tarnished silver trim, her steel-grey eyes locked onto your matriculation ledger as her thumb rests against the crossguard of a notched longsword pulsing with faint golden kinetic Astra.",
-      "dialogue": "Proctor Sallow has already flagged our bracket for the first Stratum I reclamation quota, and Julian Thorne-Vex's appraisers are watching the quays like vultures.\n\nIf you freeze when the cage drops past the First Seal, I won't carry you back up the chains. Show me your stance—now—before I sign my name next to yours on this Dyad manifest.",
+      "sceneSetup": "Decompression steam hisses from the massive blast doors of the Seal-Gate, smelling of wet iron, ozone, and the calcified dust of the depths below. Above the open pit, brass diving-cages sway on oiled chains.\n\nStanding beside the fourth cage is Cassia Valen. Her ash-blonde braid hangs over an iron-grey coat with tarnished silver trim, her steel-grey eyes locked onto your file as her thumb rests against the crossguard of a notched longsword humming with faint golden light.",
+      "dialogue": "Sallow has already flagged our bracket for the first reclamation quota, and Julian's appraisers are watching the quays like vultures.\n\nIf you freeze when the cage drops into the dark, I won't carry you back up the chains. Show me your stance—now—before I sign my name next to yours on this manifest.",
       "expressionKey": "combat_ready",
       "initialAffection": 20,
       "bgImage": "/backgrounds/sovereign-spire/seal_gate.jpg",
       "choices": [
-        "[Somatic/Disciplined]: Drop into a low Pulse-Breathing guard and let golden kinetic tension hum along your weapon's tang.",
-        "[Analytical/Composed]: Meet her steel-grey gaze unflinchingly and point out the slight tremor she's hiding in her sword-wrist.",
-        "[Origin Leverage]: Remind her that with Julian Thorne-Vex (#42) circling both your ledgers, she needs a partner who won't fold below the First Seal.",
-        "[Audacious/Challenge]: Step inside her reach and offer a three-exchange live-steel test right here on the boarding quay."
+        "[Somatic/Disciplined]: Drop into a low, balanced guard and let steady kinetic tension hum along your weapon.",
+        "[Analytical/Composed]: Meet Cassia's steel-grey gaze unflinchingly and point out the slight tremor she's hiding in her sword-wrist.",
+        "[Origin Leverage]: Remind her that with Julian circling both your ledgers, she needs a partner who won't fold in the dark.",
+        "[Audacious/Challenge]: Step inside her reach and offer a three-exchange live-steel test right here on the stone quay."
       ]
     },
     {
@@ -236,16 +236,16 @@
       "speaker": "Beatrix Valorian",
       "title": "Beatrix Valorian: Solar Halberd Challenge in The Crucible",
       "location": "The Crucible",
-      "sceneSetup": "The basalt flagstones of The Crucible still steam where the orderlies scrubbed the morning's blood into the cliffside drains. Colossal iron chains groan against the wind above the waterfalls as two dozen Iron Chancellery initiates clear the central sparring ring.\n\nAt its center stands Beatrix Valorian, crimson twin-drills framing a face of haughty patrician fury as she levels an ornate war-halberd radiating blinding golden Solar Astra directly at your throat while Provost Garrick Dorn watches from the iron battlements.",
-      "dialogue": "You are standing in Cage One, initiate—a ring reserved for the top twenty seats of the Matriculation Ladder.\n\nEither you stepped onto my basalt to offer yourself as a warm-up target before Provost Dorn arrives, or you actually believe your conduit can survive three seconds against House Valorian's spear. Which is it?",
+      "sceneSetup": "The basalt flagstones of the colosseum still steam where the orderlies scrubbed the morning's blood into the cliffside drains. Colossal iron chains groan against the wind above the waterfalls as two dozen initiates clear the central sparring ring.\n\nAt its center stands Beatrix Valorian, crimson twin-drills framing a face of haughty patrician fury as she levels an ornate war-halberd radiating blinding golden heat directly at your throat while Provost Dorn watches from the iron battlements.",
+      "dialogue": "You are standing in the first ring, initiate—a circle reserved for the top twenty seats on the ladder.\n\nEither you stepped onto my stone to offer yourself as a warm-up target before Dorn arrives, or you actually believe you can survive three seconds against my halberd. Which is it?",
       "expressionKey": "smug",
       "initialAffection": 15,
       "bgImage": "/backgrounds/sovereign-spire/the_crucible.jpg",
       "choices": [
-        "[Defiant/Combat]: Brace your feet against the blood-scrubbed basalt and invite her to test whether Rank #1 is earned by bloodline or steel.",
-        "[Tactical/Observation]: Note the slight over-extension in her left shoulder—she's already been sparring since dawn to outpace Aldric Drakon (#1).",
-        "[Aristocratic/Wit]: Bow with razor-edged courtesy and ask if Ducal heirs always waste Solar Astra intimidating freshmen before the first delve.",
-        "[Calculated/Wager]: Propose a sixty-second survival clause: if she fails to break your posture, she sponsors your Crucible access pass and Stratum I charter."
+        "[Defiant/Combat]: Brace your feet against the damp basalt and invite Beatrix to test whether the top seat is earned by bloodline or steel.",
+        "[Tactical/Observation]: Note the slight over-extension in her left shoulder—she's already been sparring since dawn to outpace Aldric.",
+        "[Aristocratic/Wit]: Bow with razor-edged courtesy and ask if ducal heirs always waste their strength intimidating freshmen before the first descent.",
+        "[Calculated/Wager]: Propose a sixty-second survival wager: if she fails to break your guard, she sponsors your access pass for the upper ring."
       ]
     },
     {
@@ -253,16 +253,16 @@
       "speaker": "Ysolde Kaelen",
       "title": "Ysolde Kaelen: Forbidden Calcification in The Glass Conservatory",
       "location": "The Glass Conservatory",
-      "sceneSetup": "Towering violet stained glass filters the dying daylight into cold amethyst shafts across the hushed surgical wards of the Glass Conservatory. The air is thick with bitter myrrh and the hum of containment crystals.\n\nNear a restricted Third-Stratum specimen tank stands Ysolde Kaelen. Floating shards of crystallized violet blood orbit her elbow-length black leather gloves—just above her left cuff, a jagged vein of translucent purple Vault-crystal glints against her pale wrist before she sharply tugs the leather up.",
-      "dialogue": "Turn around and walk out, initiate. Whatever remedial detoxification tonic you came looking for is three aisles back.\n\n...Unless you are going to stand there and pretend you didn't just see what was beneath my glove. Speak carefully. The gravity shear hovering two inches behind your cervical spine is very poorly calibrated today.",
+      "sceneSetup": "Towering violet stained glass filters the dying daylight into cold amethyst shafts across the hushed wards of the conservatory. The air is thick with bitter myrrh and the low hum of containment crystals.\n\nNear a restricted specimen tank stands Ysolde Kaelen. Floating shards of crystallized blood orbit her elbow-length black leather gloves—just above her left cuff, a jagged vein of translucent purple crystal glints against her pale wrist before she sharply tugs the leather up.",
+      "dialogue": "Turn around and walk out, initiate. Whatever remedial tonic you came looking for is three aisles back.\n\n...Unless you are going to stand there and pretend you didn't just see what was beneath my glove. Speak carefully. The gravity shear hovering two inches behind your neck is very poorly calibrated today.",
       "expressionKey": "dangerous",
       "initialAffection": 18,
       "bgImage": "/backgrounds/sovereign-spire/glass_conservatory.jpg",
       "choices": [
-        "[Composure/Secretive]: Keep your hands visible and swear that whatever Magistra Cross's star pupil hides beneath her gloves is none of Lukas Castell's (#9) business.",
-        "[Arcane/Resonance]: Extend a thread of your own unusually stable Astra resonance toward her, offering a clean Soul-Grounding anchor instead of blackmail.",
-        "[Analytical/Deduction]: Quietly observe that stage-three Vault calcification shouldn't be possible at her age unless she's been delving past the Second Stratum alone.",
-        "[Cold/Pragmatic]: Propose a mutual non-disclosure Dyad pact: her forbidden Choir research in exchange for a partner whose resonance can stabilize her crystal strain."
+        "[Composure/Secretive]: Keep your hands visible and swear that whatever Ysolde hides beneath her gloves is none of Lukas's business.",
+        "[Arcane/Resonance]: Extend a thread of your own steady resonance toward her, offering a clean anchor instead of blackmail.",
+        "[Analytical/Deduction]: Quietly observe that third-stage calcification shouldn't be possible at her age unless she's been delving the deeper levels alone.",
+        "[Cold/Pragmatic]: Propose a quiet pact: her forbidden research in exchange for a partner whose aura can keep her crystal strain from spreading."
       ]
     },
     {
@@ -270,16 +270,16 @@
       "speaker": "Aurelia Solis",
       "title": "Aurelia Solis: Velvet Chains in the Choir Infirmary",
       "location": "The Glass Conservatory",
-      "sceneSetup": "Candlelight glimmers off immaculate white-and-gold Choir vestments in the private recovery alcove of the Conservatory. You wake on a stone examination table with a bruised ribcage from the morning's placement trial—and a pair of soft, warm hands resting over your sternum.\n\nAurelia Solis smiles down at you with serene, luminous doe eyes, wiping a trace of blood from your lip with a lace handkerchief while faint golden ethereal tether-chains coil tenderly around her fingers.",
-      "dialogue": "Shh... don't try to sit up yet. Your pathways were nearly frayed when they brought you in from the placement trial, so I took the liberty of binding your pain receptors to my own pulse.\n\nIt hurts so exquisitely when you push yourself this recklessly... Promise me that the next time the Under-Vault breaks you, you'll crawl straight back to my hands and no one else's?",
+      "sceneSetup": "Candlelight glimmers off immaculate white-and-gold vestments in the quiet recovery alcove of the infirmary. You wake on a stone examination table with a bruised ribcage from the morning's placement trial—and a pair of soft, warm hands resting over your chest.\n\nAurelia Solis smiles down at you with serene, luminous doe eyes, wiping a trace of blood from your lip with a lace handkerchief while faint golden threads coil tenderly around her fingers.",
+      "dialogue": "Shh... don't try to sit up yet. Your nerves were nearly frayed when they brought you in from the trial, so I took the liberty of binding your pain to my own pulse.\n\nIt hurts so exquisitely when you push yourself this recklessly... Promise me that the next time the depths break you, you'll crawl straight back to my hands and no one else's?",
       "expressionKey": "intrigued",
       "initialAffection": 35,
       "bgImage": "/backgrounds/sovereign-spire/glass_conservatory.jpg",
       "choices": [
-        "[Perceptive/Cautious]: Gently catch her wrist and ask why her golden vitality tether feels like it's deliberately loosening your defensive ward-seal.",
-        "[Grateful/Tender]: Let her finish the Soul-Grounding channel and thank her for absorbing the backlash before Proctor Sallow logged a medical default.",
-        "[Stoic/Independent]: Sit up despite the phantom ache and tell the 'Porcelain Saint' you don't intend to make a habit of bleeding on her altar.",
-        "[Intense/Playful]: Meet her possessive gaze head-on and ask what price the Choir's favorite saint actually charges for her miracles in Stratum I."
+        "[Perceptive/Cautious]: Gently catch Aurelia's wrist and ask why her golden thread feels like it's deliberately loosening your defensive ward.",
+        "[Grateful/Tender]: Let her finish the healing channel and thank her for absorbing the backlash before the auditors logged a medical default.",
+        "[Stoic/Independent]: Sit up despite the ache and tell her you don't intend to make a habit of bleeding on her table.",
+        "[Intense/Playful]: Meet her possessive gaze head-on and ask what price the Choir's favorite saint actually charges for her miracles."
       ]
     },
     {
@@ -287,16 +287,16 @@
       "speaker": "Miri Thorne",
       "title": "Miri Thorne: Blood-Ledger Audit in The Gilded Exchange",
       "location": "The Gilded Exchange",
-      "sceneSetup": "Built inside the hollow stone bridge-pilings directly above the abyss, the Gilded Exchange roars with hissing steam pipes, neon appraisal signs, and the clatter of Relic dice. Through the iron floor grates beneath your boots, the pale mist of the Under-Vault churns a thousand feet below.\n\nLeaning across a counter stacked with glowing amber vials and fractured Relics, Mireille 'Miri' Thorne adjusts her brass-rimmed jeweler's lenses, tapping an ink-stained finger against a heavy brass-bound debt ledger.",
-      "dialogue": "Well, well—another fresh initiate with Proctor Sallow's ink still drying on their matriculation file! According to the Gilded Loom's registry, your semester quota is due before midterm audit, or your biological nervous system goes up for public auction.\n\nLucky for you, I'm feeling charitable today. Sign a thirty-percent salvage split with my shop, and I'll loan you an overcharged Relic that might actually keep you breathing past Corwin Baines's blockade in Stratum One. Deal?",
+      "sceneSetup": "Built inside the hollow stone bridge-pilings directly above the abyss, the undercroft market roars with hissing steam pipes, neon signs, and the clatter of dice. Through the iron floor grates beneath your boots, pale mist churns a thousand feet below.\n\nLeaning across a counter stacked with glowing amber vials and salvaged curios, Mireille 'Miri' Thorne adjusts her brass-rimmed jeweler's lenses, tapping an ink-stained finger against a heavy debt ledger.",
+      "dialogue": "Well, well—another fresh initiate with Sallow's ink still drying on their file! According to the registry, your semester quota is due before midterm, or your nervous system goes up for public auction.\n\nLucky for you, I'm feeling charitable today. Sign a thirty-percent salvage split with my shop, and I'll loan you a piece of gear that might actually keep you breathing past Baines's blockade at the lift. Deal?",
       "expressionKey": "smug",
       "initialAffection": 25,
       "bgImage": "/backgrounds/sovereign-spire/gilded_exchange.jpg",
       "choices": [
-        "[Streetwise/Appraisal]: Inspect the 'overcharged Relic' on her counter and point out the hidden Whisper Flaw she conveniently forgot to mention.",
+        "[Streetwise/Appraisal]: Inspect the piece on Miri's counter and point out the hairline containment flaw she conveniently forgot to mention.",
         "[Observant/Insight]: Notice the falsified transport manifests tucked beneath her ledger—she's smuggling defaulted freshmen out through the lower aqueducts.",
-        "[Bold/Negotiation]: Counter-offer a twenty-percent split, plus first pick of whatever Corwin Baines's (#184) toll-squad drops at the Sunken Cloisters lift gate.",
-        "[Charming/Sly]: Lean against her counter and ask if the 'Smiling Usurer' always looks this worried when sending a new Dyad partner down the lift."
+        "[Bold/Negotiation]: Counter-offer a twenty-percent split, plus first pick of whatever Baines's toll-squad drops at the lift gate.",
+        "[Charming/Sly]: Lean against the counter and ask Miri if she always looks this worried when sending a new partner down the shaft."
       ]
     },
     {
@@ -304,16 +304,16 @@
       "speaker": "Noelle Vesper",
       "title": "Noelle Vesper: Midnight Static in the Artificer Workshop",
       "location": "The Gilded Exchange",
-      "sceneSetup": "In the back-alley sub-basement behind the Gilded Exchange, the smell of machine oil, ozone, and burnt black coffee hangs heavy in the dark. Three life-sized porcelain Vault-automata hang suspended from the ceiling by razor-thin glowing blue Astra threads.\n\nCurled in a leather chair three sizes too big for her is Noelle Vesper. Dark circles shadow her half-lidded violet eyes as she sips from a glass laboratory beaker—until you step across the threshold and her head snaps up like a tuning fork.",
-      "dialogue": "...Stop moving. Don't breathe for four seconds.\n\n...Interesting. The Under-Vault's static stopped screaming against my eardrums the exact millisecond your aura crossed my ward-line. Take off your coat and sit here. I haven't slept in eighty-two hours, and I need to test if holding your hand shuts the Fourth Stratum up permanently.",
+      "sceneSetup": "In the back-alley sub-basement behind the market, the smell of machine oil, ozone, and burnt black coffee hangs heavy in the dark. Three life-sized porcelain constructs hang suspended from the ceiling by razor-thin blue threads.\n\nCurled in a leather chair three sizes too big for her is Noelle Vesper. Dark circles shadow her half-lidded violet eyes as she sips from a glass laboratory beaker—until you step across the threshold and her head snaps up like a tuning fork.",
+      "dialogue": "...Stop moving. Don't breathe for four seconds.\n\n...Interesting. The static from the pit stopped screaming against my eardrums the exact millisecond your aura crossed my doorway. Take off your coat and sit here. I haven't slept in eighty-two hours, and I need to test if holding your hand shuts the noise up permanently.",
       "expressionKey": "intrigued",
       "initialAffection": 28,
       "bgImage": "/backgrounds/sovereign-spire/gilded_exchange.jpg",
       "choices": [
-        "[Gentle/Protective]: Pull up a workbench stool beside her chair and offer your bare hand so she can finally close her eyes.",
-        "[Curious/Technical]: Ask her what kind of signal she's hearing from the Fourth Stratum that even the Gilded Loom's wards can't filter out.",
-        "[Tactical/Alliance]: Agree to act as her living white-noise anchor—provided her three porcelain automata back you up on tomorrow's Stratum I delve.",
-        "[Teasing/Pragmatic]: Take the beaker of cold black coffee out of her fingers first and tell her she's eating a real meal before any experiments."
+        "[Gentle/Protective]: Pull up a workbench stool beside Noelle's chair and offer your bare hand so she can finally close her eyes.",
+        "[Curious/Technical]: Ask her what kind of signal she's hearing from the deep bedrock that even the workshop wards can't filter out.",
+        "[Tactical/Alliance]: Agree to act as her quiet anchor—provided her three porcelain constructs back you up on tomorrow's descent.",
+        "[Teasing/Pragmatic]: Take the beaker of cold coffee out of her fingers first and tell her she's eating a real meal before any experiments."
       ]
     },
     {
@@ -321,16 +321,16 @@
       "speaker": "Kestrel Hollow",
       "title": "Kestrel Hollow: Blind-Fight Wager in The Velvet Spill",
       "location": "The Velvet Spill & The Tribunal Pit",
-      "sceneSetup": "Down in the subterranean galleries of The Velvet Spill, violet illusion mist curls up from the sunken blood-stained stones of the Midnight Tribunal pit below. The roar of betting syndicates echoes off the vaulted rock.\n\nLeaning against the stone parapet with her dark 3rd-year enforcer coat slouched loose off her left shoulder is Kestrel Hollow (Rank #142). Very long, bone-white hair with blunt hime-cut bangs and thick side-plaited braids frames her deep amber skin and the three diagonal white ritual stripes beneath each of her pale, pupil-less glowing white eyes. She checks the tightness of the glowing runic linen wraps encasing her hands and forearms as violet-black sensory-deprivation mist curls around her knuckles, flashing you a crooked, lazy smirk.",
-      "dialogue": "Careful where you lean, kid—the blood on that railing isn't dry from the eight-o'clock Tribunal yet.\n\nWord around the Whispering Veil is you're looking for a Dyad partner who knows how to fight blind and dirty enough to break Corwin Baines's (#184) blockade at the Seal-Gate. Buy me a glass of cinder-rye and show me your reflexes before Silas Krowe's spotters log you as another future corpse on the ledger.",
+      "sceneSetup": "Down in the subterranean galleries of the tavern, violet smoke curls up from the sunken blood-stained stones of the dueling pit below. The roar of betting syndicates echoes off the vaulted rock.\n\nLeaning against the stone parapet with her dark third-year coat slouched loose off her left shoulder is Kestrel Hollow. Long bone-white hair with blunt bangs and thick side-braids frames her deep amber skin and the three white ritual stripes beneath each of her pale, pupil-less eyes. She checks the tightness of the glowing linen wraps around her forearms as dark mist curls over her knuckles, flashing you a crooked, lazy smirk.",
+      "dialogue": "Careful where you lean, kid—the blood on that railing isn't dry from the eight-o'clock bout yet.\n\nWord around the galleries is you're looking for a partner who knows how to fight blind and dirty enough to break Baines's blockade at the gate. Buy me a glass of cinder-rye and show me your reflexes before Krowe's spotters log you as another future corpse.",
       "expressionKey": "smug",
       "initialAffection": 22,
       "bgImage": "/backgrounds/sovereign-spire/velvet_spill.jpg",
       "choices": [
-        "[Perceptive/Direct]: Slide a glass of cinder-rye across the stone and ask why Rank #142 'The Velvet Hound' already has your matriculation file memorized.",
-        "[Somatic/CQC]: Tap your own guard against the parapet and test her blind-fighting attunement with a feint inside her five-meter Tether-Bound range.",
-        "[Underworld/Cunning]: Offer to help her rig the next Midnight Tribunal's betting pool in exchange for Whispering Veil shortcuts through the Sunken Cloisters.",
-        "[Observant/Empathy]: Catch the subtle tension when she adjusts her slouched enforcer coat over her halter-neck bodysuit—where Silas Krowe's (#19) contract-brand smolders."
+        "[Perceptive/Direct]: Slide a glass of rye across the stone and ask why Kestrel already has your file memorized.",
+        "[Somatic/CQC]: Tap your guard against the parapet and test her blind-fighting senses with a quick feint inside her reach.",
+        "[Underworld/Cunning]: Offer to help her rig the next bout's betting pool in exchange for hidden shortcuts through the flooded cloisters.",
+        "[Observant/Empathy]: Catch the subtle tension when she adjusts her coat collar over her ribs—where her handler's contract brand smolders."
       ]
     },
     {
@@ -338,16 +338,16 @@
       "speaker": "Valeria Noctis",
       "title": "Valeria Noctis: Smoke & Sabers Above the Tribunal Pit",
       "location": "The Velvet Spill & The Tribunal Pit",
-      "sceneSetup": "From a curtained VIP balcony overlooking the sunken amphitheater of The Velvet Spill, sweet violet illusion-smoke drifts into the corridor. Below, two duelists clash in a sanctioned Midnight Tribunal as Proctor Sallow watches from the arbiter's podium.\n\nLounging across the velvet divan is Valeria Noctis, her third-year coat draped loosely over her shoulders and twin curved sabers resting at her hip. She exhales a slow ring of violet smoke from an ornate brass pipe, her predatory eyes locking onto you with an amused smirk.",
-      "dialogue": "My, my... a fresh initiate wandering into the third-year galleries with the ink still wet on their matriculation file.\n\nCome closer, little lamb. I'm taking wagers on whether the boy in the pit loses his nerve or his right arm first—and I have a very lucrative proposition for a freshman bold enough to step into that ring before the semester ends.",
+      "sceneSetup": "From a curtained balcony overlooking the sunken fighting pit, sweet violet smoke drifts into the corridor. Below, two duelists clash on the blood-stained stone as Sallow watches from the arbiter's podium.\n\nLounging across the velvet divan is Valeria Noctis, her third-year coat draped loosely over her shoulders and twin curved sabers resting at her hip. She exhales a slow ring of smoke from an ornate brass pipe, her predatory eyes locking onto you with an amused smirk.",
+      "dialogue": "My, my... a fresh initiate wandering into the third-year galleries with the ink still wet on their file.\n\nCome closer, little lamb. I'm taking wagers on whether the boy in the pit loses his nerve or his right arm first—and I have a very lucrative proposition for a freshman bold enough to step into that ring before the semester ends.",
       "expressionKey": "smug",
       "initialAffection": 20,
       "bgImage": "/backgrounds/sovereign-spire/velvet_spill.jpg",
       "choices": [
-        "[Analytical/Bold]: Step up to the balcony rail, call the exact second the duelist below drops his guard, and ask what her proposition actually pays.",
-        "[Incisive/Lore]: Ask why a woman strong enough to take Aldric Drakon's (#1) seat deliberately fails her final ethics exam every single spring.",
-        "[Flirtatious/Unflinching]: Take a seat on the edge of her divan and tell her you aren't anyone's lamb—even in the Whispering Veil's den.",
-        "[Tactical/Cautious]: Keep one hand near your weapon as you test the violet smoke around the booth for sensory-mirage illusions."
+        "[Analytical/Bold]: Step up to the balcony rail, call the exact second the duelist below drops his guard, and ask what Valeria's proposition actually pays.",
+        "[Incisive/Lore]: Ask why a woman strong enough to take the top seat deliberately fails her final ethics exam every single spring.",
+        "[Flirtatious/Unflinching]: Take a seat on the edge of her divan and tell her you aren't anyone's lamb—even in her den.",
+        "[Tactical/Cautious]: Keep one hand near your weapon as you test the violet smoke around the booth for subtle illusions."
       ]
     }
   ],

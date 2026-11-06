@@ -31,6 +31,20 @@ export const VISION_FALLBACK_CHAIN = [
 ];
 
 /**
+ * Returns true if the given visualDescription string is empty or was generated
+ * by the procedural fallback rather than an actual Vision model inspection.
+ */
+export function isFallbackVisualDescription(desc?: string | null): boolean {
+  if (!desc || typeof desc !== "string") return true;
+  const trimmed = desc.trim();
+  if (trimmed.length < 15) return true;
+  return (
+    trimmed.includes("distinctive visual novel anime protagonist styling") ||
+    trimmed.includes("dark silver swept hair, piercing amber eyes")
+  );
+}
+
+/**
  * Encodes an uploaded character portrait into a 2-3 sentence visual description.
  * Utilizes an in-memory cache to guarantee zero redundant vision calls for the same portrait.
  */
@@ -67,22 +81,19 @@ export async function describeProtagonistAvatar(
     ? ` (anticipated anatomical traits: ${racialTraits.join(", ")})`
     : "";
 
-  const systemPrompt = `You are the Lead Art Director for an immersive anime visual novel.
-Your task is to analyze this character portrait of the protagonist:
-- Name: ${protagonistName}
+  const systemPrompt = `You are the Lead Art Director for an immersive dark fantasy visual novel.
+Your task is to carefully inspect the attached character portrait of the protagonist:
+- Name: ${protagonistName.split(" ")[0]}
 - Archetype / Class: ${protagonistRole}
 - Lineage / Race: ${protagonistRace}${traitsContext}
 
-CRITICAL SPECIES & ANATOMICAL SCANNING DIRECTIVE:
-1. Non-Human Anatomy: Specifically inspect the portrait for biological traits matching their lineage (${protagonistRace}). Detect and describe any visible:
-   - Fur texture/color, body pelt, beast markings, or reptilian scales.
-   - Animal ears (e.g. lupine, vulpine, feline ears), horns, antlers, or crests.
-   - Fangs, elongated canines, beast muzzle, or predatory jaw.
-   - Wings, tail, or digitigrade limbs if visible.
-   - Eyes: slit pupils, demonic glow, unearthly iris hues, beast-like sclera.
-   - Pointed ears, ethereal skin sheen, or unearthly complexion.
-2. In 2 to 3 vivid, atmospheric sentences, describe their exact physical appearance: species anatomy, hair, eyes, facial features, build, attire (or explicitly note if unclad, nude, or bare-skinned without garments), visible weapons, and overall aura.
-3. Be evocative, specific, and direct. Do not say "The image shows" or "In this portrait"; write direct narrative character descriptions.`;
+CRITICAL VISUAL ACCURACY DIRECTIVE (LOOK CLOSELY AT THE IMAGE):
+1. Skin Tone & Complexion: Accurately describe their exact skin tone/complexion (e.g. deep brown skin, warm bronze, dark ebony, olive, pale porcelain, etc.) and any facial markings or scars.
+2. Hair Color, Texture & Style: Accurately identify their true hair color and hairstyle (e.g. black braided hair / locs adorned with silver and gold cuffs/beads, cropped dark hair, flowing locks, etc.). NEVER guess "silver" or "blonde" if the hair in the image is black or dark!
+3. Eyes & Expression: Describe their eye color, eyelid shape (e.g. relaxed hooded dark eyes, sharp gaze), and facial expression/demeanor.
+4. Attire & Accessories: Describe the exact clothing worn in the portrait in natural prose (e.g. crisp white collared shirt with a black tie, dark cloak or military coat draped over one shoulder, leather thigh-strap with throwing knives, armor, or note if unclad).
+5. Non-Human Anatomy (if any): Note any visible ${protagonistRace} traits (ears, fangs, horns, scales, tail, glowing eyes).
+6. Output 2 to 3 vivid, natural sentences describing their appearance. Do not say "The image shows" or "In this portrait"; write direct narrative character description.`;
 
   for (const model of VISION_FALLBACK_CHAIN) {
     try {
@@ -160,12 +171,12 @@ export function buildFallbackVisualDna(
       ? "male"
       : "androgynous";
 
-  const hairMatch = desc.match(/\b(silver|white|black|dark|blonde|gold|crimson|red|blue|violet|purple|brown)(?:-[\w]+)?\s+(?:[\w-]+\s+)?hair\b/i);
-  const hairColor = hairMatch ? hairMatch[1] : (desc.match(/\b(silver|white|black|dark|blonde|gold|crimson|red|blue|violet|purple|brown)\b/i)?.[1] || "dark silver");
-  const hairStyle = desc.match(/\b(messy|spiky|straight|wavy|braided|ponytail|undercut|swept|long|short)\b/i)?.[1] || "swept";
+  const hairMatch = desc.match(/\b(black|ebony|jet|dark|brown|silver|white|blonde|gold|crimson|red|blue|violet|purple)(?:-[\w]+)?\s+(?:[\w-]+\s+)?(?:hair|braids|locs|dreads)\b/i);
+  const hairColor = hairMatch ? hairMatch[1] : (desc.match(/\b(black|ebony|dark|brown|silver|white|blonde|gold|crimson|red|blue|violet|purple)\b/i)?.[1] || "dark");
+  const hairStyle = desc.match(/\b(braided|braids|locs|dreads|messy|spiky|straight|wavy|ponytail|undercut|swept|long|short)\b/i)?.[1] || "styled";
 
-  const eyeMatch = desc.match(/\b(amber|gold|blue|azure|crimson|red|violet|purple|green|emerald|grey|gray)\s+eyes\b/i);
-  const eyeColor = eyeMatch ? eyeMatch[1] : (desc.match(/\b(amber|gold|blue|azure|crimson|red|violet|purple|green|emerald|grey|gray)\b/i)?.[1] || "amber");
+  const eyeMatch = desc.match(/\b(dark|brown|obsidian|grey|gray|amber|gold|blue|azure|crimson|red|violet|purple|green|emerald)\s+eyes\b/i);
+  const eyeColor = eyeMatch ? eyeMatch[1] : (desc.match(/\b(dark|brown|obsidian|grey|gray|amber|gold|blue|azure|crimson|red|violet|purple|green|emerald)\b/i)?.[1] || "sharp");
 
   const isUnclad = desc.includes("nude") || desc.includes("unclad") || desc.includes("naked") || desc.includes("bare skin") || desc.includes("bare chest") || desc.includes("bare shoulders");
   const upperAttire = isUnclad ? "unclad, bare skin with no armor" : `${role} dark leather coat over armor vest`;

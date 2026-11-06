@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
 import { getNarrationProseDirective, NarrativeDepthMode } from "@/lib/narrationStyles";
-import { describeProtagonistAvatar } from "@/lib/visionEncoder";
+import { describeProtagonistAvatar, isFallbackVisualDescription } from "@/lib/visionEncoder";
 import { sanitizeVisualNovelProse, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
 import { generateCrossTalkBanterDirective, evaluateInterpersonalFriction } from "@/lib/companionFriction";
 import { executeCausalCovenant } from "@/lib/causalCovenant";
@@ -158,6 +158,7 @@ export async function POST(req: Request) {
       playerProfile?.personality,
       playerProfile?.personalityTraits
     );
+    const playerFirstName = (playerProfile?.name || "Wanderer").trim().split(/\s+/)[0] || playerProfile.name;
 
     // Dynamic player input directive
     const inputHandlingInstruction = isCustom
@@ -169,28 +170,32 @@ The user wrote their own action verbatim: "${action}".
       : `[INPUT TYPE: PRESET CHOICE VECTOR SELECTED]
 The user selected this choice/action vector: "${action}".
 - CRITICAL: The user did NOT type this text verbatim. This prompt vector represents their tactical and narrative intent following the format "[Tone/Action]: Short summary of character action/dialogue".
-- In "player_execution", you MUST write a substantial, immersive narrative sequence from the protagonist's perspective (${playerProfile.name}, Role: ${playerProfile.role}, Chosen Personality: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}], Stance: ${activeStance || "neutral"}).
+- In "player_execution", you MUST write a substantial, immersive narrative sequence from the protagonist's perspective (${playerFirstName}, Role: ${playerProfile.role}, Chosen Personality: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}], Stance: ${activeStance || "neutral"}).
 - PERSONALITY VOICE MANDATE FOR "player_execution":
   * Speech Cadence: ${personaVoice.speechCadence}
   * Demeanor: ${personaVoice.attitudeAndWorldview}
   * Every spoken line and physical gesture in "player_execution" MUST sound unmistakably like a "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}).
 - LENGTH & SUBSTANCE REQUIREMENT: Write **2 full, vivid paragraphs (6 to 10 sentences total)** separated by "\\n\\n".
 - CONTENT REQUIREMENTS FOR "player_execution":
-  1. Paragraph 1 (Physical Action, Tactical Stance & Sensory Presence): Describe ${playerProfile.name}'s physical movements, weapon/gear handling, posture, footsteps, spatial maneuvering, and sensory observations matching their role (${playerProfile.role}) and "${personaVoice.personaTitle}" demeanor.
-  2. Paragraph 2 (Spoken Dialogue & Psychological Delivery): Include ${playerProfile.name}'s actual spoken dialogue in quotation marks ("...") addressing the companion, enemies, or situation in their "${personaVoice.personaTitle}" voice, anchored to facial expression and vocal tone.
+  1. Paragraph 1 (Physical Action, Tactical Stance & Sensory Presence): Describe ${playerFirstName}'s physical movements, natural weapon/gear handling, posture, footsteps, spatial maneuvering, and sensory observations matching their "${personaVoice.personaTitle}" demeanor.
+  2. Paragraph 2 (Spoken Dialogue & Psychological Delivery): Include ${playerFirstName}'s actual spoken dialogue in quotation marks ("...") addressing the companion, enemies, or situation in their "${personaVoice.personaTitle}" voice, anchored to facial expression and vocal tone.
   3. STRICT NEGATIVE CONSTRAINTS:
      - NEVER output only 1 short paragraph or 1–2 brief sentences. Always write 2 distinct paragraphs separated by "\\n\\n".
+     - NEVER repeat full first+last character names ("${playerProfile.name}") or paste capitalized UI equipment/location catalog labels into prose. Refer to ${playerFirstName} and companions by their first names, and describe weapons, clothing, and rooms naturally ("his blade", "her gloved wrist", "the stone floor").
      - NEVER include bracket tags like "[Combat/Aggressive]:", "[Arcana/Analytical]:", "[Subterfuge/Cunning]:" in "player_execution". Strip all tag markers.
      - NEVER summarize with meta commentary like "The player chooses to...". Write directly as immersive narrative prose and dialogue.
 - Follow up in "narrative_text" with how the world and companion respond to this execution.`;
 
     const isFirstEncounter = !recentHistory || recentHistory.length <= 1;
 
-    // Inspect uploaded protagonist avatar if present using persisted description or fast vision encoder
-    let visualDescription: string | null = playerProfile?.visualDescription || null;
-    if (!visualDescription && playerAvatarBase64) {
+    // Inspect uploaded protagonist avatar if present using fast vision encoder (cached by image content on server)
+    let visualDescription: string | null =
+      playerProfile?.visualDescription && !isFallbackVisualDescription(playerProfile.visualDescription)
+        ? playerProfile.visualDescription
+        : null;
+    if (playerAvatarBase64) {
       try {
-        visualDescription = await describeProtagonistAvatar(
+        const freshDesc = await describeProtagonistAvatar(
           playerAvatarBase64,
           playerProfile?.name || "The Protagonist",
           playerProfile?.role || "Adventurer",
@@ -198,6 +203,9 @@ The user selected this choice/action vector: "${action}".
           playerProfile?.race || "Human",
           playerProfile?.racialTraits || []
         );
+        if (freshDesc) {
+          visualDescription = freshDesc;
+        }
       } catch (vErr: any) {
         console.warn("[Turn API] Failed to encode avatar with vision:", vErr?.message);
       }
@@ -450,6 +458,7 @@ ${companionDossiers}
    - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
    - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
    - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
+   - NATURAL HUMAN PROSE — NO CATALOG LABELS OR FULL-NAME REPETITION: Write like a human novelist, never like an RPG database dump. Refer to characters by their first name ("${playerFirstName}", "Cassia", "Beatrix", "Ysolde", "Kestrel") or pronouns—never repeat full first+last names or inline rank numbers like "(#184)". Never paste capitalized UI item labels ("Notched Chancellery Longsword", "Shadow-Weave Syndicate Jacket") or full map headers ("Stratum I: The Sunken Cloisters") into narrative sentences; describe weapons, clothing, techniques, and rooms naturally ("the notched blade", "his dark coat", "the flooded cloister").
    - PARAGRAPHING & DEPTH: Structure "narrative_text" into ${paragraphSpecLabel} separated by clean double line breaks ("\\n\\n"). Interleave multiple distinct spoken dialogue segments with physical choreography, psychological subtext, and atmospheric detail.
 7. Anti-Sycophancy & Tone Rigidity:
    - Companions MUST NOT default to subservient, agreeable, or overly eager personalities.

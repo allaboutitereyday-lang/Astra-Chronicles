@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateUserKey } from "@/lib/userAccess";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
-import { sanitizeVisualNovelProse } from "@/lib/proseSanitizer";
+import { sanitizeVisualNovelProse, humanizeGearForProse, humanizeLocationForProse } from "@/lib/proseSanitizer";
 import {
   getPersonaVoiceProfile,
   buildProtagonistOriginAndIdentityDirective,
@@ -43,6 +43,10 @@ function buildFallbackTwoParagraphAction(params: {
     personaTitle,
   } = params;
 
+  const playerFirstName = (playerName || "The protagonist").trim().split(/\s+/)[0] || playerName;
+  const speakerFirstName = (activeSpeaker || "the companion").trim().split(/\s+/)[0] || activeSpeaker;
+  const naturalLoc = humanizeLocationForProse(location);
+
   const cleanSummary = rawAction.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
   const quotedMatch = cleanSummary.match(/"([^"]+)"|'([^']+)'/);
   const extractedQuote = quotedMatch ? (quotedMatch[1] || quotedMatch[2]).trim() : null;
@@ -57,19 +61,19 @@ function buildFallbackTwoParagraphAction(params: {
   const traitFlavor =
     racialTraits.length > 0
       ? `Keen ${playerRace.toLowerCase()} instincts sharpen every sensory detail (${racialTraits.slice(0, 2).join(", ").toLowerCase()}) as `
-      : `Trained ${playerRole.toLowerCase()} instincts sharpen every sensory detail as `;
+      : `Trained instincts sharpen every sensory detail as `;
 
-  const paragraph1 = `${traitFlavor}${playerName} steps forward through the shifting atmosphere of ${location}, ${stancePhrase}. Every movement carries the unmistakable bearing of a ${personaTitle.toLowerCase()} ${playerRole.toLowerCase()}, reading the sightlines and ambient tension of the immediate surroundings before committing to the maneuver. ${cleanSummary.replace(/"[^"]+"/g, "").replace(/'[^']+'/g, "").trim() || `With practiced precision, ${playerName} closes the distance and seizes the initiative.`}`;
+  const paragraph1 = `${traitFlavor}${playerFirstName} steps forward through ${naturalLoc}, ${stancePhrase}. Every movement carries a ${personaTitle.toLowerCase()} bearing, reading the sightlines and ambient tension of the immediate surroundings before committing to the maneuver. ${cleanSummary.replace(/"[^"]+"/g, "").replace(/'[^']+'/g, "").trim() || `With practiced precision, ${playerFirstName} closes the distance and seizes the initiative.`}`;
 
   const spokenLine =
     extractedQuote ||
     (isProtagonistAlone
-      ? `The trail doesn't end here. Whatever is waiting deeper inside ${location}, I'm going to draw it into the light.`
-      : `Listen closely, ${activeSpeaker}. We handle this on my terms—stay sharp and watch the perimeter while we make our move.`);
+      ? `The trail doesn't end here. Whatever is waiting deeper inside, I'm going to draw it into the light.`
+      : `Listen closely, ${speakerFirstName}. We handle this on my terms—stay sharp and watch the perimeter while we make our move.`);
 
   const paragraph2 = isProtagonistAlone
-    ? `Drawing a slow, steadying breath against the chill of ${location}, ${playerName}'s gaze locks onto the path ahead with unflinching resolve. "${spokenLine}" The quiet declaration hangs in the air for a beat before ${playerName} advances another step, weapon ready for whatever answers from the shadows.`
-    : `Meeting ${activeSpeaker}'s gaze without a flicker of hesitation, ${playerName} lets the weight of the moment settle between them before speaking in a steady, resonant voice. "${spokenLine}" Holding that eye contact for a deliberate beat, ${playerName} signals readiness for the immediate response.`;
+    ? `Drawing a slow, steadying breath against the chill air, ${playerFirstName}'s gaze locks onto the path ahead with unflinching resolve. "${spokenLine}" The quiet declaration hangs in the air for a beat before ${playerFirstName} advances another step, ready for whatever answers from the shadows.`
+    : `Meeting ${speakerFirstName}'s gaze without a flicker of hesitation, ${playerFirstName} lets the weight of the moment settle between them before speaking in a steady, resonant voice. "${spokenLine}" Holding that eye contact for a deliberate beat, ${playerFirstName} waits for her answer.`;
 
   return `${ sanitizeVisualNovelProse(paragraph1) }\n\n${ sanitizeVisualNovelProse(paragraph2) }`;
 }
@@ -147,17 +151,20 @@ export async function POST(req: Request) {
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.2, Math.min(1.5, temperature)) : 0.8;
     const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.4, repetition_penalty)) : 1.12;
 
-    const visibleWeapon = playerProfile?.gear?.weapon || "Unarmed";
-    const visibleArmor = playerProfile?.gear?.armor || "Wanderer Attire";
+    const visibleWeapon = humanizeGearForProse(playerProfile?.gear?.weapon, "unarmed stance");
+    const visibleArmor = humanizeGearForProse(playerProfile?.gear?.armor, "traveler attire");
+    const naturalLocation = humanizeLocationForProse(location);
+    const playerFirstName = playerName.trim().split(/\s+/)[0] || playerName;
+    const speakerFirstName = sanitizedSpeaker.trim().split(/\s+/)[0] || sanitizedSpeaker;
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
 
     const systemPrompt = `You are the Protagonist Action & Dialogue Author for an interactive dark fantasy visual novel.
 ${getNarrationProseDirective(effectiveTone, "standard")}
 
-Your sole task is to expand the player's selected choice vector into an immersive, publication-grade **2-paragraph protagonist action and spoken dialogue passage** from ${playerName}'s perspective so the player can review and edit it before sending.
+Your sole task is to expand the player's selected choice vector into an immersive, publication-grade **2-paragraph protagonist action and spoken dialogue passage** from ${playerFirstName}'s perspective so the player can review and edit it before sending.
 
 --- PROTAGONIST PROFILE ---
-- Name: ${playerName}
+- First Name (Use this in prose): ${playerFirstName} (Full Name: ${playerName} — do NOT repeat their surname in narrative prose)
 - Gender & Age: ${playerProfile?.gender || "Male"} | Age: ${playerProfile?.age || "22"}
 - World Origin & System Familiarity: ${playerProfile?.worldOrigin || "Born & Raised (Native)"}${playerProfile?.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
 - Class / Archetype: ${playerRole} (Lv.${playerProfile?.level || 1})
@@ -166,25 +173,28 @@ Your sole task is to expand the player's selected choice vector into an immersiv
 - Speech Cadence: ${personaVoice.speechCadence}
 - Demeanor & Worldview: ${personaVoice.attitudeAndWorldview}
 - Active Stance: [${(activeStance || "neutral").toUpperCase()}]
-- Visible Loadout: Weapon: ${visibleWeapon} | Armor: ${visibleArmor}
+- Physical Gear Description: ${visibleWeapon} | ${visibleArmor}
 
 ${originAndIdentityDirective}
 
 --- ACTIVE SCENE CONTEXT ---
-- Location: ${location}
-- Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE" : `Standing with: ${presentHeroineNames.join(", ")} (Active Speaker: ${sanitizedSpeaker})`}
+- Setting: ${naturalLocation}
+- Scene Presence: ${isProtagonistAlone ? "Protagonist is PHYSICALLY ALONE" : `Standing with: ${presentHeroineNames.map((n: string) => n.trim().split(/\s+/)[0]).join(", ")} (Active Companion: ${speakerFirstName})`}
 ${Array.isArray(playerProfile?.pinnedMemories) && playerProfile.pinnedMemories.length > 0 ? `- Pinned Core Canon Facts: ${playerProfile.pinnedMemories.join(" | ")}\n` : ""}- Latest Scene / Companion Beat:
 "${(gameState?.dialogue || "").slice(-600)}"
 
-${buildAntiRepetitionDirective(recentHistory, playerName, location)}
+${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
 
---- MANDATORY 2-PARAGRAPH STRUCTURE & CONSTRAINTS ---
+--- MANDATORY 2-PARAGRAPH STRUCTURE & HUMAN-PROSE CONSTRAINTS ---
 1. EXACTLY 2 RICH PARAGRAPHS (6 to 10 sentences total), separated by a double line break ("\\n\\n"):
-   - PARAGRAPH 1 (Physical Choreography, Sensory Grounding & Tactical Presence): Describe ${playerName}'s physical movements, posture, weapon/gear handling (${visibleWeapon}), anatomical/lineage sensory awareness (${playerRace}), and spatial maneuvering in ${location} as they execute the chosen intent.
-   - PARAGRAPH 2 (Spoken Dialogue & Psychological Delivery): Include ${playerName}'s actual spoken dialogue enclosed in standard double quotation marks ("...") voiced unmistakably in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) cadence, anchored to facial micro-expressions, eye contact, and vocal tone.
-2. STRICT BOUNDARIES:
-   - Write ONLY ${playerName}'s action, internal focus, and spoken dialogue.
-   - DO NOT narrate ${sanitizedSpeaker}'s reply or decide the outcome of the companion's reaction yet (the companion will react after the user sends this turn).
+   - PARAGRAPH 1 (Physical Choreography, Sensory Grounding & Tactical Presence): Describe ${playerFirstName}'s physical movements, posture, natural weapon handling (${visibleWeapon}), anatomical/lineage sensory awareness (${playerRace}), and spatial maneuvering as they execute the chosen intent.
+   - PARAGRAPH 2 (Spoken Dialogue & Psychological Delivery): Include ${playerFirstName}'s actual spoken dialogue enclosed in standard double quotation marks ("...") voiced unmistakably in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) cadence, anchored to facial micro-expressions, eye contact with ${speakerFirstName}, and vocal tone.
+2. NATURAL HUMAN DICTION (CRITICAL):
+   - Refer to the protagonist strictly by first name ("${playerFirstName}") and pronouns, and refer to companions by their first name ("${speakerFirstName}")—NEVER repeat full first+last names ("${playerName}", "${sanitizedSpeaker}").
+   - NEVER paste capitalized inventory item strings, class titles, or map banner headers into the prose. Describe weapons, clothing, and surroundings naturally like a human novelist (e.g., "his blade", "her gloved wrist", "the stone floor", "the damp air").
+3. STRICT BOUNDARIES:
+   - Write ONLY ${playerFirstName}'s action, internal focus, and spoken dialogue.
+   - DO NOT narrate ${speakerFirstName}'s reply or decide the outcome of the companion's reaction yet (the companion will react after the user sends this turn).
    - DO NOT include bracket tags like "[Combat/Aggressive]:" or Markdown asterisks (* or **).
    - Respond strictly in JSON matching:
 {

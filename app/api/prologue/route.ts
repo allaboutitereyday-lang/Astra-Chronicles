@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getNarrationProseDirective, NarrativeDepthMode } from "@/lib/narrationStyles";
-import { describeProtagonistAvatar } from "@/lib/visionEncoder";
-import { sanitizeVisualNovelProse, sanitizeSpokenDialogue, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
+import { describeProtagonistAvatar, isFallbackVisualDescription } from "@/lib/visionEncoder";
+import { sanitizeVisualNovelProse, sanitizeSpokenDialogue, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics, humanizeGearForProse, humanizeLocationForProse } from "@/lib/proseSanitizer";
 import { HEROINE_INTRODUCTION_DOSSIERS, HeroineIntroductionDossier } from "@/lib/heroineDossiers";
 import {
   createDefaultNpcKnowledgeMap,
@@ -130,11 +130,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "OPENROUTER_API_KEY is not configured." }, { status: 500 });
     }
 
-    // Inspect uploaded protagonist avatar if present using persisted description or fast vision encoder
-    let visualDescription: string | null = playerProfile?.visualDescription || null;
-    if (!visualDescription && playerAvatarBase64) {
+    // Inspect uploaded protagonist avatar if present using fast vision encoder (cached by image content on server)
+    let visualDescription: string | null =
+      playerProfile?.visualDescription && !isFallbackVisualDescription(playerProfile.visualDescription)
+        ? playerProfile.visualDescription
+        : null;
+    if (playerAvatarBase64) {
       try {
-        visualDescription = await describeProtagonistAvatar(
+        const freshDesc = await describeProtagonistAvatar(
           playerAvatarBase64,
           playerProfile?.name || "The Protagonist",
           playerProfile?.role || "Adventurer",
@@ -142,6 +145,9 @@ export async function POST(req: Request) {
           playerProfile?.race || "Human",
           playerProfile?.racialTraits || []
         );
+        if (freshDesc) {
+          visualDescription = freshDesc;
+        }
       } catch (vErr: any) {
         console.warn("[Prologue API] Failed to encode avatar with vision:", vErr?.message);
       }
@@ -287,7 +293,7 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
 
     const multiHeroineEnsembleDirective =
       initialPresentHeroines.length > 1
-        ? `\n- ENSEMBLE CONVOCATION SCENE (${initialPresentHeroines.length} KEY HEROINES PRESENT): ${initialPresentHeroines.join(", ")} are ALL physically present in this scene. While ${startingHeroine} delivers the primary challenge, weave brief sensory reactions, glances, or interjections from the other present heroines (${initialPresentHeroines.filter((h) => h !== startingHeroine).join(", ")}) so the player feels the full tension of the Entrance Ceremony!`
+        ? `\n- ENSEMBLE CONVOCATION SCENE (${initialPresentHeroines.length} KEY HEROINES PRESENT): ${initialPresentHeroines.map((h) => h.split(" ")[0]).join(", ")} are ALL physically present in this scene. While ${startingHeroine.split(" ")[0]} delivers the primary challenge, weave brief sensory reactions, glances, or interjections from the other present heroines (${initialPresentHeroines.filter((h) => h !== startingHeroine).map((h) => h.split(" ")[0]).join(", ")}) using their first names after initial introduction so the player feels the full tension of the Entrance Ceremony!`
         : "";
 
     const sovereignSpireActOneDirective = isSovereignSpire
@@ -295,20 +301,20 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
 --- THE SOVEREIGN SPIRE: ACT I MATRICULATION & CONDUIT DIRECTIVE ---
 - Protagonist Matriculation Origin: ${sovereignOriginPreset?.name || playerProfile?.worldOrigin} (Starting Ladder Rank: #${playerProfile?.matriculationRank || sovereignOriginPreset?.startingRank || 488} | Semester Quota: ${playerProfile?.semesterDebtQuota || sovereignOriginPreset?.semesterDebtQuota || 400} Aether Cores)
 - Origin Act I Stakes: ${sovereignOriginPreset?.actOneStakes || playerProfile?.worldOriginDetails}
-- Dual-Conduit Pathway: ${playerProfile?.conduit || "SOMATIC"} (${playerProfile?.conduit === "AETHERIAL" ? "Path B: Aetherial Projection — hollow-lens Sigil-Matrices & Aether Flux" : playerProfile?.conduit === "HYBRID" ? "Hybrid Conduit — blending Nerve-Accel reflexes with modular Relics or mist-hexes" : "Path A: Somatic Tempering — Pulse-Breathing, Edge-Resonance, & Nerve-Accel"})
+- Dual-Conduit Pathway: ${playerProfile?.conduit || "SOMATIC"} (${playerProfile?.conduit === "AETHERIAL" ? "Aetherial projection — sigil arrays and spatial flux" : playerProfile?.conduit === "HYBRID" ? "Hybrid conduit — blending heightened reflexes with arcane hexes or artificer tools" : "Somatic tempering — rhythmic pulse-breathing and kinetic blade control"})
 - Patron Wing Alignment: ${(playerProfile?.patronWing || "IRON_CHANCELLERY").replace(/_/g, " ")}
-${sovereignHeroineMeta ? `- Primary Speaker Dossier (${sovereignHeroineMeta.name} — "${sovereignHeroineMeta.epithet}"): Wing: ${sovereignHeroineMeta.wing.replace(/_/g, " ")} | Conduit: ${sovereignHeroineMeta.conduit} | Dyad Passive: ${sovereignHeroineMeta.dyadPassiveName} (${sovereignHeroineMeta.dyadPassiveDescription}) | Act I Conflict: ${sovereignHeroineMeta.actOneConflict} | Rival Boss Tie-In: ${sovereignHeroineMeta.rivalBossTieIn}` : ""}${multiHeroineEnsembleDirective}
+${sovereignHeroineMeta ? `- Primary Speaker Dossier (${sovereignHeroineMeta.name.split(" ")[0]} — "${sovereignHeroineMeta.epithet}"): Wing: ${sovereignHeroineMeta.wing.replace(/_/g, " ")} | Act I Conflict: ${sovereignHeroineMeta.actOneConflict}` : ""}${multiHeroineEnsembleDirective}
 - Selected Act I Scenario Seed: "${matchingNode?.title || heroineDossier.title}"
   Scene Baseline: ${matchingNode?.sceneSetup || heroineDossier.environment}
   Dialogue Baseline: "${matchingNode?.dialogue || heroineDossier.signatureOpeningDialogue}"
-- MANDATORY ACT I SHAPING:
-  1. Tailor ${startingHeroine}'s opening assessment and the scene atmosphere to the protagonist's exact Matriculation Origin (Rank #${playerProfile?.matriculationRank || sovereignOriginPreset?.startingRank || 488} — whether a Blood-Ledger Debtor in The Dross, a Disgraced Highborn Heir held as political collateral, or an Unregistered Breach Anomaly with a static-canceling Astra core).
-  2. Reference the immediate Act I pressure: Proctor Malakor Sallow's semester debt foreclosure ledger, Corwin Baines's (Rank #184) Lift-Gate toll blockade at Boarding Cage Four, or ${sovereignHeroineMeta?.rivalBossTieIn || "the descent past the First Seal into Stratum I: The Sunken Cloisters"}.
-  3. Shape the 4 "opening_choices" into distinct, high-agency Act I vectors:
-     - Choice 1: [${playerProfile?.conduit || "Somatic"}/Conduit Technique] Utilizing their ${playerProfile?.conduit || "Somatic"} pathway or equipped Wing Relic (${playerProfile?.gear?.relic || "Initiate Relic"}).
-     - Choice 2: [${sovereignOriginPreset?.shortLabel || "Origin Leverage"}] Leveraging their specific Matriculation Origin (${sovereignOriginPreset?.shortLabel || playerProfile?.worldOrigin}) and Rank #${playerProfile?.matriculationRank || 488} standing.
-     - Choice 3: [Dyad Resonance / Psychological Read] Reading ${startingHeroine}'s hidden tell, Soul-Grounding compatibility, or engaging one of the other present heroines (${initialPresentHeroines.join(", ")}).
-     - Choice 4: [Audacious Wager / Rival Challenge] Turning the tables on the immediate Act I threat (Corwin Baines #184, Proctor Sallow, or ${startingHeroine}'s test).`
+- MANDATORY ACT I SHAPING (WRITE IN NATURAL HUMAN PROSE):
+  1. Tailor ${startingHeroine.split(" ")[0]}'s opening assessment and the scene atmosphere to the protagonist's Matriculation Origin (whether a debt-bound commoner in the bottom ranks, a disgraced highborn hostage, or an unregistered anomaly whose presence quiets the vault's static).
+  2. Weave the immediate Act I pressure naturally into the scene without sounding like a glossary readout—let the characters speak and react like living people rather than reciting capitalized mechanic terms or item labels.
+  3. Shape the 4 "opening_choices" into distinct, natural Act I vectors using first names only (${initialPresentHeroines.map((h) => h.split(" ")[0]).join(", ")}) and natural weapon/environment descriptions:
+     - Choice 1: [${playerProfile?.conduit || "Somatic"}/Technique] Channeling their physical or arcane discipline in a concrete physical move.
+     - Choice 2: [${sovereignOriginPreset?.shortLabel || "Origin Leverage"}] Leveraging their background and matriculation standing in dialogue.
+     - Choice 3: [Insight / Connection] Reading ${startingHeroine.split(" ")[0]}'s subtle physical tell or addressing one of the other present heroines (${initialPresentHeroines.map((h) => h.split(" ")[0]).join(", ")}).
+     - Choice 4: [Audacious Wager] Turning the tables on the immediate challenge with bold composure.`
       : "";
 
     const openingChoiceDirective = buildDynamicChoiceDirective({
@@ -333,12 +339,16 @@ ${sovereignHeroineMeta ? `- Primary Speaker Dossier (${sovereignHeroineMeta.name
     });
 
     const visibleWeaponText = playerProfile.gear?.weapon && !playerProfile.gear.weapon.includes("Pending")
-      ? playerProfile.gear.weapon
-      : "Unarmed / Bare Hands";
+      ? humanizeGearForProse(playerProfile.gear.weapon, "unarmed hands")
+      : "unarmed hands";
 
     const visibleArmorText = playerProfile.gear?.armor && !playerProfile.gear.armor.includes("Pending")
-      ? playerProfile.gear.armor
-      : (isUncladOrNude ? "Completely Unclad / No Clothing or Armor" : "Unarmored / Basic Attire");
+      ? humanizeGearForProse(playerProfile.gear.armor, "basic attire")
+      : (isUncladOrNude ? "completely unclad / no clothing or armor" : "unarmored basic attire");
+
+    const playerFirstName = (playerProfile?.name || "the newcomer").trim().split(/\s+/)[0] || "the newcomer";
+    const heroineFirstName = (startingHeroine || "the heroine").trim().split(/\s+/)[0] || startingHeroine;
+    const naturalStartingLocation = humanizeLocationForProse(startingLocation);
 
     const systemPrompt = `You are the Game Master and Director for "${storyTitle}", an interactive visual novel set on ${settingName}.
 
@@ -363,18 +373,19 @@ ${heroineDossier.baselineChoices.map((c) => `- ${c}`).join("\n")}
 
 --- CRITICAL GAME MASTER INSTRUCTIONS ---
 1. Use the bespoke heroine dossier as the working baseline. Capture her specific atmospheric environment, sensory triggers (smells, weather, ambient lighting, acoustic textures), and psychological demeanor.
-2. In her opening reaction, ${startingHeroine} MUST explicitly observe and remark on the newcomer's visible physical appearance, build, visible gear (${visibleWeaponText} / ${visibleArmorText}), and bearing—while strictly obeying the Diegetic Knowledge Gate below (she does NOT yet know the newcomer's name or internal LitRPG class title!).
+2. In her opening reaction, ${heroineFirstName} MUST explicitly observe and remark on the newcomer's visible physical appearance, build, visible gear (${visibleWeaponText} / ${visibleArmorText}), and bearing—while strictly obeying the Diegetic Knowledge Gate below (she does NOT yet know the newcomer's name or internal LitRPG class title!).
+   - NATURAL HUMAN PROSE MANDATE: Write like a human novelist. After introducing ${startingHeroine} once, refer to her simply as "${heroineFirstName}" (never repeat her full name in every paragraph or choice). Describe weapons, clothing, and locations naturally (e.g., "your curved blade", "that dark coat", "down in the pit")—NEVER paste capitalized UI equipment labels or map banners into narrative sentences or dialogue!
    ${isUncladOrNude || visibleArmorText.toLowerCase().includes("unclad") || visibleArmorText.toLowerCase().includes("none")
-     ? `- MANDATORY NUDITY / UNARMORED DIRECTIVE: The newcomer is completely unclad, nude, or lacking armor/gear. ${startingHeroine} MUST prominently and in-character acknowledge and react to this blatant lack of clothing (e.g. reacting with disdain, raised eyebrows, sarcasm, extreme fluster, or predatory amusement according to her persona).`
+     ? `- MANDATORY NUDITY / UNARMORED DIRECTIVE: The newcomer is completely unclad, nude, or lacking armor/gear. ${heroineFirstName} MUST prominently and in-character acknowledge and react to this blatant lack of clothing (e.g. reacting with disdain, raised eyebrows, sarcasm, extreme fluster, or predatory amusement according to her persona).`
      : ""}
 
 ${knowledgeGatePrompt}
-3. OPENING CHOICES PERSONALITY ALIGNMENT (CRITICAL): The 4 generated options in "opening_choices" MUST be written in the exact voice, attitude, and vocabulary of ${playerProfile.name}'s chosen Character Creation personality:
+3. OPENING CHOICES PERSONALITY ALIGNMENT (CRITICAL): The 4 generated options in "opening_choices" MUST be written in the exact voice, attitude, and vocabulary of ${playerFirstName}'s chosen Character Creation personality:
    - Chosen Personality: "${personaVoice.personaTitle}"
    - Core Traits: [${personaVoice.traitsList.join(", ")}]
    - Speech Cadence: ${personaVoice.speechCadence}
    - Format: "[Tone/Action]: 'Spoken dialogue in ${personaVoice.personaTitle} voice' + concrete physical action"
-   - Every single option in "opening_choices" MUST reflect how a "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) reacts to ${startingHeroine} in ${startingLocation}. Do NOT copy generic baseline choices verbatim—infuse every choice with ${playerProfile.name}'s "${personaVoice.personaTitle}" personality!
+   - Every single option in "opening_choices" MUST reflect how a "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) reacts to ${heroineFirstName} in ${naturalStartingLocation}. Use first names only ("${heroineFirstName}") and natural weapon/room descriptions in choices!
 
 --- COMPATIBILITY & BASE AFFECTION RULES ---
 - Base affection must start LOW overall (range: 5 to 25). Heroines in this world are guarded and cynical.
@@ -414,7 +425,7 @@ Respond strictly in valid JSON matching this schema:
   "speaker": "${startingHeroine}",
   "location": "${startingLocation}",
   "scene_setup": string, // ${sceneSetupParagraphSpec} detailing the location, weather, acoustics, ambient hazards, and how the player arrives/stands before the heroine, with flawless grammar and ZERO Markdown asterisks (* or **)
-  "dialogue": string, // ${dialogueParagraphSpec} addressing the protagonist. MUST BE IN DOUBLE QUOTATION MARKS ("...") with zero Markdown asterisks.
+  "dialogue": string, // ${dialogueParagraphSpec} addressing the protagonist. Start with a brief physical gesture or expression beat before opening spoken quotes, and escape all internal double quotes (\"...\") properly inside the JSON string so the string is NEVER truncated after the first spoken clause!
   "mechanics": string, // Authoritative LitRPG system initialization readout (e.g. "[SYSTEM: Dimensional synchronization complete. Causal Plausibility: 80%.]")
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
@@ -655,8 +666,19 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
       responseData.scene_setup = sanitizeVisualNovelProse(responseData.scene_setup);
     }
     if (responseData.dialogue) {
+      const trimmedDiag = String(responseData.dialogue).trim();
+      // Guard against JSON grammar truncation after the first spoken clause (e.g. '"Five hundred initiates on the ledger,"')
+      const looksTruncated =
+        trimmedDiag.endsWith(',"') ||
+        trimmedDiag.endsWith(",") ||
+        trimmedDiag.endsWith("—") ||
+        (trimmedDiag.length < 75 && (heroineDossier.signatureOpeningDialogue?.length || 0) > 90);
+      const effectiveDialogue = looksTruncated
+        ? heroineDossier.signatureOpeningDialogue
+        : trimmedDiag;
+
       responseData.dialogue = enforceSpokenDialogueMasking(
-        sanitizeSpokenDialogue(responseData.dialogue),
+        sanitizeSpokenDialogue(effectiveDialogue),
         playerProfile?.name,
         startingHeroineKnowledge.knowsName
       );
