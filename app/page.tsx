@@ -830,29 +830,31 @@ export default function StoryCataloguePage() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-black/50" />
 
-                      {/* Genre Tag */}
-                      <div className="absolute top-3 left-3">
-                        <span className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-rose-300 uppercase">
+                      {/* Top Row: Genre Tag & Preset/Custom Badge (Flex-spaced so they never overlap) */}
+                      <div className="absolute top-3 inset-x-3 flex items-center justify-between gap-2">
+                        <span
+                          className="px-2.5 py-1 rounded-full bg-black/75 backdrop-blur-md border border-white/15 text-[10px] font-mono text-rose-300 uppercase truncate min-w-0"
+                          title={story.genre}
+                        >
                           {story.genre}
                         </span>
-                      </div>
 
-                      {/* Preset / Custom Tag */}
-                      <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                        {isPreset ? (
-                          <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 backdrop-blur-md text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold flex items-center gap-1">
-                            <Shield className="w-2.5 h-2.5" /> CANON REALM
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteStory(e, story.id, story.title)}
-                            className="p-1.5 rounded-full bg-black/60 hover:bg-rose-950/80 text-zinc-400 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer"
-                            title="Delete Custom Story"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {isPreset ? (
+                            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 backdrop-blur-md text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold flex items-center gap-1 whitespace-nowrap">
+                              <Shield className="w-2.5 h-2.5 shrink-0" /> CANON REALM
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteStory(e, story.id, story.title)}
+                              className="p-1.5 rounded-full bg-black/60 hover:bg-rose-950/80 text-zinc-400 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer"
+                              title="Delete Custom Story"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {/* Title overlay */}

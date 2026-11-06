@@ -10,7 +10,34 @@ const CANONICAL_COMPANIONS = [
   "Serena",
   "Morgana",
   "Perci",
+  "Cassia Valen",
+  "Beatrix Valorian",
+  "Ysolde Kaelen",
+  "Aurelia Solis",
+  "Miri Thorne",
+  "Noelle Vesper",
+  "Kestrel Hollow",
+  "Valeria Noctis",
 ];
+
+const COMPANION_SHADOW_SECRETS: Record<string, string> = {
+  "Cassia Valen":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly a stoic, honorable frontier knight fighting to buy back House Valen's title. SECRET: Her family's debt is rigged by Julian Thorne-Vex (#42), forcing her into a secret assassination contract to murder an upperclassman during the midterm delve. She will NOT confess this contract unless the protagonist uncovers Julian's blackmail or triggers a deep Soul-Grounding Memory Bleed.",
+  "Beatrix Valorian":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly the haughty, ruthless #2 Ducal heiress of the Iron Chancellery. SECRET: If she finishes even one seat below Rank #1, her father will pull her from the military and force her into a political marriage with a sadistic forty-year-old count. She also secretly hoards cheap Gilded Exchange sweets and blown-glass animal figurines under her bed. Guard these secrets fiercely unless pushed into deep vulnerability.",
+  "Ysolde Kaelen":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly Magistra Cross's untouchable Obsidian Choir prodigy. SECRET: She is terminally infected with stage-three Vault Calcification years ahead of schedule—her hands and wrists are marbled with glowing purple crystal beneath her elbow-length black leather gloves, and Lukas Castell (#9) is blackmailing her over it. Removing her gloves for skin-to-skin Soul-Grounding is her deepest taboo.",
+  "Aurelia Solis":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly an angelic, selfless Choir healer who bakes pastries and tends wounds. SECRET: Devotion-obsessed closet yandere who subtly sabotages her partner's defensive wards so they get injured more often and must crawl back to her lap; also holds the only healing art capable of slowing Ysolde's terminal calcification and uses it as quiet leverage. Never admit the ward-sabotage outright unless caught red-handed.",
+  "Miri Thorne":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly a greedy Gilded Loom loan shark squeezing highborn brats for compound interest. SECRET: She funnels every coin she squeezes from the elite into an underground railroad that smuggles 'Defaulted' scholarship students out of the city before the faculty can harvest them as Hollowed, haunted by her older brother's default.",
+  "Noelle Vesper":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly an eccentric, deadpan insomniac necro-artificer. SECRET: Her hyper-sensitive brain hears the psychic static of the Under-Vault 24/7—until she touches the protagonist, whose resonance acts like soothing white noise. Her secret ambition is to reach Stratum IV to dissect the slumbering Astra god.",
+  "Kestrel Hollow":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly a lazy, silver-tongued gambler and pit brawler in The Velvet Spill. SECRET: She is a collar-bound Whispering Veil enforcer under handler Silas Krowe (#19), with a lethal slave-contract brand over her left ribs that burns her alive if she defies orders to surveil or betray the protagonist.",
+  "Valeria Noctis":
+    "PUBLIC FACE VS. SHADOW AGENDA: Publicly a teasing third-year senior who intentionally fails her final ethics exam every spring out of hedonism. SECRET: Three years ago, her original Dyad squad was executed in Stratum IV by Prefect Aldric Drakon (#1) on faculty orders; she stays at the Academy as a spider in the web to execute the culprits in 'accidental' Midnight Tribunals.",
+};
 
 /**
  * Creates a fresh NpcKnowledgeMap where all companions begin with zero meta-knowledge
@@ -270,10 +297,17 @@ export function buildKnowledgeGateDirective(
       ? `[SYSTEM UNLOCKED: ${compName} is aware of the protagonist's Regressor / System Anchor nature.]`
       : `[SYSTEM LOCK — ORIGIN UNKNOWN: ${compName} does NOT know the protagonist is bound to the System Administrator or retains Regressor timeline memories.]`;
 
+    const shadowKey = Object.keys(COMPANION_SHADOW_SECRETS).find(
+      (sk) => sk.toLowerCase() === compName.toLowerCase() || compName.toLowerCase().includes(sk.split(" ")[0].toLowerCase())
+    );
+    const shadowSecretRule = shadowKey
+      ? `\n  4. [COMPANION SHADOW AGENDA & SECRET GATE]: ${COMPANION_SHADOW_SECRETS[shadowKey]}`
+      : "";
+
     return `Companion "${compName}" Diegetic Knowledge State:
   1. ${nameRule}
   2. ${classRule}
-  3. ${originRule}`;
+  3. ${originRule}${shadowSecretRule}`;
   });
 
   return `--- STRICT ANTI-METAGAMING & DIEGETIC NPC KNOWLEDGE GATE (MANDATORY) ---

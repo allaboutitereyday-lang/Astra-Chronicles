@@ -1,0 +1,828 @@
+{
+  "id": "sovereign-spire",
+  "title": "The Sovereign Spire",
+  "tagline": "A gothic dark-fantasy visual novel & tactical RPG of blood-ledger debt, abyssal calcification, and zero-sum survival.",
+  "description": "Driven like a gilded containment spike directly into the living subterranean anomaly known as The Under-Vault, the Sovereign Spire is no sanctuary of learning—it is a hostage cage and biological mining engine. Because anyone over twenty-five suffers rapid cellular calcification below the First Seal, only young initiates can harvest the abyssal Relics that keep the Empire breathing. Bound by predatory Blood-Ledger Contracts where only the top 10% graduate with Sovereign Charters and the remaining 90% are foreclosed upon, you must master the Dual-Conduit arts, forge intimate Soul-Grounding Dyads, and survive the lawless Midnight Tribunals.",
+  "coverImage": "/backgrounds/sovereign-spire/sky_crown.jpg",
+  "genre": "Gothic Dark Fantasy / Academy Intrigue / Tactical LitRPG",
+  "themes": [
+    "Cutthroat Academy Hierarchy",
+    "Abyssal Dungeon Delving",
+    "Blood-Ledger Debt & Blackmail",
+    "Soul-Grounding Dyad Intimacy"
+  ],
+  "narrationStyle": "Gothic Chiaroscuro & Tactical Visceral",
+  "createdAt": "2026-11-05T17:45:00Z",
+  "author": "Astra Architect",
+  "isPreset": true,
+  "worldContext": {
+    "settingName": "The Sovereign Spire & The Under-Vault (The Pale Maw)",
+    "eraOrPeriod": "The Eighty-Year Regency of High Sovereign Caelen Vane",
+    "loreSummary": "Four Foundational Truths govern the Sovereign Spire: (1) Highborn students are political hostages while Commoners are bound by predatory Blood-Ledger Contracts that foreclose on their bodies if they fall into the bottom ranks (#500-#451, The Dross). (2) The Calcification Threshold ('Vault-Lung') turns anyone over age 25 to stone below the First Seal, making students the only viable miners of Astra-Miasma Relics. (3) Only the top 10% earn Sovereign Charters; the rest become imperial cannon fodder or indentured retainers. (4) Once the Great Lift drops below the First Seal, Imperial law ceases to exist—student murders and syndicate executions are logged as 'spatial anomalies.' Combatants channel Astra via Path A: Somatic Tempering (Pulse-Breathing, Kinetic Pulse, Edge-Resonance, Nerve-Accel) or Path B: Aetherial Projection (Sigil-Matrices, Aether Flux), while managing Resonance Strain (0-49% Stable, 50-85% The Brink for +30% damage, 100% Calcification Lock) purged only through intimate skin-to-skin Soul-Grounding.",
+    "factions": [
+      {
+        "name": "The Iron Chancellery (Provost Garrick Dorn)",
+        "description": "Public Mandate: Martial mastery, vanguard leadership, and battlefield tactics. Shadow Agenda: Preparing a military mutiny against Headmaster Vane and purging unlicensed bloodlines. Doctrine: Unforgiving steel geometry, half-swording, and Somatic kinetic bursts."
+      },
+      {
+        "name": "The Obsidian Choir (Magistra Evelyne Cross)",
+        "description": "Public Mandate: High arcana, dimensional cosmology, and scholarship. Shadow Agenda: Hoarding pre-collapse texts and experimenting with soul-grafting and Relic mutations on failing students. Doctrine: High-cost blood-fueled Sigil-Matrices and spatial gravity shears."
+      },
+      {
+        "name": "The Gilded Loom (Proctor Malakor Sallow)",
+        "description": "Public Mandate: Relic artifice, alchemy, appraise-craft, and imperial economics. Shadow Agenda: Debt-trapping promising initiates via Blood-Ledger Contracts and rigging expeditions. Doctrine: Modular Relic-stacking, autonomous ward-drones, and alchemical toxins."
+      },
+      {
+        "name": "The Whispering Veil (Silas Krowe & Syndicate Brokers)",
+        "description": "Public Mandate: Diplomacy, jurisprudence, and counter-espionage. Shadow Agenda: Blackmailing faculty, running the underground Midnight Tribunal dueling pit, and playing kingmaker for Sovereign seats. Doctrine: Sensory-deprivation hexes, nerve-strikes, and contract brands."
+      }
+    ],
+    "locations": [
+      {
+        "name": "The Seal-Gate & Boarding Quays",
+        "zone": "Surface Threshold (Level 00)",
+        "danger": "Guarded (Tollkeepers & Decontamination Wards)",
+        "description": "A grim industrial gothic cathedral featuring titanic runic blast doors, hissing decontamination steam vents, glowing floor ward-lines, and brass diving-cages suspended over the open abyss of the Under-Vault.",
+        "bgImage": "/backgrounds/sovereign-spire/seal_gate.jpg"
+      },
+      {
+        "name": "The Crucible",
+        "zone": "Iron Chancellery Training Grounds",
+        "danger": "Moderate (Live-Steel Sparring & Kinetic Hazards)",
+        "description": "An open-air colosseum of blood-scrubbed basalt, heavy stone battlements, iron-weighted sparring cages, and colossal chains anchoring the fortress structure to the waterfall-carved cliffside.",
+        "bgImage": "/backgrounds/sovereign-spire/the_crucible.jpg"
+      },
+      {
+        "name": "The Glass Conservatory",
+        "zone": "Obsidian Choir Sanctum",
+        "danger": "Guarded (Mutagenic Specimens & Surgical Wards)",
+        "description": "A hushed Gothic cathedral illuminated by towering violet stained glass, arcane surgical and research wards, glowing crystal calcification specimens, and curling violet incense mist.",
+        "bgImage": "/backgrounds/sovereign-spire/glass_conservatory.jpg"
+      },
+      {
+        "name": "The Gilded Exchange",
+        "zone": "The Undercroft Market",
+        "danger": "Moderate (Loan Sharks, Syndicate Fixers & Cursed Relics)",
+        "description": "A chaotic multi-tiered indoor bazaar built inside hollow bridge-pilings directly above the abyss, lit by gaslight and neon runic signs, hissing steam pipes, and iron floor grates overlooking the chasm.",
+        "bgImage": "/backgrounds/sovereign-spire/gilded_exchange.jpg"
+      },
+      {
+        "name": "The Velvet Spill & The Tribunal Pit",
+        "zone": "Whispering Veil Den",
+        "danger": "High (Sanctioned Blood-Contract Duels & Blackmailers)",
+        "description": "A subterranean tavern with multi-level stone booth galleries surrounding a sunken circular blood-stained dueling amphitheater shrouded in violet illusion mist.",
+        "bgImage": "/backgrounds/sovereign-spire/velvet_spill.jpg"
+      },
+      {
+        "name": "The Sky-Crown & Sovereign Terraces",
+        "zone": "Upper Spire (Ranks #1–#25 & High Nobility)",
+        "danger": "Political (High Sovereign Vane & Apex Prefects)",
+        "description": "Towering gothic spires, sunlit marble colonnades, floating botanical gardens, and Headmaster Caelen Vane's astral observatory pinning the cliffside crater high above the glowing Breach.",
+        "bgImage": "/backgrounds/sovereign-spire/sky_crown.jpg"
+      },
+      {
+        "name": "Stratum I: The Sunken Cloisters",
+        "zone": "Under-Vault Initiate Zone",
+        "danger": "High (Feral Porcelain Automata & Upperclassmen Claim-Jumpers)",
+        "description": "The petrified remains of the original academy that sank three centuries ago—flooded libraries, broken marble bridges, flickering ward-lights, and ambient Astra-Miasma.",
+        "bgImage": "/backgrounds/sovereign-spire/seal_gate.jpg"
+      },
+      {
+        "name": "Stratum II: The Weeping Ossuary",
+        "zone": "Under-Vault Vanguard Zone",
+        "danger": "Severe (The Hollowed — Defaulted Student Husks & Gravity Shears)",
+        "description": "Caverns of calcified giant ribs, spore-choked trenches, and localized gravity shears where former students whose contracts defaulted roam as crystal-parasitized Hollowed.",
+        "bgImage": "/backgrounds/sovereign-spire/velvet_spill.jpg"
+      },
+      {
+        "name": "Stratum III: The Chronos Scars",
+        "zone": "Under-Vault Elite Trials",
+        "danger": "Lethal (Temporal Loops & Ancient Echo-Knights)",
+        "description": "Reality-warped fault lines where pre-collapse battlefields replay endlessly, spells misfire unpredictably, and sentient voice-mimicking anomalies stalk the trenches.",
+        "bgImage": "/backgrounds/sovereign-spire/glass_conservatory.jpg"
+      },
+      {
+        "name": "Stratum IV: The Pulse",
+        "zone": "Classified Abyssal Bedrock",
+        "danger": "Extinction (Regent's Black Guard & Slumbering Astra Source)",
+        "description": "A silent, inverted subterranean sea beneath the bedrock where the chained origin of all Astra slumbers and the Regent's Black Guard executes anyone who witnesses the Empire's founding crime.",
+        "bgImage": "/backgrounds/sovereign-spire/sky_crown.jpg"
+      }
+    ]
+  },
+  "rpgRules": {
+    "systemName": "Sovereign Matriculation & Dual-Conduit Registry",
+    "currencyName": "Tuition Credits & Aether Cores",
+    "causalAnchorName": "Resonance Stability (Calcification Resistance)",
+    "defaultPlausibility": 85,
+    "statDefinitions": {
+      "str": "Somatic Tempering (Pulse-Breathing Density, Edge-Resonance Armor-Breaking, Grapple & Blade-Bind Force)",
+      "dex": "Nerve-Accel (Motor Cortex Dilation, Gap-Closing Footwork, Concealed Blade & Dual-Saber Precision)",
+      "int": "Aetherial Projection (Sigil-Matrix Weaving, Calcification Resistance, Relic Appraisal & Willpower)"
+    },
+    "startingLevel": 1,
+    "baseStats": {
+      "hp": 110,
+      "maxHp": 110,
+      "mp": 90,
+      "maxMp": 90,
+      "exp": 0,
+      "maxExp": 100,
+      "str": 11,
+      "dex": 11,
+      "int": 11
+    },
+    "startingGearOptions": [
+      {
+        "id": "iron_chancellery_vanguard",
+        "label": "Iron Chancellery — Somatic Longsword & Kinetic Gauntlets",
+        "gear": {
+          "weapon": "Notched Chancellery Longsword (Edge-Resonance Tang)",
+          "armor": "Iron-Grey Initiate Greatcoat & Brigandine",
+          "relic": "Fractured Ashen Legion Spine-Node"
+        }
+      },
+      {
+        "id": "obsidian_choir_weaver",
+        "label": "Obsidian Choir — Blood-Crystal Focus & Velvet Vestments",
+        "gear": {
+          "weapon": "Rite-Etched Aetherial Catalyst Blade",
+          "armor": "High-Collared Obsidian Choir Robes",
+          "relic": "Choir of Thorns Heart-Crystal"
+        }
+      },
+      {
+        "id": "gilded_loom_artificer",
+        "label": "Gilded Loom — Modular Estoc & Alchemical Bandolier",
+        "gear": {
+          "weapon": "Quick-Swap Artificer Estoc & Wire Snares",
+          "armor": "Vial-Lined Tailor Vest & Brass Lenses",
+          "relic": "Appraiser's Overcharged Crown-Lens"
+        }
+      },
+      {
+        "id": "whispering_veil_duelist",
+        "label": "Whispering Veil — Twin Mist-Sabers & Runic Handwraps",
+        "gear": {
+          "weapon": "Concealed Punch-Dagger & Curved Mist-Saber",
+          "armor": "Shadow-Weave Syndicate Jacket",
+          "relic": "Black-Bell Sensory Dampener Ring"
+        }
+      }
+    ]
+  },
+  "startingNodes": [
+    {
+      "id": "prologue_act1_seal_gate",
+      "speaker": "Cassia Valen",
+      "title": "Act I Cold-Open: The First Seal & The Tollkeeper's Blockade",
+      "location": "The Seal-Gate & Boarding Quays",
+      "sceneSetup": "Decompression steam hisses from the titanic runic blast doors of the Seal-Gate, thick with the scent of wet iron, ozone, and the calcified dust of the Under-Vault below. From the high arbiter's pulpit, Proctor Malakor Sallow closes his brass-bound Blood-Ledger with a gentle, funereal smile, reminding the incoming freshman class that anyone still sitting below Rank #450 at midterm audit will be legally foreclosed upon.\n\nDirectly in front of Boarding Cage Four, second-year Iron Chancellery bruiser Corwin Baines (Rank #184) slams his alchemical tower shield onto the ward-line, demanding a fifty-percent salvage tithe from every initiate descending into Stratum I: The Sunken Cloisters. Beside the cage chains, Cassia Valen rests her thumb on the crossguard of her notched longsword, waiting to see whether you kneel, bargain, or draw steel.",
+      "dialogue": "Baines has three Chancellery vanguards blocking the boarding ramp, and Proctor Sallow is pretending not to watch from the gallery.\n\nThe Great Lift drops into the Sunken Cloisters in two minutes. Once that cage passes the First Seal, Imperial law ceases to exist. Tell me right now—are we paying his extortion toll, or are we breaking his shield-line together?",
+      "expressionKey": "combat_ready",
+      "initialAffection": 22,
+      "bgImage": "/backgrounds/sovereign-spire/seal_gate.jpg",
+      "choices": [
+        "[Somatic/Vanguard]: Step shoulder-to-shoulder with Cassia, channel Kinetic Pulse into your stance, and challenge Corwin Baines (#184) for right-of-way at the boarding ramp.",
+        "[Aetherial/Tactical]: Weave a low-profile Sigil-Matrix along the wet iron grating to destabilize Baines's tower-shield footing before he can brace.",
+        "[Origin Leverage]: Invoke your Matriculation dossier—whether tarnished noble bloodline, syndicate contract clause, or Headmaster Vane's provisional seal—to force Baines into a binding wager.",
+        "[Dyad Sync/Composed]: Lock eyes with Cassia, sign your name beside hers on the Cage Four Dyad manifest, and let her call the opening strike."
+      ]
+    },
+    {
+      "id": "prologue_cassia",
+      "speaker": "Cassia Valen",
+      "title": "Cassia Valen: Live-Steel Dyad Inspection at the Seal-Gate",
+      "location": "The Seal-Gate & Boarding Quays",
+      "sceneSetup": "Decompression steam hisses from the massive runic blast doors of the Seal-Gate, smelling of wet iron, ozone, and the calcified dust of the Under-Vault below. Above the open pit, brass diving-cages sway on oiled chains.\n\nStanding beside Cage Four is Cassia Valen. Her ash-blonde braid hangs over an iron-grey Chancellery coat with tarnished silver trim, her steel-grey eyes locked onto your matriculation ledger as her thumb rests against the crossguard of a notched longsword pulsing with faint golden kinetic Astra.",
+      "dialogue": "Proctor Sallow has already flagged our bracket for the first Stratum I reclamation quota, and Julian Thorne-Vex's appraisers are watching the quays like vultures.\n\nIf you freeze when the cage drops past the First Seal, I won't carry you back up the chains. Show me your stance—now—before I sign my name next to yours on this Dyad manifest.",
+      "expressionKey": "combat_ready",
+      "initialAffection": 20,
+      "bgImage": "/backgrounds/sovereign-spire/seal_gate.jpg",
+      "choices": [
+        "[Somatic/Disciplined]: Drop into a low Pulse-Breathing guard and let golden kinetic tension hum along your weapon's tang.",
+        "[Analytical/Composed]: Meet her steel-grey gaze unflinchingly and point out the slight tremor she's hiding in her sword-wrist.",
+        "[Origin Leverage]: Remind her that with Julian Thorne-Vex (#42) circling both your ledgers, she needs a partner who won't fold below the First Seal.",
+        "[Audacious/Challenge]: Step inside her reach and offer a three-exchange live-steel test right here on the boarding quay."
+      ]
+    },
+    {
+      "id": "prologue_beatrix",
+      "speaker": "Beatrix Valorian",
+      "title": "Beatrix Valorian: Solar Halberd Challenge in The Crucible",
+      "location": "The Crucible",
+      "sceneSetup": "The basalt flagstones of The Crucible still steam where the orderlies scrubbed the morning's blood into the cliffside drains. Colossal iron chains groan against the wind above the waterfalls as two dozen Iron Chancellery initiates clear the central sparring ring.\n\nAt its center stands Beatrix Valorian, crimson twin-drills framing a face of haughty patrician fury as she levels an ornate war-halberd radiating blinding golden Solar Astra directly at your throat while Provost Garrick Dorn watches from the iron battlements.",
+      "dialogue": "You are standing in Cage One, initiate—a ring reserved for the top twenty seats of the Matriculation Ladder.\n\nEither you stepped onto my basalt to offer yourself as a warm-up target before Provost Dorn arrives, or you actually believe your conduit can survive three seconds against House Valorian's spear. Which is it?",
+      "expressionKey": "smug",
+      "initialAffection": 15,
+      "bgImage": "/backgrounds/sovereign-spire/the_crucible.jpg",
+      "choices": [
+        "[Defiant/Combat]: Brace your feet against the blood-scrubbed basalt and invite her to test whether Rank #1 is earned by bloodline or steel.",
+        "[Tactical/Observation]: Note the slight over-extension in her left shoulder—she's already been sparring since dawn to outpace Aldric Drakon (#1).",
+        "[Aristocratic/Wit]: Bow with razor-edged courtesy and ask if Ducal heirs always waste Solar Astra intimidating freshmen before the first delve.",
+        "[Calculated/Wager]: Propose a sixty-second survival clause: if she fails to break your posture, she sponsors your Crucible access pass and Stratum I charter."
+      ]
+    },
+    {
+      "id": "prologue_ysolde",
+      "speaker": "Ysolde Kaelen",
+      "title": "Ysolde Kaelen: Forbidden Calcification in The Glass Conservatory",
+      "location": "The Glass Conservatory",
+      "sceneSetup": "Towering violet stained glass filters the dying daylight into cold amethyst shafts across the hushed surgical wards of the Glass Conservatory. The air is thick with bitter myrrh and the hum of containment crystals.\n\nNear a restricted Third-Stratum specimen tank stands Ysolde Kaelen. Floating shards of crystallized violet blood orbit her elbow-length black leather gloves—just above her left cuff, a jagged vein of translucent purple Vault-crystal glints against her pale wrist before she sharply tugs the leather up.",
+      "dialogue": "Turn around and walk out, initiate. Whatever remedial detoxification tonic you came looking for is three aisles back.\n\n...Unless you are going to stand there and pretend you didn't just see what was beneath my glove. Speak carefully. The gravity shear hovering two inches behind your cervical spine is very poorly calibrated today.",
+      "expressionKey": "dangerous",
+      "initialAffection": 18,
+      "bgImage": "/backgrounds/sovereign-spire/glass_conservatory.jpg",
+      "choices": [
+        "[Composure/Secretive]: Keep your hands visible and swear that whatever Magistra Cross's star pupil hides beneath her gloves is none of Lukas Castell's (#9) business.",
+        "[Arcane/Resonance]: Extend a thread of your own unusually stable Astra resonance toward her, offering a clean Soul-Grounding anchor instead of blackmail.",
+        "[Analytical/Deduction]: Quietly observe that stage-three Vault calcification shouldn't be possible at her age unless she's been delving past the Second Stratum alone.",
+        "[Cold/Pragmatic]: Propose a mutual non-disclosure Dyad pact: her forbidden Choir research in exchange for a partner whose resonance can stabilize her crystal strain."
+      ]
+    },
+    {
+      "id": "prologue_aurelia",
+      "speaker": "Aurelia Solis",
+      "title": "Aurelia Solis: Velvet Chains in the Choir Infirmary",
+      "location": "The Glass Conservatory",
+      "sceneSetup": "Candlelight glimmers off immaculate white-and-gold Choir vestments in the private recovery alcove of the Conservatory. You wake on a stone examination table with a bruised ribcage from the morning's placement trial—and a pair of soft, warm hands resting over your sternum.\n\nAurelia Solis smiles down at you with serene, luminous doe eyes, wiping a trace of blood from your lip with a lace handkerchief while faint golden ethereal tether-chains coil tenderly around her fingers.",
+      "dialogue": "Shh... don't try to sit up yet. Your pathways were nearly frayed when they brought you in from the placement trial, so I took the liberty of binding your pain receptors to my own pulse.\n\nIt hurts so exquisitely when you push yourself this recklessly... Promise me that the next time the Under-Vault breaks you, you'll crawl straight back to my hands and no one else's?",
+      "expressionKey": "intrigued",
+      "initialAffection": 35,
+      "bgImage": "/backgrounds/sovereign-spire/glass_conservatory.jpg",
+      "choices": [
+        "[Perceptive/Cautious]: Gently catch her wrist and ask why her golden vitality tether feels like it's deliberately loosening your defensive ward-seal.",
+        "[Grateful/Tender]: Let her finish the Soul-Grounding channel and thank her for absorbing the backlash before Proctor Sallow logged a medical default.",
+        "[Stoic/Independent]: Sit up despite the phantom ache and tell the 'Porcelain Saint' you don't intend to make a habit of bleeding on her altar.",
+        "[Intense/Playful]: Meet her possessive gaze head-on and ask what price the Choir's favorite saint actually charges for her miracles in Stratum I."
+      ]
+    },
+    {
+      "id": "prologue_miri",
+      "speaker": "Miri Thorne",
+      "title": "Miri Thorne: Blood-Ledger Audit in The Gilded Exchange",
+      "location": "The Gilded Exchange",
+      "sceneSetup": "Built inside the hollow stone bridge-pilings directly above the abyss, the Gilded Exchange roars with hissing steam pipes, neon appraisal signs, and the clatter of Relic dice. Through the iron floor grates beneath your boots, the pale mist of the Under-Vault churns a thousand feet below.\n\nLeaning across a counter stacked with glowing amber vials and fractured Relics, Mireille 'Miri' Thorne adjusts her brass-rimmed jeweler's lenses, tapping an ink-stained finger against a heavy brass-bound debt ledger.",
+      "dialogue": "Well, well—another fresh initiate with Proctor Sallow's ink still drying on their matriculation file! According to the Gilded Loom's registry, your semester quota is due before midterm audit, or your biological nervous system goes up for public auction.\n\nLucky for you, I'm feeling charitable today. Sign a thirty-percent salvage split with my shop, and I'll loan you an overcharged Relic that might actually keep you breathing past Corwin Baines's blockade in Stratum One. Deal?",
+      "expressionKey": "smug",
+      "initialAffection": 25,
+      "bgImage": "/backgrounds/sovereign-spire/gilded_exchange.jpg",
+      "choices": [
+        "[Streetwise/Appraisal]: Inspect the 'overcharged Relic' on her counter and point out the hidden Whisper Flaw she conveniently forgot to mention.",
+        "[Observant/Insight]: Notice the falsified transport manifests tucked beneath her ledger—she's smuggling defaulted freshmen out through the lower aqueducts.",
+        "[Bold/Negotiation]: Counter-offer a twenty-percent split, plus first pick of whatever Corwin Baines's (#184) toll-squad drops at the Sunken Cloisters lift gate.",
+        "[Charming/Sly]: Lean against her counter and ask if the 'Smiling Usurer' always looks this worried when sending a new Dyad partner down the lift."
+      ]
+    },
+    {
+      "id": "prologue_noelle",
+      "speaker": "Noelle Vesper",
+      "title": "Noelle Vesper: Midnight Static in the Artificer Workshop",
+      "location": "The Gilded Exchange",
+      "sceneSetup": "In the back-alley sub-basement behind the Gilded Exchange, the smell of machine oil, ozone, and burnt black coffee hangs heavy in the dark. Three life-sized porcelain Vault-automata hang suspended from the ceiling by razor-thin glowing blue Astra threads.\n\nCurled in a leather chair three sizes too big for her is Noelle Vesper. Dark circles shadow her half-lidded violet eyes as she sips from a glass laboratory beaker—until you step across the threshold and her head snaps up like a tuning fork.",
+      "dialogue": "...Stop moving. Don't breathe for four seconds.\n\n...Interesting. The Under-Vault's static stopped screaming against my eardrums the exact millisecond your aura crossed my ward-line. Take off your coat and sit here. I haven't slept in eighty-two hours, and I need to test if holding your hand shuts the Fourth Stratum up permanently.",
+      "expressionKey": "intrigued",
+      "initialAffection": 28,
+      "bgImage": "/backgrounds/sovereign-spire/gilded_exchange.jpg",
+      "choices": [
+        "[Gentle/Protective]: Pull up a workbench stool beside her chair and offer your bare hand so she can finally close her eyes.",
+        "[Curious/Technical]: Ask her what kind of signal she's hearing from the Fourth Stratum that even the Gilded Loom's wards can't filter out.",
+        "[Tactical/Alliance]: Agree to act as her living white-noise anchor—provided her three porcelain automata back you up on tomorrow's Stratum I delve.",
+        "[Teasing/Pragmatic]: Take the beaker of cold black coffee out of her fingers first and tell her she's eating a real meal before any experiments."
+      ]
+    },
+    {
+      "id": "prologue_kestrel",
+      "speaker": "Kestrel Hollow",
+      "title": "Kestrel Hollow: Blind-Fight Wager in The Velvet Spill",
+      "location": "The Velvet Spill & The Tribunal Pit",
+      "sceneSetup": "Down in the subterranean galleries of The Velvet Spill, violet illusion mist curls up from the sunken blood-stained stones of the Midnight Tribunal pit below. The roar of betting syndicates echoes off the vaulted rock.\n\nLeaning against the stone parapet with her dark 3rd-year enforcer coat slouched loose off her left shoulder is Kestrel Hollow (Rank #142). Very long, bone-white hair with blunt hime-cut bangs and thick side-plaited braids frames her deep amber skin and the three diagonal white ritual stripes beneath each of her pale, pupil-less glowing white eyes. She checks the tightness of the glowing runic linen wraps encasing her hands and forearms as violet-black sensory-deprivation mist curls around her knuckles, flashing you a crooked, lazy smirk.",
+      "dialogue": "Careful where you lean, kid—the blood on that railing isn't dry from the eight-o'clock Tribunal yet.\n\nWord around the Whispering Veil is you're looking for a Dyad partner who knows how to fight blind and dirty enough to break Corwin Baines's (#184) blockade at the Seal-Gate. Buy me a glass of cinder-rye and show me your reflexes before Silas Krowe's spotters log you as another future corpse on the ledger.",
+      "expressionKey": "smug",
+      "initialAffection": 22,
+      "bgImage": "/backgrounds/sovereign-spire/velvet_spill.jpg",
+      "choices": [
+        "[Perceptive/Direct]: Slide a glass of cinder-rye across the stone and ask why Rank #142 'The Velvet Hound' already has your matriculation file memorized.",
+        "[Somatic/CQC]: Tap your own guard against the parapet and test her blind-fighting attunement with a feint inside her five-meter Tether-Bound range.",
+        "[Underworld/Cunning]: Offer to help her rig the next Midnight Tribunal's betting pool in exchange for Whispering Veil shortcuts through the Sunken Cloisters.",
+        "[Observant/Empathy]: Catch the subtle tension when she adjusts her slouched enforcer coat over her halter-neck bodysuit—where Silas Krowe's (#19) contract-brand smolders."
+      ]
+    },
+    {
+      "id": "prologue_valeria",
+      "speaker": "Valeria Noctis",
+      "title": "Valeria Noctis: Smoke & Sabers Above the Tribunal Pit",
+      "location": "The Velvet Spill & The Tribunal Pit",
+      "sceneSetup": "From a curtained VIP balcony overlooking the sunken amphitheater of The Velvet Spill, sweet violet illusion-smoke drifts into the corridor. Below, two duelists clash in a sanctioned Midnight Tribunal as Proctor Sallow watches from the arbiter's podium.\n\nLounging across the velvet divan is Valeria Noctis, her third-year coat draped loosely over her shoulders and twin curved sabers resting at her hip. She exhales a slow ring of violet smoke from an ornate brass pipe, her predatory eyes locking onto you with an amused smirk.",
+      "dialogue": "My, my... a fresh initiate wandering into the third-year galleries with the ink still wet on their matriculation file.\n\nCome closer, little lamb. I'm taking wagers on whether the boy in the pit loses his nerve or his right arm first—and I have a very lucrative proposition for a freshman bold enough to step into that ring before the semester ends.",
+      "expressionKey": "smug",
+      "initialAffection": 20,
+      "bgImage": "/backgrounds/sovereign-spire/velvet_spill.jpg",
+      "choices": [
+        "[Analytical/Bold]: Step up to the balcony rail, call the exact second the duelist below drops his guard, and ask what her proposition actually pays.",
+        "[Incisive/Lore]: Ask why a woman strong enough to take Aldric Drakon's (#1) seat deliberately fails her final ethics exam every single spring.",
+        "[Flirtatious/Unflinching]: Take a seat on the edge of her divan and tell her you aren't anyone's lamb—even in the Whispering Veil's den.",
+        "[Tactical/Cautious]: Keep one hand near your weapon as you test the violet smoke around the booth for sensory-mirage illusions."
+      ]
+    }
+  ],
+  "companions": [
+    {
+      "id": "comp_cassia",
+      "name": "Cassia Valen",
+      "title": "The Tarnished Blade • Iron Chancellery",
+      "role": "Somatic Vanguard / Armor-Breaker",
+      "gender": "female",
+      "color": "amber",
+      "personality": "Stoic, hyper-disciplined knight of a disgraced frontier house. Clinical and guarded on the surface, hiding crushing guilt over a secret assassination contract forced on her by debt-holder Julian Thorne-Vex.",
+      "values": [
+        "Martial Discipline",
+        "Keeping One's Word",
+        "Clean Steel Geometry",
+        "Redeeming House Valen"
+      ],
+      "dislikes": [
+        "Predatory Usurers",
+        "Sloppy Footwork",
+        "Unnecessary Cruelty",
+        "Julian Thorne-Vex"
+      ],
+      "highCompatibility": [
+        "Somatic Vanguards",
+        "Honorable Duelists",
+        "Stoic Pragmatists",
+        "Protective Allies"
+      ],
+      "baseAffection": 20,
+      "affection": 20,
+      "expressionKey": "combat_ready",
+      "isPresent": true,
+      "encountered": false,
+      "seed": 701101,
+      "baseImageUrl": "/characters/sovereign-spire/cassia_valen.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Tall aristocratic female knight with braided ash-blonde hair, piercing steel-grey eyes, guarded expression, wearing an iron-grey military coat with tarnished silver trim and a frayed heavy cloak, holding a notched steel longsword glowing with subtle golden kinetic Astra at the crossguard. Mature dark fantasy anime visual novel key art, semi-painterly cel-shading, crisp intricate linework, high-contrast chiaroscuro lighting.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/cassia_valen.png",
+        "intrigued": "/characters/sovereign-spire/cassia_valen.png",
+        "flustered": "/characters/sovereign-spire/cassia_valen.png",
+        "smug": "/characters/sovereign-spire/cassia_valen.png",
+        "surprised": "/characters/sovereign-spire/cassia_valen.png",
+        "combat_ready": "/characters/sovereign-spire/cassia_valen.png",
+        "dangerous": "/characters/sovereign-spire/cassia_valen.png",
+        "hurt": "/characters/sovereign-spire/cassia_valen.png"
+      }
+    },
+    {
+      "id": "comp_beatrix",
+      "name": "Beatrix Valorian",
+      "title": "The Crimson Sovereign • Iron Chancellery",
+      "role": "Solar Halberd Kinetic Striker",
+      "gender": "female",
+      "color": "rose",
+      "personality": "Fiery, proud ducal heiress who believes strength carries a moral obligation to rule. Fiercely competitive and easily flustered when treated tenderly; terrified that finishing below Rank #1 will doom her to a forced political marriage.",
+      "values": [
+        "Supreme Martial Excellence",
+        "Direct Confrontation",
+        "Noblesse Oblige",
+        "Unbroken Pride"
+      ],
+      "dislikes": [
+        "Cowardly Schemers",
+        "Being Pitied",
+        "Second Place",
+        "Forced Political Marriages"
+      ],
+      "highCompatibility": [
+        "Ambitious Rivals",
+        "Frontline Strikers",
+        "Bold Challengers",
+        "Direct Personalities"
+      ],
+      "baseAffection": 15,
+      "affection": 15,
+      "expressionKey": "smug",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 701102,
+      "baseImageUrl": "/characters/sovereign-spire/beatrix_valorian.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Proud noblewoman with flawless posture, bright crimson hair in sweeping twin drills, piercing golden eyes, fierce haughty blush, wearing an ornate white-and-gold military uniform with medals and wielding a heavy war-halberd radiating golden Solar Astra. Mature dark fantasy anime visual novel key art, semi-painterly cel-shading.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/beatrix_valorian.png",
+        "intrigued": "/characters/sovereign-spire/beatrix_valorian.png",
+        "flustered": "/characters/sovereign-spire/beatrix_valorian.png",
+        "smug": "/characters/sovereign-spire/beatrix_valorian.png",
+        "surprised": "/characters/sovereign-spire/beatrix_valorian.png",
+        "combat_ready": "/characters/sovereign-spire/beatrix_valorian.png",
+        "dangerous": "/characters/sovereign-spire/beatrix_valorian.png",
+        "hurt": "/characters/sovereign-spire/beatrix_valorian.png"
+      }
+    },
+    {
+      "id": "comp_ysolde",
+      "name": "Ysolde Kaelen",
+      "title": "The Glass Heretic • Obsidian Choir",
+      "role": "Aetherial Blood & Gravity Weaver",
+      "gender": "female",
+      "color": "purple",
+      "personality": "Pale, aristocratically composed prodigy of the Obsidian Choir. Cold and untouchable in public, secretly dying of premature Vault-crystal calcification beneath her black leather gloves and desperate for the protagonist's Soul-Grounding resonance.",
+      "values": [
+        "Forbidden Cosmology",
+        "Intellectual Precision",
+        "Unspoken Trust",
+        "Defying Calcification"
+      ],
+      "dislikes": [
+        "Uninvited Physical Touch",
+        "Faculty Surveillance",
+        "Lukas Castell",
+        "Superficial Small Talk"
+      ],
+      "highCompatibility": [
+        "Arcane Scholars",
+        "Composed Strategists",
+        "Keepers of Secrets",
+        "High-Risk Delvers"
+      ],
+      "baseAffection": 18,
+      "affection": 18,
+      "expressionKey": "dangerous",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 701103,
+      "baseImageUrl": "/characters/sovereign-spire/ysolde_kaelen.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Pale aristocratically composed woman with long flowing raven-black hair, cold amethyst-violet eyes, wearing a high-necked dark velvet Choir robe with silver embroidery and elbow-length black leather gloves, with translucent glowing purple crystal calcification peeking out at her wrists and floating violet blood-crystal shards near her fingertips.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/ysolde_kaelen.png",
+        "intrigued": "/characters/sovereign-spire/ysolde_kaelen.png",
+        "flustered": "/characters/sovereign-spire/ysolde_kaelen.png",
+        "smug": "/characters/sovereign-spire/ysolde_kaelen.png",
+        "surprised": "/characters/sovereign-spire/ysolde_kaelen.png",
+        "combat_ready": "/characters/sovereign-spire/ysolde_kaelen.png",
+        "dangerous": "/characters/sovereign-spire/ysolde_kaelen.png",
+        "hurt": "/characters/sovereign-spire/ysolde_kaelen.png"
+      }
+    },
+    {
+      "id": "comp_aurelia",
+      "name": "Aurelia Solis",
+      "title": "The Porcelain Saint • Obsidian Choir",
+      "role": "Aetherial Vitality Martyr & Healer",
+      "gender": "female",
+      "color": "rose",
+      "personality": "Soft-spoken, pampering Choir healer with a serene smile and deeply possessive devotion. Absorbs her partner's wounds onto her own body and secretly sabotages their defensive wards so they must rely exclusively on her embrace.",
+      "values": [
+        "Total Devotion",
+        "Being Indispensable",
+        "Shared Pain & Euphoria",
+        "Exclusive Dyad Bonds"
+      ],
+      "dislikes": [
+        "Self-Sufficient Partners",
+        "Rival Heroines",
+        "Being Ignored",
+        "Emotional Distance"
+      ],
+      "highCompatibility": [
+        "Reckless Frontliners",
+        "Berserkers",
+        "Devoted Partners",
+        "High-Strain Delvers"
+      ],
+      "baseAffection": 35,
+      "affection": 35,
+      "expressionKey": "intrigued",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 701104,
+      "baseImageUrl": "/characters/sovereign-spire/aurelia_solis.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Young woman with soft wavy silver-pink hair, warm doe eyes, serene and slightly possessive smile, wearing immaculate white-and-gold choir vestments, holding a blood-stained lace handkerchief, with faint golden ethereal tether chains coiling around her fingers.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/aurelia_solis.png",
+        "intrigued": "/characters/sovereign-spire/aurelia_solis.png",
+        "flustered": "/characters/sovereign-spire/aurelia_solis.png",
+        "smug": "/characters/sovereign-spire/aurelia_solis.png",
+        "surprised": "/characters/sovereign-spire/aurelia_solis.png",
+        "combat_ready": "/characters/sovereign-spire/aurelia_solis.png",
+        "dangerous": "/characters/sovereign-spire/aurelia_solis.png",
+        "hurt": "/characters/sovereign-spire/aurelia_solis.png"
+      }
+    },
+    {
+      "id": "comp_miri",
+      "name": "Miri Thorne",
+      "title": "The Smiling Usurer • Gilded Loom",
+      "role": "Tactical Artificer & Black-Market Fixer",
+      "gender": "female",
+      "color": "amber",
+      "personality": "Sharp-tongued, mercenary appraiser who charges predatory interest to arrogant nobles while secretly funneling every coin into an underground railroad that smuggles defaulted scholarship students to safety.",
+      "values": [
+        "Clever Leverage",
+        "Protecting Scholarship Underdogs",
+        "Relic Craftsmanship",
+        "Actions Over Noble Words"
+      ],
+      "dislikes": [
+        "Entitled Highborn Brats",
+        "Proctor Sallow's Foreclosures",
+        "Corwin Baines",
+        "Bad Contracts"
+      ],
+      "highCompatibility": [
+        "Cunning Tacticians",
+        "Commoner Underdogs",
+        "Relic Hunters",
+        "Loyal Conspirators"
+      ],
+      "baseAffection": 25,
+      "affection": 25,
+      "expressionKey": "smug",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 701105,
+      "baseImageUrl": "/characters/sovereign-spire/miri_thorne.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Young woman with warm amber eyes behind brass-rimmed jeweler's lenses, messy chestnut hair tucked under a beret, knowing crooked smile, wearing a tailored dark vest lined with glowing amber alchemical vials over a rolled-sleeve shirt, a brass-bound debt ledger tucked under her arm, and ink-stained fingers sparking with amber Astra.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/miri_thorne.png",
+        "intrigued": "/characters/sovereign-spire/miri_thorne.png",
+        "flustered": "/characters/sovereign-spire/miri_thorne.png",
+        "smug": "/characters/sovereign-spire/miri_thorne.png",
+        "surprised": "/characters/sovereign-spire/miri_thorne.png",
+        "combat_ready": "/characters/sovereign-spire/miri_thorne.png",
+        "dangerous": "/characters/sovereign-spire/miri_thorne.png",
+        "hurt": "/characters/sovereign-spire/miri_thorne.png"
+      }
+    },
+    {
+      "id": "comp_noelle",
+      "name": "Noelle Vesper",
+      "title": "The Sleepless Savant • Gilded Loom",
+      "role": "Aetherial Puppeteer & Necro-Artificer",
+      "gender": "female",
+      "color": "sky",
+      "personality": "Petite, deadpan insomniac genius with zero social filter. Plagued by the constant psychic static of the Under-Vault until she touches the protagonist, whose aura acts as soothing white noise that finally lets her sleep.",
+      "values": [
+        "Pure Mechanical Curiosity",
+        "Uninterrupted Sleep",
+        "Fourth-Stratum Mysteries",
+        "Physical Proximity to the Protagonist"
+      ],
+      "dislikes": [
+        "Loud Noises",
+        "Social Etiquette",
+        "Abyssal Static",
+        "Being Separated from Her Quiet Anchor"
+      ],
+      "highCompatibility": [
+        "Calm Anchors",
+        "Caretakers",
+        "Inquisitive Scholars",
+        "Unconventional Thinkers"
+      ],
+      "baseAffection": 28,
+      "affection": 28,
+      "expressionKey": "intrigued",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 701106,
+      "baseImageUrl": "/characters/sovereign-spire/noelle_vesper.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Petite pale girl with long messy white-blue hair, dark circles under half-lidded violet eyes, deadpan sleepy expression, wearing an oversized oil-stained artificer coat three sizes too big, holding a glass beaker of black coffee, trailing glowing razor-thin blue Astra puppet threads from her fingertips.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/noelle_vesper.png",
+        "intrigued": "/characters/sovereign-spire/noelle_vesper.png",
+        "flustered": "/characters/sovereign-spire/noelle_vesper.png",
+        "smug": "/characters/sovereign-spire/noelle_vesper.png",
+        "surprised": "/characters/sovereign-spire/noelle_vesper.png",
+        "combat_ready": "/characters/sovereign-spire/noelle_vesper.png",
+        "dangerous": "/characters/sovereign-spire/noelle_vesper.png",
+        "hurt": "/characters/sovereign-spire/noelle_vesper.png"
+      }
+    },
+    {
+      "id": "comp_kestrel",
+      "name": "Kestrel Hollow",
+      "title": "The Velvet Hound (Rank #142) • Whispering Veil",
+      "role": "Unarmored Somatic Brawler / Blind-Fight Duelist",
+      "gender": "female",
+      "color": "emerald",
+      "personality": "Teasing, street-smart, and outwardly relaxed, though hiding a sharp, lethal enforcer's instinct (Initial Rank #189 -> Active Rank #142). Covers her hyper-alertness with a crooked, lazy smirk and informal banter ('kid', 'Partner'). Hardened, cynical, and survival-driven due to her collared enslavement to Silas Krowe and the Whispering Veil's Shadow Director, she possesses a fierce streak of dark humor and a hidden protective heart for those she finds worthy.",
+      "values": [
+        "True Freedom & Severing Her Leash",
+        "Veil CQC & Blind-Fight Reflexes",
+        "Street Loyalty",
+        "Tether-Bound Dyad Trust"
+      ],
+      "dislikes": [
+        "Silas Krowe & The Shadow Director",
+        "Predatory Slave Contracts",
+        "Pompous Aristocrats",
+        "Fighting Fair"
+      ],
+      "highCompatibility": [
+        "Outlaws",
+        "Somatic Brawlers",
+        "Rebels",
+        "Ride-or-Die Partners"
+      ],
+      "baseAffection": 22,
+      "affection": 22,
+      "expressionKey": "smug",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 701107,
+      "baseImageUrl": "/characters/sovereign-spire/kestrel_hollow.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Deep amber-skinned, toned athletic muscular female brawler with visible shoulder, back, and arm definition; very long cascading bone-white hair styled with straight hime-cut blunt bangs and thick side-plaited braids; pale pupil-less glowing white eyes (blind-fighting attunement) with three diagonal white ritual stripes underneath each eye on her cheekbones. Wearing a custom backless and sleeveless dark black-leather and velvet halter-neck bodysuit with a high gold-trimmed collar, a dark 3rd-year Academy enforcer coat worn loose and slouched off her left shoulder, and worn glowing runic linen boxing wraps encasing her hands, wrists, and forearms with swirling violet-black sensory-deprivation mist curling around her fists.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/kestrel_hollow.png",
+        "intrigued": "/characters/sovereign-spire/kestrel_hollow.png",
+        "flustered": "/characters/sovereign-spire/kestrel_hollow.png",
+        "smug": "/characters/sovereign-spire/kestrel_hollow.png",
+        "surprised": "/characters/sovereign-spire/kestrel_hollow.png",
+        "combat_ready": "/characters/sovereign-spire/kestrel_hollow.png",
+        "dangerous": "/characters/sovereign-spire/kestrel_hollow.png",
+        "hurt": "/characters/sovereign-spire/kestrel_hollow.png"
+      }
+    },
+    {
+      "id": "comp_valeria",
+      "name": "Valeria Noctis",
+      "title": "The Perpetual Senior • Whispering Veil",
+      "role": "Dual-Saber Mist Illusionist",
+      "gender": "female",
+      "color": "purple",
+      "personality": "Alluring, apex-predator third-year senior who intentionally fails her final ethics exam every spring so she can remain at the Academy and methodically hunt down the conspirators who executed her original Dyad squad.",
+      "values": [
+        "Cold Methodical Vengeance",
+        "High-Stakes Gambles",
+        "Deadly Grace",
+        "Unmasking Stratum IV"
+      ],
+      "dislikes": [
+        "Aldric Drakon",
+        "High Sovereign Caelen Vane",
+        "Gullible Pawns",
+        "Broken Dyad Vows"
+      ],
+      "highCompatibility": [
+        "Apex Duelists",
+        "Shadow Operatives",
+        "fearless Strategists",
+        "Keepers of Vengeance"
+      ],
+      "baseAffection": 20,
+      "affection": 20,
+      "expressionKey": "smug",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 701108,
+      "baseImageUrl": "/characters/sovereign-spire/valeria_noctis.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, dark out-of-focus gothic stone archway background. Tall alluring woman with long smoky-violet hair, beauty mark under her left eye, teasing apex-predator smirk, wearing a dark third-year coat draped loosely over her shoulders, holding an ornate brass smoke-pipe, carrying twin curved sabers shrouded in violet illusion mist.",
+      "expressions": {
+        "neutral": "/characters/sovereign-spire/valeria_noctis.png",
+        "intrigued": "/characters/sovereign-spire/valeria_noctis.png",
+        "flustered": "/characters/sovereign-spire/valeria_noctis.png",
+        "smug": "/characters/sovereign-spire/valeria_noctis.png",
+        "surprised": "/characters/sovereign-spire/valeria_noctis.png",
+        "combat_ready": "/characters/sovereign-spire/valeria_noctis.png",
+        "dangerous": "/characters/sovereign-spire/valeria_noctis.png",
+        "hurt": "/characters/sovereign-spire/valeria_noctis.png"
+      }
+    }
+  ],
+  "flowchartTree": [
+    {
+      "id": "node_seal_gate",
+      "nodeKey": "prologue_cassia",
+      "title": "The Seal-Gate & Boarding Quays",
+      "speaker": "Cassia Valen",
+      "location": "The Seal-Gate & Boarding Quays",
+      "summary": "Calibrating Dyad tethers and descending past the First Seal where surface law ends.",
+      "connectedTo": [
+        "node_sunken_cloisters",
+        "node_gilded_exchange"
+      ]
+    },
+    {
+      "id": "node_the_crucible",
+      "nodeKey": "prologue_beatrix",
+      "title": "The Crucible Colosseum",
+      "speaker": "Beatrix Valorian",
+      "location": "The Crucible",
+      "summary": "Crossing live steel with Beatrix Valorian under Provost Dorn's iron gaze.",
+      "connectedTo": [
+        "node_sunken_cloisters",
+        "node_velvet_spill"
+      ]
+    },
+    {
+      "id": "node_glass_conservatory",
+      "nodeKey": "prologue_ysolde",
+      "title": "The Glass Conservatory Sanctum",
+      "speaker": "Ysolde Kaelen",
+      "location": "The Glass Conservatory",
+      "summary": "Uncovering Ysolde's crystallized hands and Aurelia's possessive vitality tethers in the Choir wards.",
+      "connectedTo": [
+        "node_sunken_cloisters",
+        "node_weeping_ossuary"
+      ]
+    },
+    {
+      "id": "node_gilded_exchange",
+      "nodeKey": "prologue_miri",
+      "title": "The Gilded Exchange Undercroft",
+      "speaker": "Miri Thorne",
+      "location": "The Gilded Exchange",
+      "summary": "Negotiating Blood-Ledger debt with Miri Thorne and quieting Noelle Vesper's abyssal static.",
+      "connectedTo": [
+        "node_sunken_cloisters",
+        "node_velvet_spill"
+      ]
+    },
+    {
+      "id": "node_velvet_spill",
+      "nodeKey": "prologue_valeria",
+      "title": "The Velvet Spill & Tribunal Pit",
+      "speaker": "Valeria Noctis",
+      "location": "The Velvet Spill & The Tribunal Pit",
+      "summary": "Entering the Whispering Veil's underground dueling ring alongside Kestrel Hollow and Valeria Noctis.",
+      "connectedTo": [
+        "node_weeping_ossuary",
+        "node_chronos_scars"
+      ]
+    },
+    {
+      "id": "node_sunken_cloisters",
+      "nodeKey": "stratum_1_cloisters",
+      "title": "Stratum I: The Sunken Cloisters",
+      "speaker": "Cassia Valen",
+      "location": "Stratum I: The Sunken Cloisters",
+      "summary": "First delve into the petrified old academy and breaking Corwin Baines's extraction toll blockade.",
+      "unlockRequirement": {
+        "minAffection": 22,
+        "hintSilhouette": "Requires initiating your first Under-Vault delve"
+      },
+      "connectedTo": [
+        "node_weeping_ossuary"
+      ]
+    },
+    {
+      "id": "node_weeping_ossuary",
+      "nodeKey": "stratum_2_ossuary",
+      "title": "Stratum II: The Weeping Ossuary",
+      "speaker": "Ysolde Kaelen",
+      "location": "Stratum II: The Weeping Ossuary",
+      "summary": "Surviving gravity shears, confronting The Hollowed, and performing skin-to-skin Soul-Grounding.",
+      "unlockRequirement": {
+        "minAffection": 35,
+        "hintSilhouette": "Locked: Requires Dyad Partner Favor >= 35%"
+      },
+      "connectedTo": [
+        "node_chronos_scars"
+      ]
+    },
+    {
+      "id": "node_chronos_scars",
+      "nodeKey": "stratum_3_chronos",
+      "title": "Stratum III: The Chronos Scars",
+      "speaker": "Valeria Noctis",
+      "location": "Stratum III: The Chronos Scars",
+      "summary": "Braving temporal battlefields, Echo-Knights, and settling Blood-Ledger scores in the Midnight Tribunal.",
+      "unlockRequirement": {
+        "minAffection": 50,
+        "hintSilhouette": "Locked: Requires Confidant Tether (50% Favor)"
+      },
+      "connectedTo": [
+        "node_sky_crown",
+        "node_the_pulse"
+      ]
+    },
+    {
+      "id": "node_sky_crown",
+      "nodeKey": "surface_sky_crown",
+      "title": "The Sky-Crown & Sovereign Terraces",
+      "speaker": "Beatrix Valorian",
+      "location": "The Sky-Crown & Sovereign Terraces",
+      "summary": "Ascending into the Top 10 Sovereign Seats to challenge Aldric Drakon (#1) before High Sovereign Vane.",
+      "unlockRequirement": {
+        "minAffection": 65,
+        "hintSilhouette": "Locked: Requires Vanguard Elite Standing (65% Favor)"
+      },
+      "connectedTo": [
+        "node_the_pulse"
+      ]
+    },
+    {
+      "id": "node_the_pulse",
+      "nodeKey": "stratum_4_pulse",
+      "title": "Stratum IV: The Pulse (Sovereign Covenant)",
+      "speaker": "Noelle Vesper",
+      "location": "Stratum IV: The Pulse",
+      "summary": "Descending to the inverted abyssal sea to confront the Regent's Black Guard and rewrite the Empire's founding crime.",
+      "unlockRequirement": {
+        "minAffection": 80,
+        "hintSilhouette": "Locked: Requires Sovereign Covenant (80% Favor)"
+      },
+      "connectedTo": []
+    }
+  ]
+}
+

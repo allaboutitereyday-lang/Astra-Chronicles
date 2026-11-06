@@ -45,6 +45,41 @@ export const RIVALRY_PAIRS_CATALOG: {
     ideologicalAxis: "Pragmatic Thief Cunning vs. Ancient Eldritch Pride",
     banterTone: "Guarded professional underworld paranoia clashing with amused noble demonic amusement.",
   },
+  {
+    pairKey: "cassia_beatrix",
+    comp1: "Cassia Valen",
+    comp2: "Beatrix Valorian",
+    ideologicalAxis: "Disgraced Frontier Survival Steel vs. Gilded Ducal Supremacy",
+    banterTone: "Cold, economical battlefield pragmatism clashing with fiery, imperious highborn pride.",
+  },
+  {
+    pairKey: "ysolde_aurelia",
+    comp1: "Ysolde Kaelen",
+    comp2: "Aurelia Solis",
+    ideologicalAxis: "Fierce Autonomous Secrecy vs. Suffocating Devotional Co-Dependency",
+    banterTone: "Glacial, surgical distance clashing with syrupy, possessive saintly blackmail over Ysolde's calcification cure.",
+  },
+  {
+    pairKey: "miri_beatrix",
+    comp1: "Miri Thorne",
+    comp2: "Beatrix Valorian",
+    ideologicalAxis: "Underground Commoner Abolitionism vs. Lawful Noble Hierarchy",
+    banterTone: "Sharp-tongued mercantile mockery of noble privilege clashing with outraged aristocratic indignation.",
+  },
+  {
+    pairKey: "kestrel_valeria",
+    comp1: "Kestrel Hollow",
+    comp2: "Valeria Noctis",
+    ideologicalAxis: "Collared Street Brawler Survival vs. Apex Senior Spider Manipulation",
+    banterTone: "Scrappy, defensive underworld grit clashing with smoky, predatory third-year teasing.",
+  },
+  {
+    pairKey: "noelle_ysolde",
+    comp1: "Noelle Vesper",
+    comp2: "Ysolde Kaelen",
+    ideologicalAxis: "Blunt Unfiltered Anatomical Curiosity vs. Guarded Aristocratic Dignity",
+    banterTone: "Sleepy deadpan questions about Ysolde's crystallized hands clashing with lethal amethyst-eyed embarrassment.",
+  },
 ];
 
 /**

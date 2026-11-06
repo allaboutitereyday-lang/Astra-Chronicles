@@ -154,6 +154,16 @@ import {
   getDominantTendencyLabel,
   buildPersonalityFallbackChoices,
 } from "@/lib/personalityArchitect";
+import {
+  SOVEREIGN_ORIGIN_PRESETS,
+  SOVEREIGN_CONDUIT_PRESETS,
+  SOVEREIGN_HEROINE_DOSSIERS,
+  SovereignOriginPreset,
+  SovereignConduitPreset,
+  SovereignOrigin,
+  ConduitType,
+  PatronWing,
+} from "@/types/sovereign_spire";
 
 // Dynamic code splitting for heavy interactive canvas graph
 const FlowchartViewer = dynamic(
@@ -242,6 +252,11 @@ interface PlayerProfile {
   behavioralTendencies?: Record<string, number>;
   pinnedMemories?: string[];
   unspentStatPoints?: number;
+  sovereignOrigin?: SovereignOrigin;
+  conduit?: ConduitType;
+  patronWing?: PatronWing;
+  matriculationRank?: number;
+  semesterDebtQuota?: number;
 }
 
 interface RoleplayState {
@@ -367,6 +382,16 @@ const LOCATION_BACKGROUNDS: Record<string, string> = {
   "Astra Leyline Rift": "/backgrounds/gray_zone.jpg",
   "Ashen Cathedral": "/backgrounds/bloodrose_duchy.jpg",
   "Demon Realm Border": "/backgrounds/gray_zone.jpg",
+  "The Seal-Gate & Boarding Quays": "/backgrounds/sovereign-spire/seal_gate.jpg",
+  "The Crucible": "/backgrounds/sovereign-spire/the_crucible.jpg",
+  "The Glass Conservatory": "/backgrounds/sovereign-spire/glass_conservatory.jpg",
+  "The Gilded Exchange": "/backgrounds/sovereign-spire/gilded_exchange.jpg",
+  "The Velvet Spill & The Tribunal Pit": "/backgrounds/sovereign-spire/velvet_spill.jpg",
+  "The Sky-Crown & Sovereign Terraces": "/backgrounds/sovereign-spire/sky_crown.jpg",
+  "Stratum I: The Sunken Cloisters": "/backgrounds/sovereign-spire/seal_gate.jpg",
+  "Stratum II: The Weeping Ossuary": "/backgrounds/sovereign-spire/velvet_spill.jpg",
+  "Stratum III: The Chronos Scars": "/backgrounds/sovereign-spire/glass_conservatory.jpg",
+  "Stratum IV: The Pulse": "/backgrounds/sovereign-spire/sky_crown.jpg",
 };
 
 const DEFAULT_BG = "/backgrounds/imperial_capital_imperium.jpg";
@@ -638,7 +663,8 @@ export default function VisualNovelGame() {
   const [isAudioMuted, setIsAudioMuted] = useState(false);
 
   const [statPoints, setStatPoints] = useState(10);
-  const [gearPreference, setGearPreference] = useState<"system" | "none">("system");
+  const [gearPreference, setGearPreference] = useState<"system" | "canon" | "none">("system");
+  const [selectedSovereignConduit, setSelectedSovereignConduit] = useState<string>("iron_chancellery_somatic");
 
   const [playerAvatar, setPlayerAvatar] = useState<string | null>(null);
   const [fullPortraitViewer, setFullPortraitViewer] = useState<{
@@ -1274,7 +1300,44 @@ export default function VisualNovelGame() {
               presentCompanions: [startingSpeaker],
             }));
           }
-          if (story.rpgRules?.baseStats) {
+          if (story.id === "sovereign-spire") {
+            const defOrigin = SOVEREIGN_ORIGIN_PRESETS[0];
+            const defConduit = SOVEREIGN_CONDUIT_PRESETS[0];
+            setSelectedWorldOriginPreset(defOrigin.id);
+            setSelectedSovereignConduit(defConduit.id);
+            setGearPreference("canon");
+            const abNames = defConduit.startingAbilities.map((a) => a.name);
+            const abDetails: Record<string, AbilityDetail> = {};
+            defConduit.startingAbilities.forEach((a) => {
+              abDetails[a.name] = a;
+            });
+            setStatPoints(2);
+            setPlayer((prev) => {
+              const next: PlayerProfile = {
+                ...prev,
+                role: prev.role || defConduit.roleTitle,
+                worldOrigin: defOrigin.name,
+                worldOriginDetails: defOrigin.defaultDetails,
+                sovereignOrigin: defOrigin.id,
+                conduit: defConduit.conduit,
+                patronWing: defConduit.wing,
+                matriculationRank: defOrigin.startingRank,
+                semesterDebtQuota: defOrigin.semesterDebtQuota,
+                gold: defOrigin.startingCrowns,
+                abilities: abNames,
+                abilityDetails: abDetails,
+                stats: {
+                  ...prev.stats,
+                  ...(story.rpgRules?.baseStats || {}),
+                  str: defConduit.statSpread.str,
+                  dex: defConduit.statSpread.dex,
+                  int: defConduit.statSpread.int,
+                },
+              };
+              playerRef.current = next;
+              return next;
+            });
+          } else if (story.rpgRules?.baseStats) {
             setPlayer((prev) => ({
               ...prev,
               stats: {
@@ -1699,8 +1762,53 @@ export default function VisualNovelGame() {
       });
     }
 
+    if (currentStory?.id === "sovereign-spire") {
+      const baseRank = player.matriculationRank || 488;
+      const simulatedRank = Math.max(1, baseRank - (player.level - 1) * 35);
+      const rankTier =
+        simulatedRank > 450
+          ? "The Dross"
+          : simulatedRank > 50
+          ? "The Body"
+          : simulatedRank > 10
+          ? "Vanguard Elite"
+          : "Sovereign Candidate";
+      pills.push({
+        label: `Rank #${simulatedRank} (${rankTier})`,
+        color:
+          simulatedRank > 450
+            ? "border-rose-500/50 bg-rose-950/60 text-rose-300"
+            : "border-amber-500/50 bg-amber-950/60 text-amber-300",
+        title: `Sovereign Spire Matriculation Ladder Rank (Semester Quota: ${player.semesterDebtQuota || 400} Aether Cores) — Stay above #450 to avoid Proctor Sallow's Blood-Ledger foreclosure.`,
+      });
+      if (player.conduit || player.patronWing) {
+        const wingPretty = (player.patronWing || "IRON_CHANCELLERY")
+          .replace(/_/g, " ")
+          .toLowerCase()
+          .replace(/\b\w/g, (c) => c.toUpperCase());
+        pills.push({
+          label: `${player.conduit || "SOMATIC"} • ${wingPretty}`,
+          color: "border-indigo-500/40 bg-indigo-950/60 text-indigo-200",
+          title: `Active Dual-Conduit Pathway (${player.conduit || "SOMATIC"}) & Patron Wing Alignment (${wingPretty}).`,
+        });
+      }
+      const strainPct = Math.min(100, Math.max(0, Math.round((1 - mpRatio) * 85)));
+      pills.push({
+        label:
+          strainPct >= 50
+            ? `⚡ The Brink (${strainPct}% Strain)`
+            : `💎 Strain ${strainPct}%`,
+        color:
+          strainPct >= 50
+            ? "border-purple-400/60 bg-purple-950/80 text-purple-200 animate-pulse"
+            : "border-cyan-500/40 bg-cyan-950/50 text-cyan-300",
+        title:
+          "Calcification / Resonance Strain Gauge (0-49% Stable, 50-85% The Brink +30% DMG, 100% Calcification Lock — purge via skin-to-skin Soul-Grounding).",
+      });
+    }
+
     return pills;
-  }, [player.gear, player.visualDescription, player.stats.hp, player.stats.maxHp, player.stats.mp, player.stats.maxMp, player.race, player.racialTraits]);
+  }, [player.gear, player.visualDescription, player.stats.hp, player.stats.maxHp, player.stats.mp, player.stats.maxMp, player.race, player.racialTraits, player.level, player.matriculationRank, player.semesterDebtQuota, player.conduit, player.patronWing, currentStory?.id]);
 
   // Helper to determine active threshold cap for any companion
   const getCompanionCap = (compName?: string | null): number => {
@@ -2554,6 +2662,97 @@ export default function VisualNovelGame() {
     });
   };
 
+  const handleSelectSovereignOriginPreset = (preset: SovereignOriginPreset) => {
+    soundEffects.playClick();
+    setSelectedWorldOriginPreset(preset.id);
+    setPlayer((prev) => {
+      const next: PlayerProfile = {
+        ...prev,
+        worldOrigin: preset.name,
+        worldOriginDetails: preset.defaultDetails,
+        sovereignOrigin: preset.id,
+        matriculationRank: preset.startingRank,
+        semesterDebtQuota: preset.semesterDebtQuota,
+        gold: preset.startingCrowns,
+      };
+      playerRef.current = next;
+      return next;
+    });
+  };
+
+  const handleSelectSovereignConduitPreset = (preset: SovereignConduitPreset) => {
+    soundEffects.playClick();
+    setSelectedSovereignConduit(preset.id);
+    const abNames = preset.startingAbilities.map((a) => a.name);
+    const abDetails: Record<string, AbilityDetail> = {};
+    preset.startingAbilities.forEach((a) => {
+      abDetails[a.name] = a;
+    });
+    const usedPoints =
+      Math.max(0, preset.statSpread.str - 11) +
+      Math.max(0, preset.statSpread.dex - 11) +
+      Math.max(0, preset.statSpread.int - 11);
+    setStatPoints(Math.max(0, 10 - usedPoints));
+    setPlayer((prev) => {
+      const next: PlayerProfile = {
+        ...prev,
+        role: preset.roleTitle,
+        conduit: preset.conduit,
+        patronWing: preset.wing,
+        abilities: abNames,
+        abilityDetails: abDetails,
+        stats: {
+          ...prev.stats,
+          str: preset.statSpread.str,
+          dex: preset.statSpread.dex,
+          int: preset.statSpread.int,
+        },
+      };
+      playerRef.current = next;
+      return next;
+    });
+  };
+
+  const handleStartWithCanonWingLoadout = async () => {
+    soundEffects.playClick();
+    const activeConduit =
+      SOVEREIGN_CONDUIT_PRESETS.find((c) => c.id === selectedSovereignConduit) ||
+      SOVEREIGN_CONDUIT_PRESETS[0];
+    const loadout = activeConduit.canonLoadout;
+    const equippedGear = {
+      weapon: loadout.weapon,
+      armor: loadout.armor,
+      relic: loadout.relic,
+    };
+    const startingItems: InventoryItem[] = [
+      {
+        id: `canon_wpn_${activeConduit.id}`,
+        name: loadout.weapon,
+        type: "weapon",
+        rarity: "rare",
+        description: `Standard-issue ${activeConduit.wingLabel} armament tuned for ${activeConduit.conduit} conduit channeling.`,
+        effect: "+15% Conduit Strike Efficiency",
+      },
+      {
+        id: `canon_arm_${activeConduit.id}`,
+        name: loadout.armor,
+        type: "armor",
+        rarity: "uncommon",
+        description: `Tailored ${activeConduit.wingLabel} initiate attire reinforced against Stratum I Astra-Miasma.`,
+        effect: "+10% Calcification & Miasma Resistance",
+      },
+      {
+        id: `canon_rel_${activeConduit.id}`,
+        name: loadout.relic,
+        type: "relic",
+        rarity: "relic",
+        description: `[Socket: ${loadout.relicSlot} • Set: ${loadout.setId}] ${loadout.whisperFlaw}`,
+        effect: `Set Echo (${loadout.setId}) & Whisper Flaw Active`,
+      },
+    ];
+    await handleStartGame(equippedGear, startingItems);
+  };
+
   const handleCustomWorldOriginChange = (newOrigin: string) => {
     setPlayer((prev) => {
       const next = { ...prev, worldOrigin: newOrigin };
@@ -3148,6 +3347,30 @@ export default function VisualNovelGame() {
     if (speaker.toLowerCase().includes("perci")) {
       return PERCI_EXPRESSIONS[normalizedKey] || PERCI_EXPRESSIONS.neutral || DEFAULT_FALLBACK_SPRITE;
     }
+    if (speaker.toLowerCase().includes("cassia")) {
+      return "/characters/sovereign-spire/cassia_valen.png";
+    }
+    if (speaker.toLowerCase().includes("beatrix")) {
+      return "/characters/sovereign-spire/beatrix_valorian.png";
+    }
+    if (speaker.toLowerCase().includes("ysolde")) {
+      return "/characters/sovereign-spire/ysolde_kaelen.png";
+    }
+    if (speaker.toLowerCase().includes("aurelia")) {
+      return "/characters/sovereign-spire/aurelia_solis.png";
+    }
+    if (speaker.toLowerCase().includes("miri") || speaker.toLowerCase().includes("mireille")) {
+      return "/characters/sovereign-spire/miri_thorne.png";
+    }
+    if (speaker.toLowerCase().includes("noelle")) {
+      return "/characters/sovereign-spire/noelle_vesper.png";
+    }
+    if (speaker.toLowerCase().includes("kestrel") || speaker.toLowerCase().includes("kes ")) {
+      return "/characters/sovereign-spire/kestrel_hollow.png";
+    }
+    if (speaker.toLowerCase().includes("valeria")) {
+      return "/characters/sovereign-spire/valeria_noctis.png";
+    }
     return DEFAULT_FALLBACK_SPRITE;
   };
 
@@ -3234,6 +3457,7 @@ export default function VisualNovelGame() {
           playerAvatarBase64: playerAvatar,
           startingHeroine: chosen.speaker,
           startingLocation: chosen.location,
+          selectedPrologueNode: chosen,
           narrationStyle,
           userAccessKey: accessKey,
           storyContext: currentStory,
@@ -5965,7 +6189,7 @@ export default function VisualNovelGame() {
     }
   };
 
-  const handleTogglePinMemory = (factText: string) => {
+  const handleTogglePinMemory = useCallback((factText: string) => {
     const clean = factText.trim();
     if (!clean) return;
     soundEffects.playClick();
@@ -5997,7 +6221,7 @@ export default function VisualNovelGame() {
       playerRef.current = updated;
       return updated;
     });
-  };
+  }, []);
 
   const handleAddCustomPinnedMemory = () => {
     const clean = customMemoryInput.trim();
@@ -6006,13 +6230,32 @@ export default function VisualNovelGame() {
     setCustomMemoryInput("");
   };
 
-  const handlePinTurnMessage = (text: string, speakerName: string) => {
-    const raw = text.replace(/\s+/g, " ").trim();
-    const snippet =
-      raw.length > 210 ? `${raw.slice(0, 207)}...` : raw;
-    const formatted = `[${speakerName}]: ${snippet}`;
-    handleTogglePinMemory(formatted);
-  };
+  const handlePinTurnMessage = useCallback(
+    (text: string, speakerName: string) => {
+      const raw = text.replace(/\s+/g, " ").trim();
+      const snippet = raw.length > 210 ? `${raw.slice(0, 207)}...` : raw;
+      const formatted = `[${speakerName}]: ${snippet}`;
+      handleTogglePinMemory(formatted);
+    },
+    [handleTogglePinMemory]
+  );
+
+  const handleViewMessagePortrait = useCallback(
+    (imgUrl: string, speaker?: string) => {
+      const p = playerRef.current;
+      const isPlayerSpeaker =
+        !speaker || speaker.toLowerCase() === (p.name || "").toLowerCase();
+      handleOpenPlayerFullPortrait(
+        undefined,
+        imgUrl,
+        speaker || p.name,
+        isPlayerSpeaker
+          ? `Lv.${p.level} ${p.race || "Human"} • ${p.role || "Adventurer"}`
+          : "Companion Portrait"
+      );
+    },
+    []
+  );
 
   const handleAllocateLevelStat = (statKey: "str" | "dex" | "int") => {
     if ((player.unspentStatPoints || 0) <= 0) return;
@@ -7200,7 +7443,7 @@ export default function VisualNovelGame() {
       }`}>
         <div 
           className="fixed inset-0 bg-cover bg-center transition-all duration-1000 brightness-[0.38] contrast-125 scale-105 pointer-events-none select-none z-0"
-          style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
+          style={{ backgroundImage: `url("${currentStory.coverImage || DEFAULT_BG}")` }}
         />
         <div className="fixed inset-0 bg-gradient-to-t from-black via-black/60 to-black/80 pointer-events-none z-0" />
         <div className="fixed inset-0 cinematic-vignette pointer-events-none z-0" />
@@ -7277,11 +7520,11 @@ export default function VisualNovelGame() {
           </div>
 
           <div className="pt-6 flex items-center gap-5 text-xs text-zinc-500 font-mono">
-            <span>5 Heroines</span>
+            <span>{currentStory.companions?.length || 5} Heroines</span>
             <span>•</span>
             <span>AI Dynamic Lore</span>
             <span>•</span>
-            <span>Astra Continent</span>
+            <span>{currentStory.worldContext?.settingName?.split("(")[0]?.split("&")[0]?.trim() || "Astra Continent"}</span>
           </div>
         </div>
 
@@ -7299,7 +7542,7 @@ export default function VisualNovelGame() {
         <GearManifestScreen
           pageLoaded={pageLoaded}
           isScreenTransitionOpen={screenTransition.isOpen}
-          defaultBg={DEFAULT_BG}
+          defaultBg={currentStory.coverImage || DEFAULT_BG}
           playerName={player.name}
           playerRole={player.role || "Adventurer"}
           settingName={currentStory.worldContext?.settingName || currentStory.title || "Astra Continent"}
@@ -7335,7 +7578,7 @@ export default function VisualNovelGame() {
       }`}>
         <div 
           className="fixed inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none select-none z-0"
-          style={{ backgroundImage: `url("${DEFAULT_BG}")` }}
+          style={{ backgroundImage: `url("${currentStory.coverImage || DEFAULT_BG}")` }}
         />
         <div className="fixed inset-0 cinematic-vignette pointer-events-none z-0" />
         <div className="fixed inset-0 pointer-events-none z-0">
@@ -7634,16 +7877,86 @@ export default function VisualNovelGame() {
                 />
               </div>
               <div>
-                <label className="text-xs font-mono text-zinc-400 block mb-1">Custom Class / Archetype</label>
+                <label className="text-xs font-mono text-zinc-400 block mb-1">
+                  {currentStory.id === "sovereign-spire"
+                    ? "Conduit Archetype & Patron Wing"
+                    : "Custom Class / Archetype"}
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g., Regressed Spellblade..."
+                  placeholder={
+                    currentStory.id === "sovereign-spire"
+                      ? "e.g., Somatic Vanguard (Iron Chancellery)..."
+                      : "e.g., Regressed Spellblade..."
+                  }
                   value={player.role}
                   onChange={(e) => setPlayer((prev) => ({ ...prev, role: e.target.value }))}
                   className="w-full bg-zinc-950 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-rose-500 focus:outline-none placeholder-zinc-700"
                 />
               </div>
             </div>
+
+            {currentStory.id === "sovereign-spire" && (
+              <div className="bg-gradient-to-br from-amber-950/35 via-zinc-950/90 to-indigo-950/35 border border-amber-500/30 rounded-2xl p-3.5 sm:p-4 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="text-xs font-mono text-amber-300 font-bold flex items-center gap-1.5">
+                      <Swords className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span>Dual-Conduit &amp; Patron Wing Doctrine</span>
+                    </label>
+                    <p className="text-[11px] text-zinc-400 font-sans mt-0.5 leading-relaxed">
+                      Select your Astra biological pathway and Patron Wing pledge. Auto-configures your starting Conduit techniques, attribute spread, and Canon Wing Relic loadout.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 self-start shrink-0">
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/35 text-amber-200 font-bold">
+                      {player.conduit || "SOMATIC"} CONDUIT
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SOVEREIGN_CONDUIT_PRESETS.map((preset) => {
+                    const isSelected = selectedSovereignConduit === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => handleSelectSovereignConduitPreset(preset)}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                          isSelected
+                            ? "bg-amber-950/45 border-amber-400/80 text-white shadow-lg ring-1 ring-amber-400/30"
+                            : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-amber-500/40"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                              <span>{preset.icon}</span>
+                              <span>{preset.shortLabel}</span>
+                            </span>
+                            <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-black/60 border border-amber-500/30 text-amber-300 shrink-0">
+                              {preset.conduit} • {preset.wingLabel.replace("The ", "")}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed line-clamp-2">
+                            {preset.description}
+                          </p>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-1.5 border-t border-white/5">
+                          <span className="text-amber-300/90 truncate">
+                            Relic: {preset.canonLoadout.relic}
+                          </span>
+                          <span className="text-sky-300 shrink-0 ml-2">
+                            {preset.statSpread.str}/{preset.statSpread.dex}/{preset.statSpread.int}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* GENDER & AGE IDENTITY */}
             <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
@@ -7722,41 +8035,101 @@ export default function VisualNovelGame() {
                 <div className="min-w-0">
                   <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
                     <Compass className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>World Origin &amp; System Familiarity</span>
+                    <span>
+                      {currentStory.id === "sovereign-spire"
+                        ? "Matriculation Origin & Blood-Ledger Standing"
+                        : "World Origin & System Familiarity"}
+                    </span>
                   </label>
                   <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
-                    Choose how you entered this world. Natives and Regressors possess deep intuitive knowledge of the System, mana laws, and factions, while Summoned Otherworlders experience the world with outsider eyes.
+                    {currentStory.id === "sovereign-spire"
+                      ? "Choose how you were enrolled into the Sovereign Spire. Determines your starting Matriculation Rank (#500–#1), semester Aether Core debt quota, faculty scrutiny, and heroine resonance."
+                      : "Choose how you entered this world. Natives and Regressors possess deep intuitive knowledge of the System, mana laws, and factions, while Summoned Otherworlders experience the world with outsider eyes."}
                   </p>
                 </div>
-                <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 self-start shrink-0 whitespace-nowrap font-bold">
-                  Origin: {player.worldOrigin || "Born & Raised (Native)"}
-                </span>
+                <div className="flex items-center gap-1.5 self-start shrink-0">
+                  {currentStory.id === "sovereign-spire" && (
+                    <span className="text-[10px] font-mono px-2 py-1 rounded-lg bg-rose-500/15 border border-rose-500/35 text-rose-300 whitespace-nowrap font-bold">
+                      Rank #{player.matriculationRank || 488} • {player.semesterDebtQuota || 400} Core Quota
+                    </span>
+                  )}
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 whitespace-nowrap font-bold">
+                    {player.worldOrigin?.split("(")[0]?.trim() || "Born & Raised"}
+                  </span>
+                </div>
               </div>
 
               {/* World Origin Presets */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
-                {WORLD_ORIGIN_PRESETS.map((o) => {
-                  const isSelected =
-                    selectedWorldOriginPreset === o.id ||
-                    (!selectedWorldOriginPreset && o.id === "native");
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      onClick={() => handleSelectWorldOriginPreset(o)}
-                      className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                        isSelected
-                          ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
-                          : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                      }`}
-                      title={o.description}
-                    >
-                      <span className="text-base leading-none">{o.icon}</span>
-                      <span className="text-[10px] leading-tight whitespace-nowrap">{o.shortLabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {currentStory.id === "sovereign-spire" ? (
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {SOVEREIGN_ORIGIN_PRESETS.map((so) => {
+                      const isSelected =
+                        selectedWorldOriginPreset === so.id ||
+                        player.sovereignOrigin === so.id;
+                      return (
+                        <button
+                          key={so.id}
+                          type="button"
+                          onClick={() => handleSelectSovereignOriginPreset(so)}
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                            isSelected
+                              ? "bg-emerald-950/45 border-emerald-400/80 text-white shadow-lg ring-1 ring-emerald-400/30"
+                              : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1.5 mb-1">
+                              <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                                <span>{so.icon}</span>
+                                <span>{so.shortLabel}</span>
+                              </span>
+                              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/60 border border-rose-500/30 text-rose-300 shrink-0">
+                                {so.rankTierLabel}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-zinc-400 leading-relaxed line-clamp-2">
+                              {so.actOneStakes}
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between text-[9px] font-mono text-emerald-300/90 pt-1.5 border-t border-white/5">
+                            <span className="truncate">
+                              Synergy: {so.highResonanceHeroines.map((h) => h.split(" ")[0]).join(", ")}
+                            </span>
+                            <span className="text-amber-300 shrink-0 ml-1">
+                              {so.startingCrowns} Crowns
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
+                  {WORLD_ORIGIN_PRESETS.map((o) => {
+                    const isSelected =
+                      selectedWorldOriginPreset === o.id ||
+                      (!selectedWorldOriginPreset && o.id === "native");
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => handleSelectWorldOriginPreset(o)}
+                        className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
+                          isSelected
+                            ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
+                            : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                        }`}
+                        title={o.description}
+                      >
+                        <span className="text-base leading-none">{o.icon}</span>
+                        <span className="text-[10px] leading-tight whitespace-nowrap">{o.shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Inputs for World Origin Title & Backstory / System Familiarity */}
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1 items-start">
@@ -7768,7 +8141,7 @@ export default function VisualNovelGame() {
                     type="text"
                     value={player.worldOrigin || ""}
                     onChange={(e) => handleCustomWorldOriginChange(e.target.value)}
-                    placeholder="e.g. Born & Raised (Native), Summoned..."
+                    placeholder="e.g. Blood-Ledger Debtor, Disgraced Heir..."
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none placeholder-zinc-700 font-mono"
                   />
                 </div>
@@ -8005,45 +8378,77 @@ export default function VisualNovelGame() {
 
             <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
               <div className="flex justify-between items-center mb-2.5">
-                <label className="text-xs font-mono text-zinc-400">Attribute Allocation</label>
+                <label className="text-xs font-mono text-zinc-400">
+                  {currentStory.id === "sovereign-spire"
+                    ? "Dual-Conduit Attribute Allocation"
+                    : "Attribute Allocation"}
+                </label>
                 <span className="text-xs font-mono font-bold text-sky-400">Points: {statPoints}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                {["str", "dex", "int"].map((stat) => (
-                  <div key={stat} className="flex items-center justify-between gap-2 bg-zinc-900/90 rounded-xl px-3 py-2.5 border border-white/5 min-w-0">
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-mono font-bold text-zinc-200 uppercase leading-tight">{stat}</span>
-                      <span className="text-[10px] text-zinc-500 font-mono truncate leading-tight">
-                        {stat === "str" ? "Strength" : stat === "dex" ? "Dexterity" : "Intelligence"}
-                      </span>
+                {(["str", "dex", "int"] as const).map((stat) => {
+                  const customDef = currentStory.rpgRules?.statDefinitions?.[stat];
+                  const shortTitle = customDef
+                    ? customDef.split("(")[0].trim()
+                    : stat === "str"
+                    ? "Strength"
+                    : stat === "dex"
+                    ? "Dexterity"
+                    : "Intelligence";
+                  return (
+                    <div
+                      key={stat}
+                      title={customDef || shortTitle}
+                      className="flex items-center justify-between gap-2 bg-zinc-900/90 rounded-xl px-3 py-2.5 border border-white/5 min-w-0"
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-mono font-bold text-zinc-200 uppercase leading-tight">{stat}</span>
+                        <span className="text-[10px] text-zinc-400 font-mono truncate leading-tight">
+                          {shortTitle}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleStatChange(stat, -1)}
+                          className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
+                        >
+                          -
+                        </button>
+                        <span className="text-sm font-bold text-white w-6 text-center font-mono">
+                          {player.stats[stat]}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleStatChange(stat, 1)}
+                          className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleStatChange(stat as any, -1)}
-                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
-                      >
-                        -
-                      </button>
-                      <span className="text-sm font-bold text-white w-6 text-center font-mono">
-                        {player.stats[stat as keyof PlayerStats]}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleStatChange(stat as any, 1)}
-                        className="w-7 h-7 flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 active:bg-zinc-600 rounded-lg text-white font-bold cursor-pointer text-sm shrink-0"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
-            <div>
-              <label className="text-xs font-mono text-zinc-400 block mb-2">Starting Loadout</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <label className="text-xs font-mono text-zinc-400 block">Starting Loadout</label>
+              <div className={`grid grid-cols-1 ${currentStory.id === "sovereign-spire" ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2`}>
+                {currentStory.id === "sovereign-spire" && (
+                  <button
+                    type="button"
+                    onClick={() => setGearPreference("canon")}
+                    className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      gearPreference === "canon"
+                        ? "bg-indigo-900/50 border-indigo-400 text-indigo-100 shadow-md ring-1 ring-indigo-400/30 font-bold"
+                        : "bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/30"
+                    }`}
+                  >
+                    <Swords className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Canon Wing Loadout</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setGearPreference("system")}
@@ -8066,9 +8471,30 @@ export default function VisualNovelGame() {
                   }`}
                 >
                   <Shield className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Unarmed & Unarmored</span>
+                  <span>Unarmed &amp; Unarmored</span>
                 </button>
               </div>
+
+              {currentStory.id === "sovereign-spire" && gearPreference === "canon" && (() => {
+                const activeConduit =
+                  SOVEREIGN_CONDUIT_PRESETS.find((c) => c.id === selectedSovereignConduit) ||
+                  SOVEREIGN_CONDUIT_PRESETS[0];
+                return (
+                  <div className="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/30 text-[11px] font-mono space-y-1">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-indigo-200">
+                      <span className="font-bold">
+                        {activeConduit.wingLabel} Issue: {activeConduit.canonLoadout.weapon}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-purple-950/80 border border-purple-500/40 text-purple-200">
+                        Socket [{activeConduit.canonLoadout.relicSlot}]: {activeConduit.canonLoadout.relic}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400 font-sans">
+                      <span className="text-rose-300 font-mono">Whisper Flaw:</span> {activeConduit.canonLoadout.whisperFlaw}
+                    </p>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* STARTING ABILITIES (LLM ROLL) */}
@@ -8227,36 +8653,178 @@ export default function VisualNovelGame() {
             </div>
           </div>
 
-          <div>
-            <label className="text-xs font-mono text-zinc-400 block mb-2">Select Starting Scenario & Companion</label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-60 overflow-y-auto pr-2">
-              {prologues.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setSelectedPrologue(i)}
-                  className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
-                    selectedPrologue === i 
-                      ? "bg-rose-950/40 border-rose-500 text-white shadow-lg ring-1 ring-rose-500/30" 
-                      : "bg-zinc-950 border-white/10 text-zinc-400 hover:border-white/20"
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider">{p.location}</span>
-                    </div>
-                    <p className="font-semibold text-sm text-zinc-200">{p.title}</p>
-                    <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">{p.dialogue}</p>
-                  </div>
-                  <span className="text-[10px] font-mono text-zinc-500 pt-1 border-t border-white/5">
-                    {p.choices.length} Interactive Entry Vectors
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <div>
+                <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                  <span>
+                    {currentStory.id === "sovereign-spire"
+                      ? "Act I Introduction Scenario & Dyad Partner"
+                      : "Select Starting Scenario & Companion"}
                   </span>
-                </button>
-              ))}
+                </label>
+                {currentStory.id === "sovereign-spire" && (
+                  <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
+                    Begin with the Flagship Act I Cold-Open at the Seal-Gate or tether directly to one of the 8 Heroines across the four Patron Wings.
+                  </p>
+                )}
+              </div>
+              <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 self-start shrink-0 font-bold">
+                {prologues.length} Scenarios Available
+              </span>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1.5">
+              {prologues.map((p, i) => {
+                const isSelected = selectedPrologue === i;
+                const dossier =
+                  currentStory.id === "sovereign-spire"
+                    ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
+                    : undefined;
+                const isColdOpen = p.id === "prologue_act1_seal_gate";
+                const activeOriginPreset =
+                  currentStory.id === "sovereign-spire"
+                    ? SOVEREIGN_ORIGIN_PRESETS.find(
+                        (so) =>
+                          so.id === selectedWorldOriginPreset ||
+                          so.id === player.sovereignOrigin
+                      )
+                    : undefined;
+                const isOriginResonant = Boolean(
+                  activeOriginPreset &&
+                    (isColdOpen ||
+                      activeOriginPreset.highResonanceHeroines.includes(p.speaker))
+                );
+                const spriteUrl = getSpriteSrc(
+                  p.speaker,
+                  (p as any).expressionKey || "neutral"
+                );
+
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setSelectedPrologue(i);
+                    }}
+                    className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                      isSelected
+                        ? "bg-rose-950/45 border-rose-500 text-white shadow-lg ring-1 ring-rose-500/35"
+                        : "bg-zinc-950/90 border-white/10 text-zinc-400 hover:border-white/25"
+                    } ${isColdOpen ? "sm:col-span-2 bg-gradient-to-r from-rose-950/50 via-zinc-950/95 to-amber-950/40" : ""}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-zinc-900 border border-white/15 shrink-0">
+                        <img
+                          src={spriteUrl}
+                          alt={p.speaker}
+                          className="w-full h-full object-cover object-top"
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap mb-0.5">
+                          <span className="text-[10px] font-mono text-rose-400 uppercase tracking-wider truncate">
+                            {p.location}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {isColdOpen && (
+                              <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-200">
+                                ★ Flagship Act I Cold-Open
+                              </span>
+                            )}
+                            {isOriginResonant && !isColdOpen && (
+                              <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
+                                Origin Resonance
+                              </span>
+                            )}
+                            {dossier && (
+                              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/35 text-indigo-200">
+                                {dossier.conduit}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p className="font-semibold text-sm text-zinc-100 leading-snug">
+                          {p.title}
+                        </p>
+                        {dossier && (
+                          <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
+                            {dossier.epithet} • {dossier.wing.replace(/_/g, " ")} • Dyad: {dossier.dyadPassiveName}
+                          </p>
+                        )}
+                        <p className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-relaxed">
+                          {p.dialogue}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 pt-1.5 border-t border-white/5">
+                      <span className="truncate">
+                        {dossier
+                          ? `Rival Hook: ${dossier.rivalBossTieIn}`
+                          : `Companion: ${p.speaker}`}
+                      </span>
+                      <span className="text-rose-300/90 shrink-0 ml-2">
+                        {p.choices.length} Entry Vectors
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Selected Act I Scenario & Entry Vectors Preview Drawer */}
+            {prologues[selectedPrologue] && (() => {
+              const activeNode = prologues[selectedPrologue];
+              const activeDossier =
+                currentStory.id === "sovereign-spire"
+                  ? SOVEREIGN_HEROINE_DOSSIERS[activeNode.speaker]
+                  : undefined;
+              return (
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-zinc-950/90 border border-rose-500/30 space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono font-bold text-white">
+                        Selected Prelude: {activeNode.title}
+                      </span>
+                    </div>
+                    {activeDossier && (
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-200">
+                        Dyad Passive: {activeDossier.dyadPassiveName} ({activeDossier.dyadPassiveDescription})
+                      </span>
+                    )}
+                  </div>
+                  {activeNode.sceneSetup && (
+                    <p className="text-xs text-zinc-300 font-sans leading-relaxed line-clamp-3">
+                      {activeNode.sceneSetup}
+                    </p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                    {activeNode.choices.map((ch, cIdx) => (
+                      <div
+                        key={cIdx}
+                        className="px-2.5 py-1.5 rounded-lg bg-zinc-900/90 border border-white/5 text-[11px] font-mono text-zinc-300 truncate"
+                        title={ch}
+                      >
+                        <span className="text-rose-400 mr-1.5">#{cIdx + 1}</span>
+                        {ch}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
-          {gearPreference === "system" ? (
+          {gearPreference === "canon" && currentStory.id === "sovereign-spire" ? (
+            <button
+              onClick={handleStartWithCanonWingLoadout}
+              className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-rose-600 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono"
+            >
+              <Swords className="w-4 h-4" /> Enter The Sovereign Spire (Equip Canon Wing Loadout) →
+            </button>
+          ) : gearPreference === "system" ? (
             <button
               onClick={handleProceedToGear}
               className="w-full py-3.5 bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 hover:from-rose-500 hover:to-pink-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono"
@@ -9124,21 +9692,25 @@ export default function VisualNovelGame() {
                           <div 
                             className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
                             style={{
-                              background: comp.name.includes("Evelyn") 
-                                ? "radial-gradient(circle, rgba(168,85,247,0.7) 0%, transparent 70%)"
-                                : comp.name.includes("Aria")
-                                ? "radial-gradient(circle, rgba(6,182,212,0.7) 0%, transparent 70%)"
-                                : comp.name.includes("Serena")
-                                ? "radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 70%)"
-                                : comp.name.includes("Morgana")
-                                ? "radial-gradient(circle, rgba(225,29,72,0.7) 0%, transparent 70%)"
-                                : "radial-gradient(circle, rgba(234,179,8,0.7) 0%, transparent 70%)"
+                              background:
+                                comp.name.includes("Evelyn") || comp.name.includes("Ysolde") || comp.name.includes("Valeria")
+                                  ? "radial-gradient(circle, rgba(168,85,247,0.7) 0%, transparent 70%)"
+                                  : comp.name.includes("Aria") || comp.name.includes("Noelle")
+                                  ? "radial-gradient(circle, rgba(6,182,212,0.7) 0%, transparent 70%)"
+                                  : comp.name.includes("Serena") || comp.name.includes("Beatrix") || comp.name.includes("Aurelia")
+                                  ? "radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 70%)"
+                                  : comp.name.includes("Morgana")
+                                  ? "radial-gradient(circle, rgba(225,29,72,0.7) 0%, transparent 70%)"
+                                  : comp.name.includes("Kestrel")
+                                  ? "radial-gradient(circle, rgba(16,185,129,0.7) 0%, transparent 70%)"
+                                  : "radial-gradient(circle, rgba(234,179,8,0.7) 0%, transparent 70%)"
                             }}
                           />
                         )}
                         <img
                           src={(spriteSrc && spriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
                           alt={comp.name}
+                          decoding="async"
                           onError={(e) => {
                             e.currentTarget.onerror = null;
                             e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
@@ -9252,19 +9824,7 @@ export default function VisualNovelGame() {
                       onRegenerateTurn={handleRegenerateTurn}
                       onSkipTypewriter={handleSkipTypewriter}
                       onPinMemory={handlePinTurnMessage}
-                      onViewPortrait={(imgUrl, speaker) => {
-                        const isPlayerSpeaker =
-                          !speaker ||
-                          speaker.toLowerCase() === (player.name || "").toLowerCase();
-                        handleOpenPlayerFullPortrait(
-                          undefined,
-                          imgUrl,
-                          speaker || player.name,
-                          isPlayerSpeaker
-                            ? `Lv.${player.level} ${player.race || "Human"} • ${player.role || "Adventurer"}`
-                            : "Companion Portrait"
-                        );
-                      }}
+                      onViewPortrait={handleViewMessagePortrait}
                     />
                   );
                 });

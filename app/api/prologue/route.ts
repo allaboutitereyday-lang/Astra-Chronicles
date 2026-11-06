@@ -16,6 +16,7 @@ import {
   getPersonaVoiceProfile,
   buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
+import { SOVEREIGN_HEROINE_DOSSIERS, SOVEREIGN_ORIGIN_PRESETS } from "@/types/sovereign_spire";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,8 +36,10 @@ export async function POST(req: Request) {
     const {
       playerProfile,
       playerAvatarBase64,
-      startingHeroine,
-      startingLocation,
+      startingHeroine: rawStartingHeroine,
+      startingLocation: rawStartingLocation,
+      selectedPrologue,
+      selectedPrologueNode,
       narrationStyle,
       userAccessKey,
       storyContext,
@@ -48,6 +51,19 @@ export async function POST(req: Request) {
       narrativeDepth,
       npcKnowledgeMap,
     } = body;
+
+    const startingHeroine: string =
+      rawStartingHeroine ||
+      selectedPrologue?.speaker ||
+      storyContext?.startingNodes?.[0]?.speaker ||
+      storyContext?.companions?.[0]?.name ||
+      "Evelyn Abbandonato";
+    const startingLocation: string =
+      rawStartingLocation ||
+      selectedPrologue?.location ||
+      storyContext?.startingNodes?.[0]?.location ||
+      storyContext?.worldContext?.locations?.[0]?.name ||
+      "Imperial Capital Imperium";
 
     const initialKnowledgeMap = {
       ...createDefaultNpcKnowledgeMap(storyContext?.companions),
@@ -126,11 +142,70 @@ export async function POST(req: Request) {
     const settingName = storyContext?.worldContext?.settingName || "the Astra Continent";
     const effectiveTone = narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
-    // Match starting heroine to her bespoke canonical introduction dossier
-    const heroineKey = Object.keys(HEROINE_INTRODUCTION_DOSSIERS).find(
-      (k) => k.toLowerCase().includes((startingHeroine || "").toLowerCase()) || (startingHeroine || "").toLowerCase().includes(k.toLowerCase())
-    ) || "Evelyn Abbandonato";
-    const heroineDossier = HEROINE_INTRODUCTION_DOSSIERS[heroineKey];
+    // Match starting heroine to her bespoke canonical introduction dossier (or synthesize from storyContext for Sovereign Spire / other worlds)
+    const matchedDossierKey = Object.keys(HEROINE_INTRODUCTION_DOSSIERS).find(
+      (k) =>
+        k.toLowerCase().includes((startingHeroine || "").toLowerCase()) ||
+        (startingHeroine || "").toLowerCase().includes(k.toLowerCase())
+    );
+    const matchingNode =
+      selectedPrologueNode ||
+      selectedPrologue ||
+      storyContext?.startingNodes?.find(
+        (n: any) =>
+          n.speaker &&
+          (n.speaker.toLowerCase().includes(startingHeroine.toLowerCase()) ||
+            startingHeroine.toLowerCase().includes(n.speaker.toLowerCase()))
+      );
+    const matchingComp = storyContext?.companions?.find(
+      (c: any) =>
+        c.name &&
+        (c.name.toLowerCase().includes(startingHeroine.toLowerCase()) ||
+          startingHeroine.toLowerCase().includes(c.name.toLowerCase()))
+    );
+
+    const heroineDossier: HeroineIntroductionDossier = matchedDossierKey
+      ? HEROINE_INTRODUCTION_DOSSIERS[matchedDossierKey]
+      : {
+          name: matchingComp?.name || startingHeroine,
+          title: matchingComp?.title || matchingComp?.role || "Key Figure",
+          defaultLocation: matchingNode?.location || startingLocation,
+          environment: matchingNode?.sceneSetup || `Atmospheric threshold within ${startingLocation}.`,
+          appearanceSensoryCues: matchingComp?.visualPrompt || `Distinctive bearing and attire of ${startingHeroine}.`,
+          psychologicalProfile: matchingComp?.personality || "Guarded, observant, and calculating.",
+          canonicalEncounter: matchingNode?.sceneSetup || `${startingHeroine} confronts the newcomer in ${startingLocation}.`,
+          dialogueCadence: "Sharp, in-character diction matching her role and faction.",
+          signatureOpeningDialogue: matchingNode?.dialogue || "State your business before I lose my patience.",
+          defaultExpression: (matchingNode?.expressionKey || matchingComp?.expressionKey || "neutral") as HeroineIntroductionDossier["defaultExpression"],
+          initialMood: "Guarded & Evaluating",
+          baselineChoices:
+            Array.isArray(matchingNode?.choices) && matchingNode.choices.length >= 4
+              ? [
+                  matchingNode.choices[0],
+                  matchingNode.choices[1],
+                  matchingNode.choices[2],
+                  matchingNode.choices[3],
+                ]
+              : [
+                  "[Stoic/Composed]: Meet her gaze unflinchingly and state your purpose.",
+                  "[Analytical/Observant]: Scan the immediate perimeter before answering.",
+                  "[Audacious/Bold]: Step forward and turn her challenge back on her.",
+                  "[Tactical/Ready]: Shift into a balanced guard and test her resolve.",
+                ],
+          initialQuest: {
+            id: "scenario_01",
+            title: `Scenario 1: Matriculation at ${matchingNode?.location || startingLocation}`,
+            description: `Establish your standing with ${matchingComp?.name || startingHeroine} and survive your opening test in ${storyTitle}.`,
+            type: "scenario",
+            difficulty: "E",
+            objectives: [
+              { text: `Respond to ${matchingComp?.name || startingHeroine}'s challenge`, completed: false },
+              { text: `Demonstrate your capability in ${matchingNode?.location || startingLocation}`, completed: false },
+            ],
+            rewards: { exp: 120, gold: 50, title: "Sovereign Initiate" },
+            status: "active",
+          },
+        };
 
     const companionDossiers = storyContext?.companions && storyContext.companions.length > 0
       ? storyContext.companions.map((c: any, i: number) => `
@@ -187,6 +262,40 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
     );
 
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
+
+    const isSovereignSpire = storyContext?.id === "sovereign-spire";
+    const sovereignOriginPreset = isSovereignSpire
+      ? SOVEREIGN_ORIGIN_PRESETS.find(
+          (o) =>
+            o.id === playerProfile?.sovereignOrigin ||
+            (playerProfile?.worldOrigin &&
+              playerProfile.worldOrigin.toLowerCase().includes(o.shortLabel.toLowerCase()))
+        ) || SOVEREIGN_ORIGIN_PRESETS[0]
+      : null;
+    const sovereignHeroineMeta = isSovereignSpire
+      ? SOVEREIGN_HEROINE_DOSSIERS[startingHeroine]
+      : null;
+
+    const sovereignSpireActOneDirective = isSovereignSpire
+      ? `
+--- THE SOVEREIGN SPIRE: ACT I MATRICULATION & CONDUIT DIRECTIVE ---
+- Protagonist Matriculation Origin: ${sovereignOriginPreset?.name || playerProfile?.worldOrigin} (Starting Ladder Rank: #${playerProfile?.matriculationRank || sovereignOriginPreset?.startingRank || 488} | Semester Quota: ${playerProfile?.semesterDebtQuota || sovereignOriginPreset?.semesterDebtQuota || 400} Aether Cores)
+- Origin Act I Stakes: ${sovereignOriginPreset?.actOneStakes || playerProfile?.worldOriginDetails}
+- Dual-Conduit Pathway: ${playerProfile?.conduit || "SOMATIC"} (${playerProfile?.conduit === "AETHERIAL" ? "Path B: Aetherial Projection — hollow-lens Sigil-Matrices & Aether Flux" : playerProfile?.conduit === "HYBRID" ? "Hybrid Conduit — blending Nerve-Accel reflexes with modular Relics or mist-hexes" : "Path A: Somatic Tempering — Pulse-Breathing, Edge-Resonance, & Nerve-Accel"})
+- Patron Wing Alignment: ${(playerProfile?.patronWing || "IRON_CHANCELLERY").replace(/_/g, " ")}
+${sovereignHeroineMeta ? `- Dyad Partner Dossier (${sovereignHeroineMeta.name} — "${sovereignHeroineMeta.epithet}"): Wing: ${sovereignHeroineMeta.wing.replace(/_/g, " ")} | Conduit: ${sovereignHeroineMeta.conduit} | Dyad Passive: ${sovereignHeroineMeta.dyadPassiveName} (${sovereignHeroineMeta.dyadPassiveDescription}) | Act I Conflict: ${sovereignHeroineMeta.actOneConflict} | Rival Boss Tie-In: ${sovereignHeroineMeta.rivalBossTieIn}` : ""}
+- Selected Act I Scenario Seed: "${matchingNode?.title || heroineDossier.title}"
+  Scene Baseline: ${matchingNode?.sceneSetup || heroineDossier.environment}
+  Dialogue Baseline: "${matchingNode?.dialogue || heroineDossier.signatureOpeningDialogue}"
+- MANDATORY ACT I SHAPING:
+  1. Tailor ${startingHeroine}'s opening assessment and the scene atmosphere to the protagonist's exact Matriculation Origin (Rank #${playerProfile?.matriculationRank || sovereignOriginPreset?.startingRank || 488} — whether a Blood-Ledger Debtor in The Dross, a Disgraced Highborn Heir held as political collateral, or an Unregistered Breach Anomaly with a static-canceling Astra core).
+  2. Reference the immediate Act I pressure: Proctor Malakor Sallow's semester debt foreclosure ledger, Corwin Baines's (Rank #184) Lift-Gate toll blockade at Boarding Cage Four, or ${sovereignHeroineMeta?.rivalBossTieIn || "the descent past the First Seal into Stratum I: The Sunken Cloisters"}.
+  3. Shape the 4 "opening_choices" into distinct, high-agency Act I vectors:
+     - Choice 1: [${playerProfile?.conduit || "Somatic"}/Conduit Technique] Utilizing their ${playerProfile?.conduit || "Somatic"} pathway or equipped Wing Relic (${playerProfile?.gear?.relic || "Initiate Relic"}).
+     - Choice 2: [${sovereignOriginPreset?.shortLabel || "Origin Leverage"}] Leveraging their specific Matriculation Origin (${sovereignOriginPreset?.shortLabel || playerProfile?.worldOrigin}) and Rank #${playerProfile?.matriculationRank || 488} standing.
+     - Choice 3: [Dyad Resonance / Psychological Read] Reading ${startingHeroine}'s hidden tell, Soul-Grounding compatibility, or shadow agenda.
+     - Choice 4: [Audacious Wager / Rival Challenge] Turning the tables on the immediate Act I threat (Corwin Baines #184, Proctor Sallow, or ${startingHeroine}'s test).`
+      : "";
 
     const openingChoiceDirective = buildDynamicChoiceDirective({
       playerName: playerProfile.name,
@@ -265,6 +374,7 @@ ${knowledgeGatePrompt}
 - PROLOGUE SPECIES MANDATE: ${startingHeroine} and the surrounding world MUST naturally perceive and react to ${playerProfile?.name || "The protagonist"}'s lineage (${playerProfile?.race || "Human"}). If they possess non-human traits (e.g. lupine/canine fur, fangs, wolf ears, tail, claws, horns, wings, or scales), describe these physical traits naturally in the prose and sensory details (scent, ear movements, predatory tension, body heat, or bristling fur), reflecting ${startingHeroine}'s authentic cultural and emotional reaction to encountering such an entity.
 
 ${originAndIdentityDirective}
+${sovereignSpireActOneDirective}
 
 --- VISUAL INSPECTION DIRECTIVE ---
 ${visualDescription
@@ -319,18 +429,18 @@ Respond strictly in valid JSON matching this schema:
       ? playerProfile.abilities.join(", ")
       : "None unlocked yet";
 
-    const promptText = `Protagonist (Narrator Reference Only — Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsName ? playerProfile.name : `[UNKNOWN TO ${startingHeroine.toUpperCase()} — Refer to as "stranger" or "traveler" in spoken dialogue]`}
-Gender & Age: ${playerProfile.gender || "Male"} | Age: ${playerProfile.age || "22"}
-World Origin & System Familiarity: ${playerProfile.worldOrigin || "Born & Raised (Native)"}${playerProfile.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
-Internal Class (Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsClass ? playerProfile.role : `[UNKNOWN TO ${startingHeroine.toUpperCase()} — Judge only visible gear]`}
+    const promptText = `Protagonist (Narrator Reference Only — Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsName ? playerProfile.name : `[UNKNOWN TO ${(startingHeroine || "COMPANION").toUpperCase()} — Refer to as "stranger" or "initiate" in spoken dialogue]`}
+Gender & Age: ${playerProfile?.gender || "Male"} | Age: ${playerProfile?.age || "22"}
+World Origin & System Familiarity: ${playerProfile?.worldOrigin || "Born & Raised (Native)"}${playerProfile?.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
+Internal Class (Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsClass ? playerProfile?.role : `[UNKNOWN TO ${(startingHeroine || "COMPANION").toUpperCase()} — Judge only visible gear]`}
 Chosen Personality Archetype: "${personaVoice.personaTitle}" (Traits: ${personaVoice.traitsList.join(", ")})
-Attributes: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
-Visible Gear: ${playerProfile.gear.weapon || "Bare Hands"} / ${playerProfile.gear.armor || "Wanderer Attire"}
+Attributes: STR ${playerProfile?.stats?.str ?? 10} | DEX ${playerProfile?.stats?.dex ?? 10} | INT ${playerProfile?.stats?.int ?? 10}
+Visible Gear: ${playerProfile?.gear?.weapon || "Bare Hands"} / ${playerProfile?.gear?.armor || "Wanderer Attire"}
 Starting Abilities: ${abilitiesDesc}
 Starting Location: ${startingLocation}
 Starting Heroine: ${startingHeroine}
 
-Generate the dynamic opening prologue according to the instructions. Ensure all 4 "opening_choices" unmistakably express ${playerProfile.name}'s "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.`;
+Generate the dynamic opening prologue according to the instructions. Ensure all 4 "opening_choices" unmistakably express ${playerProfile?.name || "the protagonist"}'s "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.`;
 
     function supportsVision(modelName?: string): boolean {
       if (!modelName) return false;
