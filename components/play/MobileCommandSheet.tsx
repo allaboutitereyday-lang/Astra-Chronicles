@@ -27,6 +27,7 @@ import {
 export interface MobileCommandSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  storyId?: string;
   // Tactical Tools
   onGenerateSceneCG: () => void;
   isGeneratingScene: boolean;
@@ -64,6 +65,7 @@ export interface MobileCommandSheetProps {
 export function MobileCommandSheet({
   isOpen,
   onClose,
+  storyId,
   onGenerateSceneCG,
   isGeneratingScene,
   onOpenFlowchart,
@@ -95,6 +97,9 @@ export function MobileCommandSheet({
 }: MobileCommandSheetProps) {
   if (!isOpen) return null;
 
+  const isPortSolaris = storyId === "port-solaris";
+  const isSovereignSpire = storyId === "sovereign-spire";
+
   const handleAction = (cb: () => void) => {
     onClose();
     cb();
@@ -118,7 +123,22 @@ export function MobileCommandSheet({
               <div className="w-7 h-7 rounded-lg bg-rose-950/60 border border-rose-500/40 flex items-center justify-center text-rose-300">
                 <Terminal className="w-4 h-4" />
               </div>
-              <h2 className="text-sm font-bold text-white font-mono tracking-wider">COMMAND DOCK</h2>
+              <div>
+                <h2 className="text-sm font-bold text-white font-mono tracking-wider leading-none">
+                  {isPortSolaris
+                    ? "STRAY ANCHOR DOCK"
+                    : isSovereignSpire
+                    ? "SPIRE COMMAND DOCK"
+                    : "COMMAND DOCK"}
+                </h2>
+                <span className="text-[9px] font-mono text-zinc-400 block mt-0.5">
+                  {isPortSolaris
+                    ? "Port Solaris • Star Ledger & Housemates"
+                    : isSovereignSpire
+                    ? "Sovereign Spire • Blood-Ledger & Dyads"
+                    : "Astra Chronicles • System & Party"}
+                </span>
+              </div>
               {isAutoSaved && (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                   <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Auto-saved
@@ -204,7 +224,11 @@ export function MobileCommandSheet({
           {/* CATEGORY 2: HERO & LITRPG SYSTEMS */}
           <div>
             <p className="text-[10px] font-mono uppercase text-amber-400 font-bold tracking-widest mb-2 px-1">
-              Character & Party
+              {isPortSolaris
+                ? "Proprietor, Housemates & Island"
+                : isSovereignSpire
+                ? "Cadet, Dyad Cohort & Spire"
+                : "Character & Party"}
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -217,10 +241,10 @@ export function MobileCommandSheet({
                 </div>
                 <div className="min-w-0">
                   <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-amber-200">
-                    Character Sheet
+                    {isPortSolaris ? "Proprietor Dossier" : "Character Sheet"}
                   </span>
                   <span className="text-[10px] text-zinc-400 font-mono block truncate">
-                    Stats & Inventory
+                    {isPortSolaris ? "Cool, Flair & Keepsakes" : "Stats & Inventory"}
                   </span>
                 </div>
               </button>
@@ -236,14 +260,14 @@ export function MobileCommandSheet({
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-rose-200">
-                      Party & Favor
+                      {isPortSolaris ? "Housemates" : "Party & Favor"}
                     </span>
                     <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-rose-500/20 text-rose-300">
                       {partyCount}
                     </span>
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono block truncate">
-                    Affection Matrix
+                    {isPortSolaris ? "Blush BPM & Rooms" : "Affection Matrix"}
                   </span>
                 </div>
               </button>
@@ -259,7 +283,7 @@ export function MobileCommandSheet({
                 <div className="min-w-0">
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-rose-200">
-                      System Quests
+                      {isPortSolaris ? "Star Ledger" : "System Quests"}
                     </span>
                     {hasUnclaimedClearance && (
                       <span className="text-[8px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500 text-black font-black animate-pulse">
@@ -268,7 +292,7 @@ export function MobileCommandSheet({
                     )}
                   </div>
                   <span className="text-[10px] text-zinc-400 font-mono block truncate">
-                    Scenarios & Admin
+                    {isPortSolaris ? "Audits & Wagers" : "Scenarios & Admin"}
                   </span>
                 </div>
               </button>
@@ -286,7 +310,7 @@ export function MobileCommandSheet({
                     Codex & Travel
                   </span>
                   <span className="text-[10px] text-zinc-400 font-mono block truncate">
-                    CGs & Reliquary
+                    {isPortSolaris ? "CGs & Keepsakes" : "CGs & Reliquary"}
                   </span>
                 </div>
               </button>
@@ -302,10 +326,10 @@ export function MobileCommandSheet({
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-amber-200">
-                      World Guidebook
+                      {isPortSolaris ? "Island Guidebook" : "World Guidebook"}
                     </span>
                     <span className="text-[10px] text-zinc-400 font-mono block truncate">
-                      Lore, Cast & Terms
+                      {isPortSolaris ? "10 Heroines & Rules" : "Lore, Cast & Terms"}
                     </span>
                   </div>
                 </button>
@@ -322,10 +346,10 @@ export function MobileCommandSheet({
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold text-zinc-100 block truncate group-hover:text-teal-200">
-                      Area Map
+                      {isPortSolaris ? "Island Map" : "Area Map"}
                     </span>
                     <span className="text-[10px] text-zinc-400 font-mono block truncate">
-                      {locationName || "Sectors & Realm"}
+                      {locationName || (isPortSolaris ? "Port Solaris" : "Sectors & Realm")}
                     </span>
                   </div>
                 </button>

@@ -17,6 +17,7 @@ import {
   buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
 import { SOVEREIGN_HEROINE_DOSSIERS, SOVEREIGN_ORIGIN_PRESETS } from "@/types/sovereign_spire";
+import { PORT_SOLARIS_HEROINE_DOSSIERS, PORT_SOLARIS_ORIGIN_PRESETS } from "@/types/port_solaris";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -279,6 +280,7 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
 
     const isSovereignSpire = storyContext?.id === "sovereign-spire";
+    const isPortSolaris = storyContext?.id === "port-solaris";
     const sovereignOriginPreset = isSovereignSpire
       ? SOVEREIGN_ORIGIN_PRESETS.find(
           (o) =>
@@ -291,9 +293,21 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
       ? SOVEREIGN_HEROINE_DOSSIERS[startingHeroine]
       : null;
 
+    const portSolarisOriginPreset = isPortSolaris
+      ? PORT_SOLARIS_ORIGIN_PRESETS.find(
+          (o) =>
+            o.id === playerProfile?.sovereignOrigin ||
+            (playerProfile?.worldOrigin &&
+              playerProfile.worldOrigin.toLowerCase().includes(o.shortLabel.toLowerCase()))
+        ) || PORT_SOLARIS_ORIGIN_PRESETS[0]
+      : null;
+    const portSolarisHeroineMeta = isPortSolaris
+      ? PORT_SOLARIS_HEROINE_DOSSIERS[startingHeroine]
+      : null;
+
     const multiHeroineEnsembleDirective =
       initialPresentHeroines.length > 1
-        ? `\n- ENSEMBLE CONVOCATION SCENE (${initialPresentHeroines.length} KEY HEROINES PRESENT): ${initialPresentHeroines.map((h) => h.split(" ")[0]).join(", ")} are ALL physically present in this scene. While ${startingHeroine.split(" ")[0]} delivers the primary challenge, weave brief sensory reactions, glances, or interjections from the other present heroines (${initialPresentHeroines.filter((h) => h !== startingHeroine).map((h) => h.split(" ")[0]).join(", ")}) using their first names after initial introduction so the player feels the full tension of the Entrance Ceremony!`
+        ? `\n- ENSEMBLE CONVOCATION SCENE (${initialPresentHeroines.length} KEY HEROINES PRESENT): ${initialPresentHeroines.map((h) => h.split(" ")[0]).join(", ")} are ALL physically present in this scene. While ${startingHeroine.split(" ")[0]} delivers the primary challenge, weave brief sensory reactions, glances, or interjections from the other present heroines (${initialPresentHeroines.filter((h) => h !== startingHeroine).map((h) => h.split(" ")[0]).join(", ")}) using their first names after initial introduction so the player feels the full tension of the convocation!`
         : "";
 
     const sovereignSpireActOneDirective = isSovereignSpire
@@ -315,6 +329,25 @@ ${sovereignHeroineMeta ? `- Primary Speaker Dossier (${sovereignHeroineMeta.name
      - Choice 2: [${sovereignOriginPreset?.shortLabel || "Origin Leverage"}] Leveraging their background and matriculation standing in dialogue.
      - Choice 3: [Insight / Connection] Reading ${startingHeroine.split(" ")[0]}'s subtle physical tell or addressing one of the other present heroines (${initialPresentHeroines.map((h) => h.split(" ")[0]).join(", ")}).
      - Choice 4: [Audacious Wager] Turning the tables on the immediate challenge with bold composure.`
+      : isPortSolaris
+      ? `
+--- PORT SOLARIS: ACT I LEASE AUDIT, ROM-COM & FLAIR DIRECTIVE ---
+- Proprietor Background: ${portSolarisOriginPreset?.name || playerProfile?.worldOrigin} (Starting Star Rating: 0★ Probation | 30-Day Audit Countdown | Outstanding Lease Debt: ${playerProfile?.semesterDebtQuota || portSolarisOriginPreset?.outstandingDebt || 5000} Solar Crowns)
+- Act I Stakes at The Stray Anchor: ${portSolarisOriginPreset?.actOneStakes || playerProfile?.worldOriginDetails}
+- Flair Conduit Style: ${playerProfile?.conduit || "PHYSICAL_TEMPO"} (${playerProfile?.conduit === "SOCIAL_PANACHE" ? "Social Panache — silver-tongued table-turn counters, VIP sommelier charm, and audit wit" : playerProfile?.conduit === "HYBRID" ? "Hybrid Flair — blending craft mixology, arcade reflexes, and effortless boardwalk charisma" : "Physical Tempo — sizzling culinary craft, beach volleyball athleticism, and high-hype momentum"})
+- Island Faction Alignment: ${(playerProfile?.patronWing || "BOARDWALK_GUILD").replace(/_/g, " ")}
+${portSolarisHeroineMeta ? `- Primary Speaker Dossier (${portSolarisHeroineMeta.name.split(" ")[0]} — "${portSolarisHeroineMeta.epithet}"): Faction: ${portSolarisHeroineMeta.faction.replace(/_/g, " ")} | Rom-Com Hook: ${portSolarisHeroineMeta.actOneConflict}` : ""}${multiHeroineEnsembleDirective}
+- Selected Act I Scenario Seed: "${matchingNode?.title || heroineDossier.title}"
+  Scene Baseline: ${matchingNode?.sceneSetup || heroineDossier.environment}
+  Dialogue Baseline: "${matchingNode?.dialogue || heroineDossier.signatureOpeningDialogue}"
+- MANDATORY ACT I SHAPING (SUN-DRENCHED SLICE-OF-LIFE ROM-COM PROSE):
+  1. Tailor ${startingHeroine.split(" ")[0]}'s opening reaction and the sunlit Mediterranean atmosphere to the protagonist's Proprietor Background (whether an overworked culinary prodigy, a cut-off yacht-club heir, or a returning childhood local).
+  2. Capture the sparkling rom-com banter, sensory food/beach details, and boarding-house proximity tension naturally without sounding like a system manual—use first names only (${initialPresentHeroines.map((h) => h.split(" ")[0]).join(", ")}) after initial introduction.
+  3. Shape the 4 "opening_choices" into distinct, natural Act I vectors using first names only:
+     - Choice 1: [Physical Tempo / Craft] Demonstrating hands-on culinary, mixology, or athletic skill right in front of ${startingHeroine.split(" ")[0]}.
+     - Choice 2: [Social Panache / Tease] Turning the tables with smooth banter that pushes ${startingHeroine.split(" ")[0]}'s heart-rate into the Blush Zone.
+     - Choice 3: [${portSolarisOriginPreset?.shortLabel || "Proprietor Leverage"}] Using your background and landlord authority at The Stray Anchor.
+     - Choice 4: [Article 9 Wager] Proposing a bold, high-stakes public or boarding-house wager.`
       : "";
 
     const openingChoiceDirective = buildDynamicChoiceDirective({

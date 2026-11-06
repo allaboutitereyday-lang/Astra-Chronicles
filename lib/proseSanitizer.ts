@@ -177,6 +177,20 @@ const CATALOG_PHRASE_REPLACEMENTS: Array<[RegExp, string]> = [
   [/\bThe Seal-Gate\s*&\s*Boarding Quays\b/gi, "the Seal-Gate"],
   [/\bThe Velvet Spill\s*&\s*The Tribunal Pit\b/gi, "the Velvet Spill"],
   [/\bThe Sky-Crown\s*&\s*Sovereign Terraces\b/gi, "the Sky-Crown terraces"],
+  [/\bHand-Forged Damascus Santoku\s*&\s*Copper Shaker\b/gi, "Damascus chef knife"],
+  [/\bCrisp Rolled-Sleeve Bistro Shirt\s*&\s*Indigo Apron\b/gi, "indigo bistro apron"],
+  [/\bGrandfather's Brass Espresso Tamper\s*\(Stray Anchor Deed\)/gi, "brass espresso tamper"],
+  [/\bGold-Nibbed Charter Audit Pen\s*&\s*Sommelier Tastevin\b/gi, "gold-nibbed fountain pen"],
+  [/\bUnbuttoned White Resort Blazer\s*&\s*Silk Pocket Square\b/gi, "white resort blazer"],
+  [/\bRevoked Vane-Valorian VIP Black Card\b/gi, "revoked VIP black card"],
+  [/\bSun-Bleached Kendo Shinai\s*&\s*Pro Tour Volleyball\b/gi, "bamboo shinai"],
+  [/\bCropped Red-and-White Lifeguard Windbreaker\s*&\s*Boardshorts\b/gi, "lifeguard windbreaker"],
+  [/\bSilver South-Shore Championship Whistle\b/gi, "silver lifeguard whistle"],
+  [/\bModded Sanwa Fight-Stick\s*&\s*35mm Rangefinder Camera\b/gi, "custom arcade fight-stick"],
+  [/\bOff-Shoulder Pastel Arcade Hoodie\s*&\s*Press Lanyard\b/gi, "arcade hoodie"],
+  [/\bEncrypted Solaris Siren Rumor Ledger\b/gi, "rumor ledger"],
+  [/\bDriftwood Cove\s*\(The Stray Anchor\)/gi, "The Stray Anchor"],
+  [/\bThe Campus Terrace\s*\(Solaris University\)/gi, "the Campus Terrace"],
   // Strip robotic inline rank parentheticals in prose/dialogue like "(Rank #184)" or "(#142)"
   [/\s*\((?:Rank\s*)?#\d{1,3}\)/gi, ""],
 ];
@@ -192,6 +206,16 @@ const COMPANION_FULL_NAMES: Array<[string, string]> = [
   ["Noelle Vesper", "Noelle"],
   ["Kestrel Hollow", "Kestrel"],
   ["Valeria Noctis", "Valeria"],
+  ["Seraphina Vane", "Seraphina"],
+  ["Vivienne Laurent", "Vivienne"],
+  ["Mia Bellini", "Mia"],
+  ["Colette Moreau", "Colette"],
+  ["Pippa Reyes", "Pippa"],
+  ["Kaede Tachibana", "Kaede"],
+  ["Roxy Vance", "Roxy"],
+  ["Chloe Lin", "Chloe"],
+  ["Nadia Saint-Clair", "Nadia"],
+  ["Zuri Delacroix", "Zuri"],
 ];
 
 /**

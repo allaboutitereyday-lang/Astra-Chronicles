@@ -80,6 +80,48 @@ export const RIVALRY_PAIRS_CATALOG: {
     ideologicalAxis: "Blunt Unfiltered Anatomical Curiosity vs. Guarded Aristocratic Dignity",
     banterTone: "Sleepy deadpan questions about Ysolde's crystallized hands clashing with lethal amethyst-eyed embarrassment.",
   },
+  {
+    pairKey: "seraphina_mia",
+    comp1: "Seraphina Vane",
+    comp2: "Mia Bellini",
+    ideologicalAxis: "5-Star Platinum Cliffs Aristocratic Standards vs. Childhood-Friend Artisan Hearth Pride",
+    banterTone: "Haughty tsundere audit critiques clashing with flour-dusted next-door baker jealousy over who feeds the Landlord best.",
+  },
+  {
+    pairKey: "colette_seraphina",
+    comp1: "Colette Moreau",
+    comp2: "Seraphina Vane",
+    ideologicalAxis: "Sultry Boardwalk Mixology Teasing vs. Uptight High-Society Propriety",
+    banterTone: "Purring older-sister bartender innuendos effortlessly pushing Seraphina's BPM into the Blush Zone.",
+  },
+  {
+    pairKey: "vivienne_roxy",
+    comp1: "Vivienne Laurent",
+    comp2: "Roxy Vance",
+    ideologicalAxis: "Sheltered VIP Innocence vs. Tabloid Paparazzi Scoop-Hunting",
+    banterTone: "Polite, literal-minded heiress curiosity disarming Roxy's shameless front-page gossip traps.",
+  },
+  {
+    pairKey: "pippa_mia",
+    comp1: "Pippa Reyes",
+    comp2: "Mia Bellini",
+    ideologicalAxis: "High-Hype Beach Parfait Mooches vs. Protective Kitchen Manager Discipline",
+    banterTone: "Cheeky little-sister sports energy clashing with protective childhood-friend territoriality.",
+  },
+  {
+    pairKey: "kaede_chloe",
+    comp1: "Kaede Tachibana",
+    comp2: "Chloe Lin",
+    ideologicalAxis: "5 AM Bushido Dawn Kata vs. 4 AM Nocturnal Arcade Grind",
+    banterTone: "Overly formal samurai discipline clashing with sleepy, deadpan gaming-metaphor sarcasm.",
+  },
+  {
+    pairKey: "nadia_zuri",
+    comp1: "Nadia Saint-Clair",
+    comp2: "Zuri Delacroix",
+    ideologicalAxis: "Minimalist Sommelier Precision vs. Playful Botanical Sensory Chaos",
+    banterTone: "Cool black-lipstick aesthetic critiques clashing with teasing matcha-gelato tastings and Room 205/206 balcony banter.",
+  },
 ];
 
 /**

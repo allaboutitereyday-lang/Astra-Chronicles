@@ -1,0 +1,945 @@
+{
+  "id": "port-solaris",
+  "title": "Astra Chronicles: Port Solaris",
+  "tagline": "A sun-drenched slice-of-life, romantic comedy, and management-dueling visual novel/RPG of beachfront hospitality, boarding-house antics, and public Turf Showdowns.",
+  "description": "Welcome to Port Solaris, a sun-drenched Mediterranean-style university resort island where social influence, beach culture, and booming small businesses dictate who runs the boardwalk. After inheriting the deed—and the massive debt—to The Stray Anchor, a run-down 0-Star beachfront café, tavern, and 6-room boarding house in Driftwood Cove, you have 30 days to pass the Solaris Star Ledger seasonal audit or watch the Vane-Valorian Luxury Resort Expansion bulldoze your home. Under Island Charter Article 9, every dispute—from commercial leases to romantic rivalries—is settled in public Turf Showdowns. Worse, the only way to keep the lights on is by renting your six upstairs bedrooms to the island's most eccentric, exiled, and high-maintenance heroines.",
+  "coverImage": "/backgrounds/port-solaris/stray_anchor.jpg",
+  "genre": "Slice-of-Life Rom-Com / Management Duelist / Sun-Drenched LitRPG",
+  "themes": [
+    "Beachfront Café & Boarding House Management",
+    "Sanctioned Article 9 Turf Showdowns",
+    "8-Heroine Domestic Proximity Comedy",
+    "Solaris Star Ledger (0★ to 5★) Climbing"
+  ],
+  "narrationStyle": "Light Novel High Fantasy (Dynamic pacing, witty banter, heroic)",
+  "createdAt": "2026-11-06T05:20:00Z",
+  "author": "Astra Architect",
+  "isPreset": true,
+  "worldContext": {
+    "settingName": "Port Solaris & Driftwood Cove (The Stray Anchor)",
+    "eraOrPeriod": "High Summer Audit Season — The 30-Day Vane-Valorian Lease Countdown",
+    "loreSummary": "Four Foundational Truths govern Port Solaris: (1) The Solaris Star Ledger (0★ to 5★): Governed by Solaris University and the Platinum Hospitality Conglomerate, every club, café, and student crew is ranked from 0 to 5 Stars, dictating beachfront access, festival budgets, and island prestige. (2) The 30-Day Eviction Rule: Establishments sitting at 0 Stars at the end of the seasonal audit have their leases revoked and are bulldozed to make way for the Vane-Valorian Luxury Resort Expansion. You have inherited the deed and debt to The Stray Anchor, a 0-Star beachfront café, tavern, and 6-room boarding house. (3) The Boarding House Proximity Engine: To pay the bills and staff the shop, you rent the six upstairs bedrooms to a chaotic roster of disgraced heiresses, culinary rivals, beach athletes, and sleepy arcade savants—creating nonstop domestic rom-com friction. (4) Island Charter Article 9 (Sanctioned Public Showdowns): Petty sabotage and lawsuits are banned; all lease disputes, supply monopolies, and romantic rivalries are settled via public Turf Showdowns using Path A: Physical Tempo (Hype 0-100) or Path B: Social Panache (Cool 100%-0%), while managing your Composure / Heart-Rate Gauge (0-100% BPM, with 50-85% triggering The Blush Zone).",
+    "factions": [
+      {
+        "name": "The Platinum Board (Cliffside Villas & Yacht Club)",
+        "description": "Public Mandate: 5-Star luxury hospitality, yacht-club regattas, and island real-estate governance. Rom-Com Dynamic: They want to foreclose on The Stray Anchor to build a private marina, yet their sheltered heiresses secretly sneak down to your café for comfort food and late-night company. Signature Style: Crisp resort blazers, VIP black cards, and devastating legal/social panache."
+      },
+      {
+        "name": "The Boardwalk Guild (Sunset Rambla & Bistro Row)",
+        "description": "Public Mandate: Culinary excellence, artisanal pastry-craft, sommelier mixology, and night-market festivals. Rom-Com Dynamic: Fierce culinary rivals who challenge you to high-stakes cook-offs and mixology showdowns by day, then end up sharing recipes and late-night tastings in your kitchen by night. Signature Style: Chef whites, copper barware, and dazzling gastronomic craft."
+      },
+      {
+        "name": "The Breakers Union (South Shore Sand-Courts & Dojo Pier)",
+        "description": "Public Mandate: Surf lifesaving, beach volleyball championships, kendo exhibitions, and coastal security. Rom-Com Dynamic: High-energy athletes and stoic martial artists who turn every boardwalk errand into a physical contest—and treat your café as their post-workout hangout. Signature Style: Sun-bleached rashguards, lifeguard whistles, bamboo shinai, and explosive physical tempo."
+      },
+      {
+        "name": "The Driftwood Syndicate (Old Pier Arcade & Night Market)",
+        "description": "Public Mandate: Retro arcade tournaments, odd-job brokerage, investigative campus journalism, and Turf Showdown betting pools. Rom-Com Dynamic: Smugglers, gossip editors, and nocturnal gaming savants who trade island secrets, rig the odds in your favor, and crash on your boarding-house couches. Signature Style: Press passes, vintage SLR cameras, custom fight-sticks, and razor-sharp underworld wit."
+      }
+    ],
+    "locations": [
+      {
+        "name": "Driftwood Cove (The Stray Anchor)",
+        "zone": "Tier 1 (Sea Level) • Player Home Base",
+        "danger": "Audit Probation (0★ Lease Eviction Countdown)",
+        "description": "A cozy, slightly weathered two-story Mediterranean timber-and-stone beachfront café and six-room boarding house with warm string lights, espresso machines, a polished mahogany bar, and a wooden deck overlooking a turquoise cove at golden hour.",
+        "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg"
+      },
+      {
+        "name": "The Breakers Boardwalk & South Beach",
+        "zone": "Tier 2 • Athletic & Festival Hub",
+        "danger": "Competitive (Volleyball Courts & Dojo Pier Showdowns)",
+        "description": "A lively tropical sandy beach and wooden pier boardwalk featuring beach volleyball nets, surfboards, lifeguard towers, open-air martial arts dojo mats, and sparkling turquoise ocean waves.",
+        "bgImage": "/backgrounds/port-solaris/breakers_boardwalk.jpg"
+      },
+      {
+        "name": "The Sunset Rambla",
+        "zone": "Tier 3 • Commercial & Culinary Hub",
+        "danger": "Moderate (Culinary Rivals & Guild Inspectors)",
+        "description": "A bustling Mediterranean cobblestone promenade lined with vibrant pastel bistros, striped awnings, artisan bakeries, flower carts, and palm trees glowing under warm sunset lanterns.",
+        "bgImage": "/backgrounds/port-solaris/sunset_rambla.jpg"
+      },
+      {
+        "name": "The Campus Terrace (Solaris University)",
+        "zone": "Tier 4 • Academic & Club Hub",
+        "danger": "Social (Student Council Audits & Rumor Mills)",
+        "description": "A grand open-air coastal university plaza with whitewashed arches, terra-cotta roofs, marble fountains, flowering bougainvillea vines, and panoramic views of the sapphire sea below.",
+        "bgImage": "/backgrounds/port-solaris/campus_terrace.jpg"
+      },
+      {
+        "name": "The Platinum Cliffs",
+        "zone": "Tier 5 (Top) • High-Society VIP Hub",
+        "danger": "High-Stakes (5★ Conglomerate Galas & Lease Auctions)",
+        "description": "An ultra-luxurious cliffside resort terrace with infinity pools, white marble colonnades, superyachts anchored in the harbor below, and champagne gala tables under a twilight sky.",
+        "bgImage": "/backgrounds/port-solaris/platinum_cliffs.jpg"
+      },
+      {
+        "name": "The Stray Anchor: Upstairs Boarding House & Rooftop Terrace",
+        "zone": "Tier 1 • Domestic Rom-Com Sanctuary",
+        "danger": "Domestic Chaos (Thin Walls, Shared Bath & Midnight Snacks)",
+        "description": "Six sunlit upstairs bedrooms connected by a creaky cedar hallway, a single shared bathroom with a finicky hot-water heater, and a lantern-lit rooftop laundry terrace where Composure (BPM) is tested every night.",
+        "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg"
+      },
+      {
+        "name": "The Old Pier Arcade & Night Market",
+        "zone": "Tier 2 • Driftwood Syndicate Den",
+        "danger": "Rowdy (High-Roller Wagers & Paparazzi Ambush)",
+        "description": "A neon-drenched retro arcade and lantern-lit street-food pier beneath the boardwalk pilings where Chloe 'Zero' Lin runs the betting algorithms and Roxy Vance prints The Solaris Siren.",
+        "bgImage": "/backgrounds/port-solaris/breakers_boardwalk.jpg"
+      }
+    ]
+  },
+  "rpgRules": {
+    "systemName": "Solaris Star Ledger & Article 9 Showdown Registry",
+    "currencyName": "Solar Crowns",
+    "causalAnchorName": "Composure & Heart-Rate Stability (BPM)",
+    "defaultPlausibility": 90,
+    "statDefinitions": {
+      "str": "Physical Tempo — Brawn & Endurance (Wok-Heat Stamina, Beach Volleyball Spike Power, Kendo Footwork & Heavy Prep)",
+      "dex": "Flair Reflex — Craft & Finesse (Knife-Work Precision, Mixology Flair-Bartending, Arcade Frame-Data & Camera Timing)",
+      "int": "Social Panache — Charm & Audacity (Table-Turn Counter-Roasts, Audit Negotiation, VIP Sommelier Wit & Composure)"
+    },
+    "startingLevel": 1,
+    "baseStats": {
+      "hp": 100,
+      "maxHp": 100,
+      "mp": 100,
+      "maxMp": 100,
+      "exp": 0,
+      "maxExp": 100,
+      "str": 11,
+      "dex": 12,
+      "int": 12
+    },
+    "startingGearOptions": [
+      {
+        "id": "boardwalk_guild_chef",
+        "label": "Boardwalk Guild — Damascus Chef Knife & Linen Bistro Apron",
+        "gear": {
+          "weapon": "Hand-Forged Damascus Santoku & Copper Shaker",
+          "armor": "Crisp Rolled-Sleeve Bistro Shirt & Indigo Apron",
+          "relic": "Grandfather's Brass Espresso Tamper (Stray Anchor Deed)"
+        }
+      },
+      {
+        "id": "platinum_board_host",
+        "label": "Platinum Board — Engraved Fountain Pen & Resort Blazer",
+        "gear": {
+          "weapon": "Gold-Nibbed Charter Audit Pen & Sommelier Tastevin",
+          "armor": "Unbuttoned White Resort Blazer & Silk Pocket Square",
+          "relic": "Revoked Vane-Valorian VIP Black Card"
+        }
+      },
+      {
+        "id": "breakers_union_striker",
+        "label": "Breakers Union — Bamboo Shinai & Lifeguard Windbreaker",
+        "gear": {
+          "weapon": "Sun-Bleached Kendo Shinai & Pro Tour Volleyball",
+          "armor": "Cropped Red-and-White Lifeguard Windbreaker & Boardshorts",
+          "relic": "Silver South-Shore Championship Whistle"
+        }
+      },
+      {
+        "id": "driftwood_syndicate_fixer",
+        "label": "Driftwood Syndicate — Custom Arcade Stick & Vintage SLR",
+        "gear": {
+          "weapon": "Modded Sanwa Fight-Stick & 35mm Rangefinder Camera",
+          "armor": "Off-Shoulder Pastel Arcade Hoodie & Press Lanyard",
+          "relic": "Encrypted Solaris Siren Rumor Ledger"
+        }
+      }
+    ]
+  },
+  "startingNodes": [
+    {
+      "id": "prologue_solaris_grand_audit",
+      "speaker": "Seraphina Vane",
+      "presentCompanions": [
+        "Seraphina Vane",
+        "Mia Bellini",
+        "Colette Moreau",
+        "Pippa Reyes",
+        "Kaede Tachibana",
+        "Roxy Vance",
+        "Nadia Saint-Clair",
+        "Zuri Delacroix"
+      ],
+      "title": "Day 1 Grand Convocation: The 0-Star Lease Audit & Roommate Stampede",
+      "location": "Driftwood Cove (The Stray Anchor)",
+      "sceneSetup": "Golden-hour sunlight pours across the weathered timber deck of The Stray Anchor as sea breeze rattles the string lights overhead. You have barely unlocked the front doors of the 0-Star beachfront café and six-room boarding house you inherited when the patio is invaded from all four tiers of Port Solaris at once.\n\nAt the center of the deck stands Seraphina Vane in her crisp white-and-gold Platinum Board blazer, slapping a red 30-Day Audit Probation notice onto your mahogany bar—only for her twin-tails to bristle as Mia Bellini marches over from the bakery next door with a basket of warm brioche and flour on her cheek. By the espresso bar, Colette Moreau swirls a crystal tasting glass with a teasing smile, while Pippa 'Pip' Reyes vaults over the deck railing with a beach volleyball under one arm. Near the boardwalk steps, Kaede Tachibana rests a bamboo shinai across her shoulder in stoic silence as Roxy Vance snaps three rapid-fire photos with her vintage SLR camera.",
+      "dialogue": "Seraphina clears her throat, a fierce blush creeping up her neck as Roxy's camera shutter clicks again.\n\n\"Listen up, Proprietor!\" Seraphina announces, tapping the gold-plated clipboard against your counter. \"Under the Solaris Star Ledger, The Stray Anchor is sitting at zero stars with thirty days until seasonal foreclosure. Unless you pass my live inspection—and fill your upstairs boarding rooms with solvent tenants before sunset—the Platinum Board bulldozes this cove for our marina! Well? Who are you serving first, and how do you intend to survive Day One?\"",
+      "expressionKey": "smug",
+      "initialAffection": 22,
+      "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg",
+      "choices": [
+        "[Physical Tempo / Culinary Craft]: Fire up the espresso machine and flat-top grill right in front of Seraphina and Mia, declaring an impromptu Article 9 taste-test.",
+        "[Social Panache / Table-Turn]: Smile smoothly, take Seraphina's clipboard, and point out the clause that requires the lead auditor to reside on-site if she wants daily oversight.",
+        "[Breakers & Boardwalk / High Hype]: Toss Pippa an iced citrus soda, nod to Kaede's shinai, and turn the patio into South Beach's official post-match hangout.",
+        "[Audacious / House Landlord]: Ring the brass ship's bell above the bar and announce that upstairs room keys go to whoever helps The Stray Anchor hit 1-Star by Friday."
+      ]
+    },
+    {
+      "id": "prologue_act1_article9_wager",
+      "speaker": "Seraphina Vane",
+      "title": "Act I Cold-Open: The Midnight Comfort-Food Wager",
+      "location": "Driftwood Cove (The Stray Anchor)",
+      "sceneSetup": "It is 11:45 PM on your first night at The Stray Anchor. A warm summer squall drums against the café windows, and the neon 'CLOSED' sign hums in the dark—until a sharp, hesitant knock sounds at the back kitchen screen door.\n\nStanding under the dripping awning is Seraphina Vane. Her Platinum Board blazer is soaked through, two designer suitcases sit beside her heels, and her proud emerald eyes dart away the instant her stomach lets out an unmistakably loud growl. Her father just froze her black cards until she 'learns real-world management'—and she has nowhere else on the island to sleep.",
+      "dialogue": "Don't you dare say a single word! I am only here to conduct an unannounced after-hours sanitation check—and if my stomach just made a noise, it was the wind off the pier!\n\n...Fine! If you can cook one dish in ten minutes using whatever scraps are left in this zero-star kitchen that actually meets Platinum Cliffs standards, I'll postpone your eviction filing and pay full rent on Room 201—err, strictly as an undercover auditor! Do we have an Article 9 wager or not?!",
+      "expressionKey": "flustered",
+      "initialAffection": 25,
+      "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg",
+      "choices": [
+        "[Physical Tempo / Wok-Fire]: Tie on your apron, toss a dry towel over Seraphina's soaked shoulders, and whip up a sizzling midnight garlic-butter seafood pasta.",
+        "[Social Panache / Teasing]: Pull out a barstool for the 'undercover auditor' and ask if all Platinum Board heiresses audit kitchens with two packed suitcases.",
+        "[Composure / Gentle Host]: Brew a mug of spiced honey-milk first to warm her hands before quietly carrying her bags up to Room 201.",
+        "[High-Stakes Wager]: Raise the stakes—if she finishes every bite, she not only rents Room 201, she waits tables in a Stray Anchor apron tomorrow."
+      ]
+    },
+    {
+      "id": "prologue_seraphina",
+      "speaker": "Seraphina Vane",
+      "title": "Seraphina Vane: The Tsundere Auditor's Secret Appetite",
+      "location": "Driftwood Cove (The Stray Anchor)",
+      "sceneSetup": "Sunlight glints off the brass espresso machine as the morning rush clears out of Driftwood Cove. At corner booth #1 sits Seraphina Vane, her sweeping honey-blonde twin-tails bouncing indignantly as she inspects your menu through a pair of unnecessary reading glasses.\n\nDespite her fierce expression and gold-plated Platinum Board clipboard, there is a tiny smudge of powdered sugar at the corner of her lip from the second plate of beignets she thought you didn't notice her ordering.",
+      "dialogue": "A-hem! For the record, I only finished that second plate to verify consistency across batches! A single lucky pastry doesn't mean The Stray Anchor is safe from my father's marina expansion.\n\nIf you want my signature on your provisional 1-Star extension, sit down across from me right now and explain your thirty-day business plan—and bring another iced caramel macchiato while you're at it!",
+      "expressionKey": "flustered",
+      "initialAffection": 20,
+      "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg",
+      "choices": [
+        "[Observant / Teasing]: Reach across the booth with a napkin to brush the powdered sugar off her cheek and watch her BPM skyrocket.",
+        "[Culinary Craft]: Slide a fresh warm beignet onto her plate—on the house—and ask what she honestly thinks of the custard filling.",
+        "[Social Panache]: Present a sharp, numbers-backed pitch showing how a vibrant Driftwood Cove raises property values more than another yacht slip.",
+        "[Audacious Gambit]: Offer her the Head Floor Host badge so she can enforce her own 5-Star service standards from the inside."
+      ]
+    },
+    {
+      "id": "prologue_vivienne",
+      "speaker": "Vivienne Laurent",
+      "title": "Vivienne Laurent: The Ice Queen's Great Boardwalk Escape",
+      "location": "The Platinum Cliffs",
+      "sceneSetup": "Up on the white marble colonnades of the Platinum Cliffs, string quartets play beside infinity pools overlooking the yacht harbor. Near the service steps leading down to the coastal tram, a tall young woman in a flowing pastel-blue summer sundress and a wide-brimmed white sunhat stands frozen before a glowing pink street-vendor machine.\n\nVivienne Laurent—the untouchable 'Ice Queen' of the Laurent Shipping Dynasty—stares at a paper cone of spun sugar with wide, fascinated sapphire eyes as two suited bodyguards scan the crowd fifty yards away.",
+      "dialogue": "...Please don't alert the gentlemen in the dark suits. I have exactly fourteen minutes before my mother's gala toast begins, and I have never once walked down to the boardwalk without an escort.\n\nYou're the new proprietor from Driftwood Cove, aren't you? If you show me how one is supposed to eat this 'cotton cloud' without ruining one's gloves... I would be delighted to sponsor your café's first VIP tasting.",
+      "expressionKey": "intrigued",
+      "initialAffection": 24,
+      "bgImage": "/backgrounds/port-solaris/platinum_cliffs.jpg",
+      "choices": [
+        "[Gentle / Gallant]: Take her hand, duck behind a flowering bougainvillea arch before her bodyguards turn around, and guide her down the secret cliffside stairs.",
+        "[Playful / Down-to-Earth]: Break off a tuft of pink cotton candy for her yourself so she doesn't get sugar on her silk gloves.",
+        "[Social Panache]: Trade her oversized sunhat for your spare Stray Anchor cap—the perfect disguise for a runaway heiress on the boardwalk.",
+        "[Strategic / Bold]: Invite her to hide out in The Stray Anchor's upstairs guest room where her mother's security detail would never think to look."
+      ]
+    },
+    {
+      "id": "prologue_mia",
+      "speaker": "Mia Bellini",
+      "title": "Mia Bellini: Flour-Dusted Rivalry Next Door",
+      "location": "The Sunset Rambla",
+      "sceneSetup": "Warm dawn light spills across the cobblestones of the Sunset Rambla, carrying the intoxicating aroma of browned butter, vanilla bean, and roasted espresso. Right across the narrow alley from your kitchen window, the striped awnings of Bellini Artisan Patisserie flutter in the breeze.\n\nMia Bellini leans out over her half-door with a wooden rolling pin in one hand and a wicker basket of golden croissants in the other, a cute smudge of white flour across her freckled nose and her warm hazel eyes narrowing in affectionate exasperation.",
+      "dialogue": "Three years without so much as a postcard, and the first thing you do when you come back to Port Solaris is reopen the café ten feet from my ovens?!\n\nDon't think childhood memories are going to save you if your menu steals my morning pastry crowd! Taste this almond croissant right now and admit I've surpassed you—or meet me in your kitchen tonight so I can fix your terrible dough hydration myself!",
+      "expressionKey": "flustered",
+      "initialAffection": 32,
+      "bgImage": "/backgrounds/port-solaris/sunset_rambla.jpg",
+      "choices": [
+        "[Physical Tempo / Chef's Pride]: Take a bite of her croissant, praise the lamination, and immediately hand her a cup of your signature espresso that pairs with it perfectly.",
+        "[Romantic / Nostalgic]: Step close to the half-door, thumb the smudge of flour off her nose just like you used to, and tell her you missed her.",
+        "[Business Proposal]: Suggest merging forces—her artisan pastries in your beachfront café—while renting her the sunny upstairs bedroom overlooking the cove.",
+        "[Article 9 Challenge]: Challenge Mia to a friendly sunrise bake-off where the loser has to cook the winner dinner for a week."
+      ]
+    },
+    {
+      "id": "prologue_colette",
+      "speaker": "Colette Moreau",
+      "title": "Colette Moreau: Velvet Poison at Midnight Closing",
+      "location": "The Sunset Rambla",
+      "sceneSetup": "Amber lanterns flicker along Bistro Row as the late-evening crowd thins out. Inside a tucked-away tasting cellar smelling of charred oak, blood orange, and botanical gin, Colette Moreau polishes a crystal coupe glass behind a slab of dark walnut.\n\nHer wavy burgundy-red hair falls over one shoulder of her tailored burgundy bartender vest as her half-lidded emerald eyes study your posture, a silver cocktail shaker spinning effortlessly between her fingers.",
+      "dialogue": "My, my~ Look who wandered off the beach and into a real bar. Word along the Rambla is that The Stray Anchor's new landlord has thirty days to turn a dive tavern into a star-ranked establishment.\n\nSit down, mon cher. I've mixed two glasses on the counter—one is a five-star botanical elixir, and the other has enough chili-lime kick to make your eyes water. Pick the right glass—or guess what secret I'm hiding behind my back—and I might just bring my shaker down to your cove.",
+      "expressionKey": "smug",
+      "initialAffection": 22,
+      "bgImage": "/backgrounds/port-solaris/sunset_rambla.jpg",
+      "choices": [
+        "[Flair Reflex / Mixology]: Read the condensation and citrus oil sheen on the left coupe glass, picking the five-star elixir without hesitation.",
+        "[Social Panache / Unflappable]: Drink the spicy chili-lime glass straight while holding Colette's gaze without blinking once.",
+        "[Observant / Empathetic]: Notice the manuscript pages of a romance novel peeking out from beneath her bar ledger—the secret she's actually hiding.",
+        "[Counter-Offer]: Invite her to take over The Stray Anchor's evening cocktail lounge with complete creative freedom over the bar menu."
+      ]
+    },
+    {
+      "id": "prologue_pippa",
+      "speaker": "Pippa Reyes",
+      "title": "Pippa 'Pip' Reyes: Match Point on South Beach",
+      "location": "The Breakers Boardwalk & South Beach",
+      "sceneSetup": "The afternoon sun blazes over the white sand of South Beach as a cheering crowd gathers around Center Court. A regulation volleyball rockets across the net at forty miles an hour—only for a sun-kissed blur in a cropped red-and-white lifeguard windbreaker to launch three feet into the air and spike it straight into the sand.\n\nPippa 'Pip' Reyes lands with a victorious peace sign, her short spiky caramel-blonde hair with coral-pink tips gleaming with sea spray before she spots you by the boardwalk rail and Vaults over the boundary rope.",
+      "dialogue": "Aha! Caught you scouting the competition, Boss! That's twelve straight wins for the Breakers Union—and my throat is officially parched!\n\nHere's the deal: my scholarship stipend only covers half my dorm fee this summer, and your café needs a world-class mascot who can draw every surfer on South Beach! Sponsor my hydration tab with one giant mango parfait right now, and I'm all yours!",
+      "expressionKey": "smug",
+      "initialAffection": 28,
+      "bgImage": "/backgrounds/port-solaris/breakers_boardwalk.jpg",
+      "choices": [
+        "[Physical Tempo / Rally]: Step onto the sand court and tell Pippa she gets free parfaits all summer if she can land one clean serve past your guard.",
+        "[Big-Sibling Care]: Toss her a chilled sports towel and a bottle of electrolyte water first, then tell her the towering mango parfait is already waiting at the café.",
+        "[Promoter Pact]: Sign her on as The Stray Anchor's official Beach Promoter and hand her the keys to the breezy top-floor room.",
+        "[Playful Tease]: Ruffle her spiky caramel-blonde hair and ask how a 'fearless beach prodigy' managed to get locked out of her dorm after dark yesterday."
+      ]
+    },
+    {
+      "id": "prologue_kaede",
+      "speaker": "Kaede Tachibana",
+      "title": "Kaede Tachibana: Dawn Kata on the Dojo Pier",
+      "location": "The Breakers Boardwalk & South Beach",
+      "sceneSetup": "At 5:30 AM, turquoise waves crash against the wooden pilings of the Dojo Pier as sea mist curls over the salt-bleached planks. Standing barefoot at the very edge of the pier is Kaede Tachibana, her long ink-black ponytail whipping in the wind as her bamboo shinai cleaves the morning air with thunderous precision.\n\nShe halts her strike an inch from the horizon, her calm amber eyes turning toward the paper bag of warm steamed pork buns you brought from The Stray Anchor's kitchen—just as three stray boardwalk tabbies weave affectionately around her ankles.",
+      "dialogue": "...Your footwork on the pier planks is lighter than yesterday, Proprietor. Most tourists wake the gulls from fifty paces.\n\nI must refuse the buns. A warrior of the Tachibana style does not accept charity... unless those are the braised sea-salt pork buns from your morning batch, in which case I am prepared to offer twelve hours of coastal security and bouncer duty in honorable exchange.",
+      "expressionKey": "combat_ready",
+      "initialAffection": 22,
+      "bgImage": "/backgrounds/port-solaris/breakers_boardwalk.jpg",
+      "choices": [
+        "[Honorable Exchange]: Bow formally and hand her the warm pork buns—plus a saucer of bonito flakes for the three stray cats she's pretending not to feed.",
+        "[Physical Tempo / Sparring]: Pick up a spare wooden bokken from the pier rack and ask Kaede to test your morning stance before breakfast.",
+        "[Domestic Warmth]: Tell her The Stray Anchor has a quiet garden-facing bedroom where dojo challengers won't interrupt her morning meditation.",
+        "[Gentle Tease]: Smile at the tiny orange kitten climbing up her keikogi trouser leg and swear her secret is safe with you."
+      ]
+    },
+    {
+      "id": "prologue_roxy",
+      "speaker": "Roxy Vance",
+      "title": "Roxy Vance: Front-Page Scandal on the Campus Terrace",
+      "location": "The Campus Terrace (Solaris University)",
+      "sceneSetup": "Beneath the flowering pink bougainvillea arches of the Campus Terrace, hundreds of Solaris University students crowd around the marble fountain reading fresh copies of The Solaris Siren. Perched on the fountain's stone rim is Roxy Vance, her tousled auburn-pink hair framing a mischievous wink as she lowers a vintage 35mm SLR camera from her eye.\n\nShe hops down in her off-shoulder denim jacket, fanning out three glossy darkroom prints of you and the island's heroines outside The Stray Anchor.",
+      "dialogue": "Hold that pose, hotshot~ *Click.* Oh, the lighting on the new landlord of Driftwood Cove is absolute front-page material!\n\nRight now, the Platinum Board wants me to run a headline calling The Stray Anchor a doomed zero-star money pit. Buuut I like an underdog with a cute smile. Give me an exclusive interview—and a seat at your bar where I can watch the romantic fireworks up close—and I'll turn your little café into the hottest ticket on campus.",
+      "expressionKey": "smug",
+      "initialAffection": 24,
+      "bgImage": "/backgrounds/port-solaris/campus_terrace.jpg",
+      "choices": [
+        "[Social Panache / Turn the Tables]: Step inside her camera's focal length so she has to tilt her chin up to look at you, asking why the editor-in-chief is taking photos of you herself.",
+        "[Media Savvy / Deal]: Offer Roxy exclusive PR rights and the corner balcony room—provided every front-page headline boosts The Stray Anchor's Star rating.",
+        "[Flair Reflex / Candid Shot]: Gently borrow her SLR camera, snap a candid portrait of Roxy caught off-guard, and compliment how she looks on the other side of the lens.",
+        "[Underworld Intel]: Ask what dirt she already has on the Platinum Board's rigged seasonal audit inspectors."
+      ]
+    },
+    {
+      "id": "prologue_chloe",
+      "speaker": "Chloe Lin",
+      "title": "Chloe 'Zero' Lin: High Score & Forensic Ledgers at 2 AM",
+      "location": "The Old Pier Arcade & Night Market",
+      "sceneSetup": "Deep inside the neon-drenched Old Pier Arcade at 2:00 AM, synthwave beats thrum beneath the floorboards as a crowd of Driftwood Syndicate regulars watches a retro fighting-game cabinet in awe. Curled cross-legged on an arcade stool in an oversized pastel hoodie is Chloe 'Zero' Lin.\n\nWith one hand casually tapping a custom neon-lit fight-stick to land a 42-hit perfect combo and the other holding a tablet displaying The Stray Anchor's thirty-year tax and lease ledger, she looks up at you with half-lidded lavender eyes and takes a slow sip of iced quad-espresso.",
+      "dialogue": "...K.O. That's ninety-nine wins in a row... yawn.\n\nYou're three minutes late, Landlord. I finished auditing the debt file Seraphina's father slapped on The Stray Anchor. Good news: half their compound interest clauses violate Island Charter Article 9, so I can shave forty percent off your debt before sunrise. Bad news: the arcade AC just died, I'm out of espresso, and I require a shaded upstairs bedroom with fiber internet and breakfast in bed. Carry me?",
+      "expressionKey": "intrigued",
+      "initialAffection": 28,
+      "bgImage": "/backgrounds/port-solaris/breakers_boardwalk.jpg",
+      "choices": [
+        "[Gentle Caretaker]: Hand Chloe a fresh thermos of cold-brew espresso from your café and offer your back to piggyback the sleepy savant home.",
+        "[Flair Reflex / Player Two]: Drop a token into the Player Two slot and challenge 'Zero' to one round—if you take a single lifebar off her, she becomes your official Night Manager.",
+        "[Tactical / Audit Strike]: Sit beside her stool and review the Article 9 loophole she found in the Vane-Valorian foreclosure contract.",
+        "[Domestic Bribery]: Promise her the quietest shaded room in The Stray Anchor, blackout curtains, and warm pancakes whenever she finally wakes up at noon."
+      ]
+    },
+    {
+      "id": "prologue_nadia",
+      "speaker": "Nadia Saint-Clair",
+      "title": "Nadia Saint-Clair: The Velvet Appraiser's Midnight Tasting",
+      "location": "The Platinum Cliffs & Resort Marina",
+      "sceneSetup": "On a bougainvillea-draped stone terrace overlooking the glittering harbor of the Platinum Cliffs, Nadia Saint-Clair sits alone at a wrought-iron table, a crystal wine glass and a brass jeweler's loupe resting beside her leather sketchbook. Her snow-white curls catch the warm coastal breeze, her golden-amber eyes cool and analytical behind round gold-rimmed spectacles with a delicate beaded chain draped down her neck.\n\nAs the Platinum Trust's most feared Heritage & Sommelier Appraiser, a single word from her glossy black lips can sink a five-star lounge—yet when you step onto the terrace with a warm, unpretentious copper pan of late-night saffron risotto, she snaps her charcoal sketchbook shut a half-second too late for you to miss the drawing of The Stray Anchor's patio inside.",
+      "dialogue": "Nadia adjusts the gold bridge of her glasses with one finger, the three stacked gold cuffs on her tattooed right arm glinting in the lantern light.\n\n\"You have thirty seconds to explain why the proprietor of a zero-star probation café is trespassing on a private Platinum Trust tasting terrace... and why that pan smells like toasted Ligurian saffron and aged Parmigiano. Set it down. If your palate is half as audacious as your lack of reservations, I may reconsider my appraisal of Room 5 at The Stray Anchor.\"",
+      "expressionKey": "intrigued",
+      "initialAffection": 22,
+      "bgImage": "/backgrounds/port-solaris/platinum_cliffs.jpg",
+      "choices": [
+        "[Physical Tempo / Chef's Tasting]: Offer Nadia a warm spoonful of saffron risotto straight from the pan, watching her golden eyes widen behind fogged lenses.",
+        "[Social Panache / Aesthetic Tease]: Compliment the intricate botanical tattoo along her shoulder and ask what she was sketching in her charcoal notebook before you arrived.",
+        "[Proprietor Leverage / Room 5]: Slide the brass key to Room 5 across the table—promising her a private sea-breeze balcony far away from pretentious Platinum Cliffs galas.",
+        "[Article 9 Wager / Blind Pairing]: Challenge the island's toughest sommelier critic to a blind pairing showdown: if she finishes the plate, she signs off on your Cultural Merit certification."
+      ]
+    },
+    {
+      "id": "prologue_zuri",
+      "speaker": "Zuri Delacroix",
+      "title": "Zuri Delacroix: The Matcha Alchemist's Botanical Tease",
+      "location": "The Sunset Rambla",
+      "sceneSetup": "Under a canopy of hanging ferns, terracotta herb pots, and warm golden fairy lights on the Sunset Rambla, Zuri Delacroix leans across her artisanal gelato and botanical matcha bar with a slow, cat-like smile. Her vibrant matcha-sage hair is coiled into playful twin space-buns with long thick braids framing her shoulders, and her iridescent prism-drop earrings chime softly as she swirls a frosted glass of ceremonial pistachio-matcha affogato.\n\nHalf-lidded chartreuse eyes—framed by four tiny symmetrical beauty-mark studs—lock onto yours with open, unapologetic amusement as she slides the chilled coupe across the marble counter toward your fingers.",
+      "dialogue": "\"Well, well~ Look who finally wandered up the Rambla from Driftwood Cove,\" Zuri purrs, resting her chin in her palm as her sage-tinted lips curve into a mischievous smirk. \"I was just perfecting my new 'Blush-Zone Pistachio Matcha' infusion, Landlord. Rumor says it raises the heart rate by thirty beats per minute... though if you let me move my botanical churners into Room 6 of The Stray Anchor, I'm more than happy to run a private clinical trial on you right now. Open wide?\"",
+      "expressionKey": "smug",
+      "initialAffection": 25,
+      "bgImage": "/backgrounds/port-solaris/sunset_rambla.jpg",
+      "choices": [
+        "[Social Panache / Counter-Tease]: Lean right across the counter, catch her wrist gently, and taste the spoonful while holding her gaze—flipping her teasing smirk into a flustered squeak.",
+        "[Physical Tempo / Culinary Collab]: Pull an espresso shot on the spot and layer it into her pistachio-matcha gelato, proving your kitchen and her botanical lab are a five-star match.",
+        "[Attentive / Close Contact]: Reach out with your thumb to brush a dab of green matcha cream from the corner of her lip, watching her pull her twin braids over her blushing face.",
+        "[Article 9 Wager / Room 6 Lease]: Offer her Room 6 and full rooftop greenhouse privileges if her signature dessert can sell out The Stray Anchor's patio before sundown."
+      ]
+    }
+  ],
+  "companions": [
+    {
+      "id": "comp_seraphina",
+      "name": "Seraphina Vane",
+      "title": "The Tsundere Resort Heiress • Platinum Board",
+      "role": "Floor Host & High-Society Auditor (Social Panache)",
+      "gender": "female",
+      "color": "amber",
+      "personality": "Proud, sharp-tongued heiress to the Vane Resort Conglomerate and Junior Chair of the Star Audit Committee. Sent to shut down The Stray Anchor, only for her father to freeze her credit cards until she 'learns real-world management'—forcing her to move into Room 201 and wait tables in your café while furiously denying how much she loves your midnight cooking.",
+      "values": [
+        "Five-Star Hospitality Standards",
+        "Proving Her Independence",
+        "Secret Late-Night Comfort Food",
+        "Fair Article 9 Showdowns"
+      ],
+      "dislikes": [
+        "Sloppy Table Service",
+        "Being Teased About Her Appetite",
+        "Her Father's Nepotism Strings",
+        "Losing Her Cool in Public"
+      ],
+      "highCompatibility": [
+        "Confident Chefs",
+        "Sharp Negotiators",
+        "Attentive Hosts",
+        "Teasing Rivals"
+      ],
+      "baseAffection": 20,
+      "affection": 20,
+      "expressionKey": "flustered",
+      "isPresent": true,
+      "encountered": false,
+      "seed": 802101,
+      "baseImageUrl": "/characters/port-solaris/seraphina_vane.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Proud aristocratic college girl with long honey-blonde hair in sweeping twin-tails with navy silk ribbons, sharp emerald-green eyes, haughty tsundere blush, wearing a crisp tailored white-and-gold Platinum Board resort blazer over a summer blouse, holding a gold-plated Star Audit clipboard. Vibrant modern anime visual novel key art, Makoto Shinkai and Kyoto Animation inspired lighting, glossy expressive eyes.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/seraphina_vane.png",
+        "intrigued": "/characters/port-solaris/seraphina_vane.png",
+        "flustered": "/characters/port-solaris/seraphina_vane.png",
+        "smug": "/characters/port-solaris/seraphina_vane.png",
+        "surprised": "/characters/port-solaris/seraphina_vane.png",
+        "combat_ready": "/characters/port-solaris/seraphina_vane.png",
+        "dangerous": "/characters/port-solaris/seraphina_vane.png",
+        "hurt": "/characters/port-solaris/seraphina_vane.png"
+      }
+    },
+    {
+      "id": "comp_vivienne",
+      "name": "Vivienne Laurent",
+      "title": "The Sheltered 'Ice Queen' VIP • Platinum Board",
+      "role": "VIP Promoter & High-Society Sommelier (Social Panache)",
+      "gender": "female",
+      "color": "sky",
+      "personality": "Poised, soft-spoken heiress to the Laurent Shipping Dynasty. Revered across campus as an untouchable 'Ice Queen,' she is actually an endearingly curious ditz about normal everyday life—fascinated by street food, claw machines, and shared chores—who uses The Stray Anchor as her secret hideaway from arranged gala obligations.",
+      "values": [
+        "Everyday Boardwalk Adventures",
+        "Genuine Unscripted Warmth",
+        "Sweet Street-Market Treats",
+        "Choosing Her Own Future"
+      ],
+      "dislikes": [
+        "Stuffy Corporate Galas",
+        "Overprotective Bodyguards",
+        "Arranged Engagements",
+        "Being Treated Like Fragile Glass"
+      ],
+      "highCompatibility": [
+        "Gentle Guides",
+        "Down-to-Earth Hosts",
+        "Spontaneous Adventurers",
+        "Protective Romantics"
+      ],
+      "baseAffection": 24,
+      "affection": 24,
+      "expressionKey": "intrigued",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 802102,
+      "baseImageUrl": "/characters/port-solaris/vivienne_laurent.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Tall elegant young woman with long silky silver-white hair, serene sapphire-blue eyes, gentle curious expression with a faint blush, wearing a flowing pastel-blue summer sundress with a wide-brimmed white sunhat and pearl earrings, delicately holding a pink street-market cotton candy with both hands. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/vivienne_laurent.png",
+        "intrigued": "/characters/port-solaris/vivienne_laurent.png",
+        "flustered": "/characters/port-solaris/vivienne_laurent.png",
+        "smug": "/characters/port-solaris/vivienne_laurent.png",
+        "surprised": "/characters/port-solaris/vivienne_laurent.png",
+        "combat_ready": "/characters/port-solaris/vivienne_laurent.png",
+        "dangerous": "/characters/port-solaris/vivienne_laurent.png",
+        "hurt": "/characters/port-solaris/vivienne_laurent.png"
+      }
+    },
+    {
+      "id": "comp_mia",
+      "name": "Mia Bellini",
+      "title": "The Childhood Friend & Rival Baker • Boardwalk Guild",
+      "role": "Head Chef & Artisan Pastry Specialist (Physical Tempo)",
+      "gender": "female",
+      "color": "rose",
+      "personality": "Warm, fiercely devoted childhood friend and third-generation artisan baker next door. Pouts about your three-year absence and acts like your toughest culinary competitor on the Sunset Rambla, yet can't stop sneaking into The Stray Anchor's kitchen at dawn to prep your dough—and gets hilariously jealous whenever aristocratic heiresses hog your booth.",
+      "values": [
+        "Artisan Baking & Honest Ingredients",
+        "Childhood Promises",
+        "Feeding the People She Loves",
+        "Protecting Driftwood Cove"
+      ],
+      "dislikes": [
+        "Soulless Corporate Franchises",
+        "Wasted Food",
+        "Unexplained Absences",
+        "Being Taken for Granted"
+      ],
+      "highCompatibility": [
+        "Passionate Cooks",
+        "Loyal Childhood Friends",
+        "Hardworking Underdogs",
+        "Warm Romantics"
+      ],
+      "baseAffection": 32,
+      "affection": 32,
+      "expressionKey": "flustered",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 802103,
+      "baseImageUrl": "/characters/port-solaris/mia_bellini.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Energetic girl-next-door with warm chestnut hair tied up in a messy bun with a red gingham bandana, warm hazel eyes, cute pouty blush with a smudge of white flour on her cheek, wearing a rolled-sleeve white chef shirt and striped bistro apron, holding a wicker basket of fresh golden croissants. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/mia_bellini.png",
+        "intrigued": "/characters/port-solaris/mia_bellini.png",
+        "flustered": "/characters/port-solaris/mia_bellini.png",
+        "smug": "/characters/port-solaris/mia_bellini.png",
+        "surprised": "/characters/port-solaris/mia_bellini.png",
+        "combat_ready": "/characters/port-solaris/mia_bellini.png",
+        "dangerous": "/characters/port-solaris/mia_bellini.png",
+        "hurt": "/characters/port-solaris/mia_bellini.png"
+      }
+    },
+    {
+      "id": "comp_colette",
+      "name": "Colette Moreau",
+      "title": "The Perfectionist Mixologist • Boardwalk Guild",
+      "role": "Master Mixologist & Evening Lounge Host (Hybrid Flair)",
+      "gender": "female",
+      "color": "purple",
+      "personality": "Sultry, razor-sharp beverage director and flair-bartending prodigy who walked out on a 5-Star Platinum Cliffs hotel after knocking out a handsy VIP with an ice bucket. Relentlessly teases you with mature 'older-sister' banter behind the bar—until you discover she secretly writes hopeless, starry-eyed romance novels under a pen name and turns bright red when you act out her tropes.",
+      "values": [
+        "Craft Mixology & Sensory Precision",
+        "Creative Independence",
+        "Secret Hopeless Romance",
+        "Standing Up for Staff"
+      ],
+      "dislikes": [
+        "Handsy VIPs",
+        "Watered-Down Drinks",
+        "Anyone Reading Her Drafts Uninvited",
+        "Corporate Censorship"
+      ],
+      "highCompatibility": [
+        "Smooth Conversationalists",
+        "Observant Listeners",
+        "Creative Artisans",
+        "Chivalrous Partners"
+      ],
+      "baseAffection": 22,
+      "affection": 22,
+      "expressionKey": "smug",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 802104,
+      "baseImageUrl": "/characters/port-solaris/colette_moreau.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Stylish alluring young woman with wavy burgundy-red hair swept over one shoulder, half-lidded emerald eyes, teasing mature smile, beauty mark near her lip, wearing a fitted black-and-burgundy vest over a crisp white dress shirt with a black bowtie and rolled sleeves, holding a gleaming silver cocktail shaker and a crystal coupe glass garnished with citrus. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/colette_moreau.png",
+        "intrigued": "/characters/port-solaris/colette_moreau.png",
+        "flustered": "/characters/port-solaris/colette_moreau.png",
+        "smug": "/characters/port-solaris/colette_moreau.png",
+        "surprised": "/characters/port-solaris/colette_moreau.png",
+        "combat_ready": "/characters/port-solaris/colette_moreau.png",
+        "dangerous": "/characters/port-solaris/colette_moreau.png",
+        "hurt": "/characters/port-solaris/colette_moreau.png"
+      }
+    },
+    {
+      "id": "comp_pippa",
+      "name": "Pippa Reyes",
+      "title": "The Cheeky Beach Prodigy • Breakers Union",
+      "role": "Boardwalk Mascot & Athletic Ace (Physical Tempo)",
+      "gender": "female",
+      "color": "amber",
+      "personality": "Pint-sized, high-voltage freshman beach-volleyball prodigy and surf lifeguard with a blinding grin and boundless stamina. Treats you like her favorite corner-man and 'Boss,' effortlessly turning every errand into a high-hype beach spectacle—only to freeze up whenever you treat her like a desirable woman instead of a kid sister.",
+      "values": [
+        "South Beach Championship Glory",
+        "Towering Mango Parfaits",
+        "Team Hype & Loyalty",
+        "Being Seen as Grown-Up"
+      ],
+      "dislikes": [
+        "Rainy Days",
+        "Being Called 'Shortstack'",
+        "Boring Lectures",
+        "Bullies on the Boardwalk"
+      ],
+      "highCompatibility": [
+        "High-Tempo Athletes",
+        "Supportive Coaches",
+        "Playful Teasers",
+        "Generous Parfait Makers"
+      ],
+      "baseAffection": 28,
+      "affection": 28,
+      "expressionKey": "smug",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 802105,
+      "baseImageUrl": "/characters/port-solaris/pippa_reyes.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Sun-kissed athletic freshman girl with short spiky caramel-blonde hair and bright coral-pink highlights, bright turquoise eyes, energetic cheeky grin with a fang-tooth smile and band-aid on her nose bridge, wearing an unzipped red-and-white cropped lifeguard windbreaker over a sporty bikini top, a silver whistle around her neck, holding a beach volleyball under one arm and a parfait spoon in the other. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/pippa_reyes.png",
+        "intrigued": "/characters/port-solaris/pippa_reyes.png",
+        "flustered": "/characters/port-solaris/pippa_reyes.png",
+        "smug": "/characters/port-solaris/pippa_reyes.png",
+        "surprised": "/characters/port-solaris/pippa_reyes.png",
+        "combat_ready": "/characters/port-solaris/pippa_reyes.png",
+        "dangerous": "/characters/port-solaris/pippa_reyes.png",
+        "hurt": "/characters/port-solaris/pippa_reyes.png"
+      }
+    },
+    {
+      "id": "comp_kaede",
+      "name": "Kaede Tachibana",
+      "title": "The Stoic Kendo & Surf Rival • Breakers Union",
+      "role": "Head Bouncer & Dojo Champion (Physical Tempo)",
+      "gender": "female",
+      "color": "emerald",
+      "personality": "Tall, disciplined captain of the Solaris Martial Arts & Surf Club who speaks like a formal samurai film protagonist. Imposing and unbeatable in physical Article 9 showdowns, yet hopelessly weak to cute stray kittens, plushies, and your warm steamed pork buns—and completely unequipped for modern romantic flirting.",
+      "values": [
+        "Bushido & Coastal Honor",
+        "Morning Kata Discipline",
+        "Secretly Feeding Stray Kittens",
+        "Warm Steamed Pork Buns"
+      ],
+      "dislikes": [
+        "Dishonorable Rowdies",
+        "Complex Modern Slang",
+        "Surprise Romantic Compliments",
+        "Wasting Food"
+      ],
+      "highCompatibility": [
+        "Honorable Duelists",
+        "Gentle Caretakers",
+        "Animal Lovers",
+        "Sincere Romantics"
+      ],
+      "baseAffection": 22,
+      "affection": 22,
+      "expressionKey": "combat_ready",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 802106,
+      "baseImageUrl": "/characters/port-solaris/kaede_tachibana.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Tall toned athletic swordswoman with long glossy ink-black hair tied in a high ponytail, calm golden-amber eyes, stoic dignified expression with a subtle earnest blush, wearing a sleeveless dark indigo kendo keikogi training top over a fitted athletic rashguard, resting a bamboo shinai sword over her shoulder while holding a small paper bag of warm steamed buns. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/kaede_tachibana.png",
+        "intrigued": "/characters/port-solaris/kaede_tachibana.png",
+        "flustered": "/characters/port-solaris/kaede_tachibana.png",
+        "smug": "/characters/port-solaris/kaede_tachibana.png",
+        "surprised": "/characters/port-solaris/kaede_tachibana.png",
+        "combat_ready": "/characters/port-solaris/kaede_tachibana.png",
+        "dangerous": "/characters/port-solaris/kaede_tachibana.png",
+        "hurt": "/characters/port-solaris/kaede_tachibana.png"
+      }
+    },
+    {
+      "id": "comp_roxy",
+      "name": "Roxy Vance",
+      "title": "The Teasing Paparazzi Editor • Driftwood Syndicate",
+      "role": "PR Director & Rumor Broker (Social Panache)",
+      "gender": "female",
+      "color": "rose",
+      "personality": "Mischievous, razor-witted Editor-in-Chief of The Solaris Siren who knows every secret on the island. Loves backing you into corners with her camera and teasing questions—until you step inside her personal space or turn the lens back on her, revealing a glass-cannon heart that short-circuits under genuine sincerity.",
+      "values": [
+        "Front-Page Scoops",
+        "Exposing Hypocritical Elites",
+        "Candid 35mm Photography",
+        "Secretly Protecting Her Friends"
+      ],
+      "dislikes": [
+        "Platinum Board Cover-Ups",
+        "Boring PR Statements",
+        "Being On the Receiving End of Flirting",
+        "Fake Smiles"
+      ],
+      "highCompatibility": [
+        "Audacious Flirts",
+        "Sharp Wits",
+        "Underworld Fixers",
+        "Observant Romantics"
+      ],
+      "baseAffection": 24,
+      "affection": 24,
+      "expressionKey": "smug",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 802107,
+      "baseImageUrl": "/characters/port-solaris/roxy_vance.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Stylish flirty upperclassman girl with tousled shoulder-length auburn-pink hair, bright amber eyes, playful mischievous wink, aviator sunglasses propped on her forehead, wearing an off-shoulder cropped denim jacket over a graphic tank top and a Driftwood Syndicate press pass lanyard, holding a vintage SLR camera up near her chin. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/roxy_vance.png",
+        "intrigued": "/characters/port-solaris/roxy_vance.png",
+        "flustered": "/characters/port-solaris/roxy_vance.png",
+        "smug": "/characters/port-solaris/roxy_vance.png",
+        "surprised": "/characters/port-solaris/roxy_vance.png",
+        "combat_ready": "/characters/port-solaris/roxy_vance.png",
+        "dangerous": "/characters/port-solaris/roxy_vance.png",
+        "hurt": "/characters/port-solaris/roxy_vance.png"
+      }
+    },
+    {
+      "id": "comp_chloe",
+      "name": "Chloe Lin",
+      "title": "The Sleepy Arcade & Tax Savant • Driftwood Syndicate",
+      "role": "Night-Shift Manager & Forensic Accountant (Hybrid Flair)",
+      "gender": "female",
+      "color": "sky",
+      "personality": "Petite, deadpan night-owl prodigy known across the Old Pier Arcade as undefeated reigning champion 'Zero.' Speaks in dry gaming metaphors, shreds Platinum Board foreclosure contracts in her sleep, and shamelessly demands piggyback rides, iced espresso, and warm breakfasts in exchange for optimizing The Stray Anchor's finances.",
+      "values": [
+        "Frame-Perfect Execution",
+        "Uninterrupted Daytime Naps",
+        "Forensic Tax Loopholes",
+        "Piggyback Rides & Warm Pancakes"
+      ],
+      "dislikes": [
+        "Direct Morning Sunlight",
+        "Sloppy Bookkeeping",
+        "Lag & Rigged Odds",
+        "Walking Upstairs by Herself"
+      ],
+      "highCompatibility": [
+        "Cozy Caretakers",
+        "Clever Tacticians",
+        "Night Owls",
+        "Arcade Challengers"
+      ],
+      "baseAffection": 28,
+      "affection": 28,
+      "expressionKey": "intrigued",
+      "isPresent": false,
+      "encountered": false,
+      "seed": 802108,
+      "baseImageUrl": "/characters/port-solaris/chloe_lin.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Petite sleepy night-owl girl with long messy dark-blue and black hair with neon-cyan inner streaks, half-lidded lavender eyes, deadpan cozy expression, wearing an oversized pastel arcade hoodie slipping off one shoulder and big headphones around her neck, holding an iced espresso cup with one hand and a custom retro arcade fight-stick under her other arm. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/chloe_lin.png",
+        "intrigued": "/characters/port-solaris/chloe_lin.png",
+        "flustered": "/characters/port-solaris/chloe_lin.png",
+        "smug": "/characters/port-solaris/chloe_lin.png",
+        "surprised": "/characters/port-solaris/chloe_lin.png",
+        "combat_ready": "/characters/port-solaris/chloe_lin.png",
+        "dangerous": "/characters/port-solaris/chloe_lin.png",
+        "hurt": "/characters/port-solaris/chloe_lin.png"
+      }
+    },
+    {
+      "id": "comp_nadia",
+      "name": "Nadia Saint-Clair",
+      "title": "The Velvet Appraiser • Platinum Board",
+      "role": "Sommelier & Heritage Curator (Social Panache)",
+      "gender": "female",
+      "color": "amber",
+      "personality": "Cool, razor-sharp Senior Heritage & Vintage Appraiser for the Platinum Cliffs Trust whose monotone 'Derivative. Two out of ten.' is feared by every five-star chef on the island. Secretly suffocated by high-society galas, she rents Room 5 at The Stray Anchor to sketch charcoal portraits on your sea-breeze terrace—and completely loses her icy composure, fogging up her gold-chained spectacles whenever you feed her unpretentious midnight comfort food.",
+      "values": [
+        "Authentic Culinary & Architectural Soul",
+        "Unpretentious Late-Night Vintages",
+        "Charcoal Sketching by the Sea",
+        "Quiet Honesty Over High-Society PR"
+      ],
+      "dislikes": [
+        "Soulless Corporate Luxury",
+        "People Peeking at Her Sketchbook",
+        "Overpriced Truffle-Oil Gimmicks",
+        "Having Her Glasses Fog Up in Front of You"
+      ],
+      "highCompatibility": [
+        "Passionate Artisans",
+        "Attentive Listeners",
+        "Bold Chefs",
+        "Smooth Teasers"
+      ],
+      "baseAffection": 18,
+      "affection": 18,
+      "expressionKey": "intrigued",
+      "isPresent": true,
+      "encountered": false,
+      "seed": 802109,
+      "baseImageUrl": "/characters/port-solaris/nadia_saint_clair.png",
+      "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched Mediterranean cliffside wine terrace background with bougainvillea and warm golden bokeh. Striking young woman with deep rich brown skin and short curly snow-white hair with a clean side-undercut fade and soft white ringlets across her forehead, piercing golden-amber eyes behind round gold-rimmed glasses with a delicate gold beaded eyeglass chain draped down her neck, multiple silver ear piercings, glossy black lipstick, sleeveless black mock-neck top, three stacked polished gold arm cuffs on her right upper arm, and an intricate black botanical floral tattoo along her right upper arm and neck. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/nadia_saint_clair.png",
+        "intrigued": "/characters/port-solaris/nadia_saint_clair.png",
+        "flustered": "/characters/port-solaris/nadia_saint_clair.png",
+        "smug": "/characters/port-solaris/nadia_saint_clair.png",
+        "surprised": "/characters/port-solaris/nadia_saint_clair.png",
+        "combat_ready": "/characters/port-solaris/nadia_saint_clair.png",
+        "dangerous": "/characters/port-solaris/nadia_saint_clair.png",
+        "hurt": "/characters/port-solaris/nadia_saint_clair.png"
+      }
+    },
+    {
+      "id": "comp_zuri",
+      "name": "Zuri Delacroix",
+      "title": "The Matcha Alchemist • Boardwalk Guild",
+      "role": "Botanical Patissier & Gelato Specialist (Hybrid Flair)",
+      "gender": "female",
+      "color": "emerald",
+      "personality": "Charismatic, slow-smiling botanical gelato and ceremonial matcha prodigy from Sunset Rambla who moves her herbal dessert lab into Room 6 of The Stray Anchor. She loves leaning across the counter with half-lidded chartreuse eyes to tease you with 'heart-rate-spiking pistachio-matcha parfaits'—yet she has zero defense against direct earnest affection, squeaking and pulling her thick green twin braids over her face like a curtain whenever you flirt back.",
+      "values": [
+        "Artisanal Gelato & Ceremonial Matcha",
+        "Playful Kitchen Chemistry",
+        "Rooftop Herb Gardens",
+        "Late-Night Tasting Sessions"
+      ],
+      "dislikes": [
+        "Artificial Flavor Syrups",
+        "Being Counter-Teased When Her Guard Is Down",
+        "Rushed Espresso Pulls",
+        "Corporate Franchise Copycats"
+      ],
+      "highCompatibility": [
+        "Creative Chefs",
+        "Bold Flirts",
+        "Sensory Perfectionists",
+        "Warm Caretakers"
+      ],
+      "baseAffection": 24,
+      "affection": 24,
+      "expressionKey": "smug",
+      "isPresent": true,
+      "encountered": false,
+      "seed": 802110,
+      "baseImageUrl": "/characters/port-solaris/zuri_delacroix.png",
+      "visualPrompt": "Waist-up character portrait, eye-level camera, sunlit Mediterranean Sunset Rambla botanical café terrace background with hanging greenery and bokeh fairy lights. Charismatic young woman with warm golden-brown bronze skin and vibrant matcha-sage green hair styled in two playful high space-buns with thick, long twin braids framing her shoulders and two smaller braided locks framing her face. Half-lidded teasing chartreuse-emerald green eyes with four small symmetrical beauty-mark stud dots around her eyes, glossy sage-green tinted lips in a playful cat-like smile, hanging iridescent prism-drop earrings, wearing an indigo-violet vest over a crisp white high-collar sleeveless top. Vibrant modern anime visual novel key art.",
+      "expressions": {
+        "neutral": "/characters/port-solaris/zuri_delacroix.png",
+        "intrigued": "/characters/port-solaris/zuri_delacroix.png",
+        "flustered": "/characters/port-solaris/zuri_delacroix.png",
+        "smug": "/characters/port-solaris/zuri_delacroix.png",
+        "surprised": "/characters/port-solaris/zuri_delacroix.png",
+        "combat_ready": "/characters/port-solaris/zuri_delacroix.png",
+        "dangerous": "/characters/port-solaris/zuri_delacroix.png",
+        "hurt": "/characters/port-solaris/zuri_delacroix.png"
+      }
+    }
+  ],
+  "flowchartTree": [
+    {
+      "id": "node_solaris_audit",
+      "nodeKey": "prologue_solaris_grand_audit",
+      "title": "0★ Probation: The Stray Anchor Lease Audit",
+      "speaker": "Seraphina Vane",
+      "location": "Driftwood Cove (The Stray Anchor)",
+      "summary": "Day 1 convocation on the deck of The Stray Anchor as Seraphina serves the 30-day audit notice while Mia, Colette, Pippa, Kaede, and Roxy converge.",
+      "connectedTo": [
+        "node_driftwood_cove",
+        "node_sunset_rambla",
+        "node_breakers_boardwalk",
+        "node_campus_terrace"
+      ]
+    },
+    {
+      "id": "node_driftwood_cove",
+      "nodeKey": "prologue_seraphina",
+      "title": "1★ Boardwalk Newcomer: Driftwood Cove & Room 201",
+      "speaker": "Seraphina Vane",
+      "location": "Driftwood Cove (The Stray Anchor)",
+      "summary": "Winning Seraphina Vane's midnight comfort-food wager and recruiting your first live-in boarding house tenant.",
+      "connectedTo": [
+        "node_sunset_rambla",
+        "node_rooftop_heart_to_heart"
+      ]
+    },
+    {
+      "id": "node_sunset_rambla",
+      "nodeKey": "prologue_mia",
+      "title": "2★ Local Favorite: Sunset Rambla Culinary & Mixology",
+      "speaker": "Mia Bellini",
+      "location": "The Sunset Rambla",
+      "summary": "Teaming up with childhood friend Mia Bellini and master mixologist Colette Moreau to conquer Bistro Row.",
+      "connectedTo": [
+        "node_breakers_boardwalk",
+        "node_rooftop_heart_to_heart"
+      ]
+    },
+    {
+      "id": "node_breakers_boardwalk",
+      "nodeKey": "prologue_pippa",
+      "title": "2★ South Shore Hype: Volleyball Courts & Dojo Pier",
+      "speaker": "Pippa Reyes",
+      "location": "The Breakers Boardwalk & South Beach",
+      "summary": "Rallying with beach prodigy Pippa Reyes and crossing bamboo shinai with Kaede Tachibana on the Dojo Pier.",
+      "connectedTo": [
+        "node_campus_terrace",
+        "node_rooftop_heart_to_heart"
+      ]
+    },
+    {
+      "id": "node_campus_terrace",
+      "nodeKey": "prologue_roxy",
+      "title": "3★ Island Hotspot: Campus Headlines & Arcade Ledgers",
+      "speaker": "Roxy Vance",
+      "location": "The Campus Terrace (Solaris University)",
+      "summary": "Turning Roxy Vance's front-page scoops and Chloe 'Zero' Lin's forensic tax loopholes against the foreclosure conspiracy.",
+      "connectedTo": [
+        "node_rooftop_heart_to_heart",
+        "node_platinum_cliffs"
+      ]
+    },
+    {
+      "id": "node_rooftop_heart_to_heart",
+      "nodeKey": "boarding_house_rooftop",
+      "title": "3★ Boarding House: Thin Walls & The Blush Zone",
+      "speaker": "Colette Moreau",
+      "location": "The Stray Anchor: Upstairs Boarding House & Rooftop Terrace",
+      "summary": "Late-night domestic collisions in the upstairs hallway and lantern-lit confessions on the rooftop terrace.",
+      "unlockRequirement": {
+        "minAffection": 35,
+        "hintSilhouette": "Locked: Requires Housemate Bond >= 35%"
+      },
+      "connectedTo": [
+        "node_platinum_cliffs",
+        "node_summer_festival_showdown"
+      ]
+    },
+    {
+      "id": "node_platinum_cliffs",
+      "nodeKey": "prologue_vivienne",
+      "title": "4★ Premier Establishment: The Platinum Cliffs Gala",
+      "speaker": "Vivienne Laurent",
+      "location": "The Platinum Cliffs",
+      "summary": "Whisking Vivienne Laurent away from her gilded cage and crashing the Platinum Board's VIP summer regatta.",
+      "unlockRequirement": {
+        "minAffection": 50,
+        "hintSilhouette": "Locked: Requires 4★ Standing & Partner Bond (50%)"
+      },
+      "connectedTo": [
+        "node_summer_festival_showdown"
+      ]
+    },
+    {
+      "id": "node_summer_festival_showdown",
+      "nodeKey": "article_9_grand_showdown",
+      "title": "4★ Article 9 Grand Festival Showdown",
+      "speaker": "Mia Bellini",
+      "location": "The Breakers Boardwalk & South Beach",
+      "summary": "Defending The Stray Anchor's deed in a televised island-wide Article 9 culinary, mixology, and beach showdown.",
+      "unlockRequirement": {
+        "minAffection": 65,
+        "hintSilhouette": "Locked: Requires Main-Cast Resonance (65% Bond)"
+      },
+      "connectedTo": [
+        "node_five_star_sovereign"
+      ]
+    },
+    {
+      "id": "node_five_star_sovereign",
+      "nodeKey": "solaris_five_star_finale",
+      "title": "5★ Island Sovereign: Fireworks Over Driftwood Cove",
+      "speaker": "Seraphina Vane",
+      "location": "Driftwood Cove (The Stray Anchor)",
+      "summary": "Crowning The Stray Anchor as Port Solaris's legendary 5-Star flagship and choosing who shares the rooftop fireworks with you.",
+      "unlockRequirement": {
+        "minAffection": 80,
+        "hintSilhouette": "Locked: Requires 5★ True Route Bond (80%)"
+      },
+      "connectedTo": []
+    }
+  ]
+}
+

@@ -18,6 +18,16 @@ const CANONICAL_COMPANIONS = [
   "Noelle Vesper",
   "Kestrel Hollow",
   "Valeria Noctis",
+  "Seraphina Vane",
+  "Vivienne Laurent",
+  "Mia Bellini",
+  "Colette Moreau",
+  "Pippa Reyes",
+  "Kaede Tachibana",
+  "Roxy Vance",
+  "Chloe Lin",
+  "Nadia Saint-Clair",
+  "Zuri Delacroix",
 ];
 
 const COMPANION_SHADOW_SECRETS: Record<string, string> = {
@@ -37,6 +47,26 @@ const COMPANION_SHADOW_SECRETS: Record<string, string> = {
     "PUBLIC FACE VS. SHADOW AGENDA: Publicly a lazy, silver-tongued gambler and pit brawler in The Velvet Spill. SECRET: She is a collar-bound Whispering Veil enforcer under handler Silas Krowe (#19), with a lethal slave-contract brand over her left ribs that burns her alive if she defies orders to surveil or betray the protagonist.",
   "Valeria Noctis":
     "PUBLIC FACE VS. SHADOW AGENDA: Publicly a teasing third-year senior who intentionally fails her final ethics exam every spring out of hedonism. SECRET: Three years ago, her original Dyad squad was executed in Stratum IV by Prefect Aldric Drakon (#1) on faculty orders; she stays at the Academy as a spider in the web to execute the culprits in 'accidental' Midnight Tribunals.",
+  "Seraphina Vane":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly the haughty Junior Chair of the Star Audit Committee sent to foreclose on The Stray Anchor. SECRET: Her father cut off her Platinum black cards until she learns 'real-world management,' forcing her to live in Room 201 and secretly crave your midnight comfort food while claiming she is only inspecting sanitation.",
+  "Vivienne Laurent":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly the untouchable 'Ice Queen' heiress of the Laurent Shipping Dynasty. SECRET: She is an endearingly sheltered ditz about everyday life who sneaks away from her bodyguards to eat street-market cotton candy, play claw machines, and fold warm laundry at The Stray Anchor.",
+  "Mia Bellini":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly your fierce next-door culinary competitor at Bellini Artisan Patisserie. SECRET: Your childhood friend who kept the spare key to The Stray Anchor on a ribbon around her neck for three years and gets hilariously jealous whenever Platinum Cliffs heiresses sit at your counter.",
+  "Colette Moreau":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly a sultry, unflappable master mixologist who teases you relentlessly behind the bar. SECRET: She secretly writes starry-eyed, hopeless romance novels under a pen name and turns bright red whenever you accidentally recreate one of her cliché romantic tropes.",
+  "Pippa Reyes":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly South Beach's fearless, trash-talking beach volleyball prodigy. SECRET: She is terrified of thunderstorms and ghost stories, and her heart rate skyrockets into the Blush Zone whenever you treat her like a desirable woman instead of a kid sister.",
+  "Kaede Tachibana":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly the stoic, bushido-driven captain of the Solaris Martial Arts & Surf Club. SECRET: She has a hopeless weakness for cute stray kittens, arcade plushies, and warm steamed pork buns, and completely short-circuits at the slightest hand-holding or romantic compliment.",
+  "Roxy Vance":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly the shameless, flirty paparazzi Editor-in-Chief of The Solaris Siren. SECRET: She is a total glass cannon—the moment you step inside her personal space or turn the camera lens on her with genuine sincerity, she hides behind her SLR camera in a flustered panic.",
+  "Chloe Lin":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly the undefeated nocturnal arcade legend 'Zero' and Driftwood Syndicate forensic accountant. SECRET: She uses 'low battery' as an excuse to demand piggyback rides and headpats from you, and keeps a hidden folder of cozy domestic sketches of everyone at The Stray Anchor.",
+  "Nadia Saint-Clair":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly the icy, ruthless Senior Heritage & Vintage Appraiser for the Platinum Cliffs Trust whose monotone 'Derivative. Two out of ten.' can ruin a five-star lounge. SECRET: She rents Room 205 at The Stray Anchor to escape suffocating high-society galas, fills her leather sketchbook with romantic charcoal drawings of you cooking under the terrace lights, and gets so flustered when you feed her straight from the pan that her gold-chained spectacles completely fog up.",
+  "Zuri Delacroix":
+    "PUBLIC PERSONA VS. ROM-COM WEAKNESS: Publicly Sunset Rambla's charismatic, slow-smiling botanical gelato and ceremonial matcha alchemist who loves leaning over the counter to tease you with 'pulse-spiking' tastings. SECRET: Despite her playful swagger in Room 206, she has zero defense against direct, earnest physical affection—wiping cream from her lip or holding her gaze makes her squeak and pull her thick green twin braids over her blushing face like a curtain.",
 };
 
 /**

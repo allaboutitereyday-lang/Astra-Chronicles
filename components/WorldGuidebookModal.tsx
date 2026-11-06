@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useMemo } from "react";
 import {
@@ -27,6 +26,11 @@ import {
   SOVEREIGN_CONDUIT_PRESETS,
   SOVEREIGN_HEROINE_DOSSIERS,
 } from "@/types/sovereign_spire";
+import {
+  PORT_SOLARIS_ORIGIN_PRESETS,
+  PORT_SOLARIS_CONDUIT_PRESETS,
+  PORT_SOLARIS_HEROINE_DOSSIERS,
+} from "@/types/port_solaris";
 import { sanitizeImageUrl, DEFAULT_AVATAR, DEFAULT_BG } from "@/lib/imageUtils";
 import { soundEffects } from "@/lib/audioEngine";
 
@@ -221,12 +225,110 @@ const SOVEREIGN_ANTAGONISTS = [
       "Ysolde Kaelen's cold-blooded academic rival who seeks to expose her crystal calcification so he can claim her research and her seat in the Sovereign Circle.",
   },
   {
-    name: "Aldric Drakon (Rank #1)",
+    term: "Aldric Drakon (Rank #1)",
     role: "The First Sword",
     faction: "The Iron Chancellery",
     threat: "Sovereign #1",
     description:
       "Unbeaten 3rd-year commander of the Student Sovereign Council, Beatrix Valorian's benchmark rival, and the man behind the Third-Stratum betrayal of Valeria Noctis's squad.",
+  },
+];
+
+const PORT_SOLARIS_GLOSSARY: GlossaryEntry[] = [
+  {
+    term: "The Solaris Star Ledger (0★ to 5★)",
+    category: "Politics & Economy",
+    summary:
+      "Governed by Solaris University and the Platinum Hospitality Conglomerate, every café, club, and boardwalk establishment is ranked from 0 to 5 Stars, dictating beachfront access, festival budgets, and island prestige.",
+  },
+  {
+    term: "The 30-Day Eviction Rule & The Stray Anchor",
+    category: "Politics & Economy",
+    summary:
+      "Establishments sitting at 0 Stars at the end of the 30-day seasonal audit have their leases revoked and are bulldozed for the Vane-Valorian Luxury Resort Expansion. You inherited the deed and debt to The Stray Anchor in Driftwood Cove.",
+  },
+  {
+    term: "The Boarding House Proximity Engine",
+    category: "World & Lore",
+    summary:
+      "To pay the bills and staff the café, you rent The Stray Anchor's six upstairs bedrooms to disgraced heiresses, rival bakers, beach athletes, and nocturnal arcade savants—creating thin walls, shared-bath collisions, and rooftop confessions.",
+  },
+  {
+    term: "Island Charter Article 9 (Turf Showdowns)",
+    category: "Magic & Combat",
+    summary:
+      "Lawsuits and violent sabotage are banned on Port Solaris; all lease disputes, supplier monopolies, and romantic rivalries are settled via sanctioned public Turf Showdowns (gourmet cook-offs, mixology rushes, beach volleyball, kendo).",
+  },
+  {
+    term: "Physical Tempo (Path A) & Hype (0–100)",
+    category: "Magic & Combat",
+    summary:
+      "Action-driven showdown style covering high-heat culinary prep, mixology flair, volleyball spikes, and kendo. Builds Hype (0 → 100); at 80+ Hype you can unleash a Crowd-Pleaser Finisher that wins over the spectators.",
+  },
+  {
+    term: "Social Panache (Path B) & Cool (100%–0%)",
+    category: "Magic & Combat",
+    summary:
+      "Wit-driven showdown style covering legal negotiation, VIP hosting, sommelier banter, and paparazzi counter-spins. Spends Cool (100% → 0%) to execute Table-Turn Counters and Audacious Gambits.",
+  },
+  {
+    term: "Composure / Heart-Rate Gauge (0%–100% BPM)",
+    category: "System Mechanics",
+    summary:
+      "Tracks how flustered you or your rival are. 0–49% BPM is Composed; 50–85% BPM enters 'The Blush Zone' (-25% Social Defense, flustered portraits, and unlocked bold romantic choices); 100% BPM triggers a Short-Circuit / Flustered Break.",
+  },
+  {
+    term: "Keepsake Slots & 'Caught Red-Handed' Tag-Flaws",
+    category: "System Mechanics",
+    summary:
+      "Equip 5 lifestyle slots (Timepiece, Attire, Tool of the Trade, Pocket Charm, House Emblem). Personal Keepsakes gifted by a heroine grant big bonuses with her, but carry +40% BPM jealousy risk if worn on a date with a rival heroine.",
+  },
+  {
+    term: "Heart-to-Heart Moments (Cooldown Recovery)",
+    category: "System Mechanics",
+    summary:
+      "To lower your BPM from 100% Short-Circuit, step away to the Rooftop Terrace or Sunset Pier with your partner for a quiet one-on-one scene (sharing a drink, wiping flour off her cheek, or bandaging a scraped knee).",
+  },
+  {
+    term: "Solar Crowns & Weekly Rent Ledger",
+    category: "Politics & Economy",
+    summary:
+      "Island currency earned from café shifts, boarding-house rent, and Article 9 Showdown pots. Used to upgrade The Stray Anchor's kitchen, patio, and upstairs bedrooms.",
+  },
+];
+
+const PORT_SOLARIS_ANTAGONISTS = [
+  {
+    name: "Chairman Alistair Vane",
+    role: "Patriarch of the Vane Resort Conglomerate",
+    faction: "The Platinum Board",
+    threat: "5★ Conglomerate Titan",
+    description:
+      "Seraphina's stern billionaire father who froze her black cards and wants to bulldoze Driftwood Cove for a private superyacht marina unless The Stray Anchor proves its worth.",
+  },
+  {
+    name: "Julian Sterling",
+    role: "Yacht Club Commodore & Exclusivity Broker",
+    faction: "The Platinum Board",
+    threat: "Act I Audit Rival",
+    description:
+      "A smug upperclassman resort heir who tries to buy up Sunset Rambla ingredient suppliers and rig the seasonal Star Audit against 0-Star independents.",
+  },
+  {
+    name: "Chef Marcello Vance-Moretti",
+    role: "Executive Celebrity Chef of Le Soleil d'Or",
+    faction: "The Boardwalk Guild",
+    threat: "4★ Culinary Gatekeeper",
+    description:
+      "Colette's former tyrannical boss on the Platinum Cliffs who challenges The Stray Anchor and Mia's patisserie to televised Article 9 cook-offs.",
+  },
+  {
+    name: "Captain Zane 'Riptide' Kurosawa",
+    role: "Varsity Surf & Volleyball Reigning MVP",
+    faction: "The Breakers Union",
+    threat: "South Beach Turf Boss",
+    description:
+      "Pippa and Kaede's boastful beach-court rival who hogs the prime boardwalk festival booths until challenged under Article 9.",
   },
 ];
 
@@ -243,9 +345,14 @@ export function WorldGuidebookModal({
   const [selectedWingFilter, setSelectedWingFilter] = useState<string>("ALL");
 
   const isSovereignSpire = story.id === "sovereign-spire";
+  const isPortSolaris = story.id === "port-solaris";
 
   const glossaryItems = useMemo(() => {
-    const base = isSovereignSpire ? SOVEREIGN_SPIRE_GLOSSARY : ASTRA_CONTINENT_GLOSSARY;
+    const base = isSovereignSpire
+      ? SOVEREIGN_SPIRE_GLOSSARY
+      : isPortSolaris
+      ? PORT_SOLARIS_GLOSSARY
+      : ASTRA_CONTINENT_GLOSSARY;
     if (!searchQuery.trim()) return base;
     const q = searchQuery.toLowerCase();
     return base.filter(
@@ -254,12 +361,13 @@ export function WorldGuidebookModal({
         item.category.toLowerCase().includes(q) ||
         item.summary.toLowerCase().includes(q)
     );
-  }, [isSovereignSpire, searchQuery]);
+  }, [isSovereignSpire, isPortSolaris, searchQuery]);
 
   const filteredCompanions = useMemo(() => {
     const list = story.companions || [];
     return list.filter((comp) => {
-      const dossier = SOVEREIGN_HEROINE_DOSSIERS[comp.name];
+      const dossier =
+        SOVEREIGN_HEROINE_DOSSIERS[comp.name] || PORT_SOLARIS_HEROINE_DOSSIERS[comp.name];
       if (selectedWingFilter !== "ALL") {
         if (dossier && dossier.wing !== selectedWingFilter) return false;
       }
@@ -294,13 +402,17 @@ export function WorldGuidebookModal({
   const wingBadgeColor = (wing?: string) => {
     switch (wing) {
       case "IRON_CHANCELLERY":
+      case "BOARDWALK_GUILD":
         return "bg-rose-500/15 border-rose-500/40 text-rose-300";
       case "OBSIDIAN_CHOIR":
+      case "DRIFTWOOD_SYNDICATE":
         return "bg-purple-500/15 border-purple-500/40 text-purple-300";
       case "GILDED_LOOM":
+      case "PLATINUM_BOARD":
         return "bg-amber-500/15 border-amber-500/40 text-amber-300";
       case "WHISPERING_VEIL":
-        return "bg-indigo-500/15 border-indigo-500/40 text-indigo-300";
+      case "BREAKERS_UNION":
+        return "bg-sky-500/15 border-sky-500/40 text-sky-300";
       default:
         return "bg-white/10 border-white/20 text-zinc-300";
     }
@@ -316,6 +428,14 @@ export function WorldGuidebookModal({
         return "Gilded Loom";
       case "WHISPERING_VEIL":
         return "Whispering Veil";
+      case "PLATINUM_BOARD":
+        return "Platinum Board";
+      case "BOARDWALK_GUILD":
+        return "Boardwalk Guild";
+      case "BREAKERS_UNION":
+        return "Breakers Union";
+      case "DRIFTWOOD_SYNDICATE":
+        return "Driftwood Syndicate";
       default:
         return wing || "Independent";
     }
@@ -323,15 +443,17 @@ export function WorldGuidebookModal({
 
   return (
     <div
-      className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-xl flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[90] bg-black/85 backdrop-blur-xl flex items-center max-sm:items-end justify-center p-2 max-sm:p-0 sm:p-4 md:p-6 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-6xl max-h-[92dvh] bg-zinc-950 border border-white/15 rounded-3xl shadow-[0_0_70px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden text-zinc-100"
+        className="relative w-full max-w-6xl max-h-[92dvh] max-sm:h-[92dvh] bg-zinc-950 border border-white/15 rounded-3xl max-sm:rounded-b-none max-sm:rounded-t-3xl shadow-[0_0_70px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden text-zinc-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Banner with Cover Image Backdrop */}
-        <div className="relative px-5 sm:px-7 pt-5 pb-4 border-b border-white/10 overflow-hidden shrink-0">
+        <div className="relative px-4 sm:px-7 pt-3 sm:pt-5 pb-3.5 sm:pb-4 border-b border-white/10 overflow-hidden shrink-0">
+          {/* Mobile Drag Handle */}
+          <div className="sm:hidden w-12 h-1.5 rounded-full bg-white/20 mx-auto mb-2.5" />
           <div
             className="absolute inset-0 bg-cover bg-center opacity-25 brightness-50 pointer-events-none"
             style={{
@@ -340,8 +462,8 @@ export function WorldGuidebookModal({
           />
           <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/90 to-zinc-950/75 pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col gap-4">
-            <div className="flex items-start justify-between gap-4">
+          <div className="relative z-10 flex flex-col gap-3 sm:gap-4">
+            <div className="flex items-start justify-between gap-3 sm:gap-4">
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold uppercase tracking-wider">
@@ -352,10 +474,10 @@ export function WorldGuidebookModal({
                     {story.genre}
                   </span>
                 </div>
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-black font-mono tracking-tight text-white">
+                <h2 className="text-lg sm:text-2xl md:text-3xl font-black font-mono tracking-tight text-white">
                   {story.title}
                 </h2>
-                <p className="text-xs text-zinc-300 max-w-3xl leading-relaxed">
+                <p className="text-xs text-zinc-300 max-w-3xl leading-relaxed line-clamp-2 sm:line-clamp-none">
                   {story.tagline || story.description}
                 </p>
               </div>
@@ -417,6 +539,8 @@ export function WorldGuidebookModal({
                     icon: Scale,
                     count: isSovereignSpire
                       ? SOVEREIGN_SPIRE_GLOSSARY.length
+                      : isPortSolaris
+                      ? PORT_SOLARIS_GLOSSARY.length
                       : ASTRA_CONTINENT_GLOSSARY.length,
                   },
                 ].map((tab) => {
@@ -600,6 +724,111 @@ export function WorldGuidebookModal({
                         </div>
                       </div>
                     </div>
+                  ) : isPortSolaris ? (
+                    <div className="space-y-4">
+                      <p className="text-xs sm:text-sm text-zinc-200 leading-relaxed">
+                        Welcome to <strong className="text-amber-300">Port Solaris</strong>, a sun-drenched Mediterranean-style university resort island where social influence, beach culture, and booming small businesses dictate who runs the boardwalk. After inheriting the deed—and massive debt—to{" "}
+                        <strong className="text-white">The Stray Anchor</strong>, a 0-Star beachfront café and six-room boarding house in{" "}
+                        <span className="font-mono text-sky-300">Driftwood Cove</span>, you have{" "}
+                        <span className="font-mono text-rose-300">30 days</span> to climb the{" "}
+                        <span className="font-mono text-amber-300">Solaris Star Ledger (0★ → 5★)</span> or watch the Vane-Valorian Luxury Resort Expansion bulldoze your home.
+                      </p>
+
+                      {/* 2x2 Grid for the Four Foundational Truths of Port Solaris */}
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 block">
+                          The Four Foundational Truths of Port Solaris
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          {[
+                            {
+                              num: "01",
+                              title: "The Solaris Star Ledger (0★ to 5★)",
+                              badge: "Island Prestige",
+                              color: "border-amber-500/30 bg-amber-950/20 text-amber-300",
+                              desc: "Governed by Solaris University and the Platinum Hospitality Conglomerate, every café, club, and student crew is ranked 0 to 5 Stars, dictating beachfront access and festival budgets.",
+                            },
+                            {
+                              num: "02",
+                              title: "The 30-Day Eviction Rule",
+                              badge: "Lease Countdown",
+                              color: "border-rose-500/30 bg-rose-950/20 text-rose-300",
+                              desc: "Establishments sitting at 0 Stars at the seasonal audit have their leases revoked and are bulldozed for the Vane-Valorian Luxury Marina Expansion.",
+                            },
+                            {
+                              num: "03",
+                              title: "Boarding House Proximity Engine",
+                              badge: "6 Upstairs Rooms",
+                              color: "border-sky-500/30 bg-sky-950/20 text-sky-300",
+                              desc: "To pay the bills and staff the café, you rent your six upstairs bedrooms to exiled heiresses, rival bakers, and beach athletes—creating nonstop domestic rom-com tension.",
+                            },
+                            {
+                              num: "04",
+                              title: "Island Charter Article 9",
+                              badge: "Turf Showdowns",
+                              color: "border-emerald-500/30 bg-emerald-950/20 text-emerald-300",
+                              desc: "Lawsuits and sabotage are banned. All lease disputes, supply monopolies, and romantic rivalries are settled in public culinary, mixology, and beach Turf Showdowns.",
+                            },
+                          ].map((truth) => (
+                            <div
+                              key={truth.num}
+                              className="p-3 rounded-xl bg-black/55 border border-white/10 space-y-1.5 flex flex-col justify-between"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="text-xs font-mono font-bold text-white">
+                                    <span className="text-amber-400 mr-1.5">{truth.num}.</span>
+                                    {truth.title}
+                                  </span>
+                                  <span
+                                    className={`text-[9px] font-mono px-1.5 py-0.5 rounded border shrink-0 ${truth.color}`}
+                                  >
+                                    {truth.badge}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                  {truth.desc}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 3-Column Flair Conduit & Composure Strip */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+                        <div className="p-3 rounded-xl bg-amber-950/25 border border-amber-500/30 space-y-1">
+                          <span className="text-[10px] font-mono font-bold uppercase text-amber-300 block">
+                            🍳 Path A: Physical Tempo
+                          </span>
+                          <p className="text-[11px] text-zinc-300 leading-snug">
+                            Brawn, Reflex & Craft. Builds <strong>Hype (0 → 100)</strong> via{" "}
+                            <strong>Flow-State Reflex</strong> to unleash{" "}
+                            <strong>Crowd-Pleaser Finishers</strong> at 80+ Hype.
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-sky-950/25 border border-sky-500/30 space-y-1">
+                          <span className="text-[10px] font-mono font-bold uppercase text-sky-300 block">
+                            🥂 Path B: Social Panache
+                          </span>
+                          <p className="text-[11px] text-zinc-300 leading-snug">
+                            Charm, Wit & Audacity. Spends <strong>Cool (100% → 0%)</strong> to execute{" "}
+                            <strong>Table-Turn Counters</strong> and{" "}
+                            <strong>Audacious Gambits</strong>.
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-rose-950/25 border border-rose-500/30 space-y-1">
+                          <span className="text-[10px] font-mono font-bold uppercase text-rose-300 block">
+                            💓 Composure & Blush Zone (BPM)
+                          </span>
+                          <p className="text-[11px] text-zinc-300 leading-snug">
+                            <strong>0–49%</strong> Composed • <strong>50–85%</strong>{" "}
+                            <em>The Blush Zone</em> (-25% Social Def, bold romance choices) •{" "}
+                            <strong>100%</strong> <em>Short-Circuit</em>.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {(story.worldContext?.loreSummary || story.description || "")
@@ -629,6 +858,12 @@ export function WorldGuidebookModal({
                           "Zero-Sum Matriculation (#500 to #1): Bottom 50 initiates ('The Dross') face biological Reclamation at semester's end.",
                           "Resonance Strain & Calcification: Channeling Astra builds Strain (0–100%). 50–85% triggers The Brink (+30% power); 100% triggers lethal crystal lock.",
                           "Mandatory Dyad Tethers: Under-Vault delves require a synchronized partner for combat passives and skin-to-skin Soul-Grounding.",
+                        ]
+                      : isPortSolaris
+                      ? [
+                          "Solaris Star Ledger (0★ to 5★): Establishments sitting at 0 Stars at the 30-day audit are bulldozed for the Vane-Valorian Marina.",
+                          "Article 9 Turf Showdowns: All lease disputes, supplier feuds, and romantic rivalries are settled in public culinary, mixology, or beach showdowns.",
+                          "Composure & The Blush Zone (BPM): 50–85% BPM triggers flustered expressions and bold romance options; 100% BPM triggers a Short-Circuit break.",
                         ]
                       : [
                           `System Authority: Governed by ${story.rpgRules?.systemName || "The Celestial System"} and ${story.rpgRules?.causalAnchorName || "Causal Plausibility"}.`,
@@ -767,6 +1002,123 @@ export function WorldGuidebookModal({
                 </div>
               )}
 
+              {/* Port Solaris Specific: Star Ledger Tiers & Playable Backgrounds */}
+              {isPortSolaris && (
+                <div className="space-y-4">
+                  <div className="bg-zinc-900/60 border border-amber-500/25 rounded-2xl p-5 space-y-3.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-amber-400" />
+                        The Solaris Star Ledger Hierarchy (0★ Probation → 5★ Island Sovereign)
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Star Rating rises via Café Revenue, Boarding House Upgrades & Article 9 Showdowns
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {[
+                        {
+                          tier: "0★ – 1★ Probation",
+                          ranks: "0★ – 1★ Rating",
+                          badge: "bg-rose-500/20 border-rose-400/50 text-rose-300",
+                          desc: "Eviction danger zone. 30 days to pass Seraphina Vane's provisional audit and recruit live-in staff before the bulldozers arrive.",
+                        },
+                        {
+                          tier: "2★ Local Favorite",
+                          ranks: "2★ Rating",
+                          badge: "bg-sky-500/20 border-sky-400/50 text-sky-300",
+                          desc: "Unlocks Sunset Rambla artisan ingredient suppliers, South Beach promotional booths, and evening cocktail lounge hours.",
+                        },
+                        {
+                          tier: "3★ – 4★ Island Hotspot",
+                          ranks: "3★ – 4★ Rating",
+                          badge: "bg-purple-500/20 border-purple-400/50 text-purple-300",
+                          desc: "Front-page features in The Solaris Siren, Campus Terrace festival sponsorship, and eligibility for Platinum Cliffs VIP galas.",
+                        },
+                        {
+                          tier: "5★ Island Sovereign",
+                          ranks: "5★ Flagship",
+                          badge: "bg-amber-500/20 border-amber-400/50 text-amber-300",
+                          desc: "Permanent deed immunity, supreme island prestige, and the legendary summer festival fireworks confession on your rooftop terrace.",
+                        },
+                      ].map((r) => (
+                        <div
+                          key={r.tier}
+                          className="p-3.5 rounded-xl bg-black/55 border border-white/10 space-y-1.5"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-mono font-bold text-white">
+                              {r.tier}
+                            </span>
+                            <span
+                              className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${r.badge}`}
+                            >
+                              {r.ranks}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400 leading-relaxed">
+                            {r.desc}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Three Playable Port Solaris Backgrounds */}
+                  <div className="space-y-2.5">
+                    <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-400" />
+                      Playable Proprietor Backgrounds (Act I Starting Conditions)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                      {PORT_SOLARIS_ORIGIN_PRESETS.map((origin) => (
+                        <div
+                          key={origin.id}
+                          className="p-4 rounded-2xl bg-zinc-900/75 border border-white/10 flex flex-col justify-between space-y-3"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-xs font-mono font-bold text-white">
+                                {origin.icon} {origin.name}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                              <span className="px-2 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300">
+                                {origin.starTierLabel}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                                Lease Debt: {origin.outstandingDebt} Crowns ({origin.daysUntilAudit}d Audit)
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                {origin.startingSolarCrowns} Crowns
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">
+                              {origin.defaultDetails}
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-white/10 space-y-1">
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-400 block">
+                              Natural Housemate Chemistry
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {origin.highResonanceHeroines.map((h) => (
+                                <span
+                                  key={h}
+                                  className="px-2 py-0.5 rounded-md bg-emerald-950/60 border border-emerald-500/30 text-[10px] font-mono text-emerald-200"
+                                >
+                                  ★ {h}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Factions & Patron Wings */}
               <div className="space-y-3">
                 <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-white flex items-center gap-2">
@@ -809,16 +1161,25 @@ export function WorldGuidebookModal({
              =============================================================== */}
           {activeTab === "characters" && (
             <div className="space-y-6 animate-in fade-in duration-150">
-              {/* Patron Wing Filter Pills for Sovereign Spire */}
-              {isSovereignSpire && (
+              {/* Patron Wing / Island Faction Filter Pills */}
+              {(isSovereignSpire || isPortSolaris) && (
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                  {[
-                    { id: "ALL", label: "All 8 Heroines" },
-                    { id: "IRON_CHANCELLERY", label: "⚔️ Iron Chancellery" },
-                    { id: "OBSIDIAN_CHOIR", label: "🔮 Obsidian Choir" },
-                    { id: "GILDED_LOOM", label: "⚙️ Gilded Loom" },
-                    { id: "WHISPERING_VEIL", label: "🗡️ Whispering Veil" },
-                  ].map((w) => (
+                  {(isPortSolaris
+                    ? [
+                        { id: "ALL", label: "All 10 Heroines" },
+                        { id: "PLATINUM_BOARD", label: "🥂 Platinum Board" },
+                        { id: "BOARDWALK_GUILD", label: "🥐 Boardwalk Guild" },
+                        { id: "BREAKERS_UNION", label: "🏐 Breakers Union" },
+                        { id: "DRIFTWOOD_SYNDICATE", label: "📸 Driftwood Syndicate" },
+                      ]
+                    : [
+                        { id: "ALL", label: "All 8 Heroines" },
+                        { id: "IRON_CHANCELLERY", label: "⚔️ Iron Chancellery" },
+                        { id: "OBSIDIAN_CHOIR", label: "🔮 Obsidian Choir" },
+                        { id: "GILDED_LOOM", label: "⚙️ Gilded Loom" },
+                        { id: "WHISPERING_VEIL", label: "🗡️ Whispering Veil" },
+                      ]
+                  ).map((w) => (
                     <button
                       key={w.id}
                       type="button"
@@ -841,7 +1202,9 @@ export function WorldGuidebookModal({
               {/* Heroines Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {filteredCompanions.map((comp) => {
-                  const dossier = SOVEREIGN_HEROINE_DOSSIERS[comp.name];
+                  const dossier =
+                    SOVEREIGN_HEROINE_DOSSIERS[comp.name] ||
+                    PORT_SOLARIS_HEROINE_DOSSIERS[comp.name];
                   const portrait = sanitizeImageUrl(
                     comp.baseImageUrl || comp.expressions?.neutral,
                     DEFAULT_AVATAR
@@ -944,21 +1307,25 @@ export function WorldGuidebookModal({
                 })}
               </div>
 
-              {/* Sovereign Spire Faculty & Act I Rivals Dossier */}
-              {isSovereignSpire && (
+              {/* Sovereign Spire / Port Solaris Rivals Dossier */}
+              {(isSovereignSpire || isPortSolaris) && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
                       <Swords className="w-4 h-4 text-rose-400" />
-                      Directorate Faculty & Act I Upperclassman Rivals
+                      {isPortSolaris
+                        ? "Island Power Brokers & Article 9 Showdown Rivals"
+                        : "Directorate Faculty & Act I Upperclassman Rivals"}
                     </h3>
                     <span className="text-[10px] font-mono text-zinc-400">
-                      Key power brokers, inquisitors, and ranked duelists you will confront in Act I
+                      {isPortSolaris
+                        ? "Conglomerate titans, celebrity chefs, and turf champions standing in your way"
+                        : "Key power brokers, inquisitors, and ranked duelists you will confront in Act I"}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {SOVEREIGN_ANTAGONISTS.map((npc) => (
+                    {(isPortSolaris ? PORT_SOLARIS_ANTAGONISTS : SOVEREIGN_ANTAGONISTS).map((npc) => (
                       <div
                         key={npc.name}
                         className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2 flex flex-col justify-between"
@@ -1161,15 +1528,17 @@ export function WorldGuidebookModal({
                 </div>
               </div>
 
-              {/* Sovereign Spire Playable Conduit Pathways */}
-              {isSovereignSpire && (
+              {/* Sovereign Spire / Port Solaris Playable Conduit Pathways */}
+              {(isSovereignSpire || isPortSolaris) && (
                 <div className="space-y-3">
                   <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-2">
                     <Flame className="w-4 h-4 text-cyan-400" />
-                    Playable Astra Conduits, Techniques & Relic Loadouts
+                    {isPortSolaris
+                      ? "Playable Flair Conduits, Showdown Styles & Keepsake Loadouts"
+                      : "Playable Astra Conduits, Techniques & Relic Loadouts"}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {SOVEREIGN_CONDUIT_PRESETS.map((preset) => (
+                    {(isPortSolaris ? PORT_SOLARIS_CONDUIT_PRESETS : SOVEREIGN_CONDUIT_PRESETS).map((preset) => (
                       <div
                         key={preset.id}
                         className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-2.5"
@@ -1188,10 +1557,10 @@ export function WorldGuidebookModal({
                         </p>
                         <div className="p-2.5 rounded-xl bg-black/50 border border-white/5 text-[11px] space-y-1">
                           <span className="text-[10px] font-mono text-amber-300 font-bold block">
-                            Signature Relic: {preset.canonLoadout.relic} ({preset.canonLoadout.relicSlot})
+                            Signature Item: {preset.canonLoadout.relic} ({"keepsakeSlot" in preset.canonLoadout ? preset.canonLoadout.keepsakeSlot : preset.canonLoadout.relicSlot})
                           </span>
                           <p className="text-[10px] text-rose-200/90 font-mono">
-                            {preset.canonLoadout.whisperFlaw}
+                            {"jealousyQuirk" in preset.canonLoadout ? preset.canonLoadout.jealousyQuirk : preset.canonLoadout.whisperFlaw}
                           </p>
                         </div>
                       </div>

@@ -4,7 +4,7 @@
  * across character creation, prologue generation, dynamic choices, and interactive turns.
  */
 
-export type NarrationStyleKey = "grimdark" | "light_novel" | "noir" | "custom";
+export type NarrationStyleKey = "grimdark" | "light_novel" | "noir" | "coastal_romcom" | "custom";
 
 export type NarrativeDepthMode = "standard" | "expansive" | "deep_novelistic";
 
@@ -73,6 +73,22 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
     ],
     proseExample: `The downpour in Sector Four never washed away a man's sins; it only melted the cheap alchemical glamours off the tenement gargoyles and turned the gutter runoff the color of bruised plums. Morgana leaned one shoulder against the damp brickwork beneath a flickering violet ward-sign, the ember of her clove cigarette flaring bright before she exhaled a slow ribbon of smoke into the cold drizzle.\n\n"You walk awfully loud for someone carrying an unsealed syndicate cipher in their coat pocket," she drawled, her voice a low, smoky alto that barely carried over the hiss of the steam grates. Her dark eyes slid from your rain-soaked boots up to your collar, reading the tension in your jaw with the practiced detachment of a card sharp spotting a tell. "In this district, curiosity usually comes with a coroner's stamp and an unmarked stone by the canal."\n\nShe flicked the spent ash into a puddle where it died with a sharp hiss, then unlatched the iron speakeasy door half an inch, letting the warm scent of ozone and aged rye spill into the alley. "Still, I suppose I've backed worse odds on a Tuesday night. Step inside out of the street-glow and tell me what you're really buying—before the hounds on the roof decide to close your tab for good."`,
   },
+  coastal_romcom: {
+    id: "coastal_romcom",
+    label: "Sun-Drenched Coastal Rom-Com (Sparkling banter, sensory warmth, romantic tension)",
+    badgeLabel: "Coastal Rom-Com & Flair",
+    shortDescription: "Sunlit Mediterranean slice-of-life, witty rom-com banter, culinary flair & heart-fluttering proximity",
+    corePhilosophy: "Vibrant, sun-drenched coastal slice-of-life romantic comedy meets high-flair culinary and social showdowns. The world is warm, glamorous, and brimming with electric interpersonal chemistry, boarding-house hijinks, and heartfelt vulnerability beneath proud facades.",
+    sensoryTextures: "Luminous Mediterranean coastal sensations: golden-hour sunlight sparkling off turquoise harbor water, the rich aroma of freshly pulled espresso and sizzling garlic butter, sea-salt breezes rustling bougainvillea vines, chilled crystal cocktail glasses clinking under warm patio string lights, sudden close-proximity warmth and fluttering heartbeats.",
+    dialogueCadence: "Sparkling, fast-paced romantic comedy banter with vivid emotional contrast: haughty heiresses cracking into flustered denials when fed midnight comfort food, teasing bartenders and patissiers losing their cool when counter-flirted, protective childhood friends pouting over shared aprons, and intimate late-night rooftop confessions.",
+    combatAndAction: "High-flair, non-lethal Article 9 Turf Showdowns: dazzling culinary plating rushes, acrobatic beach volleyball spikes, bamboo shinai parries on the pier, and razor-sharp sommelier or audit table-turns that shatter opponent composure and send the crowd wild.",
+    negativeConstraints: [
+      "NEVER introduce grimdark gore, lethal violence, rotting corpses, or nihilistic despair.",
+      "NEVER flatten the heroines' distinct rom-com contrast between their composed public personas and their flustered Blush Zone reactions.",
+      "Keep all conflicts grounded in high-stakes coastal hospitality, social status wagers, culinary pride, and romantic tension.",
+    ],
+    proseExample: `Golden-hour light spilled across the weathered mahogany bar of The Stray Anchor, catching the swirl of steam rising from the copper pan as you plated the saffron-infused seafood risotto. Across the counter, Seraphina froze mid-sentence, her gold-plated audit clipboard lowering an inch as the rich scent of toasted garlic and white wine drifted past her nose.\n\n"I—I merely asked to inspect your kitchen's thermal compliance, Proprietor!" she stammered, her emerald eyes darting from the glossy arborio rice up to your teasing smile while a telltale crimson blush crept all the way to the tips of her ears. "Do not flatter yourself into thinking a single spoonful will delay my foreclosure filing!"\n\nYet the moment you held the warm tasting spoon toward her lips, she leaned forward almost involuntarily, closing her eyes with a tiny, breathless sigh as the flavor melted across her tongue. Down at the end of the bar, Mia set her pastry basket down with an indignant huff, dusting flour off her gingham apron as she glared between the two of you. "Hey! That's the secret family reduction you promised to save for my shift—and why is Miss Platinum Cliffs still sitting in my favorite stool?!"`,
+  },
 };
 
 /**
@@ -133,7 +149,7 @@ export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY
      * ZERO ASTERISKS OR MARKDOWN TAGS: Ensure zero * or ** characters appear in the narrative text.
      * ZERO BRACKET TAG LEAKS: Strip all meta or intent tags like [Combat], [Arcana], [Subterfuge], or [Character Response] from dialogue and narrative prose.
 5. NATURAL HUMAN PROSE — NO FULL-NAME OR CATALOG-LABEL DUMPING (CRITICAL):
-   - FIRST NAMES OVER FULL NAMES: In narrative prose, action beats, dialogue tags, spoken dialogue, and choices, ALWAYS refer to the protagonist and companions by their **first name** (e.g., "Kaedrel", "Cassia", "Beatrix", "Ysolde", "Kestrel", "Aurelia", "Miri", "Noelle", "Valeria", "Evelyn", "Aria") or natural pronouns once introduced. NEVER robotically repeat full first+last names ("Kaedrel Victus", "Ysolde Kaelen", "Beatrix Valorian") or append parenthetical rank tags like "(#184)", "(#142)", or "(#42)" in story prose or dialogue.
+   - FIRST NAMES OVER FULL NAMES: In narrative prose, action beats, dialogue tags, spoken dialogue, and choices, ALWAYS refer to the protagonist and companions by their **first name** (e.g., "Kaedrel", "Cassia", "Beatrix", "Ysolde", "Kestrel", "Aurelia", "Miri", "Noelle", "Valeria", "Seraphina", "Vivienne", "Mia", "Colette", "Pippa", "Kaede", "Roxy", "Chloe", "Nadia", "Zuri", "Evelyn", "Aria") or natural pronouns once introduced. NEVER robotically repeat full first+last names ("Kaedrel Victus", "Ysolde Kaelen", "Seraphina Vane", "Nadia Saint-Clair") or append parenthetical rank tags like "(#184)", "(#142)", or "(#42)" in story prose or dialogue.
    - DESCRIBE ITEMS & GEAR NATURALLY — NEVER PASTE INVENTORY LABELS: Do NOT copy-paste capitalized multi-word UI equipment names into prose or dialogue (e.g., NEVER write "He drew his Concealed Punch-Dagger & Curved Mist-Saber", "adjusted his Iron-Grey Initiate Greatcoat & Brigandine", or "channeled his Fractured Ashen Legion Spine-Node"). Instead, write like a human novelist by referring to items naturally and descriptively ("his curved saber", "the punch-dagger at his belt", "his heavy coat", "the tarnished ring on his thumb", "her brass-bound ledger").
    - REFER TO LOCATIONS ORGANICALLY — NEVER REPEAT MAP BANNERS: Do NOT repeat full capitalized location headers ("The Sky-Crown & Sovereign Terraces", "Stratum I: The Sunken Cloisters", "The Velvet Spill & The Tribunal Pit", "The Seal-Gate & Boarding Quays") in every paragraph or spoken sentence. Refer to the physical space naturally ("the amphitheater", "the flooded cloisters", "the sunken pit", "the boarding quay", "the iron cage", "this sanctum").
    - SHOW TECHNIQUES & MAGIC THROUGH SENSORY ACTION, NOT SKILL-SLOT NAMES: Do NOT insert capitalized RPG skill titles or mechanical jargon into narrative sentences (e.g., avoid writing "executing a Mist-Mirage Tendon Sever" or "using Path A: Somatic Tempering"). Describe the physical movement, breath, light, and impact organically ("leaving a fleeting afterimage in the violet mist as his blade sliced toward the tendon", "steadying his breath until kinetic heat hummed along the steel").`;
@@ -160,6 +176,16 @@ BEFORE GENERATING ANY NARRATIVE PROSE OR DIALOGUE, YOU MUST INTERNALLY VERIFY TH
 export function resolveNarrationStyleKey(rawTone?: string): NarrationStyleKey {
   if (!rawTone) return "grimdark";
   const s = rawTone.toLowerCase().trim();
+  if (
+    s.includes("coastal") ||
+    s.includes("rom-com") ||
+    s.includes("romcom") ||
+    s.includes("sparkling") ||
+    s.includes("slice-of-life") ||
+    s.includes("port solaris")
+  ) {
+    return "coastal_romcom";
+  }
   if (
     s.includes("light novel") ||
     s.includes("witty banter") ||
@@ -251,6 +277,9 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`;
  */
 export function getChoicesStyleDirective(rawTone?: string): string {
   const key = resolveNarrationStyleKey(rawTone);
+  if (key === "coastal_romcom") {
+    return `Generate 4 distinct player action choices reflecting a Sun-Drenched Coastal Rom-Com & Flair Showdown dynamic: witty, charming, hands-on culinary/athletic craft, playful teasing that pushes heroines into the Blush Zone, and bold Article 9 wagers. Each choice must have flawless grammar and syntax.`;
+  }
   if (key === "light_novel") {
     return `Generate 4 distinct player action choices reflecting a Light Novel / High Fantasy dynamic: snappy, proactive, spirited, and heroic with tactical and character-driven flavor. Each choice must have flawless grammar and syntax.`;
   }
