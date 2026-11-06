@@ -52,7 +52,8 @@ import {
   Bookmark,
   ChevronUp,
   ChevronDown,
-  Plus
+  Plus,
+  Info,
 } from "lucide-react";
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
@@ -94,9 +95,10 @@ import {
   createBlueprintFromPlayer,
   normalizeCharacterBlueprint,
 } from "@/lib/characterRosterStorage";
-import { StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA } from "@/types/story";
+import { StoryCompanion, StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA } from "@/types/story";
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
+import { CharacterCardModal } from "@/components/play/CharacterCardModal";
 import { isFallbackVisualDescription } from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { ActionInputBar } from "@/components/play/ActionInputBar";
@@ -166,6 +168,12 @@ import {
   FlairConduit,
   IslandFaction,
 } from "@/types/port_solaris";
+import {
+  resolveSpotlightCompanion,
+  isCompanionSpotlighted,
+  getStageSpriteClasses,
+  getStageHeroineAura,
+} from "@/lib/portSolarisEngine";
 
 // Dynamic code splitting for heavy interactive canvas graph
 const FlowchartViewer = dynamic(
@@ -1679,6 +1687,8 @@ export default function VisualNovelGame() {
   const [showFlowchartModal, setShowFlowchartModal] = useState(false);
   const [showMobileCommandSheet, setShowMobileCommandSheet] = useState(false);
   const [visitedStoryNodes, setVisitedStoryNodes] = useState<VisitedStoryNode[]>([]);
+  const [spotlightHeroineName, setSpotlightHeroineName] = useState<string | null>(null);
+  const [selectedCharacterCardComp, setSelectedCharacterCardComp] = useState<Companion | StoryCompanion | null>(null);
   const [showShareModal, setShowShareModal] = useState(false);
   const [companionMilestones, setCompanionMilestones] = useState<Record<string, number[]>>({});
   const [companionCompletedMilestones, setCompanionCompletedMilestones] = useState<Record<string, number[]>>({});
@@ -2166,6 +2176,7 @@ export default function VisualNovelGame() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        if (selectedCharacterCardComp) { setSelectedCharacterCardComp(null); return; }
         if (showGiftingModal) { setShowGiftingModal(false); return; }
         if (activeBespokeCG) { setActiveBespokeCG(null); return; }
         if (showShareModal) { setShowShareModal(false); return; }
@@ -2184,6 +2195,7 @@ export default function VisualNovelGame() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
+    selectedCharacterCardComp,
     showGiftingModal,
     activeBespokeCG,
     showShareModal,
@@ -4885,6 +4897,18 @@ export default function VisualNovelGame() {
         ? data.state_updates.newly_encountered_heroines
         : [];
 
+      const portUpdates = data.port_solaris_updates || data.state_updates?.port_solaris_updates;
+      if (portUpdates && portUpdates.isShortCircuit) {
+        soundEffects.playSystemAlert();
+        pushNotification({
+          id: `short_circuit_${Date.now()}`,
+          type: "system_alert",
+          title: "100 BPM SHORT-CIRCUIT TRIGGERED!",
+          subtitle: `${portUpdates.speakerName || "Heroine"} reached maximum emotional overload! Romantic composure broke.`,
+          difficulty: "S",
+        });
+      }
+
       const nextPartyState = party.map((comp) => {
         const isCurrentSpeaker = comp.name.toLowerCase().includes(speakerName.toLowerCase());
         const isAffected = affectedComp ? comp.name.toLowerCase().includes(affectedComp.toLowerCase()) : false;
@@ -4903,16 +4927,38 @@ export default function VisualNovelGame() {
           }
         }
 
+        let updatedBpm = (comp as any).heartRateBpm;
+        if (portUpdates && comp.name.toLowerCase().includes((portUpdates.speakerName || "").toLowerCase())) {
+          updatedBpm = portUpdates.bpm;
+        }
+
         return {
           ...comp,
           isPresent,
           encountered: nowEncountered,
           expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
           affection: updatedAffection,
+          heartRateBpm: updatedBpm,
         };
       });
 
       setParty(nextPartyState);
+
+      if (portUpdates && portUpdates.dailyRevenueDelta > 0) {
+        setPlayer((prev) => {
+          const currentHouse = (prev as any).boardingHouse;
+          if (!currentHouse) return prev;
+          const updatedDebt = Math.max(0, currentHouse.outstandingDebt - portUpdates.dailyRevenueDelta);
+          const nextHouse = {
+            ...currentHouse,
+            dailyRevenue: portUpdates.dailyRevenueDelta,
+            outstandingDebt: updatedDebt,
+          };
+          const updated = { ...prev, boardingHouse: nextHouse };
+          playerRef.current = updated;
+          return updated;
+        });
+      }
 
       // Finalize user message and clear pending state
       playerMsg.text = playerText;
@@ -10141,10 +10187,17 @@ export default function VisualNovelGame() {
 
           <div className="shrink-0 px-3 py-2 sm:px-5 sm:py-2.5 border-b border-white/10 flex items-center justify-between bg-zinc-900/60 select-none">
             <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
-              {/* Speaker Badge */}
+              {/* Speaker Badge (Clickable to open Character Card Modal) */}
               {isSpeakingHeroine ? (
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-rose-600/25 border border-rose-500/40 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0 max-w-[130px] sm:max-w-none">
-                  <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                <div
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setSelectedCharacterCardComp(isSpeakingHeroine);
+                  }}
+                  className="inline-flex items-center gap-1.5 sm:gap-2 bg-rose-600/25 border border-rose-500/40 hover:border-rose-400 hover:bg-rose-600/35 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0 max-w-[130px] sm:max-w-none cursor-pointer transition-all group"
+                  title={`Click to open ${isSpeakingHeroine.name}'s Character Card Dossier`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
                   <span className="text-xs sm:text-sm font-semibold tracking-wide text-rose-200 uppercase font-mono truncate">
                     {isSpeakingHeroine.name}
                   </span>
@@ -10167,7 +10220,14 @@ export default function VisualNovelGame() {
 
               {/* Status / Presence Indicator */}
               {isSpeakingHeroine ? (
-                <div className="relative inline-flex items-center gap-1 sm:gap-1.5 bg-black/60 border border-white/10 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
+                <div
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setSelectedCharacterCardComp(isSpeakingHeroine);
+                  }}
+                  className="relative inline-flex items-center gap-1 sm:gap-1.5 bg-black/60 border border-white/10 hover:border-rose-400/50 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0 cursor-pointer transition-colors"
+                  title={`Click to open ${isSpeakingHeroine.name}'s Dossier`}
+                >
                   {lastAffectionDelta !== null && lastAffectionDelta.companion.toLowerCase().includes(isSpeakingHeroine.name.toLowerCase()) && (
                     <div 
                       className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 flex items-center gap-1 whitespace-nowrap ${
@@ -10225,11 +10285,63 @@ export default function VisualNovelGame() {
                 <div className="inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
                   <Users className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                   <span className="text-[10px] font-mono font-medium text-rose-300 hidden md:inline">With:</span>
-                  <span className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 truncate max-w-[100px] sm:max-w-none">
-                    {presentComps.map((c) => c.name).join(", ")}
-                  </span>
+                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                    {presentComps.map((c) => (
+                      <button
+                        key={c.name}
+                        type="button"
+                        onClick={() => {
+                          soundEffects.playClick();
+                          setSpotlightHeroineName(c.name);
+                          setSelectedCharacterCardComp(c);
+                        }}
+                        className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 hover:text-white hover:underline cursor-pointer truncate max-w-[90px] sm:max-w-none"
+                        title={`Focus ${c.name} on stage / View Dossier`}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
+
+              {/* Port Solaris Live BPM & Blush Badge in Speaker Bar */}
+              {isSpeakingHeroine && currentStory.id === "port-solaris" && (() => {
+                const solarisMeta = PORT_SOLARIS_HEROINE_DOSSIERS[isSpeakingHeroine.name];
+                const liveBpm =
+                  (isSpeakingHeroine as any).heartRateBpm ??
+                  (solarisMeta ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (isSpeakingHeroine.affection - 20) * 0.45)) : 55);
+                const isBlush = liveBpm >= 50 && liveBpm <= 84;
+                const isFever = liveBpm >= 85 && liveBpm < 100;
+                const isShortCircuit = liveBpm >= 100;
+
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setSelectedCharacterCardComp(isSpeakingHeroine);
+                    }}
+                    className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-mono text-[10px] font-bold shadow-inner shrink-0 transition-all cursor-pointer ${
+                      isShortCircuit
+                        ? "bg-amber-950/90 border-amber-400 text-amber-200 animate-bounce"
+                        : isFever
+                        ? "bg-rose-950/90 border-rose-500 text-rose-200 animate-pulse"
+                        : isBlush
+                        ? "bg-pink-950/80 border-pink-400/60 text-pink-200"
+                        : "bg-black/60 border-white/10 text-zinc-300 hover:border-white/20"
+                    }`}
+                    title="Live BPM & Blush state • Click to open Dossier"
+                  >
+                    <Heart className={`w-3 h-3 text-rose-400 fill-rose-400 ${liveBpm >= 50 ? "animate-pulse" : ""}`} />
+                    <span>{liveBpm} BPM</span>
+                    <span className="hidden sm:inline">•</span>
+                    <span className="hidden sm:inline uppercase">
+                      {isShortCircuit ? "Short-Circuit!" : isFever ? "Fever Pitch" : isBlush ? "Blush Zone" : "Composed"}
+                    </span>
+                  </button>
+                );
+              })()}
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink-0">
@@ -10305,88 +10417,177 @@ export default function VisualNovelGame() {
           </div>
 
           <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
-            {/* DYNAMIC SPRITE STAGE */}
+            {/* DYNAMIC SPRITE STAGE (REDESIGNED FOR FULL-SIZE SPOTLIGHT & COMPANION SWITCHER) */}
             <div className="hidden sm:flex relative w-56 sm:w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
-              <div className="relative w-full h-full flex items-end justify-center px-2">
-                {presentComps.length > 0 ? (
-                  presentComps.map((comp) => {
+              {/* SLEEK COMPANION AVATAR SWITCHER STRIP */}
+              {presentComps.length > 0 && (
+                <div className="absolute top-2 inset-x-2 z-20 flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/15 overflow-x-auto no-scrollbar shadow-xl pointer-events-auto">
+                  {presentComps.map((comp) => {
+                    const isSpotlighted = isCompanionSpotlighted(comp.name, presentComps, gameState.speaker, spotlightHeroineName);
                     const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
-                    const spriteSrc = getSpriteSrc(comp.name, comp.expressionKey);
+                    const thumbSrc = getSpriteSrc(comp.name, comp.expressionKey);
+                    const solarisMeta = currentStory.id === "port-solaris" ? PORT_SOLARIS_HEROINE_DOSSIERS[comp.name] : undefined;
+                    const compBpm = (comp as any).heartRateBpm ?? (solarisMeta ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (comp.affection - 20) * 0.45)) : undefined);
 
                     return (
-                      <div 
+                      <div
                         key={comp.name}
-                        className={`relative h-full flex items-end justify-center transition-all duration-500 ${
-                          presentComps.length > 1 ? "w-1/2" : "w-full"
-                        } ${isSpeaking ? "opacity-100 scale-100 z-10 brightness-105 animate-float-sway" : "opacity-45 scale-95 z-0 brightness-75"}`}
+                        onClick={() => {
+                          soundEffects.playClick();
+                          setSpotlightHeroineName(comp.name);
+                        }}
+                        onDoubleClick={() => {
+                          soundEffects.playClick();
+                          setSelectedCharacterCardComp(comp);
+                        }}
+                        className={`group relative flex items-center gap-1.5 px-2 py-1 rounded-xl transition-all cursor-pointer shrink-0 border select-none ${
+                          isSpotlighted
+                            ? "bg-rose-950/80 border-rose-400/80 shadow-[0_0_12px_rgba(244,63,94,0.35)] scale-102"
+                            : "bg-zinc-900/60 border-white/10 hover:border-white/30 hover:bg-zinc-800/80"
+                        }`}
+                        title={`Click to focus ${comp.name} on stage • Double-click to open Dossier`}
                       >
-                        {/* Ambient Heroine Aura */}
-                        {isSpeaking && (
-                          <div 
-                            className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
-                            style={{
-                              background:
-                                comp.name.includes("Evelyn") || comp.name.includes("Ysolde") || comp.name.includes("Valeria")
-                                  ? "radial-gradient(circle, rgba(168,85,247,0.7) 0%, transparent 70%)"
-                                  : comp.name.includes("Aria") || comp.name.includes("Noelle")
-                                  ? "radial-gradient(circle, rgba(6,182,212,0.7) 0%, transparent 70%)"
-                                  : comp.name.includes("Serena") || comp.name.includes("Beatrix") || comp.name.includes("Aurelia")
-                                  ? "radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 70%)"
-                                  : comp.name.includes("Morgana")
-                                  ? "radial-gradient(circle, rgba(225,29,72,0.7) 0%, transparent 70%)"
-                                  : comp.name.includes("Kestrel")
-                                  ? "radial-gradient(circle, rgba(16,185,129,0.7) 0%, transparent 70%)"
-                                  : "radial-gradient(circle, rgba(234,179,8,0.7) 0%, transparent 70%)"
-                            }}
+                        <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-white/20 bg-zinc-950 shrink-0">
+                          <img
+                            src={(thumbSrc && thumbSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
+                            alt={comp.name}
+                            className="w-full h-full object-cover object-top"
                           />
-                        )}
-                        <img
-                          src={(spriteSrc && spriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
-                          alt={comp.name}
-                          decoding="async"
-                          onError={(e) => {
-                            e.currentTarget.onerror = null;
-                            e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
+                          {isSpeaking && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                          )}
+                        </div>
+
+                        <div className="flex flex-col min-w-0 pr-0.5">
+                          <div className="flex items-center gap-1">
+                            <span className={`text-[10px] font-mono font-bold truncate max-w-[65px] ${isSpotlighted ? "text-rose-200" : "text-zinc-300"}`}>
+                              {comp.name.split(" ")[0]}
+                            </span>
+                            {isSpeaking && <Sparkles className="w-2.5 h-2.5 text-rose-400 shrink-0" />}
+                          </div>
+                          {compBpm !== undefined ? (
+                            <span className="text-[8px] font-mono text-rose-300 leading-none">
+                              ♥ {compBpm}
+                            </span>
+                          ) : (
+                            <span className="text-[8px] font-mono text-zinc-500 leading-none">
+                              {comp.affection}%
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            soundEffects.playClick();
+                            setSelectedCharacterCardComp(comp);
                           }}
-                          className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] pointer-events-none"
-                        />
+                          className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                          title={`Open ${comp.name}'s Dossier`}
+                        >
+                          <Info className="w-3 h-3" />
+                        </button>
                       </div>
                     );
-                  })
-                ) : (
-                  /* SOLO / NO HEROINE SCENE: DISPLAY PROTAGONIST SPRITE */
-                  <div className="relative h-full w-full flex items-end justify-center animate-in fade-in duration-500">
-                    <div 
-                      className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-30"
-                      style={{
-                        background: "radial-gradient(circle, rgba(14,165,233,0.5) 0%, transparent 70%)"
-                      }}
-                    />
-                    {playerAvatar && playerAvatar.trim() ? (
-                      <img
-                        src={playerAvatar}
-                        alt={player.name}
-                        onClick={(e) => handleOpenPlayerFullPortrait(e)}
-                        title="Click to view full character image"
-                        className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] cursor-pointer hover:brightness-110 transition-all"
-                      />
-                    ) : (
-                      <div className="h-full w-full flex flex-col items-center justify-center text-center p-4">
-                        <div className="w-24 h-24 rounded-full bg-zinc-800/80 border-2 border-white/10 flex items-center justify-center text-zinc-500 mb-2 shadow-inner">
-                          <User className="w-12 h-12 text-zinc-500" />
+                  })}
+                </div>
+              )}
+
+              <div className="relative w-full h-full flex items-end justify-center px-2 pt-14">
+                {(() => {
+                  if (presentComps.length === 0) {
+                    return (
+                      /* SOLO / NO HEROINE SCENE: DISPLAY PROTAGONIST SPRITE */
+                      <div className="relative h-full w-full flex items-end justify-center animate-in fade-in duration-500">
+                        <div 
+                          className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-30"
+                          style={{
+                            background: "radial-gradient(circle, rgba(14,165,233,0.5) 0%, transparent 70%)"
+                          }}
+                        />
+                        {playerAvatar && playerAvatar.trim() ? (
+                          <img
+                            src={playerAvatar}
+                            alt={player.name}
+                            onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                            title="Click to view full character image"
+                            className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] cursor-pointer hover:brightness-110 transition-all"
+                          />
+                        ) : (
+                          <div className="h-full w-full flex flex-col items-center justify-center text-center p-4">
+                            <div className="w-24 h-24 rounded-full bg-zinc-800/80 border-2 border-white/10 flex items-center justify-center text-zinc-500 mb-2 shadow-inner">
+                              <User className="w-12 h-12 text-zinc-500" />
+                            </div>
+                            <span className="text-xs font-mono text-zinc-300 font-semibold">{player.name}</span>
+                            <span className="text-[10px] font-mono text-zinc-500">{player.role || "Protagonist"}</span>
+                          </div>
+                        )}
+                        <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
+                          <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-black/80 border border-sky-500/30 text-sky-300 shadow-md inline-flex items-center justify-center gap-1.5 mx-auto">
+                            <Shield className="w-3 h-3 text-sky-400" />
+                            <span>{player.name} • Solo in {gameState.location}</span>
+                          </span>
                         </div>
-                        <span className="text-xs font-mono text-zinc-300 font-semibold">{player.name}</span>
-                        <span className="text-[10px] font-mono text-zinc-500">{player.role || "Protagonist"}</span>
                       </div>
-                    )}
-                    <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
-                      <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-black/80 border border-sky-500/30 text-sky-300 shadow-md inline-flex items-center justify-center gap-1.5 mx-auto">
-                        <Shield className="w-3 h-3 text-sky-400" />
-                        <span>{player.name} • Solo in {gameState.location}</span>
-                      </span>
+                    );
+                  }
+
+                  // Multi-character scene: Spotlight active speaker or player-selected heroine at FULL SIZE!
+                  const spotlightComp = resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) || presentComps[0];
+
+                  const isSpeaking = gameState.speaker.toLowerCase().includes(spotlightComp.name.toLowerCase());
+                  const spriteSrc = getSpriteSrc(spotlightComp.name, spotlightComp.expressionKey);
+
+                  return (
+                    <div 
+                      key={spotlightComp.name}
+                      className="relative h-full w-full flex items-end justify-center transition-all duration-500"
+                    >
+                      {/* Ambient Heroine Aura */}
+                      <div 
+                        className="absolute bottom-6 w-56 h-56 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
+                        style={{
+                          background: getStageHeroineAura(spotlightComp.name).background
+                        }}
+                      />
+
+                      {/* Full-Size Spotlight Sprite (Never shrinks to thumbnail sliver) */}
+                      <img
+                        src={(spriteSrc && spriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
+                        alt={spotlightComp.name}
+                        decoding="async"
+                        onClick={() => {
+                          soundEffects.playClick();
+                          setSelectedCharacterCardComp(spotlightComp);
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
+                        }}
+                        title={`Click to open ${spotlightComp.name}'s Character Card Dossier`}
+                        className={getStageSpriteClasses(isSpeaking)}
+                      />
+
+                      {/* Spotlight Character Info Bar / Dossier Trigger */}
+                      <div className="absolute bottom-2 inset-x-2 flex items-center justify-between pointer-events-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundEffects.playClick();
+                            setSelectedCharacterCardComp(spotlightComp);
+                          }}
+                          className="px-2.5 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-white/20 hover:border-rose-400 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all cursor-pointer group"
+                          title="Click to view full dossier & stats"
+                        >
+                          <Sparkles className="w-3 h-3 text-rose-400 group-hover:rotate-12 transition-transform" />
+                          <span className="truncate max-w-[130px]">{spotlightComp.name}</span>
+                          <span className="text-[9px] text-rose-300 opacity-80">• Dossier</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
               <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
             </div>
@@ -10522,6 +10723,8 @@ export default function VisualNovelGame() {
         {activeClash && activeClash.isActive && (
           <SectorClashHud
             activeClash={activeClash}
+            storyId={currentStory.id}
+            isPortSolaris={currentStory.id === "port-solaris"}
             playerName={player.name}
             playerRole={player.role || "Voidstrider"}
             playerHp={player.stats.hp}
@@ -10722,6 +10925,13 @@ export default function VisualNovelGame() {
       {renderAbilityModal()}
       {renderCharacterPortraitViewerModal()}
 
+      <CharacterCardModal
+        companion={selectedCharacterCardComp}
+        isOpen={selectedCharacterCardComp !== null}
+        onClose={() => setSelectedCharacterCardComp(null)}
+        storyId={currentStory.id}
+      />
+
 
 
       <SystemQuestModal
@@ -10832,7 +11042,15 @@ export default function VisualNovelGame() {
                 const isBlushZone = liveBpm !== undefined && liveBpm >= 50 && liveBpm <= 85;
 
                 return (
-                  <div key={comp.name} className="bg-zinc-900/80 border border-white/10 p-4 rounded-2xl flex items-start gap-3">
+                  <div
+                    key={comp.name}
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setSelectedCharacterCardComp(comp);
+                    }}
+                    className="bg-zinc-900/80 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 p-4 rounded-2xl flex items-start gap-3 transition-all cursor-pointer group"
+                    title={`Click to open ${comp.name}'s Character Card Dossier`}
+                  >
                     <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/15 bg-zinc-950 shrink-0">
                       <img 
                         src={(sprite && sprite.trim()) || DEFAULT_FALLBACK_SPRITE} 
@@ -10842,18 +11060,26 @@ export default function VisualNovelGame() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-white truncate">
+                        <p className="text-sm font-bold text-white truncate group-hover:text-rose-200 transition-colors">
                           {comp.encountered ? comp.name : "???"}
                         </p>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded shrink-0 ${
-                          !comp.encountered 
-                            ? "bg-zinc-800 text-zinc-500" 
-                            : comp.isPresent 
-                            ? "bg-emerald-500/20 text-emerald-300" 
-                            : "bg-zinc-800 text-zinc-400"
-                        }`}>
-                          {!comp.encountered ? "Unmet" : comp.isPresent ? "In Scene" : "Absent"}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {comp.encountered && (
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                              <Sparkles className="w-2.5 h-2.5 text-rose-400" />
+                              <span>Card</span>
+                            </span>
+                          )}
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded shrink-0 ${
+                            !comp.encountered 
+                              ? "bg-zinc-800 text-zinc-500" 
+                              : comp.isPresent 
+                              ? "bg-emerald-500/20 text-emerald-300" 
+                              : "bg-zinc-800 text-zinc-400"
+                          }`}>
+                            {!comp.encountered ? "Unmet" : comp.isPresent ? "In Scene" : "Absent"}
+                          </span>
+                        </div>
                       </div>
                       <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
                         {comp.encountered ? comp.title : "Mystery Heroine • Path yet to cross"}

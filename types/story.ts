@@ -6,6 +6,12 @@ import {
   ActiveStoryClashState,
   EnemyCombatIntent,
 } from "./system";
+import {
+  BoardingHouseState,
+  IslandFaction,
+  KeepsakeItem,
+  ShopRole,
+} from "./port_solaris";
 
 export type {
   TimelineScar,
@@ -13,6 +19,10 @@ export type {
   CompanionFrictionState,
   ActiveStoryClashState,
   EnemyCombatIntent,
+  BoardingHouseState,
+  IslandFaction,
+  KeepsakeItem,
+  ShopRole,
 };
 
 export type CompanionExpressionKey =
@@ -94,6 +104,13 @@ export interface StoryCompanion {
     allyIds?: string[];
     jealousyThreshold?: number; // affection gap that sparks banter
   };
+
+  // Port Solaris Live Mechanics
+  heartRateBpm?: number;
+  shopRole?: ShopRole;
+  isBoardingHouseTenant?: boolean;
+  assignedRoomNumber?: number;
+  unlockedCoreMemories?: string[];
 
   // Visual AI & Consistency Pipeline Fields (ControlNet & IPAdapter)
   seed: number;
@@ -253,6 +270,7 @@ export interface GiftItemRecord {
     stat: "hp" | "mp" | "str" | "dex" | "int";
     amount: number;
   };
+  bpmModifier?: number; // Port Solaris blush / heart-rate modifier
 }
 
 // Timeline Echoes & Butterfly Paradoxes (Pillar 4 - Cross-Rewind Persistence)
@@ -342,6 +360,11 @@ export interface PlayerProfile {
   behavioralTendencies?: Record<string, number>; // Dynamic counter of choice vectors taken over turns
   pinnedMemories?: string[]; // Player-pinned permanent canon facts that never roll off context
   unspentStatPoints?: number; // Unspent attribute points earned on level-up
+
+  // Port Solaris Core State
+  boardingHouse?: BoardingHouseState;
+  factionStanding?: Record<IslandFaction, number>;
+  equippedKeepsakes?: KeepsakeItem[];
 }
 
 export interface VisitedStoryNode {

@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
@@ -25,6 +24,38 @@ import { ActiveStoryClashState, CombatStanceType, AbilityDetail } from "@/types/
 import { getStoryClashChoices } from "@/lib/storyClashEngine";
 import { soundEffects } from "@/lib/audioEngine";
 import { getClassStanceConfig } from "@/lib/progressionMechanics";
+import { COASTAL_STANCES } from "@/lib/portSolarisEngine";
+
+export interface ShowdownVitalsReadout {
+  enemyVitalLabel: string;
+  playerPrimaryLabel: string;
+  playerSecondaryLabel: string;
+  retreatLabel: string;
+}
+
+export function formatShowdownVitals(params: {
+  enemyHp: number;
+  enemyMaxHp: number;
+  playerHp: number;
+  playerMaxHp: number;
+  playerMp: number;
+  playerMaxMp: number;
+  isShowdown: boolean;
+}): ShowdownVitalsReadout {
+  const { enemyHp, enemyMaxHp, playerHp, playerMaxHp, playerMp, playerMaxMp, isShowdown } = params;
+  return {
+    enemyVitalLabel: isShowdown
+      ? `${enemyHp}% RIVAL COMPOSURE`
+      : `${enemyHp}/${Math.max(1, enemyMaxHp)} HP`,
+    playerPrimaryLabel: isShowdown
+      ? `${playerHp}/${Math.max(1, playerMaxHp)} COMPOSURE`
+      : `${playerHp}/${Math.max(1, playerMaxHp)} HP`,
+    playerSecondaryLabel: isShowdown
+      ? `${playerMp}/${Math.max(1, playerMaxMp)} HYPE`
+      : `${playerMp}/${Math.max(1, playerMaxMp)} MP`,
+    retreatLabel: isShowdown ? "Concede Wager" : "Disengage",
+  };
+}
 
 export interface ClashCombatPopup {
   id: string;
@@ -44,14 +75,16 @@ export interface ClashVisualHitEvent {
 }
 
 interface SectorClashHudProps {
-  activeClash: ActiveStoryClashState;
+  activeClash: ActiveStoryClashState & { isPortSolaris?: boolean; contestType?: string };
+  storyId?: string;
+  isPortSolaris?: boolean;
   playerName?: string;
   playerRole: string;
   playerHp?: number;
   playerMaxHp?: number;
   playerMp: number;
   playerMaxMp?: number;
-  activeStance: CombatStanceType;
+  activeStance: CombatStanceType | string;
   onSelectStance: (stance: CombatStanceType) => void;
   assistingCompanion?: { name: string; role?: string } | null;
   isLoading: boolean;
@@ -67,6 +100,8 @@ interface SectorClashHudProps {
 
 export function SectorClashHud({
   activeClash,
+  storyId,
+  isPortSolaris,
   playerName = "Protagonist",
   playerRole,
   playerHp = 100,
@@ -86,6 +121,12 @@ export function SectorClashHud({
   playerAbilities,
   abilityDetails,
 }: SectorClashHudProps) {
+  const isShowdown = Boolean(
+    isPortSolaris ||
+    storyId === "port-solaris" ||
+    activeClash.isPortSolaris ||
+    activeClash.contestType
+  );
   const enemyHpPercent = Math.max(
     0,
     Math.min(100, (activeClash.enemyHp / Math.max(1, activeClash.enemyMaxHp)) * 100)
@@ -103,6 +144,18 @@ export function SectorClashHud({
     0,
     Math.min(100, (playerMp / Math.max(1, playerMaxMp)) * 100)
   );
+
+  const vitalsReadout = useMemo(() => {
+    return formatShowdownVitals({
+      enemyHp: activeClash.enemyHp,
+      enemyMaxHp: activeClash.enemyMaxHp,
+      playerHp,
+      playerMaxHp,
+      playerMp,
+      playerMaxMp,
+      isShowdown,
+    });
+  }, [activeClash.enemyHp, activeClash.enemyMaxHp, playerHp, playerMaxHp, playerMp, playerMaxMp, isShowdown]);
 
   const [enemyDamagedFlash, setEnemyDamagedFlash] = useState(false);
   const [playerDamagedFlash, setPlayerDamagedFlash] = useState(false);
@@ -158,7 +211,7 @@ export function SectorClashHud({
     playerRole,
     assistingCompanion,
     playerMp,
-    activeStance,
+    (activeStance as CombatStanceType) || "neutral",
     playerAbilities,
     abilityDetails
   );
@@ -230,7 +283,88 @@ export function SectorClashHud({
     },
   ];
 
-  const activeStanceInfo = stanceButtons.find((s) => s.id === activeStance) || stanceButtons[0];
+  const coastalStanceButtons: {
+    id: CombatStanceType;
+    label: string;
+    shortLabel: string;
+    bonusHint: string;
+    bonusText: string;
+    icon: React.ReactNode;
+    activeClass: string;
+  }[] = useMemo(() => {
+    return COASTAL_STANCES.map((st) => ({
+      id: st.id as unknown as CombatStanceType,
+      label: st.name,
+      shortLabel: st.name.split(" ")[0],
+      bonusHint: st.specialEffect,
+      bonusText: st.description,
+      icon:
+        st.conduit === "PHYSICAL_TEMPO" ? (
+          <Flame className="w-2.5 h-2.5 text-orange-400" />
+        ) : st.conduit === "SOCIAL_PANACHE" ? (
+          <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+        ) : (
+          <Orbit className="w-2.5 h-2.5 text-amber-400" />
+        ),
+      activeClass:
+        st.conduit === "PHYSICAL_TEMPO"
+          ? "bg-orange-950/90 border-orange-400 text-orange-200"
+          : st.conduit === "SOCIAL_PANACHE"
+          ? "bg-cyan-950/90 border-cyan-400 text-cyan-200"
+          : "bg-amber-950/90 border-amber-400 text-amber-200",
+    }));
+  }, []);
+
+  const effectiveStanceButtons = isShowdown ? coastalStanceButtons : stanceButtons;
+  const activeStanceInfo =
+    effectiveStanceButtons.find((s) => s.id === (activeStance as any)) || effectiveStanceButtons[0];
+
+  const effectiveChoices = useMemo(() => {
+    if (!isShowdown) return clashChoices;
+    return clashChoices.map((c) => {
+      if (c.actionType === "strike") {
+        return {
+          ...c,
+          actionName:
+            c.actionName.includes("Strike") || c.actionName.includes("Attack")
+              ? "Witty Retort"
+              : c.actionName,
+          description: "Sharp dialogue riposte and fast tempo to wear down rival composure.",
+        };
+      }
+      if (c.actionType === "burst") {
+        return {
+          ...c,
+          actionName:
+            c.actionName.includes("Burst") || c.actionName.includes("Slash")
+              ? "Signature Showstopper"
+              : c.actionName,
+          description: "High-impact culinary flair or dazzling rhetoric to break rival poise.",
+        };
+      }
+      if (c.actionType === "synergy") {
+        return {
+          ...c,
+          actionName:
+            c.actionName.includes("Synergy")
+              ? "Synergy Banter"
+              : c.actionName,
+          description: "Coordinated double-act with assisting companion, multiplying hype.",
+        };
+      }
+      if (c.actionType === "defense") {
+        return {
+          ...c,
+          actionName:
+            c.actionName.includes("Guard") || c.actionName.includes("Parry")
+              ? "Unflappable Poise"
+              : c.actionName,
+          description: "Deflect rival pressure, sipping espresso with unshakeable cool.",
+        };
+      }
+      return c;
+    });
+  }, [clashChoices, isShowdown]);
   const threatRank = activeClash.threatRank || "B";
   const rankBadgeStyle =
     threatRank === "S" || threatRank === "Calamity"
@@ -241,12 +375,22 @@ export function SectorClashHud({
 
   return (
     <div
-      className={`pointer-events-auto z-30 select-none shrink-0 mx-2 sm:mx-4 mb-1.5 rounded-xl bg-gradient-to-r from-red-950/95 via-zinc-950/95 to-rose-950/95 border px-2.5 py-1.5 shadow-[0_0_20px_rgba(244,63,94,0.22)] relative overflow-hidden transition-all duration-200 ${
-        playerDamagedFlash
-          ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)]"
-          : enemyDamagedFlash
-          ? "border-amber-400/90 shadow-[0_0_25px_rgba(251,191,36,0.45)]"
-          : "border-rose-500/45"
+      className={`pointer-events-auto z-30 select-none shrink-0 mx-2 sm:mx-4 mb-1.5 rounded-xl border px-2.5 py-1.5 relative overflow-hidden transition-all duration-200 ${
+        isShowdown
+          ? `bg-gradient-to-r from-amber-950/95 via-zinc-950/95 to-sky-950/95 shadow-[0_0_20px_rgba(245,158,11,0.25)] ${
+              playerDamagedFlash
+                ? "border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.65)]"
+                : enemyDamagedFlash
+                ? "border-cyan-400/90 shadow-[0_0_25px_rgba(6,182,212,0.45)]"
+                : "border-amber-500/50"
+            }`
+          : `bg-gradient-to-r from-red-950/95 via-zinc-950/95 to-rose-950/95 shadow-[0_0_20px_rgba(244,63,94,0.22)] ${
+              playerDamagedFlash
+                ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)]"
+                : enemyDamagedFlash
+                ? "border-amber-400/90 shadow-[0_0_25px_rgba(251,191,36,0.45)]"
+                : "border-rose-500/45"
+            }`
       }`}
     >
       {/* Floating Combat Popups */}
@@ -281,7 +425,7 @@ export function SectorClashHud({
                   {activeClash.enemyName}
                 </span>
                 <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${rankBadgeStyle}`}>
-                  Rank {threatRank}
+                  {isShowdown ? `Article 9 • Rank ${threatRank}` : `Rank ${threatRank}`}
                 </span>
               </div>
               <button
@@ -366,13 +510,17 @@ export function SectorClashHud({
 
       {/* ROW 1: COMPACT UNIFIED TELEMETRY (ENEMY + INTENT + PLAYER VITALS + CONTROLS) */}
       <div className="flex flex-wrap items-center justify-between gap-2 relative z-10">
-        {/* Left: Compact Enemy Thumbnail + Name + Enemy HP Bar */}
+        {/* Left: Compact Enemy Thumbnail + Name + Enemy HP/Composure Bar */}
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <div className="relative shrink-0 group">
             <div
               onClick={() => activeClash.enemyImageUrl && setShowPortraitLightbox(true)}
               className={`w-9 h-9 rounded-lg overflow-hidden border bg-zinc-900 cursor-pointer relative shadow-md transition-transform ${
-                enemyDamagedFlash ? "border-amber-300 scale-95" : "border-rose-500/60 hover:border-rose-400"
+                enemyDamagedFlash
+                  ? "border-amber-300 scale-95"
+                  : isShowdown
+                  ? "border-amber-500/60 hover:border-amber-400"
+                  : "border-rose-500/60 hover:border-rose-400"
               }`}
               title="Click to inspect adversary portrait"
             >
@@ -384,7 +532,11 @@ export function SectorClashHud({
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Swords className="w-4 h-4 text-rose-400" />
+                  {isShowdown ? (
+                    <Sparkles className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Swords className="w-4 h-4 text-rose-400" />
+                  )}
                 </div>
               )}
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
@@ -417,7 +569,7 @@ export function SectorClashHud({
                 {activeClash.enemyName}
               </span>
               <span className={`text-[8px] font-mono font-black px-1 py-0.2 rounded border uppercase ${rankBadgeStyle}`}>
-                {threatRank}
+                {isShowdown ? `ARTICLE 9 • ${threatRank}` : threatRank}
               </span>
               <span className="text-[9px] font-mono text-rose-300/90 bg-black/50 px-1.5 py-0.2 rounded border border-rose-500/30">
                 T{activeClash.clashTurn}/{activeClash.maxClashTurns}
@@ -434,7 +586,7 @@ export function SectorClashHud({
               )}
             </div>
 
-            {/* Enemy HP Bar */}
+            {/* Enemy HP / Rival Composure Bar */}
             <div className="flex items-center gap-2 mt-0.5">
               <div className="flex-1 max-w-[220px] h-1.5 bg-black/90 rounded-full overflow-hidden border border-rose-500/30 relative">
                 <div
@@ -442,51 +594,79 @@ export function SectorClashHud({
                   style={{ width: `${ghostEnemyHpPercent}%` }}
                 />
                 <div
-                  className="relative h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-400 transition-all duration-200"
+                  className={`relative h-full transition-all duration-200 ${
+                    isShowdown
+                      ? "bg-gradient-to-r from-cyan-400 via-sky-500 to-amber-400"
+                      : "bg-gradient-to-r from-red-600 via-rose-500 to-amber-400"
+                  }`}
                   style={{ width: `${enemyHpPercent}%` }}
                 />
               </div>
-              <span className="text-[9px] font-mono font-bold text-rose-200 shrink-0">
-                {activeClash.enemyHp}/{activeClash.enemyMaxHp} HP
+              <span className={`text-[9px] font-mono font-bold shrink-0 ${isShowdown ? "text-cyan-200" : "text-rose-200"}`}>
+                {vitalsReadout.enemyVitalLabel}
               </span>
               {lastHitEvent && lastHitEvent.damageDealt > 0 && (
                 <span className="text-[9px] font-mono font-black text-amber-300 animate-pulse shrink-0">
-                  -{lastHitEvent.damageDealt}
+                  -{lastHitEvent.damageDealt}{isShowdown ? "%" : ""}
                 </span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right: Compact Player Vitals + Disengage + Log Toggle */}
+        {/* Right: Compact Player Vitals + Concede/Disengage + Log Toggle */}
         <div className="flex items-center gap-2 shrink-0">
           <div
             className={`flex items-center gap-2 px-2 py-1 rounded-lg bg-black/70 border text-[10px] font-mono ${
               playerDamagedFlash
-                ? "border-red-500"
+                ? isShowdown
+                  ? "border-amber-400"
+                  : "border-red-500"
                 : playerHealedFlash
                 ? "border-emerald-400"
                 : "border-white/10"
             }`}
           >
             <span className="text-zinc-300 font-bold hidden md:inline truncate max-w-[80px]">{playerName}</span>
-            <span className="flex items-center gap-0.5 text-emerald-300 font-bold" title="Player Health">
-              <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
-              {playerHp}/{playerMaxHp}
+            <span
+              className={`flex items-center gap-0.5 font-bold ${isShowdown ? "text-cyan-300" : "text-emerald-300"}`}
+              title={isShowdown ? "Player Composure" : "Player Health"}
+            >
+              {isShowdown ? (
+                <Sparkles className="w-2.5 h-2.5 text-cyan-400 fill-cyan-400" />
+              ) : (
+                <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
+              )}
+              {vitalsReadout.playerPrimaryLabel}
             </span>
             <div className="w-10 h-1.5 bg-zinc-900 rounded-full overflow-hidden hidden sm:block">
               <div
-                className="h-full bg-gradient-to-r from-rose-500 to-emerald-400"
+                className={`h-full ${
+                  isShowdown
+                    ? "bg-gradient-to-r from-cyan-600 to-sky-400"
+                    : "bg-gradient-to-r from-rose-500 to-emerald-400"
+                }`}
                 style={{ width: `${playerHpPercent}%` }}
               />
             </div>
-            <span className="flex items-center gap-0.5 text-sky-300 font-bold" title="Player Mana">
-              <Zap className="w-2.5 h-2.5 text-sky-400 fill-sky-400" />
-              {playerMp}/{playerMaxMp}
+            <span
+              className={`flex items-center gap-0.5 font-bold ${isShowdown ? "text-amber-300" : "text-sky-300"}`}
+              title={isShowdown ? "Player Hype / Cool" : "Player Mana"}
+            >
+              {isShowdown ? (
+                <Flame className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+              ) : (
+                <Zap className="w-2.5 h-2.5 text-sky-400 fill-sky-400" />
+              )}
+              {vitalsReadout.playerSecondaryLabel}
             </span>
             <div className="w-8 h-1.5 bg-zinc-900 rounded-full overflow-hidden hidden sm:block">
               <div
-                className="h-full bg-gradient-to-r from-sky-600 to-cyan-400"
+                className={`h-full ${
+                  isShowdown
+                    ? "bg-gradient-to-r from-amber-600 to-yellow-400"
+                    : "bg-gradient-to-r from-sky-600 to-cyan-400"
+                }`}
                 style={{ width: `${playerMpPercent}%` }}
               />
             </div>
@@ -500,10 +680,14 @@ export function SectorClashHud({
               onExecuteClashAction("flee");
             }}
             className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-amber-950/70 border border-white/15 hover:border-amber-500/50 text-zinc-300 hover:text-amber-200 text-[9px] font-mono font-bold flex items-center gap-1 transition-all cursor-pointer disabled:opacity-40"
-            title="Break engagement and retreat (-10 MP or take minor grazing hit)"
+            title={
+              isShowdown
+                ? "Concede the wager gracefully under Article 9 without bodily harm"
+                : "Break engagement and retreat (-10 MP or take minor grazing hit)"
+            }
           >
             <Footprints className="w-2.5 h-2.5 text-amber-400" />
-            <span className="hidden sm:inline">Disengage</span>
+            <span className="hidden sm:inline">{vitalsReadout.retreatLabel}</span>
           </button>
 
           {activeClash.log && activeClash.log.length > 0 && (
@@ -523,9 +707,9 @@ export function SectorClashHud({
       <div className="flex items-center justify-between gap-1.5 mt-1 pt-1 border-t border-white/10 relative z-10 overflow-x-auto no-scrollbar">
         <div className="flex items-center gap-1 shrink-0">
           <span className="text-[8px] font-mono uppercase tracking-wider text-zinc-400 mr-0.5 hidden sm:inline">
-            Stance:
+            {isShowdown ? "Coastal Stance:" : "Stance:"}
           </span>
-          {stanceButtons.map((st) => {
+          {effectiveStanceButtons.map((st) => {
             const isSelected = activeStance === st.id;
             return (
               <button
@@ -555,7 +739,7 @@ export function SectorClashHud({
 
       {/* ROW 3: COMPACT 4-COLUMN TACTICAL ARSENAL BUTTONS */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mt-1.5 relative z-10">
-        {clashChoices.map((c) => {
+        {effectiveChoices.map((c) => {
           const isBurst = c.actionType === "burst";
           const isSynergy = c.actionType === "synergy";
           const isDefense = c.actionType === "defense";
@@ -576,12 +760,20 @@ export function SectorClashHud({
                   ? "bg-gradient-to-r from-purple-950/90 to-indigo-950/80 hover:from-purple-900 hover:to-indigo-900 border-purple-500/50 hover:border-purple-400 text-purple-100 cursor-pointer shadow-sm"
                   : isDefense
                   ? "bg-zinc-900/90 hover:bg-emerald-950/70 border-emerald-500/35 hover:border-emerald-400 text-emerald-100 cursor-pointer"
+                  : isShowdown
+                  ? "bg-zinc-900/90 hover:bg-amber-950/80 border-white/15 hover:border-amber-500/60 text-zinc-100 cursor-pointer"
                   : "bg-zinc-900/90 hover:bg-rose-950/80 border-white/15 hover:border-rose-500/60 text-zinc-100 cursor-pointer"
               }`}
             >
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className="shrink-0">
-                  {c.actionType === "strike" && <Swords className="w-3 h-3 text-rose-400" />}
+                  {c.actionType === "strike" && (
+                    isShowdown ? (
+                      <Sparkles className="w-3 h-3 text-cyan-400" />
+                    ) : (
+                      <Swords className="w-3 h-3 text-rose-400" />
+                    )
+                  )}
                   {c.actionType === "burst" && <Flame className="w-3 h-3 text-amber-400" />}
                   {c.actionType === "synergy" && <Sparkles className="w-3 h-3 text-purple-400" />}
                   {c.actionType === "defense" && <Shield className="w-3 h-3 text-emerald-400" />}
@@ -599,7 +791,15 @@ export function SectorClashHud({
                     : "bg-emerald-950/80 text-emerald-300 border border-emerald-500/30"
                 }`}
               >
-                {c.mpCost > 0 ? `${c.mpCost}MP` : c.actionType === "defense" ? "+15MP" : "0MP"}
+                {c.mpCost > 0
+                  ? isShowdown
+                    ? `${c.mpCost} Hype`
+                    : `${c.mpCost}MP`
+                  : c.actionType === "defense"
+                  ? isShowdown
+                    ? "+15 Hype"
+                    : "+15MP"
+                  : "0"}
               </span>
             </button>
           );

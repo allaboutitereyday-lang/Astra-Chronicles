@@ -43,6 +43,27 @@ export interface KeepsakeItem {
   };
 }
 
+export type BpmZone = "COMPOSED" | "BLUSH_ZONE" | "FEVER_PITCH" | "SHORT_CIRCUIT";
+
+export type ScandalTier = "LOW" | "BUZZING" | "TABLOID" | "WILDFIRE";
+
+export type FactionTier = "NEUTRAL" | "RESPECTED" | "HONORED" | "EXALTED";
+
+export type ShowdownContestType =
+  | "CULINARY_CLASH"
+  | "DOJO_EXHIBITION"
+  | "VIP_DEBATE"
+  | "BEACH_TOURNAMENT";
+
+export type CoastalStanceType =
+  | "FLOW_STATE_RHYTHM"
+  | "SUN_DRENCHED_TEMPO"
+  | "HIGH_HEAT_RUSH"
+  | "UNFLAPPABLE_COOL"
+  | "TEASING_COUNTER"
+  | "VELVET_PROVOCATION"
+  | "SHOWSTOPPER_FINALE";
+
 export interface HeroineProfile {
   id: string;
   name: string;
@@ -55,7 +76,7 @@ export interface HeroineProfile {
   affectionPoints: number;
   heartRateBpm: number; // 0 to 100 (50-85 = Blush Zone, 100 = Short-Circuit)
   isBoardingHouseTenant: boolean;
-  assignedRoomNumber?: 1 | 2 | 3 | 4 | 5 | 6;
+  assignedRoomNumber?: number; // 1-6 or 201-206
   unlockedCoreMemories: string[];
 }
 
@@ -63,11 +84,7 @@ export interface ShowdownWager {
   id: string;
   opponentName: string;
   faction: IslandFaction;
-  challengeType:
-    | "CULINARY_CLASH"
-    | "DOJO_EXHIBITION"
-    | "VIP_DEBATE"
-    | "BEACH_TOURNAMENT";
+  challengeType: ShowdownContestType;
   playerStakes: string;
   opponentStakes: string; // e.g., "+1 Star Rating & 1-Week Maid Shift Penalty"
   recommendedConduit: FlairConduit;
@@ -81,6 +98,10 @@ export interface BoardingHouseState {
   outstandingDebt: number;
   scandalHeat: number; // 0 to 100 (Drives foot traffic + Jealousy Collision chance)
   activeTenants: string[]; // Heroine IDs living upstairs
+  shopAssignments?: Partial<Record<ShopRole, string>>;
+  roomAssignments?: Partial<Record<number, string>>;
+  totalRevenueCollected?: number;
+  totalDebtPaid?: number;
 }
 
 export interface PlayerState {

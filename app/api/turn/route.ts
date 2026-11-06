@@ -39,6 +39,14 @@ import {
   detectRepetitionLoop,
   breakStagnationLoop,
 } from "@/lib/repetitionGuard";
+import {
+  buildPortSolarisTurnDirective,
+  calculateBpmDelta,
+  getBpmZone,
+  calculateDailyCafeRevenue,
+  getShortCircuitDirective,
+} from "@/lib/portSolarisEngine";
+import { PORT_SOLARIS_HEROINE_DOSSIERS } from "@/types/port_solaris";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -422,9 +430,43 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has
       gameState.location
     );
 
+    const isPortSolarisStory = storyContext?.id === "port-solaris";
+    let portSolarisDirective = "";
+    if (isPortSolarisStory) {
+      const speakerPartyMember = (partyMembers || []).find((c: any) =>
+        c.name && sanitizedContextSpeaker && c.name.toLowerCase().includes(sanitizedContextSpeaker.toLowerCase())
+      );
+      const speakerDossier =
+        PORT_SOLARIS_HEROINE_DOSSIERS[sanitizedContextSpeaker] ||
+        Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
+          (d) => sanitizedContextSpeaker && sanitizedContextSpeaker.toLowerCase().includes(d.name.toLowerCase())
+        );
+      const currentBpm =
+        speakerPartyMember?.heartRateBpm ??
+        speakerDossier?.heartRateBpm ??
+        55;
+
+      portSolarisDirective = buildPortSolarisTurnDirective({
+        activeSpeaker: sanitizedContextSpeaker,
+        speakerBpm: currentBpm,
+        boardingHouseState: playerProfile?.boardingHouse,
+        equippedKeepsakes: playerProfile?.equippedKeepsakes || [],
+        factionStanding: playerProfile?.factionStanding,
+        activeShowdown:
+          activeClash && (activeClash.isPortSolaris || (activeClash as any).contestType)
+            ? {
+                contestType: (activeClash as any).contestType || "CULINARY_CLASH",
+                opponentName: activeClash.enemyName,
+                playerStakes: "100 Solar Crowns & Dish Dignity",
+                opponentStakes: "Café Endorsement & Local Bragging Rights",
+              }
+            : undefined,
+      });
+    }
+
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
-${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
+${isPortSolarisStory ? portSolarisDirective + "\n\n" : ""}${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
 
 ${dynamicRomanceDirective}
 
@@ -1186,6 +1228,71 @@ ${visualInspectionInstruction}`;
           });
           if (!responseData.state_updates) responseData.state_updates = {};
           responseData.state_updates.covenant_update = covenantResult;
+        }
+
+        // Port Solaris Post-Turn Delta Resolution
+        if (isPortSolarisStory) {
+          const resolvedSpeaker = responseData.speaker || sanitizedContextSpeaker;
+          const speakerComp = (partyMembers || []).find((c: any) =>
+            c.name && resolvedSpeaker && c.name.toLowerCase().includes(resolvedSpeaker.toLowerCase())
+          );
+          const speakerDossier =
+            PORT_SOLARIS_HEROINE_DOSSIERS[resolvedSpeaker] ||
+            Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
+              (d) => resolvedSpeaker && resolvedSpeaker.toLowerCase().includes(d.name.toLowerCase())
+            );
+          const currentBpm = speakerComp?.heartRateBpm ?? speakerDossier?.heartRateBpm ?? 55;
+          const affectionDelta = Number(responseData.state_updates?.affection_delta || 0);
+
+          const isRomanceChoice =
+            (action || "").toLowerCase().includes("romance") ||
+            (action || "").toLowerCase().includes("flirt") ||
+            (action || "").toLowerCase().includes("blush") ||
+            (action || "").toLowerCase().includes("hand") ||
+            (action || "").toLowerCase().includes("embrace") ||
+            (action || "").toLowerCase().includes("kiss");
+
+          const bpmResult = calculateBpmDelta(
+            currentBpm,
+            affectionDelta,
+            isRomanceChoice,
+            isRomanceChoice || affectionDelta > 0,
+            {
+              isPhysicalTouch:
+                (action || "").toLowerCase().includes("hand") ||
+                (action || "").toLowerCase().includes("touch") ||
+                (action || "").toLowerCase().includes("kiss"),
+            }
+          );
+
+          const nextBpm = bpmResult.newBpm;
+          const nextBpmZone = getBpmZone(nextBpm);
+
+          let shortCircuitDirective: string | null = null;
+          if (bpmResult.shortCircuited || nextBpm >= 100) {
+            shortCircuitDirective = getShortCircuitDirective(resolvedSpeaker);
+          }
+
+          let dailyRevenueDelta = 0;
+          if (playerProfile?.boardingHouse) {
+            const dailyRev = calculateDailyCafeRevenue(
+              playerProfile.boardingHouse,
+              partyMembers || []
+            );
+            dailyRevenueDelta = dailyRev.revenue;
+          }
+
+          if (!responseData.state_updates) responseData.state_updates = {};
+          responseData.state_updates.port_solaris_updates = {
+            speakerName: resolvedSpeaker,
+            bpm: nextBpm,
+            bpmZone: nextBpmZone.zone,
+            bpmDelta: bpmResult.delta,
+            isShortCircuit: bpmResult.shortCircuited || nextBpm >= 100,
+            shortCircuitDirective,
+            dailyRevenueDelta,
+          };
+          responseData.port_solaris_updates = responseData.state_updates.port_solaris_updates;
         }
 
         if (visualDescription) {

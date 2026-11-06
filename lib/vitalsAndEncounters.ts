@@ -26,19 +26,119 @@ export interface VitalsConditionEvaluation {
  * Evaluates the protagonist's current HP and MP pools and generates both a concise
  * state readout and a detailed LLM directive so companions naturally comment on
  * the player's wounds, exhaustion, or mana strain in conversation.
+ *
+ * For Port Solaris (`storyContext?.id === "port-solaris"`), converts HP/MP into
+ * psychological Composure (0-100) and Hype/Cool vitals with non-lethal Article 9 Showdown rules.
  */
 export function evaluatePlayerVitalsCondition(
   stats?: Partial<PlayerStats> | null,
-  playerName: string = "Protagonist"
+  playerName: string = "Protagonist",
+  storyContext?: { id?: string } | string | null
 ): VitalsConditionEvaluation {
+  const storyId = typeof storyContext === "string" ? storyContext : storyContext?.id;
+  const isPortSolaris = storyId === "port-solaris";
+
   const maxHp = Math.max(1, stats?.maxHp ?? 100);
   const hp = Math.max(0, Math.min(maxHp, stats?.hp ?? maxHp));
   const hpPercent = Math.round((hp / maxHp) * 100);
 
-  const maxMp = Math.max(1, stats?.maxMp ?? 60);
+  const maxMp = Math.max(1, stats?.maxMp ?? (isPortSolaris ? 100 : 60));
   const mp = Math.max(0, Math.min(maxMp, stats?.mp ?? maxMp));
   const mpPercent = Math.round((mp / maxMp) * 100);
 
+  // --------------------------------------------------------------------------
+  // PORT SOLARIS: Non-Lethal Composure & Hype/Cool Vitals Branch
+  // --------------------------------------------------------------------------
+  if (isPortSolaris) {
+    let hpTier: VitalsConditionEvaluation["hpTier"] = "unscathed";
+    let hpTierLabel = "Peak Confidence & Unshakable Demeanor";
+    let hpNarrativeCue = `${playerName} possesses unflappable composure (${hp}/${maxHp} Composure).`;
+
+    if (hpPercent <= 20) {
+      hpTier = "collapsing";
+      hpTierLabel = "On the Verge of Short-Circuit / Flustered Breakdown";
+      hpNarrativeCue = `CRITICAL COMPOSURE STRAIN (${hp}/${maxHp} Composure, ${hpPercent}%): ${playerName} is deeply flustered, blushing intensely, and on the brink of an emotional short-circuit or forfeiting the wager. Companions MUST react with teasing concern, triumphant smirks, or flustered panic in their dialogue.`;
+    } else if (hpPercent <= 50) {
+      hpTier = "critical";
+      hpTierLabel = "Flustered & On Defense";
+      hpNarrativeCue = `FLUSTERED & ON DEFENSE (${hp}/${maxHp} Composure, ${hpPercent}%): ${playerName} is visibly rattled, stammering under pressure, or struggling to maintain their witty facade. Companions MUST acknowledge ${playerName}'s flustered state in context.`;
+    } else if (hpPercent <= 75) {
+      hpTier = "bloodied";
+      hpTierLabel = "Slightly Rattled";
+      hpNarrativeCue = `SLIGHTLY RATTLED (${hp}/${maxHp} Composure, ${hpPercent}%): ${playerName} has felt the pressure from recent critiques or showdown strikes, but holds their ground.`;
+    } else if (hpPercent < 100) {
+      hpTier = "grazed";
+      hpTierLabel = "Unflappable Poise";
+      hpNarrativeCue = `UNFLAPPABLE POISE (${hp}/${maxHp} Composure, ${hpPercent}%): ${playerName} is calm, collected, and projecting effortless boardwalk charm.`;
+    }
+
+    let mpTier: VitalsConditionEvaluation["mpTier"] = "resonant";
+    let mpTierLabel = "Crowd-Pleasing Surge (Peak Hype)";
+    let mpNarrativeCue = `Hype/Cool reserves are soaring (${mp}/${maxMp}); ready for a Showstopper Finale!`;
+
+    if (mpPercent <= 15) {
+      mpTier = "depleted";
+      mpTierLabel = "Momentum Depleted";
+      mpNarrativeCue = `HYPE / COOL DEPLETED (${mp}/${maxMp}): ${playerName} has expended their momentum; needs a stylish counter or crowd cheer to reignite their rhythm.`;
+    } else if (mpPercent <= 40) {
+      mpTier = "strained";
+      mpTierLabel = "Tempered Momentum";
+      mpNarrativeCue = `HYPE / COOL STRAINED (${mp}/${maxMp}): ${playerName} is conserving momentum for their next big flourish.`;
+    } else if (mpPercent < 75) {
+      mpTier = "channeling";
+      mpTierLabel = "Building Momentum";
+      mpNarrativeCue = `Momentum is actively building (${mp}/${maxMp} Hype/Cool).`;
+    }
+
+    const summaryLine = `Composure: ${hp}/${maxHp} (${hpPercent}% - ${hpTierLabel}) | Hype/Cool: ${mp}/${maxMp} (${mpPercent}% - ${mpTierLabel})`;
+
+    const directiveBlock = `--- PORT SOLARIS COMPOSURE, HYPE & ARTICLE 9 SHOWDOWN DIRECTIVE ---
+1. LIVE COMPOSURE & HYPE AWARENESS IN CONVERSATION:
+   - Current Vitals: ${summaryLine}
+   - Composure Context: ${hpNarrativeCue}
+   - Hype / Cool Context: ${mpNarrativeCue}
+   - MANDATORY CONVERSATIONAL INTEGRATION: Whenever ${playerName} is flustered (Composure < 85%) or low on Hype/Cool (< 45%), the active heroine or narrator MUST naturally weave awareness of ${playerName}'s emotional composure, blush state, or swagger into spoken dialogue and body language.
+2. ACCURATE STORY COMPOSURE & RESOURCE SYNCHRONIZATION ("player_progression"):
+   - Whenever ${playerName} is flustered, teased, outmaneuvered, or pressured in a showdown, set a negative integer in "player_progression.hp_change" (-4 to -25 Composure).
+   - Whenever ${playerName} composes themselves, receives encouragement, sips espresso, or rests, set a positive integer in "player_progression.hp_change" (+10 to +25 Composure).
+   - Whenever ${playerName} performs high-energy flair, burns hype, or takes audacious social gambits, set a negative integer in "player_progression.mp_change" (-8 to -20).
+   - Populate "player_progression.vitals_reason" with a short rom-com or showdown cause (e.g., "Blush Reaction", "Crowd Panache Burn", "Teasing Rebuttal", "Patrician Scrutiny").
+   - ZERO DARK-FANTASY FATALITIES: NO physical bleeding wounds, NO bone breaks, NO death prompts. At 0 Composure, the loser concedes the round via non-lethal Composure Meltdown with comedic forfeit penalties.
+3. ARTICLE 9 SHOWDOWN WAGERS ("state_updates.story_clash"):
+   - ONLY when a formal Article 9 turf, culinary, or romantic wager contest begins (Culinary Clash, Dojo Exhibition, VIP Debate, Beach Tournament), trigger the Showdown UI by populating "state_updates.story_clash":
+     {
+       "isActive": true,
+       "enemyName": "Name of Rival (e.g., Laurent D'Artagnan, Dojo Challenger)",
+       "enemyHp": 80,
+       "enemyMaxHp": 80,
+       "enemyDesc": "1-sentence atmospheric description of the rival's swagger and contest stance.",
+       "enemyVisualPrompt": "Visual description of rival, chef jacket/shinai/blazer, setting the stage.",
+       "threatRank": "C",
+       "enemyArchetype": "Culinary Rival | Dojo Challenger | VIP Trustee | Beach Duelist",
+       "enemyAttackPower": 14,
+       "tacticalObjective": "Break rival Composure before your own composure collapses."
+     }
+   - Do NOT populate "story_clash" during peaceful café shifts or casual boardwalk dates.`;
+
+    return {
+      hp,
+      maxHp,
+      hpPercent,
+      hpTier,
+      hpTierLabel,
+      mp,
+      maxMp,
+      mpPercent,
+      mpTier,
+      mpTierLabel,
+      summaryLine,
+      directiveBlock,
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // DARK FANTASY: Sovereign Spire / Astra Continent Default Branch
+  // --------------------------------------------------------------------------
   let hpTier: VitalsConditionEvaluation["hpTier"] = "unscathed";
   let hpTierLabel = "Unscathed & Combat-Ready";
   let hpNarrativeCue = `${playerName} is physically unscathed (${hp}/${maxHp} HP).`;
@@ -147,6 +247,8 @@ export function inferFallbackVitalsDelta(params: {
   reportedMpChange?: number;
   reportedReason?: string | null;
   isClashTurn?: boolean;
+  storyContext?: { id?: string } | string | null;
+  isPortSolaris?: boolean;
 }): InferredVitalsDelta {
   const {
     storyText = "",
@@ -155,7 +257,12 @@ export function inferFallbackVitalsDelta(params: {
     reportedMpChange = 0,
     reportedReason = null,
     isClashTurn = false,
+    storyContext,
+    isPortSolaris: explicitPortSolaris,
   } = params;
+
+  const storyId = typeof storyContext === "string" ? storyContext : storyContext?.id;
+  const isPortSolaris = explicitPortSolaris ?? storyId === "port-solaris";
 
   let hpChange = typeof reportedHpChange === "number" && !isNaN(reportedHpChange) ? Math.round(reportedHpChange) : 0;
   let mpChange = typeof reportedMpChange === "number" && !isNaN(reportedMpChange) ? Math.round(reportedMpChange) : 0;
@@ -170,6 +277,81 @@ export function inferFallbackVitalsDelta(params: {
   const prose = storyText.toLowerCase();
   const act = actionText.toLowerCase();
 
+  // --------------------------------------------------------------------------
+  // PORT SOLARIS: Non-Lethal Composure & Hype Fallback Parser
+  // --------------------------------------------------------------------------
+  if (isPortSolaris) {
+    if (hpChange === 0 && prose.length > 15) {
+      const breakdownMatch = prose.match(
+        /\b(composure (?:meltdown|collapses?|shatters?)|short-circuit(?:ed|s)?|speechless and blushing furiously|drops? (?:the )?(?:clipboard|tray|shinai)|runs? away in embarrassment)\b/i
+      );
+      const flusteredMatch = prose.match(
+        /\b(blush(?:es|ed|ing) (?:deeply|crimson|wildly)|stagger(?:s|ed)? back flustered|stammer(?:s|ed)? helplessly|caught completely off-guard|sweat(?:s|ing)? nervously under the lights|losing ground in the debate)\b/i
+      );
+      const mildFlusterMatch = prose.match(
+        /\b(fluster(?:s|ed)?|averts? (?:her|his|their) gaze|twirl(?:s|ed)? hair nervously|clears? throat awkwardly|slight blush)\b/i
+      );
+      const composureRegainMatch = prose.match(
+        /\b(take[sd]? a deep breath|steady(?:ing|ies)? composure|sips? (?:the )?(?:espresso|sparkler|tea|water)|wipes? away the cream|reassuring smile|poise returns)\b/i
+      );
+
+      if (breakdownMatch) {
+        hpChange = -18;
+        vitalsReason = "Composure Breakdown";
+        wasInferredFallback = true;
+      } else if (flusteredMatch) {
+        hpChange = -10;
+        vitalsReason = "Flustered / Banter Pressure";
+        wasInferredFallback = true;
+      } else if (mildFlusterMatch) {
+        hpChange = -5;
+        vitalsReason = "Mild Fluster";
+        wasInferredFallback = true;
+      } else if (composureRegainMatch) {
+        hpChange = 12;
+        vitalsReason = "Composure Regained";
+        wasInferredFallback = true;
+      }
+    }
+
+    if (mpChange === 0) {
+      const hypeExpendMatch =
+        act.match(/\b(flair|burst|signature dish|spike|kata|showstopper)\b/i) ||
+        prose.match(/\b(unleash(?:es|ed)? (?:a|the) (?:burst|flair|signature dish|spike|kata)|burns? hype|audacious gambit|dazzling display)\b/i);
+
+      const hypeGainMatch = prose.match(
+        /\b(crowd (?:cheers|roars|gasps)|applause fills the|momentum builds?|judges? nod in approval)\b/i
+      );
+
+      if (hypeGainMatch) {
+        mpChange = 12;
+        if (!vitalsReason) vitalsReason = "Crowd Momentum Surge";
+        wasInferredFallback = true;
+      } else if (hypeExpendMatch) {
+        mpChange = -10;
+        if (!vitalsReason) vitalsReason = "Showdown Flair Expended";
+        wasInferredFallback = true;
+      }
+    }
+
+    if (!vitalsReason && (hpChange !== 0 || mpChange !== 0)) {
+      if (hpChange < 0) vitalsReason = "Composure Strain";
+      else if (hpChange > 0) vitalsReason = "Composure Restored";
+      else if (mpChange < 0) vitalsReason = "Hype/Cool Expended";
+      else if (mpChange > 0) vitalsReason = "Hype/Cool Built";
+    }
+
+    return {
+      hpChange,
+      mpChange,
+      vitalsReason,
+      wasInferredFallback,
+    };
+  }
+
+  // --------------------------------------------------------------------------
+  // DARK FANTASY: Sovereign Spire / Astra Continent Default Branch
+  // --------------------------------------------------------------------------
   // 1. Check if LLM forgot to set hp_change despite narrating protagonist damage or healing
   if (hpChange === 0 && prose.length > 15) {
     // Severe damage patterns
