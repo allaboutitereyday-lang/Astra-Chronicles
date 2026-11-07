@@ -22,17 +22,21 @@ export function fixSingleQuotedSpeechWithApostrophes(text: string): string {
     // Normalize smart single/double quotes first
     .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
     .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
-    // Match single-quoted speech preceded by start-of-line, whitespace, or punctuation
-    // and ending with sentence punctuation before the closing single quote:
-    // e.g. 'You tread dangerous ground.. but I suppose that's why you're still breathing.'
+    // 1. Convert comma-terminated single-quoted speech first (allows internal contractions like don't / Isaiah's,
+    //    never bridges across separate single-quoted clauses, and supports capitalized speaker names like "Mia muttered"):
     .replace(
-      /(^|[\s—–(-])'([A-Z][^"\n]{2,}?[.!?…]+)'(?=\s|$|[.,;!?—–)])/gm,
+      /(^|[\s—–(-])'([A-Z][^"\n']*?(?:['’][a-zA-Z]+[^"\n']*?)*,)'(?=\s+[A-Za-z])/gm,
       '$1"$2"'
     )
+    // 2. Convert sentence-punctuated single-quoted speech (without bridging across separate quotes):
     .replace(
-      /(^|[\s—–(-])'([A-Z][^"\n]{2,}?,)'(?=\s+[a-z])/gm,
+      /(^|[\s—–(-])'([A-Z][^"\n']*?(?:['’][a-zA-Z]+[^"\n']*?)*[.!?…]+)'(?=\s|$|[.,;!?—–)])/gm,
       '$1"$2"'
-    );
+    )
+    // 3. Repair LLM mixed-quote dialogue clauses where opening quote is " and closing before attribution is ,'
+    .replace(/"([^"\n']*?(?:['’][a-zA-Z]+[^"\n']*?)*,)'(?=\s+[A-Za-z])/g, '"$1"')
+    // 4. Repair LLM mixed-quote dialogue continuations where resumption opens with ' and closes with "
+    .replace(/(^|[\s—–(-])'([A-Z][^"\n']*?(?:['’][a-zA-Z]+[^"\n']*?)*[.!?…,]+)"/gm, '$1"$2"');
 }
 
 /**

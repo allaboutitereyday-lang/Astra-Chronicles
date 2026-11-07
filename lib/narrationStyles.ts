@@ -86,8 +86,9 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
       "NEVER introduce grimdark gore, lethal violence, rotting corpses, or nihilistic despair.",
       "NEVER flatten the heroines' distinct rom-com contrast between their composed public personas and their flustered Blush Zone reactions.",
       "Keep all conflicts grounded in high-stakes coastal hospitality, social status wagers, culinary pride, and romantic tension.",
+      "NEVER repeat the same prop-gag, food sip, or catchphrase across consecutive turns—vary sensory details, physical gestures, and banter topics every turn.",
     ],
-    proseExample: `Golden-hour light spilled across the weathered mahogany bar of The Stray Anchor, catching the swirl of steam rising from the copper pan as you plated the saffron-infused seafood risotto. Across the counter, Seraphina froze mid-sentence, her gold-plated audit clipboard lowering an inch as the rich scent of toasted garlic and white wine drifted past her nose.\n\n"I—I merely asked to inspect your kitchen's thermal compliance, Proprietor!" she stammered, her emerald eyes darting from the glossy arborio rice up to your teasing smile while a telltale crimson blush crept all the way to the tips of her ears. "Do not flatter yourself into thinking a single spoonful will delay my foreclosure filing!"\n\nYet the moment you held the warm tasting spoon toward her lips, she leaned forward almost involuntarily, closing her eyes with a tiny, breathless sigh as the flavor melted across her tongue. Down at the end of the bar, Mia set her pastry basket down with an indignant huff, dusting flour off her gingham apron as she glared between the two of you. "Hey! That's the secret family reduction you promised to save for my shift—and why is Miss Platinum Cliffs still sitting in my favorite stool?!"`,
+    proseExample: `Warm afternoon sunlight danced across the terracotta tiles of the harbor terrace, catching the aromatic steam rising from the espresso machine as a sea breeze rustled the bougainvillea overhead. Across the counter, the visiting inspector paused mid-critique, her composed expression wavering for a heartbeat as the bright scent of roasted hazelnuts and orange zest drifted past.\n\n"I—I only stopped by to verify your terrace seating permit," she insisted, her voice pitching up a fraction as she quickly looked away from your knowing grin. "Do not assume a complimentary macchiato will earn your lounge any special leniency on the harbor register!"\n\nYet her fingers lingered against the warm porcelain cup a moment longer than strictly necessary, the rigid tension in her shoulders softening as the sound of acoustic guitars and laughter drifted up from the boardwalk below.`,
   },
 };
 
@@ -187,6 +188,7 @@ export function resolveNarrationStyleKey(rawTone?: string): NarrationStyleKey {
     return "coastal_romcom";
   }
   if (
+    s.includes("light_novel") ||
     s.includes("light novel") ||
     s.includes("witty banter") ||
     s.includes("heroic") ||
@@ -252,7 +254,7 @@ YOU MUST STRICTLY ADHERE TO THIS PROSE STYLE FOR ALL NARRATIVE TEXT, ENVIRONMENT
    ${def.combatAndAction}
 5. STRICT NEGATIVE CONSTRAINTS (CRITICAL - DO NOT VIOLATE):
 ${def.negativeConstraints.map((nc) => `   - ${nc}`).join("\n")}
-6. TARGET PROSE CADENCE REFERENCE (MATCH THIS EXACT TONE & REGISTER):
+6. TARGET PROSE CADENCE REFERENCE (STYLE & RHYTHM DEMONSTRATION ONLY — NEVER COPY PHRASES, PROPS, OR DIALOGUE FROM THIS SAMPLE INTO LIVE TURNS):
    ${def.proseExample}`;
   } else {
     const customTone = rawTone?.trim() || "Grimdark & Atmospheric";

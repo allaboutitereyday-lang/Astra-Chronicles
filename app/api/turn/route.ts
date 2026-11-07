@@ -157,8 +157,18 @@ export async function POST(req: Request) {
       sanitizedContextSpeaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
     }
 
+    const mergedCompanionsForDossier = (storyContext?.companions || []).map((sc: any) => {
+      const liveMatch = (partyMembers || []).find(
+        (pm: any) => pm.name && sc.name && pm.name.toLowerCase() === sc.name.toLowerCase()
+      );
+      return {
+        ...sc,
+        isPresent: liveMatch ? Boolean(liveMatch.isPresent) : Boolean(sc.isPresent),
+      };
+    });
+
     const companionDossiers = buildPersonaPromptDossier(
-      storyContext?.companions || [],
+      mergedCompanionsForDossier,
       sanitizedContextSpeaker
     );
 
@@ -230,18 +240,19 @@ The user selected this choice/action vector: "${action}".
        visualDescription.toLowerCase().includes("without clothing"))
     );
 
-    const visualInspectionInstruction = visualDescription
-      ? `--- PROTAGONIST VISUAL APPEARANCE (DERIVED FROM AVATAR VIA VISION ENGINE) ---
+    const visualInspectionInstruction = visualDescription && isFirstEncounter
+      ? `--- PROTAGONIST VISUAL APPEARANCE (FIRST ENCOUNTER OBSERVATION) ---
 Detailed visual appearance of ${playerProfile.name}:
 "${visualDescription}"
-${isFirstEncounter ? `CRITICAL FIRST ENCOUNTER DIRECTIVE: The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on ${playerProfile.name}'s specific visual features (attire or lack thereof, physical build, hair/eyes, visible weapons, or demeanor) in their dialogue or narrative prose.${isUncladOrNude ? ` If ${playerProfile.name} is completely unclad, nude, or lacking armor/clothing, ${sanitizedContextSpeaker} MUST strongly and authentically react to this blatant lack of clothing true to their persona (e.g. aristocratic disgust, sardonic mockery, flustered shock, or predatory intrigue).` : ""}` : "You may reference these specific visual traits when describing physical gestures, combat actions, close proximity, or emotional moments."}`
+CRITICAL FIRST ENCOUNTER DIRECTIVE: The active speaker (${sanitizedContextSpeaker}) MUST naturally observe and comment on ${playerProfile.name}'s specific visual features (attire or lack thereof, physical build, hair/eyes, visible weapons, or demeanor) in their dialogue or narrative prose.${isUncladOrNude ? ` If ${playerProfile.name} is completely unclad, nude, or lacking armor/clothing, ${sanitizedContextSpeaker} MUST strongly and authentically react to this blatant lack of clothing true to their persona (e.g. aristocratic disgust, sardonic mockery, flustered shock, or predatory intrigue).` : ""}`
       : (playerAvatarBase64 && isFirstEncounter)
       ? `--- FIRST ENCOUNTER APPEARANCE DIRECTIVE ---
 This is the initial meeting with the protagonist (${playerProfile.name}).
 - Portray the character with the physical bearing, attire (or lack of clothing if unclad), and combat readiness of their role (${playerProfile.role}).
 - The active speaker (${sanitizedContextSpeaker}) should naturally observe and comment on the protagonist's initial appearance in their dialogue or narrative prose.`
-      : `--- APPEARANCE DIRECTIVE ---
-Do NOT repeatedly comment on or re-describe the player's general physical appearance unless a dramatic physical change occurs. Focus on action, dialogue, and advancing the scene.`;
+      : `--- APPEARANCE & ANTI-FIXATION DIRECTIVE ---
+- Protagonist reference traits (for continuity only): ${visualDescription ? visualDescription.slice(0, 220) : `${playerProfile.gender || "Male"} ${playerProfile.race || "Human"} ${playerProfile.role}`}.
+- CRITICAL: Do NOT repeatedly re-describe or fixate on the same physical traits of ${playerFirstName} (such as scars, dreadlocks/hair, biceps, or jacket/attire) that were already mentioned in recent turns. Keep the focus strictly on the new action, dialogue, and advancing the scene.`;
 
     const speciesPhysiologyDirective = `--- PROTAGONIST LINEAGE & ANATOMICAL PHYSIOLOGY DIRECTIVE ---
 - Lineage: ${playerProfile.race || "Human"}
@@ -791,9 +802,24 @@ ${visualInspectionInstruction}`;
       );
     }
 
+    const cleanActionSummary = (action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim() || action;
+
     const userPromptContent = isCustom
-      ? `Player Action: ${action}\n[NARRATIVE DEPTH & PERSONALITY DIRECTIVE: In "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" featuring deep sensory grounding, psychological subtext, physical micro-expressions, and multi-part spoken dialogue in quotation marks "...". Generate the next 4 "suggested_choices" strictly aligned with ${playerProfile.name}'s chosen "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.]`
-      : `Selected Choice Vector: ${action}\n[CRITICAL DIRECTIVE: In "player_execution", generate a rich 2-paragraph narrative passage (6–10 sentences separated by "\\n\\n") of ${playerProfile.name}'s physical movements, tactical stance, and spoken dialogue in quotation marks "..." matching their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality. Do NOT output bracket tags like [Combat/Aggressive]: in "player_execution". Then, in "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" for the companion/world response with multi-stage dialogue and deep sensory subtext, and write all 4 "suggested_choices" in ${playerProfile.name}'s "${personaVoice.personaTitle}" voice.]`;
+      ? `[TURN EXECUTION MANDATE — CUSTOM PLAYER ACTION]
+1. Direct Consequence Only: In "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" that directly answer and advance the immediate consequence of ${playerFirstName}'s custom action below.
+2. Zero Scene Re-Staging: The events in the previous turn are FINISHED. Do NOT repeat or reorder any quotes, prop actions, or side-character interruptions from the previous turn, and do NOT write spoken dialogue for ${playerFirstName} inside "narrative_text".
+3. Next Choices: Generate 4 new "suggested_choices" aligned with ${playerFirstName}'s "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality.
+
+>>> NEW PLAYER ACTION TO ANSWER NOW: "${action}" <<<`
+      : `[TURN EXECUTION MANDATE — PRESET CHOICE VECTOR]
+1. Protagonist Execution ("player_execution"): Expand the choice vector below into a vivid 2-paragraph passage (6–10 sentences separated by "\\n\\n") of ${playerFirstName}'s physical movements and spoken dialogue ("...") in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) voice. Strip all bracket tags.
+2. World & Companion Consequence ("narrative_text"): Author ${paragraphSpecLabel} separated by "\\n\\n" showing how ${sanitizedContextSpeaker} and the environment directly respond to THIS specific new move ("${cleanActionSummary}").
+3. Strict Anti-Repetition & Boundary Rules:
+   - NEVER write spoken dialogue or actions for ${playerFirstName} inside "narrative_text" (${playerFirstName}'s speech belongs ONLY in "player_execution").
+   - NEVER repeat, paraphrase, or shuffle paragraphs, quotes, prop gags (e.g., sipping the same drink again, dropping a clipboard again, polishing a glass again), or side-character quips from the previous turn! Every paragraph must move the conversation and scene forward into new territory.
+4. Next Choices: Write 4 fresh "suggested_choices" in ${playerFirstName}'s "${personaVoice.personaTitle}" voice.
+
+>>> SELECTED CHOICE VECTOR TO EXECUTE & ANSWER NOW: "${action}" <<<`;
 
     let responseData = null;
     let lastError = null;
@@ -825,10 +851,21 @@ ${visualInspectionInstruction}`;
         const modelMessages: any[] = [{ role: "system", content: systemPrompt }];
 
         if (recentHistory && Array.isArray(recentHistory)) {
-          recentHistory.forEach((turn: { speaker: string; text: string }) => {
+          const trimmedHistory = recentHistory.slice(-6);
+          trimmedHistory.forEach((turn: { speaker: string; text: string }, idx: number) => {
+            const isUserTurn = turn.speaker === playerProfile.name;
+            const isMostRecentTurn = idx >= trimmedHistory.length - 2;
+            const rawTurnText = (turn.text || "").trim();
+            const condensedText =
+              !isMostRecentTurn && rawTurnText.length > 550
+                ? `${rawTurnText.slice(0, 260)} ... ${rawTurnText.slice(-260)}`
+                : rawTurnText;
+
             modelMessages.push({
-              role: turn.speaker === playerProfile.name ? "user" : "assistant",
-              content: `${turn.speaker}: ${turn.text}`,
+              role: isUserTurn ? "user" : "assistant",
+              content: isUserTurn
+                ? `${turn.speaker}: ${condensedText}`
+                : `[COMPLETED PRIOR TURN — DO NOT REPEAT OR SHUFFLE ANY QUOTES, BEATS, OR PROPS FROM THIS MESSAGE]:\n${turn.speaker}: ${condensedText}`,
             });
           });
         }
@@ -848,11 +885,12 @@ ${visualInspectionInstruction}`;
             ],
           });
         } else {
-          const textNote = visualDescription
-            ? `\n[Protagonist Appearance Context: "${visualDescription}"]`
-            : (playerAvatarBase64 && isFirstEncounter)
-            ? `\n[Protagonist Archetype: ${playerProfile.name}, Role: ${playerProfile.role}, Stance: ${activeStance || "neutral"}. Note to Game Master: A custom portrait was provided; reflect these warrior traits in character observations.]`
-            : "";
+          const textNote =
+            visualDescription && isFirstEncounter
+              ? `\n[First-Encounter Appearance Context: "${visualDescription}"]`
+              : playerAvatarBase64 && isFirstEncounter
+              ? `\n[Protagonist Archetype: ${playerProfile.name}, Role: ${playerProfile.role}, Stance: ${activeStance || "neutral"}. Note to Game Master: A custom portrait was provided; reflect these traits in initial character observations.]`
+              : "";
           modelMessages.push({
             role: "user",
             content: `${userPromptContent}${textNote}`,

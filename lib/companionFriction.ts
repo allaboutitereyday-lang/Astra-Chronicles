@@ -311,11 +311,9 @@ Key Interpersonal Tension: ${topRivalry.companion1Name} ⚡ ${topRivalry.compani
 - Philosophical Axis: ${topRivalry.ideologicalAxis}
 - Current Friction Intensity: ${topRivalry.frictionScore}/100
 - Banter Dynamic: ${catalogEntry?.banterTone || "Sharp ideological disagreement and covert romantic jealousy."}
-Mandatory Narration Instruction:
-- Do NOT let the scene be a solo monologue.
-- Have ${topRivalry.companion2Name} interrupt, challenge, question, or sarcastically critique ${topRivalry.companion1Name}'s stance or the protagonist's response.
-- Depict the subtle physical tells of rivalry (guarded eye contact, folded arms, sharp inhalations, protective positioning near the protagonist).
-- Keep dialogue witty, high-tension, and true to both characters' established speech patterns.`;
+Narration & Pacing Instruction:
+- Keep the primary spotlight on ${activeSpeaker || topRivalry.companion1Name} directly answering the protagonist's new action.
+- If a secondary present companion (${names.filter((n) => n !== activeSpeaker).join(" or ")}) interjects, their reaction MUST address the specific new development of THIS turn—NEVER repeat an interruption, quip, nickname, or prop action (such as setting down a basket, rustling an apron, or polishing a glass) that already occurred in the previous turn!`;
 }
 
 /**

@@ -478,12 +478,11 @@ export const CANONICAL_PERSONA_FINGERPRINTS: Record<string, CompanionPersonaFing
     archetype: "Tsundere Resort Heiress & Cut-Off Star Auditor (Platinum Board)",
     coreDemeanor: "Proud, perfectionist, sharp-tongued high-society auditor whose haughty exterior cracks whenever she's teased, treated gently, or served warm comfort food.",
     voiceRegister: "Crisp, patrician, authoritative cadence that pitches up into flustered stammering when her secret appetite or boarding-house arrangement is mentioned.",
-    sentenceStructure: "Imperious hospitality critiques followed by hasty, blushing excuses ('strictly for audit accuracy!').",
+    sentenceStructure: "Imperious hospitality assessments paired with flustered, defensive rationalizations whenever her composure slips.",
     vocabularyTier: "Five-star hospitality and corporate audit lexicon ('provisional rating', 'demerit', 'Five-Star standard', 'subpar plating', 'Article 9 clause').",
     speechQuirks: [
-      "Taps her gold-plated Star Audit clipboard whenever she tries to reassert authority.",
-      "Invents transparent regulatory excuses whenever she wants a second helping of your cooking.",
-      "Twirls one honey-blonde twin-tail around her finger when her BPM enters the Blush Zone.",
+      "Occasionally references her Star Audit notes or adjusts her blazer when trying to reassert authority (vary physical gestures each turn; do not repeat clipboard or hair-twirling gags on consecutive turns).",
+      "Invents transparent regulatory rationalizations when caught enjoying the café's hospitality, always finding a fresh angle rather than repeating a catchphrase.",
     ],
     hardNegativeRules: [
       "DO NOT portray Seraphina as cruelly malicious—she believes in fair standards and secretly wants The Stray Anchor to succeed.",
@@ -893,12 +892,17 @@ export function buildPersonaPromptDossier(companions: any[], activeSpeaker?: str
 }
 
 function formatSingleFingerprintDossier(p: CompanionPersonaFingerprint, index: number, isActive: boolean): string {
-  return `${index}. ${p.name.toUpperCase()} [${p.archetype}] ${isActive ? "★ ACTIVE SCENE SPEAKER ★" : ""}
+  if (!isActive) {
+    return `${index}. ${p.name.toUpperCase()} [${p.archetype}] (SUPPORTING PRESENT COMPANION)
+   - Core Demeanor & Voice: ${p.coreDemeanor} (${p.voiceRegister})
+   - Scene Role: Reacts ONLY when directly addressed or when the player's new action directly impacts her; do NOT repeat her stock props or entrance routine every turn.`;
+  }
+  return `${index}. ${p.name.toUpperCase()} [${p.archetype}] ★ ACTIVE SCENE SPEAKER ★
    - Core Demeanor: ${p.coreDemeanor}
    - Voice Register: ${p.voiceRegister}
    - Sentence Structure: ${p.sentenceStructure}
    - Vocabulary: ${p.vocabularyTier}
-   - Speech Quirks: ${p.speechQuirks.join(" ")}
+   - Speech Quirks (Use sparingly; NEVER repeat the same physical prop or catchphrase on consecutive turns): ${p.speechQuirks.join(" ")}
    - Hard Negative Constraints:
      ${p.hardNegativeRules.map((rule) => `* ${rule}`).join("\n     ")}
    - Anti-Sycophancy Guardrail:
@@ -968,7 +972,8 @@ You are speaking as "${p.name}". The LLM output MUST embody her exact psychologi
 3. HARD VOICE GUARDS:
 ${p.hardNegativeRules.map((r) => `   - ${r}`).join("\n")}
 ${p.antiSycophancyGuardrails.map((g) => `   - ${g}`).join("\n")}
-4. CANONICAL FEW-SHOT DIALOGUE ANCHORS FOR ${p.name.toUpperCase()} (MATCH THIS EXACT STYLE):
+   - VARY PHYSICAL CHOREOGRAPHY & DICTION: Never repeat the same prop action (e.g., tapping/dropping a clipboard, polishing a glass, adjusting a blazer, sighing over a sip) or catchphrase from the previous turn. React directly and specifically to what the protagonist JUST did or said in this turn!
+4. CANONICAL VOICE & CADENCE ANCHORS FOR ${p.name.toUpperCase()} (VOICE REGISTER DEMONSTRATION ONLY — NEVER COPY THESE SCENARIOS, PROPS, OR QUOTES INTO LIVE TURNS):
    * When Agreeing:
      ${p.bipolarAnchors.agreementExample}
    * When Confronting / Disagreeing:
