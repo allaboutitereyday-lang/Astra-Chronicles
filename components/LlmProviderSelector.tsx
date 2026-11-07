@@ -51,6 +51,22 @@ export const DEFAULT_LLM_CONFIG: LlmConfig = {
   narrativeDepth: "deep_novelistic",
 };
 
+export const LEGACY_MODEL_MIGRATIONS: Record<string, string> = {
+  "nousresearch/hermes-3-llama-3.1-70b": "nousresearch/hermes-4-405b",
+  "nousresearch/hermes-3-llama-3.1-405b": "nousresearch/hermes-4-405b",
+  "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
+};
+
+export function normalizeLegacyModelId(modelId?: string | null): string {
+  if (!modelId) return DEFAULT_LLM_CONFIG.modelId;
+  const trimmed = modelId.trim();
+  return LEGACY_MODEL_MIGRATIONS[trimmed] || trimmed;
+}
+
+export function isHybridModelId(modelId?: string | null): boolean {
+  return modelId === "orchestrated-hybrid" || modelId === "orchestrated-hybrid-deepseek";
+}
+
 export function getStoredLlmConfig(): LlmConfig {
   if (typeof window === "undefined") return DEFAULT_LLM_CONFIG;
   try {
@@ -61,8 +77,13 @@ export function getStoredLlmConfig(): LlmConfig {
         // Enforce cloud environment for all sessions
         parsed.targetEnvironment = "cloud";
         // If modelId is empty or an old local model, default to Smart Hybrid
-        if (!parsed.modelId || (!parsed.modelId.includes("/") && parsed.modelId !== "orchestrated-hybrid")) {
+        if (
+          !parsed.modelId ||
+          (!parsed.modelId.includes("/") && !isHybridModelId(parsed.modelId))
+        ) {
           parsed.modelId = DEFAULT_LLM_CONFIG.modelId;
+        } else {
+          parsed.modelId = normalizeLegacyModelId(parsed.modelId);
         }
         // Migrate legacy 1024 max_tokens cap to the expanded 3584 budget
         if (!parsed.max_tokens || parsed.max_tokens <= 1024) {
@@ -116,10 +137,38 @@ export const LOCAL_MODELS = [
 export const CLOUD_MODELS = [
   {
     id: "orchestrated-hybrid",
-    name: "Smart Hybrid (DeepSeek V3 + Euryale 70B)",
-    shortName: "Smart Hybrid",
-    description: "Automatic Multi-Model Orchestration: DeepSeek V3 orchestrates game mastery, LitRPG systems, choices & tactical combat, combined with flagship companion roleplay.",
+    name: "Smart Hybrid (Gemini 2.5 Flash + Euryale 70B)",
+    shortName: "Smart Hybrid (Gemini)",
+    description: "OOC.ai-Style Multi-Model Orchestration: Gemini 2.5 Flash (1M context & native vision) orchestrates fast visual-novel turns, LitRPG systems & dynamic choices, paired with Euryale 70B for flagship roleplay.",
     badge: "Recommended",
+  },
+  {
+    id: "orchestrated-hybrid-deepseek",
+    name: "Smart Hybrid (DeepSeek V3.2 + Euryale 70B)",
+    shortName: "Smart Hybrid (V3.2)",
+    description: "Uncensored Multi-Model Orchestration: DeepSeek V3.2 orchestrates tactical game mastery, LitRPG systems & high-variety narrative turns, combined with Euryale 70B companion roleplay.",
+    badge: "Hybrid • V3.2",
+  },
+  {
+    id: "anthropic/claude-sonnet-4.6",
+    name: "Claude Sonnet 4.6 (OOC.ai Pro Engine)",
+    shortName: "Claude Sonnet 4.6",
+    description: "Flagship OOC.ai / Wrtn Crack Pro narrative engine. Unmatched character psychology, witty anime & rom-com banter, zero-repetition scene pacing, and 1M context.",
+    badge: "OOC Pro Flagship",
+  },
+  {
+    id: "google/gemini-2.5-flash",
+    name: "Gemini 2.5 Flash (1M Context • Fast VN)",
+    shortName: "Gemini 2.5 Flash",
+    description: "High-speed 1M-token context engine used by OOC.ai for deep chronicle memory retention, native portrait vision, and snappy anime/visual-novel pacing.",
+    badge: "Anime & Memory",
+  },
+  {
+    id: "anthracite-org/magnum-v4-72b",
+    name: "Magnum v4 72B (Uncensored Claude-Style)",
+    shortName: "Magnum v4 72B",
+    description: "Fine-tuned on 72B parameters specifically to replicate Claude Sonnet/Opus literary prose and character depth without safety refusals or lecturing.",
+    badge: "Uncensored Pro",
   },
   {
     id: "sao10k/l3.1-euryale-70b",
@@ -129,18 +178,25 @@ export const CLOUD_MODELS = [
     badge: "Flagship RP",
   },
   {
-    id: "nousresearch/hermes-3-llama-3.1-70b",
-    name: "Nous Hermes 3 (70B)",
-    shortName: "Hermes 3 70B",
-    description: "Exceptional multi-turn storytelling, creative dialogue, and precise adherence to LitRPG system state and combat mechanics.",
-    badge: "Story & LitRPG",
+    id: "thedrummer/cydonia-24b-v4.1",
+    name: "TheDrummer: Cydonia 24B v4.1",
+    shortName: "Cydonia 24B v4.1",
+    description: "Purpose-built 'Anti-Slop' roleplay model (131K context) tuned specifically to eliminate repetitive AI clichés, looping props, and purple prose.",
+    badge: "Anti-Repetition",
   },
   {
-    id: "deepseek/deepseek-chat",
-    name: "DeepSeek Chat (V3)",
-    shortName: "DeepSeek Chat",
-    description: "Cutting-edge 671B MoE model. Ultra-fast, highly intelligent, capable of deep narrative reasoning and intricate tactical choices.",
+    id: "deepseek/deepseek-v3.2",
+    name: "DeepSeek V3.2 (Next-Gen 671B MoE)",
+    shortName: "DeepSeek V3.2",
+    description: "Upgraded 671B MoE model replacing V3.0. Ultra-fast, lower cost, stronger creative prose variety, and intricate tactical LitRPG reasoning.",
     badge: "Intelligence",
+  },
+  {
+    id: "nousresearch/hermes-4-405b",
+    name: "Nous Hermes 4 (405B)",
+    shortName: "Hermes 4 405B",
+    description: "Colossal 405B parameter flagship model replacing Hermes 3. Pinnacle narrative depth, intricate lore preservation, and uncensored world simulation.",
+    badge: "Maximum Scale",
   },
   {
     id: "sao10k/l3-lunaris-8b",
@@ -156,13 +212,6 @@ export const CLOUD_MODELS = [
     description: "Legendary visual novel & fictional roleplay merge. Fluid conversational pacing and poetic descriptive style.",
     badge: "Classic Fiction",
   },
-  {
-    id: "nousresearch/hermes-3-llama-3.1-405b",
-    name: "Nous Hermes 3 (405B)",
-    shortName: "Hermes 3 405B",
-    description: "Colossal 405B parameter flagship model. Pinnacle narrative depth, intricate lore preservation, and uncensored world simulation.",
-    badge: "Maximum Scale",
-  },
 ];
 
 /**
@@ -172,7 +221,8 @@ export async function sendRoleplayTurn(
   messages: ChatMessage[],
   config: LlmConfig
 ): Promise<RoleplayApiResponse> {
-  const resolvedModel = config.modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : config.modelId;
+  const normalizedId = normalizeLegacyModelId(config.modelId);
+  const resolvedModel = isHybridModelId(normalizedId) ? "sao10k/l3.1-euryale-70b" : normalizedId;
 
   const res = await fetch("/api/roleplay", {
     method: "POST",
@@ -539,9 +589,10 @@ interface LlmQuickPillProps {
  * Compact Pill button showing current AI backend, clickable to open the configuration modal
  */
 export function LlmQuickPill({ config, onClick, className = "" }: LlmQuickPillProps) {
-  const activeModel = CLOUD_MODELS.find((m) => m.id === config.modelId);
-  const displayName = activeModel ? activeModel.shortName : (config.modelId.split("/").pop() || config.modelId);
-  const isHybrid = config.modelId === "orchestrated-hybrid";
+  const normalizedId = normalizeLegacyModelId(config.modelId);
+  const activeModel = CLOUD_MODELS.find((m) => m.id === normalizedId);
+  const displayName = activeModel ? activeModel.shortName : (normalizedId.split("/").pop() || normalizedId);
+  const isHybrid = isHybridModelId(normalizedId);
 
   return (
     <button

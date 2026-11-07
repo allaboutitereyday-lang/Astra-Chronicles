@@ -12,11 +12,18 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const EXPAND_MODELS = [
-  "deepseek/deepseek-chat",
-  "nousresearch/hermes-3-llama-3.1-70b",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-v3.2",
+  "thedrummer/cydonia-24b-v4.1",
   "sao10k/l3.1-euryale-70b",
   "sao10k/l3-lunaris-8b",
 ];
+
+const LEGACY_MODEL_MIGRATIONS: Record<string, string> = {
+  "nousresearch/hermes-3-llama-3.1-70b": "nousresearch/hermes-4-405b",
+  "nousresearch/hermes-3-llama-3.1-405b": "nousresearch/hermes-4-405b",
+  "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
+};
 
 function buildFallbackTwoParagraphAction(params: {
   rawAction: string;
@@ -201,10 +208,13 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
   "expanded_action": "Paragraph 1...\\n\\nParagraph 2..."
 }`;
 
+    const normalizedRequestedModel = modelId ? (LEGACY_MODEL_MIGRATIONS[modelId] || modelId) : "";
     const effectiveModelId =
-      modelId === "orchestrated-hybrid"
-        ? "deepseek/deepseek-chat"
-        : modelId || "deepseek/deepseek-chat";
+      normalizedRequestedModel === "orchestrated-hybrid" || !normalizedRequestedModel
+        ? "google/gemini-2.5-flash"
+        : normalizedRequestedModel === "orchestrated-hybrid-deepseek"
+        ? "deepseek/deepseek-v3.2"
+        : normalizedRequestedModel;
     const modelsToTry = isLocal
       ? [effectiveModelId || "hermes3:8b"]
       : [effectiveModelId, ...EXPAND_MODELS.filter((m) => m !== effectiveModelId)];

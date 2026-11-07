@@ -23,11 +23,19 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const PROLOGUE_MODELS = [
-  "deepseek/deepseek-chat",
-  "nousresearch/hermes-3-llama-3.1-70b",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-v3.2",
+  "thedrummer/cydonia-24b-v4.1",
   "sao10k/l3.1-euryale-70b",
+  "anthracite-org/magnum-v4-72b",
   "sao10k/l3-lunaris-8b",
 ];
+
+const LEGACY_MODEL_MIGRATIONS: Record<string, string> = {
+  "nousresearch/hermes-3-llama-3.1-70b": "nousresearch/hermes-4-405b",
+  "nousresearch/hermes-3-llama-3.1-405b": "nousresearch/hermes-4-405b",
+  "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
+};
 
 export async function POST(req: Request) {
   try {
@@ -508,7 +516,7 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
         m.includes("vl") ||
         m.includes("4o") ||
         m.includes("gemini") ||
-        m.includes("claude-3") ||
+        m.includes("claude-") ||
         m.includes("pixtral")
       );
     }
@@ -516,8 +524,14 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
     let responseData = null;
     let lastError = null;
 
-    // Smart Hybrid routes structured prologue orchestration to DeepSeek V3
-    const effectiveModelId = modelId === "orchestrated-hybrid" ? "deepseek/deepseek-chat" : (modelId || "deepseek/deepseek-chat");
+    // Smart Hybrid routes structured prologue orchestration to Gemini 2.5 Flash (default) or DeepSeek V3.2
+    const normalizedRequestedModel = modelId ? (LEGACY_MODEL_MIGRATIONS[modelId] || modelId) : "";
+    const effectiveModelId =
+      normalizedRequestedModel === "orchestrated-hybrid" || !normalizedRequestedModel
+        ? "google/gemini-2.5-flash"
+        : normalizedRequestedModel === "orchestrated-hybrid-deepseek"
+        ? "deepseek/deepseek-v3.2"
+        : normalizedRequestedModel;
     const modelsToTry = isLocal
       ? [effectiveModelId || "hermes3:8b"]
       : (effectiveModelId ? [effectiveModelId, ...PROLOGUE_MODELS.filter((m) => m !== effectiveModelId)] : PROLOGUE_MODELS);

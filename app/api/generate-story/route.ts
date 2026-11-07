@@ -6,9 +6,10 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const GENERATE_MODELS = [
-  "nousresearch/hermes-3-llama-3.1-70b",
-  "deepseek/deepseek-chat",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-v3.2",
   "sao10k/l3.1-euryale-70b",
+  "thedrummer/cydonia-24b-v4.1",
 ];
 
 export async function POST(req: Request) {

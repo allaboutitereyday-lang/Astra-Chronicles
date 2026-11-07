@@ -20,8 +20,9 @@ const OPENROUTER_IMAGE_MODELS = [
 ];
 
 const FAST_LLM_MODELS = [
-  "deepseek/deepseek-chat",
-  "nousresearch/hermes-3-llama-3.1-70b",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-v3.2",
+  "thedrummer/cydonia-24b-v4.1",
 ];
 
 /**

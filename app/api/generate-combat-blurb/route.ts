@@ -5,8 +5,9 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const FALLBACK_MODELS = [
-  "deepseek/deepseek-chat",
-  "nousresearch/hermes-3-llama-3.1-70b",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-v3.2",
+  "thedrummer/cydonia-24b-v4.1",
   "sao10k/l3-lunaris-8b",
 ];
 

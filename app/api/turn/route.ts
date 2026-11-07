@@ -52,11 +52,19 @@ export const runtime = "nodejs";
 export const maxDuration = 90;
 
 const FALLBACK_MODELS = [
-  "deepseek/deepseek-chat",
-  "nousresearch/hermes-3-llama-3.1-70b",
+  "google/gemini-2.5-flash",
+  "deepseek/deepseek-v3.2",
+  "thedrummer/cydonia-24b-v4.1",
   "sao10k/l3.1-euryale-70b",
+  "anthracite-org/magnum-v4-72b",
   "sao10k/l3-lunaris-8b",
 ];
+
+const LEGACY_MODEL_MIGRATIONS: Record<string, string> = {
+  "nousresearch/hermes-3-llama-3.1-70b": "nousresearch/hermes-4-405b",
+  "nousresearch/hermes-3-llama-3.1-405b": "nousresearch/hermes-4-405b",
+  "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
+};
 
 export async function POST(req: Request) {
   try {
@@ -797,7 +805,7 @@ ${visualInspectionInstruction}`;
         m.includes("vl") ||
         m.includes("4o") ||
         m.includes("gemini") ||
-        m.includes("claude-3") ||
+        m.includes("claude-") ||
         m.includes("pixtral")
       );
     }
@@ -825,8 +833,14 @@ ${visualInspectionInstruction}`;
     let lastError = null;
 
     // Smart Hybrid routes structured Game Master turns and LitRPG state orchestration
-    // to DeepSeek V3 for elite coherence, 0.3s latency, flawless choices & player execution
-    const effectiveModelId = modelId === "orchestrated-hybrid" ? "deepseek/deepseek-chat" : (modelId || "deepseek/deepseek-chat");
+    // to Gemini 2.5 Flash (default) or DeepSeek V3.2 (when orchestrated-hybrid-deepseek is selected)
+    const normalizedRequestedModel = modelId ? (LEGACY_MODEL_MIGRATIONS[modelId] || modelId) : "";
+    const effectiveModelId =
+      normalizedRequestedModel === "orchestrated-hybrid" || !normalizedRequestedModel
+        ? "google/gemini-2.5-flash"
+        : normalizedRequestedModel === "orchestrated-hybrid-deepseek"
+        ? "deepseek/deepseek-v3.2"
+        : normalizedRequestedModel;
 
     const modelsToTry = isLocal
       ? [effectiveModelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)

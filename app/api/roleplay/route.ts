@@ -108,7 +108,16 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
       }
 
       endpointUrl = "https://openrouter.ai/api/v1/chat/completions";
-      const resolvedModelId = modelId === "orchestrated-hybrid" ? "sao10k/l3.1-euryale-70b" : modelId;
+      const legacyMap: Record<string, string> = {
+        "nousresearch/hermes-3-llama-3.1-70b": "nousresearch/hermes-4-405b",
+        "nousresearch/hermes-3-llama-3.1-405b": "nousresearch/hermes-4-405b",
+        "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
+      };
+      const normalizedModelId = modelId ? (legacyMap[modelId] || modelId) : "";
+      const resolvedModelId =
+        normalizedModelId === "orchestrated-hybrid" || normalizedModelId === "orchestrated-hybrid-deepseek"
+          ? "sao10k/l3.1-euryale-70b"
+          : normalizedModelId;
       targetModel = resolvedModelId || "sao10k/l3.1-euryale-70b";
       headers = {
         "Content-Type": "application/json",
