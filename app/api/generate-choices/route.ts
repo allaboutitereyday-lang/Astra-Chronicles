@@ -9,6 +9,7 @@ import {
   buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
 import { buildAntiRepetitionDirective } from "@/lib/repetitionGuard";
+import { parseModelJsonLenient } from "@/lib/jsonSalvage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
     const {
       storyContext,
-      gameState,
+      gameState: rawGameState,
       playerProfile,
       partyMembers = [],
       memories = [],
@@ -35,7 +36,20 @@ export async function POST(req: Request) {
       systemState,
       userAccessKey,
       narrationStyle,
+      modelId,
+      storyTitle: topLevelStoryTitle,
+      location: topLevelLocation,
+      mood: topLevelMood,
+      speaker: topLevelSpeaker,
+      dialogue: topLevelDialogue,
     } = body;
+
+    const gameState = rawGameState || {
+      location: topLevelLocation || "Starting Point",
+      mood: topLevelMood || "Charged",
+      speaker: topLevelSpeaker || "Narrator",
+      dialogue: topLevelDialogue || "",
+    };
 
     const accessKey = headerKey || userAccessKey;
     const authCheck = validateUserKey(accessKey);
@@ -52,8 +66,14 @@ export async function POST(req: Request) {
 
     // Track physical presence of companions in the active scene
     const physicallyPresentCompanions = (partyMembers || []).filter((c: any) => Boolean(c.isPresent));
-    const isProtagonistAlone = physicallyPresentCompanions.length === 0;
-    const presentHeroineNames = physicallyPresentCompanions.map((c: any) => c.name);
+    const hasTopLevelSpeaker = Boolean(gameState?.speaker && gameState.speaker !== "Narrator");
+    const isProtagonistAlone = physicallyPresentCompanions.length === 0 && !hasTopLevelSpeaker;
+    const presentHeroineNames =
+      physicallyPresentCompanions.length > 0
+        ? physicallyPresentCompanions.map((c: any) => c.name)
+        : hasTopLevelSpeaker
+        ? [gameState.speaker]
+        : [];
 
     let sanitizedSpeaker = gameState?.speaker || "Narrator";
     if (playerProfile?.name && sanitizedSpeaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
@@ -72,11 +92,14 @@ export async function POST(req: Request) {
           activeSpeaker: sanitizedSpeaker,
           location: gameState?.location || "this area",
           isProtagonistAlone,
+          storyId: storyContext?.id,
+          genre: storyContext?.genre,
+          narrativeText: gameState?.dialogue,
         }),
       });
     }
 
-    const storyTitle = storyContext?.title || "Astra Chronicles";
+    const storyTitle = storyContext?.title || topLevelStoryTitle || "Astra Chronicles";
     const settingName = storyContext?.worldContext?.settingName || "the world";
     const effectiveTone = narrationStyle || playerProfile?.narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
@@ -84,6 +107,8 @@ export async function POST(req: Request) {
       ? physicallyPresentCompanions
           .map((c: any) => `${c.name} (${c.title || c.role || "Companion"}, Favor: ${c.affection}%)`)
           .join(", ")
+      : hasTopLevelSpeaker
+      ? sanitizedSpeaker
       : "None present (Protagonist is PHYSICALLY ALONE)";
 
     const activeQuests = systemState?.activeQuests && systemState.activeQuests.length > 0
@@ -177,9 +202,17 @@ Format Requirement:
     ];
 
     let dynamicChoices = null;
+    const requestedModel =
+      modelId && modelId !== "orchestrated-hybrid" && modelId !== "orchestrated-hybrid-deepseek" && modelId.includes("/")
+        ? modelId
+        : modelId === "orchestrated-hybrid-deepseek"
+        ? "deepseek/deepseek-v3.2"
+        : "google/gemini-2.5-flash";
+    const modelsToTry = [requestedModel, ...FALLBACK_MODELS.filter((m) => m !== requestedModel)];
 
-    for (const model of FALLBACK_MODELS) {
+    for (const model of modelsToTry) {
       try {
+        const isAnthropicModel = model.toLowerCase().includes("claude") || model.toLowerCase().startsWith("anthropic/");
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -193,7 +226,7 @@ Format Requirement:
             messages,
             user: activeUser.key,
             temperature: 0.85,
-            repetition_penalty: 1.15,
+            ...(isAnthropicModel ? {} : { repetition_penalty: 1.15 }),
             response_format: { type: "json_object" },
           }),
         });
@@ -203,12 +236,10 @@ Format Requirement:
         }
 
         const data = await response.json();
-        let content = data.choices?.[0]?.message?.content || "";
-        content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
-
-        const parsed = JSON.parse(content);
-        if (Array.isArray(parsed.choices) && parsed.choices.length === 4) {
-          dynamicChoices = parsed.choices;
+        const content = data.choices?.[0]?.message?.content || "";
+        const parsed = parseModelJsonLenient(content, sanitizedSpeaker);
+        if (parsed && Array.isArray(parsed.choices) && parsed.choices.length > 0) {
+          dynamicChoices = parsed.choices.slice(0, 4);
           recordUserTurn(activeUser.key, data.usage, model);
           break;
         }
@@ -226,6 +257,9 @@ Format Requirement:
         activeSpeaker: sanitizedSpeaker || "Companion",
         location: gameState?.location || "the area",
         isProtagonistAlone,
+        storyId: storyContext?.id,
+        genre: storyContext?.genre,
+        narrativeText: gameState?.dialogue,
       });
     }
 

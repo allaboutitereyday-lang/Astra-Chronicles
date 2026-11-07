@@ -540,9 +540,9 @@ export function CharacterCardModal({
         </div>
 
         {/* RIGHT COLUMN: DOSSIER TABS & KNOWLEDGE GATING */}
-        <div className="flex-1 flex flex-col min-w-0 p-5 sm:p-6 overflow-y-auto">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 p-5 sm:p-6 overflow-hidden">
           {/* HEADER: NAME, EPITHET, FACTION */}
-          <div className="border-b border-white/10 pb-4 pr-10">
+          <div className="shrink-0 border-b border-white/10 pb-3.5 pr-10">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
                 {companion.name}
@@ -560,13 +560,13 @@ export function CharacterCardModal({
           </div>
 
           {/* TAB SWITCHER DOCK */}
-          <div className="flex items-center gap-1.5 my-3.5 border-b border-white/10 pb-2 overflow-x-auto no-scrollbar">
+          <div className="shrink-0 flex flex-wrap items-center gap-1.5 my-3 border-b border-white/10 pb-3">
             {(
               [
-                { id: "overview", label: "Overview & Dyad", icon: <Layers className="w-3.5 h-3.5" /> },
-                { id: "dossier", label: "Dossier & Quirks", icon: <Info className="w-3.5 h-3.5" /> },
-                { id: "role", label: "Stray Anchor Role", icon: <Coffee className="w-3.5 h-3.5" /> },
-                { id: "memories", label: "Core Memories", icon: <Award className="w-3.5 h-3.5" /> },
+                { id: "overview", label: "Overview & Dyad", icon: <Layers className="w-3.5 h-3.5 shrink-0" /> },
+                { id: "dossier", label: "Dossier & Quirks", icon: <Info className="w-3.5 h-3.5 shrink-0" /> },
+                { id: "role", label: "Stray Anchor Role", icon: <Coffee className="w-3.5 h-3.5 shrink-0" /> },
+                { id: "memories", label: "Core Memories", icon: <Award className="w-3.5 h-3.5 shrink-0" /> },
               ] as const
             ).map((tab) => {
               const isSelected = activeTab === tab.id;
@@ -578,7 +578,7 @@ export function CharacterCardModal({
                     soundEffects.playClick();
                     setActiveTab(tab.id);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                     isSelected
                       ? "bg-rose-500/20 border border-rose-400 text-rose-200 shadow-md"
                       : "bg-white/5 border border-transparent text-zinc-400 hover:text-white hover:bg-white/10"
@@ -592,7 +592,7 @@ export function CharacterCardModal({
           </div>
 
           {/* TAB CONTENTS */}
-          <div className="flex-1 space-y-4 text-xs font-mono">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4 text-xs font-mono">
             {/* TAB 1: OVERVIEW & DYAD PASSIVE */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">

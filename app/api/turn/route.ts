@@ -43,6 +43,7 @@ import {
   detectRepetitionLoop,
   breakStagnationLoop,
 } from "@/lib/repetitionGuard";
+import { parseModelJsonLenient } from "@/lib/jsonSalvage";
 import {
   buildPortSolarisTurnDirective,
   calculateBpmDelta,
@@ -109,12 +110,18 @@ export async function POST(req: Request) {
     } = body;
 
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.1, Math.min(1.8, temperature)) : 0.75;
-    const effectiveMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 3584;
-    const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.5, repetition_penalty)) : 1.1;
     const effectiveNarrativeDepth: NarrativeDepthMode =
       narrativeDepth === "standard" || narrativeDepth === "expansive" || narrativeDepth === "deep_novelistic"
         ? narrativeDepth
         : "deep_novelistic";
+    const requestedMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 3584;
+    const effectiveMaxTokens =
+      effectiveNarrativeDepth === "deep_novelistic"
+        ? Math.max(3584, requestedMaxTokens)
+        : effectiveNarrativeDepth === "expansive"
+        ? Math.max(2560, requestedMaxTokens)
+        : requestedMaxTokens;
+    const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.5, repetition_penalty)) : 1.1;
     const paragraphSpecLabel =
       effectiveNarrativeDepth === "standard"
         ? "2 to 3 evocative paragraphs"
@@ -627,22 +634,12 @@ MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
    - ALWAYS output an authoritative LitRPG notification in "system_updates.system_announcement".
 
 --- OUTPUT FORMAT ---
-Respond strictly in valid JSON matching this schema:
+Respond strictly in valid JSON matching this schema (escape all internal double quotes as \\"...\\" inside string values, use \\n\\n for paragraph breaks, and do NOT escape apostrophes with \\'):
 {
   "speaker": string,
-  "player_execution": string | null, // When preset choice is selected: a rich 2-paragraph plain-text passage (6–10 sentences separated by "\\n\\n") with flawless grammar and ZERO Markdown asterisks, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in double quotation marks "...". Null only for custom player inputs.
-  "narrative_text": string, // ${paragraphSpecLabel} separated by "\\n\\n", containing rich environmental sensory details, psychological subtext, physical micro-expressions, and multiple character dialogue segments in double quotation marks ("..."). Flawless grammar and syntax. ZERO Markdown asterisks (* or **). MUST STRICTLY adhere to the active Narration Style and Narrative Depth Directive.
-  "mechanics": string | null, // Concise LitRPG system or tactical mechanics readout for this turn (e.g. "[SYSTEM: Stance Resonance Active • Causal Plausibility Stable]"), or null if none.
-  "death_event": {
-    "is_fatal": boolean,
-    "cause_of_death": string | null,
-    "killer_or_hazard": string | null
-  } | null,
-  "timeline_echo_unlocked": {
-    "title": string,
-    "summary": string,
-    "foreshadow_key": string
-  } | null,
+  "player_execution": string | null, // When preset choice is selected: a rich 2-paragraph plain-text passage (6–10 sentences separated by "\\n\\n") with flawless grammar and ZERO Markdown asterisks, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in escaped double quotation marks (\\"...\\"). Null only for custom player inputs.
+  "narrative_text": string, // ${paragraphSpecLabel} separated by "\\n\\n", containing rich environmental sensory details, psychological subtext, physical micro-expressions, and multiple character dialogue segments in escaped double quotation marks (\\"...\\"). Flawless grammar and syntax. ZERO Markdown asterisks (* or **). MUST STRICTLY adhere to the active Narration Style and Narrative Depth Directive.
+  "suggested_choices": [string, string, string, string], // 4 fresh, scene-specific choices directly answering what just happened in narrative_text, strictly formatted as "[Tone/Action]: 'Spoken dialogue in persona voice' + concrete physical action"
   "state_updates": {
     "current_location": string,
     "mood": string,
@@ -675,6 +672,7 @@ Respond strictly in valid JSON matching this schema:
       "tacticalObjective": string
     } | null
   },
+  "mechanics": string | null, // Concise LitRPG system or tactical mechanics readout for this turn (e.g. "[SYSTEM: Stance Resonance Active • Causal Plausibility Stable]"), or null if none.
   "player_progression": {
     "exp_gained": number,
     "hp_change": number, // Negative when taking damage in story (-5 to -30), positive when healed (+10 to +30)
@@ -722,7 +720,16 @@ Respond strictly in valid JSON matching this schema:
     } | null
   },
   "new_memory_unlocked": string | null,
-  "suggested_choices": [string, string, string, string]
+  "death_event": {
+    "is_fatal": boolean,
+    "cause_of_death": string | null,
+    "killer_or_hazard": string | null
+  } | null,
+  "timeline_echo_unlocked": {
+    "title": string,
+    "summary": string,
+    "foreshadow_key": string
+  } | null
 }
 
 --- CURRENT CAMPAIGN STATE & DYNAMIC TURN CONTEXT ---
@@ -944,6 +951,7 @@ ${visualInspectionInstruction}`;
           });
         }
 
+        const isAnthropicModel = model.toLowerCase().includes("claude") || model.toLowerCase().startsWith("anthropic/");
         let response = await fetch(fetchUrl, {
           method: "POST",
           headers,
@@ -952,8 +960,8 @@ ${visualInspectionInstruction}`;
             messages: modelMessages,
             user: activeUser.key,
             temperature: effectiveTemperature,
-            max_tokens: effectiveMaxTokens,
-            repetition_penalty: effectiveRepetitionPenalty,
+            max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+            ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
             response_format: { type: "json_object" },
             ...(isLocal ? {} : { provider: { allow_fallbacks: true } }),
           }),
@@ -995,8 +1003,8 @@ ${visualInspectionInstruction}`;
                 messages: fallbackMessages,
                 user: activeUser.key,
                 temperature: effectiveTemperature,
-                max_tokens: effectiveMaxTokens,
-                repetition_penalty: effectiveRepetitionPenalty,
+                max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+                ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
                 response_format: { type: "json_object" },
                 ...(isLocal ? {} : { provider: { allow_fallbacks: true } }),
               }),
@@ -1016,43 +1024,11 @@ ${visualInspectionInstruction}`;
         }
 
         const data = await response.json();
-        let content = data.choices?.[0]?.message?.content || "";
-        content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
-
-        try {
-          responseData = JSON.parse(content);
-        } catch {
-          const firstBrace = content.indexOf("{");
-          const lastBrace = content.lastIndexOf("}");
-          if (firstBrace !== -1 && lastBrace > firstBrace) {
-            try {
-              responseData = JSON.parse(content.slice(firstBrace, lastBrace + 1));
-            } catch {
-              responseData = null;
-            }
-          }
-          // If JSON was truncated at max_tokens, salvage narrative_text from the raw stream
-          if (!responseData || (!responseData.narrative_text && !responseData.narrative)) {
-            const narrativeMatch = content.match(/"narrative_text"\s*:\s*"((?:[^"\\]|\\.)*)/);
-            const speakerMatch = content.match(/"speaker"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-            if (narrativeMatch && narrativeMatch[1] && narrativeMatch[1].length > 40) {
-              const salvagedText = narrativeMatch[1]
-                .replace(/\\n/g, "\n")
-                .replace(/\\"/g, '"')
-                .replace(/\\\\/g, "\\");
-              responseData = {
-                ...(responseData || {}),
-                speaker: speakerMatch?.[1] || sanitizedContextSpeaker,
-                narrative_text: salvagedText,
-              };
-            } else if (!responseData) {
-              throw new Error("Malformed JSON response from model");
-            }
-          }
-        }
+        const content = data.choices?.[0]?.message?.content || "";
+        responseData = parseModelJsonLenient(content, sanitizedContextSpeaker);
 
         if (!responseData || typeof responseData !== "object") {
-          throw new Error("Empty or non-object JSON response from model");
+          throw new Error("Malformed or empty JSON response from model");
         }
 
         // Normalize array-typed narrative_text or player_execution if the model returned an array of paragraphs
@@ -1270,6 +1246,9 @@ ${visualInspectionInstruction}`;
             activeSpeaker: responseData.speaker || sanitizedContextSpeaker,
             location: responseData.state_updates?.current_location || gameState?.location || "this sector",
             isProtagonistAlone,
+            storyId: storyContext?.id,
+            genre: storyContext?.genre,
+            narrativeText: cleanedProse,
           });
         }
 

@@ -407,11 +407,26 @@ export function buildDynamicChoiceDirective(ctx: DynamicChoiceContext): string {
   const abilitiesSnippet =
     ctx.abilities && ctx.abilities.length > 0
       ? ctx.abilities.slice(0, 3).join(", ")
-      : "Martial prowess";
+      : "Signature skill & composure";
+
+  const speakerFirstName =
+    ctx.activeSpeaker && ctx.activeSpeaker !== "Narrator"
+      ? ctx.activeSpeaker.trim().split(/\s+/)[0]
+      : "her";
+  const cleanRole = (ctx.playerRole || "Adventurer").replace(/\s*\([^)]*\)/g, "").trim() || "Adventurer";
+  const cleanLocation = (() => {
+    const rawLoc = (ctx.location || "this room").trim();
+    const parenMatch = rawLoc.match(/\(([^)]+)\)/);
+    if (parenMatch && parenMatch[1]) {
+      const inner = parenMatch[1].split(/\s*[-–—]\s*/).pop()?.trim() || parenMatch[1].trim();
+      return `the ${inner.toLowerCase()}`;
+    }
+    return rawLoc;
+  })();
 
   const companionClause = ctx.isProtagonistAlone
-    ? `The protagonist is PHYSICALLY ALONE in ${ctx.location}. Never address or converse with absent companions.`
-    : `Accompanied by: ${ctx.presentHeroineNames.join(", ")}. Choices should include spoken dialogue in single quotes ('...') addressed to ${ctx.activeSpeaker} that sounds unmistakably like a "${personaName}".`;
+    ? `The protagonist is PHYSICALLY ALONE in ${cleanLocation}. Never address or converse with absent companions.`
+    : `Accompanied by: ${ctx.presentHeroineNames.join(", ")}. Choices should include spoken dialogue in single quotes ('...') addressed to ${speakerFirstName} (use her first name "${speakerFirstName}" only—never repeat her full name) that sounds unmistakably like a "${personaName}".`;
 
   const [tag1, tag2, tag3, tag4] = voiceProfile.preferredTagPrefixes;
   const originLabel = ctx.worldOrigin || "Born & Raised (Native)";
@@ -424,34 +439,53 @@ The player explicitly designed ${ctx.playerName}'s personality and world origin 
 - Core Personality Traits: [${traits}]
 - Speech Cadence & Vocal Tone: ${voiceProfile.speechCadence}
 - Worldview & Demeanor: ${voiceProfile.attitudeAndWorldview}
-- Example Persona Voice Reference:
-  * ${voiceProfile.exampleSpokenLines[0]}
-  * ${voiceProfile.exampleSpokenLines[1]}
-${dominantTendency ? `- Emergent Behavioral Alignment: [${dominantTendency} TENDENCY]\n` : ""}- Class & Lineage: ${ctx.playerRole} | ${ctx.playerRace || "Human"} (${raceAnatomy})
+${dominantTendency ? `- Emergent Behavioral Alignment: [${dominantTendency} TENDENCY]\n` : ""}- Class & Lineage: ${cleanRole} | ${ctx.playerRace || "Human"} (${raceAnatomy})
 - Active Stance & Arts: [${(ctx.activeStance || "Neutral").toUpperCase()} Stance | ${abilitiesSnippet}]
 - Scene Context: ${companionClause}
 
-CRITICAL PERSONALITY ALIGNMENT RULES FOR ALL 4 CHOICES:
-1. DO NOT generate generic, personality-neutral RPG options! Every single choice MUST sound like it was spoken and performed by a "${personaName}" with traits [${traits}].
-2. INCLUDE SPOKEN DIALOGUE IN SINGLE QUOTES ('...'): Whenever ${ctx.playerName} speaks in a choice, write their actual spoken line in single quotes ('...') using the vocabulary, attitude, and emotional temperature of "${personaName}" (${traits})—never generic filler!
-3. ADVANCE THE SCENE: Every choice must both express ${ctx.playerName}'s "${personaName}" personality AND push the plot/physical action forward in ${ctx.location}:
+CRITICAL PERSONALITY & SCENE ALIGNMENT RULES FOR ALL 4 CHOICES:
+1. DO NOT generate generic, personality-neutral RPG options, and NEVER use out-of-place military/dungeon commands ("primary threat ahead", "cover the exposed flank", "advance through the next threshold") in non-combat social, romantic, or culinary scenes!
+2. DIRECT SCENE REACTION: Every single choice MUST directly respond to what ${speakerFirstName} just said or did right now in ${cleanLocation}, written in the exact voice of a "${personaName}" with traits [${traits}].
+3. INCLUDE SPOKEN DIALOGUE IN SINGLE QUOTES ('...'): Whenever ${ctx.playerName} speaks in a choice, write their actual spoken line in single quotes ('...') using the vocabulary, attitude, and emotional temperature of "${personaName}" (${traits}). Do NOT escape apostrophes with a backslash (\') inside JSON strings; write normal apostrophes ('Don't', 'We're').
+4. USE FIRST NAMES & NATURAL PROSE ONLY: Refer to ${ctx.activeSpeaker} simply as "${speakerFirstName}" and refer to ${ctx.location} naturally as "${cleanLocation}". Never paste full character names or parenthetical UI location/class labels into choices!
 
-   - CHOICE 1 [${tag1}] (Signature "${personaName}" Dialogue & Decisive Progression):
-     Lead with a signature "${personaName}" spoken line ('...') and physical move that advances the scene or shifts the confrontation in ${ctx.location}.
-   - CHOICE 2 [${tag2}] (Persona-Filtered Tactical / Environmental Action):
-     Engage the immediate threat, obstacle, or surroundings in ${ctx.location} in the distinct style of a "${personaName}" (${traits[0] || "Focused"}).
-   - CHOICE 3 [${tag3}] (Persona-Driven Interpersonal Escalation with ${ctx.isProtagonistAlone ? "the Environment" : ctx.activeSpeaker}):
-     ${ctx.isProtagonistAlone ? `Reflect ${ctx.playerName}'s "${personaName}" inner drive while investigating a critical clue or threshold.` : `Respond directly to ${ctx.activeSpeaker}'s words/mood using ${ctx.playerName}'s "${personaName}" interpersonal style (e.g., ${voiceProfile.speechCadence.split(".")[0]}), pushing the conversation to a decisive turn.`}
-   - CHOICE 4 [${ctx.playerRace && ctx.playerRace !== "Human" ? `${ctx.playerRace.split("/")[0].trim()}/Feat` : tag4}] (Lineage Anatomy / Class Ability with "${personaName}" Flair):
-     Unleash ${ctx.playerName}'s ${raceAnatomy} or ${ctx.playerRole} abilities (${abilitiesSnippet}) while maintaining their "${personaName}" attitude.
+   - CHOICE 1 [${tag1}] (Signature "${personaName}" Dialogue & Decisive Scene Progression):
+     Lead with a signature "${personaName}" spoken line ('...') and concrete physical move that directly advances the current moment with ${speakerFirstName} in ${cleanLocation}.
+   - CHOICE 2 [${tag2}] (Persona-Filtered Hands-On / Environmental Action):
+     Engage the immediate props, craft, surroundings, or tension in ${cleanLocation} in the distinct style of a "${personaName}" (${traits[0] || "Focused"}).
+   - CHOICE 3 [${tag3}] (Persona-Driven Interpersonal Escalation with ${ctx.isProtagonistAlone ? "the Environment" : speakerFirstName}):
+     ${ctx.isProtagonistAlone ? `Reflect ${ctx.playerName}'s "${personaName}" inner drive while investigating a critical clue or detail.` : `Respond directly to ${speakerFirstName}'s reaction, unspoken tension, or words using ${ctx.playerName}'s "${personaName}" interpersonal style, pushing the dynamic between them to a decisive turn.`}
+   - CHOICE 4 [${ctx.playerRace && ctx.playerRace !== "Human" ? `${ctx.playerRace.split("/")[0].trim()}/Feat` : tag4}] (Signature Craft / Ability with "${personaName}" Flair):
+     Demonstrate ${ctx.playerName}'s ${cleanRole} mastery (${abilitiesSnippet}) or physical presence while maintaining their "${personaName}" attitude.
 
 FORMAT REQUIREMENTS:
 - Every choice MUST strictly follow: "[Tone/Action]: 'Spoken dialogue in persona voice' + concrete physical action" (or pure physical action + inner thought if silent/alone).
-- Exactly 4 options inside the JSON array ("suggested_choices" or "opening_choices" or "choices") with zero Markdown asterisks.`;
+- Keep bracket tags concise (2-3 words max, e.g. "[${tag1}]:").
+- Exactly 4 options inside the JSON array ("suggested_choices") with zero Markdown asterisks.`;
+}
+
+function humanizeFallbackLocation(rawLocation?: string): string {
+  if (!rawLocation) return "the room";
+  const trimmed = rawLocation.trim();
+  const parenMatch = trimmed.match(/\(([^)]+)\)/);
+  if (parenMatch && parenMatch[1]) {
+    const inner = parenMatch[1].split(/\s*[-–—]\s*/).pop()?.trim() || parenMatch[1].trim();
+    return `the ${inner.toLowerCase()}`;
+  }
+  if (/^(the|a|an)\s+/i.test(trimmed)) return trimmed.toLowerCase();
+  return trimmed;
+}
+
+function humanizeFallbackRoleTag(rawRole?: string): string {
+  if (!rawRole) return "Signature";
+  const withoutParens = rawRole.replace(/\s*\([^)]*\)/g, "").trim();
+  const firstSegment = withoutParens.split(/\s*[&/–—-]\s*/)[0]?.trim() || withoutParens;
+  const words = firstSegment.split(/\s+/);
+  return words.slice(0, 2).join(" ") || "Signature";
 }
 
 /**
- * Generates 4 personality-authentic fallback choices when an LLM endpoint is offline or falls back.
+ * Generates 4 personality-authentic, scene-aware fallback choices when an LLM endpoint is offline or falls back.
  */
 export function buildPersonalityFallbackChoices(params: {
   personality?: string;
@@ -461,115 +495,164 @@ export function buildPersonalityFallbackChoices(params: {
   activeSpeaker?: string;
   location?: string;
   isProtagonistAlone?: boolean;
+  storyId?: string;
+  genre?: string;
+  narrativeText?: string;
 }): string[] {
   const profile = getPersonaVoiceProfile(params.personality, params.personalityTraits);
-  const speaker = params.activeSpeaker || "them";
-  const loc = params.location || "this sector";
-  const role = params.playerRole || "Adventurer";
+  const fullSpeaker = params.activeSpeaker || "her";
+  const speaker = fullSpeaker === "Narrator" ? "her" : fullSpeaker.trim().split(/\s+/)[0] || fullSpeaker;
+  const loc = humanizeFallbackLocation(params.location);
+  const roleTag = humanizeFallbackRoleTag(params.playerRole);
+  const rolePhrase = (params.playerRole || "specialist").replace(/\s*\([^)]*\)/g, "").toLowerCase();
   const lower = profile.personaTitle.toLowerCase();
+  const traitTag = profile.traitsList[0] || "Composed";
+
+  const combinedContext = `${params.storyId || ""} ${params.genre || ""} ${params.location || ""} ${params.playerRole || ""} ${params.narrativeText || ""}`.toLowerCase();
+  const isPortSolarisOrSocial =
+    combinedContext.includes("port-solaris") ||
+    combinedContext.includes("stray anchor") ||
+    combinedContext.includes("café") ||
+    combinedContext.includes("cafe") ||
+    combinedContext.includes("kitchen") ||
+    combinedContext.includes("boardwalk") ||
+    combinedContext.includes("cove") ||
+    combinedContext.includes("beach") ||
+    combinedContext.includes("culinary") ||
+    combinedContext.includes("chef") ||
+    combinedContext.includes("barista") ||
+    combinedContext.includes("resort") ||
+    combinedContext.includes("slice-of-life") ||
+    combinedContext.includes("rom-com");
+
+  const isCulinaryScene =
+    combinedContext.includes("kitchen") ||
+    combinedContext.includes("café") ||
+    combinedContext.includes("cafe") ||
+    combinedContext.includes("chef") ||
+    combinedContext.includes("culinary") ||
+    combinedContext.includes("pan") ||
+    combinedContext.includes("butter") ||
+    combinedContext.includes("plate");
+
+  if (isPortSolarisOrSocial && !params.isProtagonistAlone) {
+    if (isCulinaryScene) {
+      return [
+        `[${traitTag}/Challenge]: 'Go ahead and taste it before you reach for that pen—unless you're afraid it'll ruin your verdict.' Slide the warm plate across the counter toward ${speaker} and hold her gaze.`,
+        `[Charisma/Tease]: 'Your clipboard says audit, ${speaker}, but the way you've been watching the pan says otherwise.' Lean calmly against the prep island and give her a slow, knowing half-smile.`,
+        `[Observant/Close]: 'You haven't taken a real breath since the butter hit the steel. Sit down for two minutes and eat while it's hot.' Set a fork beside ${speaker}'s hand in ${loc}.`,
+        `[${roleTag}/Flair]: Finish plating with effortless ${rolePhrase} precision, letting the aroma fill ${loc} while waiting for ${speaker}'s honest reaction.`,
+      ];
+    }
+    return [
+      `[${traitTag}/Direct]: 'If you're going to judge how I run this place, ${speaker}, at least step closer and see it firsthand.' Hold ${speaker}'s gaze with unhurried confidence in ${loc}.`,
+      `[Charisma/Banter]: 'Careful, ${speaker}—keep looking at me like that and people might think we're actually getting along.' Offer a teasing smirk while closing the distance by half a step.`,
+      `[Perceptive/Read]: 'Drop the rehearsed speech for a second and tell me what's really on your mind.' Study the subtle shift in ${speaker}'s expression in ${loc}.`,
+      `[${roleTag}/Panache]: Turn the moment in ${loc} to your advantage with smooth ${rolePhrase} poise alongside ${speaker}.`,
+    ];
+  }
 
   if (params.isProtagonistAlone) {
     if (lower.includes("trickster") || lower.includes("sly")) {
       return [
-        `[Trickster/Audacious]: 'Well, nobody rolled out a red carpet.' Slip past the perimeter of ${loc} with a silent grin.`,
-        `[Cunning/Recon]: Test the shadows and disarm any hidden tripwires left along the approach.`,
-        `[Observant/Playful]: Inspect the most suspicious threshold in ${loc} for concealed loot or leverage.`,
-        `[${role}/Feat]: Channel your ${role} instincts to vault onto a higher vantage point.`,
+        `[Trickster/Audacious]: 'Well, nobody rolled out a red carpet.' Slip across ${loc} with a quiet grin.`,
+        `[Cunning/Recon]: Survey the layout and spot any hidden leverage or details left behind.`,
+        `[Observant/Playful]: Inspect the most intriguing corner of ${loc} for anything out of place.`,
+        `[${roleTag}/Feat]: Rely on your ${rolePhrase} instincts to claim the best vantage point in ${loc}.`,
       ];
     }
     if (lower.includes("noble") || lower.includes("protector")) {
       return [
-        `[Noble/Vigilant]: 'If danger lurks in ${loc}, I'll meet it head-on.' Advance steadily down the main passage.`,
-        `[Protective/Survey]: Search the surroundings for any survivors or signs of a recent struggle.`,
-        `[Honorable/Resolve]: Ready your weapon openly and secure the forward threshold.`,
-        `[${role}/Feat]: Call upon your ${role} training to fortify your stance against unseen threats.`,
+        `[Noble/Vigilant]: 'Whatever waits in ${loc}, I'll meet it head-on.' Step forward with steady composure.`,
+        `[Protective/Survey]: Take in the surroundings of ${loc} and check for anyone who needs a hand.`,
+        `[Honorable/Resolve]: Square your shoulders and prepare for whatever comes next in ${loc}.`,
+        `[${roleTag}/Feat]: Draw upon your ${rolePhrase} training to stay ready in ${loc}.`,
       ];
     }
     if (lower.includes("cynic") || lower.includes("outlaw")) {
       return [
-        `[Cynical/Streetwise]: 'Quiet places like ${loc} always hide a payday or an ambush.' Stick to cover and advance.`,
-        `[Outlaw/Tactical]: Check the exits first and mark an escape route before touching anything.`,
-        `[Skeptical/Probe]: Pry open the nearest sealed access point to see what the locals are hiding.`,
-        `[${role}/Feat]: Use your ${role} skills to sweep ${loc} from the blind spots.`,
+        `[Cynical/Streetwise]: 'Quiet places like ${loc} always hide an angle.' Scan the room before making your move.`,
+        `[Outlaw/Tactical]: Check the exits first and read the room before touching anything.`,
+        `[Skeptical/Probe]: Inspect the nearest counter or doorway in ${loc} to see what's really going on.`,
+        `[${roleTag}/Feat]: Use your ${rolePhrase} instincts to size up ${loc}.`,
       ];
     }
     if (lower.includes("scholar")) {
       return [
-        `[Scholar/Analytical]: 'The structural resonance in ${loc} is deliberate.' Trace the anomaly toward its source.`,
-        `[Inquisitive/Lore]: Examine the inscriptions and ambient residue for clues to this sector's history.`,
-        `[Observant/Methodical]: Test the environmental stability before stepping across the threshold.`,
-        `[${role}/Feat]: Attune your ${role} senses to decode the hidden patterns in ${loc}.`,
+        `[Scholar/Analytical]: 'Nothing about ${loc} is accidental.' Trace the subtle details toward their source.`,
+        `[Inquisitive/Detail]: Examine the immediate surroundings in ${loc} for telling clues.`,
+        `[Observant/Methodical]: Take a measured moment to read the atmosphere of ${loc}.`,
+        `[${roleTag}/Feat]: Apply your ${rolePhrase} focus to piece together the situation in ${loc}.`,
       ];
     }
     if (lower.includes("daredevil")) {
       return [
-        `[Daredevil/Bold]: 'No point waiting around in the dark!' Kick open the forward path in ${loc} and press ahead.`,
-        `[Fierce/Momentum]: Sprint up to the highest vantage in ${loc} to draw out whatever is hiding.`,
-        `[Defiant/Challenge]: Strike your weapon against the stone to test the echoes and claim the ground.`,
-        `[${role}/Feat]: Unleash a burst of ${role} power to clear the obstacle ahead.`,
+        `[Daredevil/Bold]: 'No point waiting around!' Step right into the center of ${loc} and claim the moment.`,
+        `[Fierce/Momentum]: Move briskly through ${loc} to see what happens next.`,
+        `[Defiant/Spark]: Test the atmosphere in ${loc} with bold, unapologetic energy.`,
+        `[${roleTag}/Feat]: Channel your ${rolePhrase} drive to set the pace in ${loc}.`,
       ];
     }
     return [
-      `[Stoic/Calculated]: 'Clear the sector first.' Advance methodically toward the next threshold in ${loc}.`,
-      `[Vigilant/Recon]: Sweep the blind corners of ${loc} for traps, wards, or ambush vectors.`,
-      `[Pragmatic/Tactical]: Secure high ground and assess the fastest route forward.`,
-      `[${role}/Feat]: Engage your ${role} capabilities to bypass the obstruction in ${loc}.`,
+      `[${traitTag}/Composed]: 'Let's see what we're working with.' Step methodically into ${loc} and take stock of the room.`,
+      `[Observant/Survey]: Scan the details of ${loc} for anything that stands out.`,
+      `[Pragmatic/Focus]: Position yourself cleanly in ${loc} and prepare your next move.`,
+      `[${roleTag}/Execution]: Put your ${rolePhrase} discipline to work in ${loc}.`,
     ];
   }
 
   // When accompanied by a companion / heroine
   if (lower.includes("trickster") || lower.includes("sly")) {
     return [
-      `[Trickster/Banter]: 'You always know how to pick the liveliest spots, don't you?' Flash ${speaker} a knowing smirk and motion toward the forward path.`,
-      `[Charming/Gambit]: 'Care to make a wager on what's waiting past that door?' Step alongside ${speaker} and ready a clever feint.`,
-      `[Deceptive/Cunning]: 'Keep their eyes on you for three seconds—I've got an angle.' Slip toward the flank in ${loc}.`,
-      `[${role}/Flair]: Show off your ${role} finesse to turn the situation in ${loc} to your advantage.`,
+      `[Trickster/Banter]: 'You always know how to keep things interesting, ${speaker}.' Flash her a knowing smirk in ${loc}.`,
+      `[Charming/Gambit]: 'Care to make a little wager on how this plays out?' Step closer to ${speaker} with playful confidence.`,
+      `[Observant/Tease]: 'Don't look away now—you were just about to admit I had a point.' Catch ${speaker}'s eye.`,
+      `[${roleTag}/Flair]: Show off your ${rolePhrase} finesse in ${loc} to draw a reaction from ${speaker}.`,
     ];
   }
 
   if (lower.includes("noble") || lower.includes("protector")) {
     return [
-      `[Noble/Protective]: 'Stay close to me—we face whatever lies ahead in ${loc} together.' Step slightly in front of ${speaker} to take point.`,
-      `[Honorable/Earnest]: 'You have my word I won't let this fall apart. Tell me what you need most right now.' Meet ${speaker}'s gaze steadily.`,
-      `[Valiant/Advance]: 'We cannot leave this unresolved.' Lead the way toward the heart of the disturbance in ${loc}.`,
-      `[${role}/Guardian]: Channel your ${role} strength to shield ${speaker} and secure the path forward.`,
+      `[Noble/Protective]: 'Stay with me, ${speaker}—we handle whatever comes next together.' Step closer to her side in ${loc}.`,
+      `[Honorable/Earnest]: 'You have my word I won't let this fall apart. Tell me what matters most to you here.' Meet ${speaker}'s gaze steadily.`,
+      `[Valiant/Resolve]: 'Let's settle this properly.' Take the lead alongside ${speaker} in ${loc}.`,
+      `[${roleTag}/Steadfast]: Use your ${rolePhrase} poise to back ${speaker} up without hesitation.`,
     ];
   }
 
   if (lower.includes("cynic") || lower.includes("outlaw")) {
     return [
-      `[Cynical/Deadpan]: 'Let me guess—that was the easy part?' Shoot ${speaker} a dry look and check the exit out of ${loc}.`,
-      `[Outlaw/Leverage]: 'Before we go any further, tell me what's actually in this for us.' Press ${speaker} for the real stakes.`,
-      `[Pragmatic/Cutthroat]: 'Talking won't clear this sector. Let's hit them before they organize.' Move toward the vantage point.`,
-      `[${role}/Opportunist]: Use your ${role} edge to seize control of the situation in ${loc}.`,
+      `[Cynical/Deadpan]: 'Let me guess, ${speaker}—that was supposed to intimidate me?' Shoot her a dry look in ${loc}.`,
+      `[Outlaw/Leverage]: 'Cut the script and tell me what's actually on the line for you here.' Press ${speaker} for the real story.`,
+      `[Pragmatic/Direct]: 'We both know posturing won't settle this. Let's get straight to the point.' Hold your ground before ${speaker}.`,
+      `[${roleTag}/Edge]: Use your ${rolePhrase} instincts to flip the dynamic in ${loc}.`,
     ];
   }
 
   if (lower.includes("scholar")) {
     return [
-      `[Scholar/Analytical]: 'Notice the pattern here—nothing about this setup in ${loc} is accidental.' Share your deduction with ${speaker}.`,
-      `[Inquisitive/Probe]: 'There's a crucial detail you haven't mentioned yet. Walk me through the exact sequence.' Observe ${speaker} closely.`,
-      `[Methodical/Strategy]: 'If we time our move with the ambient shift, we bypass their defense entirely.' Point out the route ahead.`,
-      `[${role}/Precision]: Apply your ${role} expertise to unravel the obstacle standing before you and ${speaker}.`,
+      `[Scholar/Analytical]: 'Your reaction just gave away more than your words did, ${speaker}.' Share your observation with quiet composure.`,
+      `[Inquisitive/Probe]: 'There's a detail you're holding back. Walk me through what you're really testing here.' Watch ${speaker} closely.`,
+      `[Perceptive/Calm]: 'If we look past the surface tension, the real answer in ${loc} is obvious.' Meet ${speaker}'s eyes.`,
+      `[${roleTag}/Precision]: Demonstrate your ${rolePhrase} mastery right in front of ${speaker}.`,
     ];
   }
 
   if (lower.includes("daredevil")) {
     return [
-      `[Daredevil/Bold]: 'Now things are finally getting interesting! Ready to break through, ${speaker}?' Grin and surge toward the front.`,
-      `[Defiant/Fierce]: 'Let them come—we'll carve our own way out of ${loc}!' Draw your weapon and challenge the threat head-on.`,
-      `[Passionate/Direct]: 'No holding back between us! Tell me where to strike and consider it done!' Catch ${speaker}'s eyes with fiery intensity.`,
-      `[${role}/Overdrive]: Unleash your ${role} power at full throttle to blitz the path ahead.`,
+      `[Daredevil/Bold]: 'Now things are finally getting interesting! Ready to see what I can really do, ${speaker}?' Grin and step forward.`,
+      `[Defiant/Spark]: 'If you think I'm backing down from a challenge in ${loc}, you don't know me at all!' Hold ${speaker}'s gaze with fiery confidence.`,
+      `[Passionate/Direct]: 'No holding back between us, ${speaker}—give me your honest verdict right now!' Lean in with electric intensity.`,
+      `[${roleTag}/Overdrive]: Unleash your ${rolePhrase} flair at full throttle to leave ${speaker} speechless.`,
     ];
   }
 
   // Default: Stoic Pragmatist / Custom Persona
-  const traitTag = profile.traitsList[0] || "Stoic";
   return [
-    `[${traitTag}/Direct]: 'We're losing time. Follow my lead through the next threshold.' Motion for ${speaker} to advance through ${loc}.`,
-    `[Pragmatic/Tactical]: 'Give me the short version—what's our primary threat ahead?' Keep your eyes scanning ${loc} while addressing ${speaker}.`,
-    `[Vigilant/Position]: Shift to cover the exposed flank in ${loc} and prepare a decisive counter-move.`,
-    `[${role}/Execution]: Deploy your ${role} discipline to secure the objective alongside ${speaker}.`,
+    `[${traitTag}/Direct]: 'Actions speak louder than threats, ${speaker}. Judge the result for yourself.' Hold ${speaker}'s gaze with calm authority in ${loc}.`,
+    `[Composed/Challenge]: 'You didn't come into ${loc} just to recite a script. Tell me what you're really looking for.' Lean back slightly and study ${speaker}'s reaction.`,
+    `[Perceptive/Close]: Notice the subtle crack in ${speaker}'s composed guard and step half a pace closer without breaking eye contact.`,
+    `[${roleTag}/Mastery]: Let your effortless ${rolePhrase} execution in ${loc} speak for itself in front of ${speaker}.`,
   ];
 }
 

@@ -18,6 +18,7 @@ import {
 } from "@/lib/personalityArchitect";
 import { SOVEREIGN_HEROINE_DOSSIERS, SOVEREIGN_ORIGIN_PRESETS } from "@/types/sovereign_spire";
 import { PORT_SOLARIS_HEROINE_DOSSIERS, PORT_SOLARIS_ORIGIN_PRESETS } from "@/types/port_solaris";
+import { parseModelJsonLenient } from "@/lib/jsonSalvage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -578,6 +579,7 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
           { role: "user", content: userContent.length === 1 ? userContent[0].text : userContent },
         ];
 
+        const isAnthropicModel = model.toLowerCase().includes("claude") || model.toLowerCase().startsWith("anthropic/");
         let response = await fetch(fetchUrl, {
           method: "POST",
           headers,
@@ -586,8 +588,8 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
             messages,
             user: activeUser.key,
             temperature: effectiveTemperature,
-            max_tokens: effectiveMaxTokens,
-            repetition_penalty: effectiveRepetitionPenalty,
+            max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+            ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
             response_format: { type: "json_object" },
           }),
         });
@@ -623,8 +625,8 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
                 messages: fallbackMessages,
                 user: activeUser.key,
                 temperature: effectiveTemperature,
-                max_tokens: effectiveMaxTokens,
-                repetition_penalty: effectiveRepetitionPenalty,
+                max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+                ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
                 response_format: { type: "json_object" },
               }),
             });
@@ -643,10 +645,11 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
         }
 
         const data = await response.json();
-        let content = data.choices?.[0]?.message?.content || "";
-        content = content.replace(/^```json/m, "").replace(/^```/m, "").replace(/```$/m, "").trim();
-
-        responseData = JSON.parse(content);
+        const content = data.choices?.[0]?.message?.content || "";
+        responseData = parseModelJsonLenient(content, startingHeroine);
+        if (!responseData || typeof responseData !== "object") {
+          throw new Error("Malformed JSON response from prologue model");
+        }
         const userStats = !isLocal && authCheck.valid
           ? recordUserTurn(activeUser.key, data.usage, model)
           : activeUser;
@@ -654,6 +657,7 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
         break;
       } catch (err: any) {
         console.warn(`Error generating prologue with model ${model}:`, err.message);
+        responseData = null;
         lastError = err;
       }
     }
@@ -676,6 +680,8 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
           activeSpeaker: heroineDossier.name,
           location: heroineDossier.defaultLocation || startingLocation,
           isProtagonistAlone: false,
+          storyId: storyContext?.id,
+          genre: storyContext?.genre,
         }),
         initial_quest: heroineDossier.initialQuest,
         system_announcement: `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`,
@@ -743,11 +749,23 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
     responseData.mechanics = separatedPrologue.mechanics;
     responseData.npc_knowledge_map = initialKnowledgeMap;
     responseData.present_companions = initialPresentHeroines;
-    if (Array.isArray(responseData.opening_choices)) {
-      responseData.opening_choices = responseData.opening_choices.map((c: string) =>
-        ensureChoiceIntentTag(sanitizeVisualNovelProse(c))
-      );
+    if (!Array.isArray(responseData.opening_choices) || responseData.opening_choices.length === 0) {
+      responseData.opening_choices = buildPersonalityFallbackChoices({
+        personality: playerProfile?.personality,
+        personalityTraits: playerProfile?.personalityTraits,
+        playerRole: playerProfile?.role,
+        playerRace: playerProfile?.race,
+        activeSpeaker: startingHeroine,
+        location: startingLocation,
+        isProtagonistAlone: false,
+        storyId: storyContext?.id,
+        genre: storyContext?.genre,
+        narrativeText: responseData.narrative,
+      });
     }
+    responseData.opening_choices = responseData.opening_choices.map((c: string) =>
+      ensureChoiceIntentTag(sanitizeVisualNovelProse(c))
+    );
 
     responseData.plausibility = typeof responseData.plausibility === "number" ? responseData.plausibility : 80;
     responseData.plausibility_tier = responseData.plausibility >= 70 ? "Stable" : "Strained";

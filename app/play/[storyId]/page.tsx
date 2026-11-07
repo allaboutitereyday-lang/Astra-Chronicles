@@ -3747,8 +3747,8 @@ export default function VisualNovelGame() {
       ]);
 
       const activeOpeningChoices =
-        data.opening_choices && data.opening_choices.length === 4
-          ? data.opening_choices
+        Array.isArray(data.opening_choices) && data.opening_choices.length > 0
+          ? data.opening_choices.slice(0, 4)
           : buildPersonalityFallbackChoices({
               personality: finalStartingPlayer.personality,
               personalityTraits: finalStartingPlayer.personalityTraits,
@@ -3757,6 +3757,8 @@ export default function VisualNovelGame() {
               activeSpeaker,
               location: data.location || chosen.location,
               isProtagonistAlone: false,
+              storyId: currentStory?.id,
+              genre: currentStory?.genre,
             });
       setChoices(activeOpeningChoices);
 
@@ -3910,6 +3912,8 @@ export default function VisualNovelGame() {
         activeSpeaker: chosen.speaker,
         location: chosen.location,
         isProtagonistAlone: false,
+        storyId: currentStory?.id,
+        genre: currentStory?.genre,
       });
       setChoices(fallbackPersonaChoices);
 
@@ -6498,6 +6502,13 @@ export default function VisualNovelGame() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          storyContext: currentStory,
+          gameState,
+          partyMembers: party,
+          memories,
+          systemState,
+          narrationStyle: narrationStyle || player.narrationStyle || currentStory?.narrationStyle,
+          modelId: llmConfig.modelId,
           storyTitle: currentStory.title,
           location: gameState.location,
           mood: gameState.mood,
@@ -6514,8 +6525,11 @@ export default function VisualNovelGame() {
             role: player.role,
             personality: player.personality,
             personalityTraits: player.personalityTraits,
+            abilities: player.abilities,
+            activeStance: player.activeStance,
+            behavioralTendencies: player.behavioralTendencies,
           },
-          recentHistory: chatLog.slice(-4).map((m) => ({
+          recentHistory: chatLog.slice(-6).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
           })),
