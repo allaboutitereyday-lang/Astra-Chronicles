@@ -23,7 +23,11 @@ import {
   buildPersonaPromptDossier,
   buildActiveSpeakerPersonaLock,
 } from "@/lib/characterPersonas";
-import { detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
+import {
+  detectContextualEquipmentAcquisition,
+  buildEarnedRomancePacingDirective,
+  getHeroineResistanceProfile,
+} from "@/lib/progressionMechanics";
 import {
   buildDynamicChoiceDirective,
   getPersonaVoiceProfile,
@@ -277,7 +281,7 @@ ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? `- Biolo
 - Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
 - Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.`;
 
-    // Helper to determine active threshold cap for any companion
+    // Helper to determine active threshold cap for any companion (25% -> 50% -> 75% -> 90% -> 100%)
     const getCompanionCap = (compName: string) => {
       const norm = compName.toLowerCase().trim();
       const completed = (systemState?.completedQuests || []) as any[];
@@ -293,6 +297,10 @@ ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? `- Biolo
         q.status === "completed" && (q.id?.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_75`) || (q.title?.toLowerCase().includes(norm) && q.title?.includes("75%")))
       );
       if (!is75Done) return 75;
+      const is90Done = completed.some((q: any) => 
+        q.status === "completed" && (q.id?.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_90`) || (q.title?.toLowerCase().includes(norm) && q.title?.includes("90%")))
+      );
+      if (!is90Done) return 90;
       return 100;
     };
 
@@ -365,24 +373,42 @@ NARRATIVE INSTRUCTION:
 - If this turn reveals a critical future truth or alternate branch divergence, record it in "timeline_echo_unlocked".`
       : "";
 
-    // Dynamic Romance & Intimacy Calibration Directive
+    // Earned Romance Progression, Guard Tiers & Intimacy Calibration Directive
     const activeCompanionData = (partyMembers || []).find((c: any) => c.name === sanitizedContextSpeaker) || (partyMembers || [])[0];
     const companionAffection = activeCompanionData?.affection || 0;
-    const isRomanceTensionElevated = companionAffection >= 40 ||
-      action.toLowerCase().includes("lean") ||
-      action.toLowerCase().includes("close") ||
-      action.toLowerCase().includes("kiss") ||
-      action.toLowerCase().includes("touch") ||
-      action.toLowerCase().includes("whisper") ||
-      action.toLowerCase().includes("hold");
-
-    const dynamicRomanceDirective = isRomanceTensionElevated
-      ? `--- DYNAMIC ROMANCE & INTIMACY CALIBRATION (AFFECTION: ${companionAffection}%) ---
-The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} has reached an emotionally charged, high-intimacy threshold:
-- SENSORY PHYSICALITY: Describe physical proximity with visceral nuance: heat of breath stirring skin or hair, heartbeat racing in chest or pulse fluttering at the throat, dilated pupils, subtle shivers, the friction of fabric and touch.
-- UNRESTRICTED CHEMISTRY: Allow authentic psychological vulnerability, uninhibited desire, playful/tsundere push-pull, or passionate escalation. Do NOT sanitize emotional tension or shy away from intense romantic beats.
-- ANCHOR TO PERSONA: Ensure the intimacy reflects ${sanitizedContextSpeaker}'s distinct personality.`
+    const activeSpeakerCap = activeCompanionData ? getCompanionCap(activeCompanionData.name) : 25;
+    const earnedRomanceDirective = !isProtagonistAlone && activeCompanionData
+      ? buildEarnedRomancePacingDirective({
+          companion: activeCompanionData,
+          actionText: action || "",
+          activeCap: activeSpeakerCap,
+          protagonistName: playerProfile.name,
+        })
       : "";
+
+    const isRomanceTensionElevated = companionAffection >= 50 ||
+      (companionAffection >= 25 && (
+        action.toLowerCase().includes("lean") ||
+        action.toLowerCase().includes("close") ||
+        action.toLowerCase().includes("kiss") ||
+        action.toLowerCase().includes("touch") ||
+        action.toLowerCase().includes("whisper") ||
+        action.toLowerCase().includes("hold")
+      ));
+
+    const dynamicRomanceDirective = `${earnedRomanceDirective}${
+      isRomanceTensionElevated
+        ? `\n\n--- DYNAMIC ROMANCE & SENSORY CHEMISTRY CALIBRATION (AFFECTION: ${companionAffection}%) ---
+The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} carries heightened romantic and physical electricity:
+- SENSORY PHYSICALITY: Describe physical proximity with visceral nuance: heat of breath stirring skin or hair, heartbeat racing in chest or pulse fluttering at the throat, dilated pupils, subtle shivers, the friction of fabric and accidental or deliberate touch.
+- STAGE-TRUE CHEMISTRY: ${
+            companionAffection >= 50
+              ? `At ${companionAffection}% affection, allow authentic emotional vulnerability, uninhibited desire, playful/tsundere push-pull, or passionate escalation.`
+              : `At ${companionAffection}% affection, keep her spoken demeanor true to her guard while letting physical tension, stolen glances, blushing, and her unspoken inner thoughts reveal how strongly she is drawn to ${playerProfile.name}.`
+          }
+- ANCHOR TO PERSONA: Ensure the intimacy reflects ${sanitizedContextSpeaker}'s distinct personality.`
+        : ""
+    }`;
 
     // NPC Knowledge Gating & Anti-Metagaming Evaluation
     const preTurnUnlockEval = evaluateActionForKnowledgeUnlocks(
@@ -623,6 +649,12 @@ Respond strictly in valid JSON matching this schema:
     "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
     "affected_companion": string | null,
     "affection_delta": number,
+    "companion_sentiment": string | null, // 1-2 vivid sentences reflecting how the active heroine currently feels about the protagonist specifically referencing his latest choice/action (including any unspoken physical attraction or cracks in her guard)
+    "core_memory_unlocked": {
+      "id": string,
+      "title": string, // 3-6 word evocative memory title
+      "summary": string // 1-2 sentence summary of the pivotal shared moment forged by the player's action
+    } | null,
     "present_companions": string[],
     "newly_encountered_heroines": string[],
     "knowledge_unlocked": {
@@ -743,7 +775,8 @@ ${partyMembers.map((c: any) => {
     ? `[LOCKED AT ${cap}% THRESHOLD - COMPANION QUEST PENDING]` 
     : `Progression Cap: ${cap}%`;
   const favorDesc = c.affection >= 75 ? "Deep Intimacy & Trust" : c.affection >= 50 ? "Solid Mutual Respect" : c.affection >= 25 ? "Cautious Wariness" : "Guarded Distrust";
-  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Favor: ${c.affection}% (${favorDesc}) | ${lockStatus} | Demeanor: ${c.expressionKey || "neutral"}]`;
+  const guardProfile = getHeroineResistanceProfile(c);
+  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Guard: ${guardProfile.guardTier} | Favor: ${c.affection}% (${favorDesc}) | ${lockStatus} | Demeanor: ${c.expressionKey || "neutral"}]`;
 }).join("\n")}
 
 --- CHRONOLOGICAL RECORD OF PREVIOUS INTERACTIONS & MEMORIES ---

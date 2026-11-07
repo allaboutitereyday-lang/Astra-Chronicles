@@ -103,7 +103,17 @@ import { isFallbackVisualDescription } from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { ActionInputBar } from "@/components/play/ActionInputBar";
 import { ChatMessageItem } from "@/components/play/ChatMessageItem";
-import { evaluateDeathAndRegression, CURSED_RELIC_TABLE, CAMP_GIFT_CATALOG, CombatStanceType, detectContextualEquipmentAcquisition } from "@/lib/progressionMechanics";
+import {
+  evaluateDeathAndRegression,
+  CURSED_RELIC_TABLE,
+  CAMP_GIFT_CATALOG,
+  CombatStanceType,
+  detectContextualEquipmentAcquisition,
+  calculateEarnedAffectionDelta,
+  synthesizeDynamicCompanionSentiment,
+  evaluateDynamicCoreMemoryUnlock,
+  getHeroineResistanceProfile,
+} from "@/lib/progressionMechanics";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { decodeMultiverseSeed } from "@/lib/multiverseShare";
 import { getStoryById } from "@/lib/storyStorage";
@@ -1921,6 +1931,16 @@ export default function VisualNovelGame() {
             (q.title.toLowerCase().includes(norm) && q.title.includes("75%")))
       );
     if (!is75Done) return 75;
+
+    const is90Done =
+      completedList.includes(90) ||
+      completedQuests.some(
+        (q) =>
+          q.status === "completed" &&
+          (q.id.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_90`) ||
+            (q.title.toLowerCase().includes(norm) && q.title.includes("90%")))
+      );
+    if (!is90Done) return 90;
 
     return 100;
   };
@@ -4842,35 +4862,33 @@ export default function VisualNovelGame() {
         ? presentList.some((p) => p.toLowerCase().includes(affectedComp.toLowerCase()))
         : false;
 
-      const rawDelta = data.state_updates?.affection_delta;
+      const rawDelta = typeof data.state_updates?.affection_delta === "number" ? data.state_updates.affection_delta : 0;
       let effectiveDelta = 0;
       let hitCapNotice = false;
       let currentCap = 25;
+      let activeEarnedEval: ReturnType<typeof calculateEarnedAffectionDelta> | null = null;
 
-      if (isCompPhysicallyPresent && typeof rawDelta === "number" && affectedComp) {
+      if (isCompPhysicallyPresent && affectedComp) {
         currentCap = getCompanionCap(affectedComp);
         const compTarget = party.find((c) => c.name.toLowerCase().includes(affectedComp.toLowerCase()));
-        const currentAff = compTarget ? compTarget.affection : 15;
-
-        if (rawDelta > 0) {
-          // Paced gradual gain: damp positive turn delta to maximum +2
-          const pacedDelta = Math.min(2, rawDelta);
-
-          if (currentAff >= currentCap && currentCap < 100) {
-            // Already at or exceeding cap: locked by companion quest!
+        if (compTarget) {
+          const currentAff = compTarget.affection;
+          if (rawDelta > 0 && currentAff >= currentCap && currentCap < 100) {
             effectiveDelta = 0;
             hitCapNotice = true;
           } else {
-            const nextPossible = currentAff + pacedDelta;
-            const finalCapped = Math.min(currentCap, nextPossible);
-            effectiveDelta = Math.max(0, finalCapped - currentAff);
-            if (nextPossible >= currentCap && currentCap < 100) {
+            activeEarnedEval = calculateEarnedAffectionDelta({
+              companion: compTarget as StoryCompanion,
+              rawDelta,
+              actionText: formattedPayload,
+              activeCap: currentCap,
+              isGiftInteraction: Boolean(giftContext),
+            });
+            effectiveDelta = activeEarnedEval.appliedDelta;
+            if (rawDelta > 0 && activeEarnedEval.newAffection >= currentCap && currentCap < 100) {
               hitCapNotice = true;
             }
           }
-        } else if (rawDelta < 0) {
-          // Decreases allowed (capped at -4 to avoid instant collapse)
-          effectiveDelta = Math.max(-4, rawDelta);
         }
       }
 
@@ -4891,6 +4909,15 @@ export default function VisualNovelGame() {
         soundEffects.playFavorSound(delta > 0);
         setLastAffectionDelta({ companion: affectedComp, delta });
         setTimeout(() => setLastAffectionDelta(null), 3500);
+      } else if (activeEarnedEval?.isArmorCracked && activeEarnedEval.resistanceNote && affectedComp) {
+        soundEffects.playFavorSound(true);
+        pushNotification({
+          id: `armor_crack_${Date.now()}`,
+          type: "system_alert",
+          title: `CRACK IN ${affectedComp.toUpperCase()}'S ARMOR`,
+          subtitle: activeEarnedEval.resistanceNote,
+          difficulty: "C",
+        });
       }
 
       const newlyMet: string[] = Array.isArray(data.state_updates?.newly_encountered_heroines)
@@ -4909,6 +4936,7 @@ export default function VisualNovelGame() {
         });
       }
 
+      const currentTurnNumber = Math.max(1, Math.floor(chatBeforeTurn.length / 2) + 1);
       const nextPartyState = party.map((comp) => {
         const isCurrentSpeaker = comp.name.toLowerCase().includes(speakerName.toLowerCase());
         const isAffected = affectedComp ? comp.name.toLowerCase().includes(affectedComp.toLowerCase()) : false;
@@ -4917,19 +4945,84 @@ export default function VisualNovelGame() {
 
         const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
         const targetCap = getCompanionCap(comp.name);
+        const profile = getHeroineResistanceProfile(comp as StoryCompanion);
 
         let updatedAffection = comp.affection;
-        if (isAffected && isCompPhysicallyPresent && typeof delta === "number") {
-          if (delta > 0) {
-            updatedAffection = Math.min(targetCap, comp.affection + delta);
-          } else if (delta < 0) {
-            updatedAffection = Math.max(0, comp.affection + delta);
+        let updatedTrustProgress = (comp as any).trustProgress ?? 0;
+        let updatedArmorCrackCount = (comp as any).armorCrackCount ?? 0;
+
+        if (isAffected && isCompPhysicallyPresent) {
+          if (activeEarnedEval) {
+            updatedAffection = activeEarnedEval.newAffection;
+            updatedTrustProgress = activeEarnedEval.updatedTrustProgress;
+            updatedArmorCrackCount = activeEarnedEval.updatedArmorCrackCount;
+          } else if (typeof delta === "number") {
+            if (delta > 0) {
+              updatedAffection = Math.min(targetCap, comp.affection + delta);
+            } else if (delta < 0) {
+              updatedAffection = Math.max(0, comp.affection + delta);
+            }
           }
         }
 
         let updatedBpm = (comp as any).heartRateBpm;
         if (portUpdates && comp.name.toLowerCase().includes((portUpdates.speakerName || "").toLowerCase())) {
           updatedBpm = portUpdates.bpm;
+        }
+        if ((isAffected || isCurrentSpeaker) && activeEarnedEval?.bpmSpikeBonus && typeof updatedBpm === "number") {
+          updatedBpm = Math.min(100, updatedBpm + activeEarnedEval.bpmSpikeBonus);
+        }
+
+        let updatedSentiment = (comp as any).currentSentiment;
+        let updatedCatalogMemoryIds = Array.isArray((comp as any).unlockedCoreMemories)
+          ? [...(comp as any).unlockedCoreMemories]
+          : [];
+        let updatedDynamicMemories = Array.isArray((comp as any).dynamicCoreMemories)
+          ? [...(comp as any).dynamicCoreMemories]
+          : [];
+
+        if ((isCurrentSpeaker || isAffected) && isPresent) {
+          updatedSentiment = synthesizeDynamicCompanionSentiment({
+            companion: {
+              ...(comp as StoryCompanion),
+              affection: updatedAffection,
+            },
+            llmSentiment: data.state_updates?.companion_sentiment || null,
+            actionText: formattedPayload,
+            appliedDelta: isAffected ? delta : 0,
+            isArmorCracked: Boolean(activeEarnedEval?.isArmorCracked),
+            activeCap: targetCap,
+          });
+
+          const memEval = evaluateDynamicCoreMemoryUnlock({
+            companion: {
+              ...(comp as StoryCompanion),
+              unlockedCoreMemories: updatedCatalogMemoryIds,
+              dynamicCoreMemories: updatedDynamicMemories,
+            },
+            llmCoreMemory: data.state_updates?.core_memory_unlocked || null,
+            legacyMemoryText: data.new_memory_unlocked || null,
+            actionText: formattedPayload,
+            narrativeText: narrative,
+            oldAffection: comp.affection,
+            newAffection: updatedAffection,
+            turnNumber: currentTurnNumber,
+            location: nextLocation,
+            isArmorCracked: Boolean(activeEarnedEval?.isArmorCracked),
+          });
+
+          updatedCatalogMemoryIds = memEval.updatedCatalogIds;
+          updatedDynamicMemories = memEval.updatedDynamicMemories;
+
+          if (memEval.newlyUnlockedTitles.length > 0) {
+            pushNotification({
+              id: `core_mem_${comp.id}_${Date.now()}`,
+              type: "quest_completed",
+              title: `CORE MEMORY FORGED (${comp.name.toUpperCase()})`,
+              subtitle: `"${memEval.newlyUnlockedTitles[0]}" added to ${comp.name}'s Core Memories!`,
+              difficulty: "A",
+            });
+          }
         }
 
         return {
@@ -4939,6 +5032,12 @@ export default function VisualNovelGame() {
           expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
           affection: updatedAffection,
           heartRateBpm: updatedBpm,
+          guardTier: profile.guardTier,
+          trustProgress: updatedTrustProgress,
+          armorCrackCount: updatedArmorCrackCount,
+          currentSentiment: updatedSentiment,
+          unlockedCoreMemories: updatedCatalogMemoryIds,
+          dynamicCoreMemories: updatedDynamicMemories,
         };
       });
 
@@ -5816,7 +5915,7 @@ export default function VisualNovelGame() {
         });
       });
 
-      // Affection Milestones (25%, 50%, 75%, 100%) & Companion Quests (Task 3)
+      // Affection Milestones (25%, 50%, 75%, 90%, 100%) & Companion Quests (Task 3)
       if (typeof delta === "number" && delta > 0 && affectedComp) {
         const compObj = party.find((c) => c.name.toLowerCase().includes(affectedComp.toLowerCase()));
         if (compObj) {
@@ -5824,7 +5923,7 @@ export default function VisualNovelGame() {
           const compSlug = canonicalName.toLowerCase().replace(/[^a-z0-9]/g, "_");
           const oldAffection = compObj.affection;
           const newAffection = Math.min(100, oldAffection + delta);
-          [25, 50, 75, 100].forEach((threshold) => {
+          [25, 50, 75, 90, 100].forEach((threshold) => {
             const milestoneId = `milestone_${compSlug}_${threshold}`;
             const questTitle = `[COMPANION QUEST] ${canonicalName}: ${threshold}% Heart Resonance`;
 
@@ -10925,12 +11024,30 @@ export default function VisualNovelGame() {
       {renderAbilityModal()}
       {renderCharacterPortraitViewerModal()}
 
-      <CharacterCardModal
-        companion={selectedCharacterCardComp}
-        isOpen={selectedCharacterCardComp !== null}
-        onClose={() => setSelectedCharacterCardComp(null)}
-        storyId={currentStory.id}
-      />
+      {(() => {
+        const liveCardComp = selectedCharacterCardComp
+          ? party.find(
+              (c) =>
+                (selectedCharacterCardComp.id && c.id === selectedCharacterCardComp.id) ||
+                c.name.toLowerCase() === selectedCharacterCardComp.name.toLowerCase()
+            ) || selectedCharacterCardComp
+          : null;
+        const cardKnowledge = liveCardComp
+          ? currentStory?.npcKnowledgeMap?.[liveCardComp.name.toLowerCase().trim()]
+          : undefined;
+        return (
+          <CharacterCardModal
+            companion={liveCardComp}
+            isOpen={liveCardComp !== null}
+            onClose={() => setSelectedCharacterCardComp(null)}
+            storyId={currentStory.id}
+            liveBpm={(liveCardComp as any)?.heartRateBpm}
+            shopRole={(liveCardComp as any)?.shopRole}
+            roomNumber={(liveCardComp as any)?.assignedRoomNumber}
+            npcKnowledge={cardKnowledge}
+          />
+        );
+      })()}
 
 
 

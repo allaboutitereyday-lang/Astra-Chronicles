@@ -40,6 +40,19 @@ export type RomancePath = "harem" | "mono" | "platonic" | "rival" | "uncommitted
 
 export type CompanionAffectionTier = "Stranger" | "Acquaintance" | "Confidant" | "Beloved" | "Sworn Partner";
 
+export type HeroineGuardTier = "IRONCLAD" | "SELECTIVE" | "WARM_RIVAL";
+
+export interface CompanionCoreMemory {
+  id: string;
+  title: string;
+  hint: string;
+  turnUnlocked?: number;
+  location?: string;
+  affectionAtUnlock?: number;
+  category?: "milestone" | "charisma_breakthrough" | "promise_kept" | "showdown" | "gift" | "choice";
+  isCanonical?: boolean;
+}
+
 export interface CompanionResonanceAbilities {
   confidantPassive: {
     name: string;
@@ -105,12 +118,17 @@ export interface StoryCompanion {
     jealousyThreshold?: number; // affection gap that sparks banter
   };
 
-  // Port Solaris Live Mechanics
+  // Port Solaris Live Mechanics & Dynamic Romance State
   heartRateBpm?: number;
   shopRole?: ShopRole;
   isBoardingHouseTenant?: boolean;
   assignedRoomNumber?: number;
   unlockedCoreMemories?: string[];
+  dynamicCoreMemories?: CompanionCoreMemory[];
+  currentSentiment?: string;
+  trustProgress?: number; // Sub-point accumulator (0.0 to 1.0) for IRONCLAD/SELECTIVE heroines
+  guardTier?: HeroineGuardTier;
+  armorCrackCount?: number; // Number of times genuine charisma/attraction cracked her composed facade
 
   // Visual AI & Consistency Pipeline Fields (ControlNet & IPAdapter)
   seed: number;

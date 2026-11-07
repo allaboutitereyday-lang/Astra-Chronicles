@@ -17,7 +17,7 @@ import {
   Layers,
   Award,
 } from "lucide-react";
-import { StoryCompanion } from "@/types/story";
+import { StoryCompanion, CompanionCoreMemory, HeroineGuardTier } from "@/types/story";
 import {
   PORT_SOLARIS_HEROINE_DOSSIERS,
   HeroineProfile,
@@ -29,6 +29,10 @@ import {
   getBpmZone,
   BOARDING_HOUSE_ROOMS,
 } from "@/lib/portSolarisEngine";
+import {
+  getHeroineResistanceProfile,
+  synthesizeDynamicCompanionSentiment,
+} from "@/lib/progressionMechanics";
 import { soundEffects } from "@/lib/audioEngine";
 
 export interface CharacterCardCompanion {
@@ -44,6 +48,12 @@ export interface CharacterCardCompanion {
   expressionKey?: string;
   isPresent?: boolean;
   encountered?: boolean;
+  currentSentiment?: string;
+  trustProgress?: number;
+  guardTier?: HeroineGuardTier;
+  armorCrackCount?: number;
+  unlockedCoreMemories?: string[];
+  dynamicCoreMemories?: CompanionCoreMemory[];
   [key: string]: any;
 }
 
@@ -298,7 +308,19 @@ export function resolveCharacterCardRole(
     .toUpperCase();
 }
 
-export function getCharacterCardSentiment(affection: number): string {
+export function getCharacterCardSentiment(
+  affection: number,
+  companion?: Partial<CharacterCardCompanion | StoryCompanion> | null
+): string {
+  if (companion && (companion.currentSentiment || companion.name)) {
+    return synthesizeDynamicCompanionSentiment({
+      companion: {
+        ...companion,
+        affection,
+      } as Partial<StoryCompanion>,
+      llmSentiment: companion.currentSentiment,
+    });
+  }
   if (affection < 25) {
     return "Guarded & Observant. She maintains a professional perimeter, treating you with cautious skepticism while watching how you handle island pressures.";
   } else if (affection < 45) {
@@ -388,9 +410,10 @@ export function CharacterCardModal({
   // Rom-Com Secret & Knowledge Gating
   const secretData = PORT_SOLARIS_SECRETS[compNameLower];
   const isSecretUnlocked = isCharacterCardSecretUnlocked(compAffection, dossier?.intimacyRank ?? 1);
+  const resistanceProfile = getHeroineResistanceProfile(companion as Partial<StoryCompanion>);
 
-  // Dynamic Sentiment Synthesis
-  const getDynamicSentiment = () => getCharacterCardSentiment(compAffection);
+  // Dynamic Sentiment Synthesis (reflects live player choices & heroine guard state)
+  const getDynamicSentiment = () => getCharacterCardSentiment(compAffection, companion);
 
   // Faction Styling
   const factionName: IslandFaction = dossier?.faction || "BOARDWALK_GUILD";
@@ -573,16 +596,29 @@ export function CharacterCardModal({
             {/* TAB 1: OVERVIEW & DYAD PASSIVE */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Affection & Heart Resonance */}
-                <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2">
-                  <div className="flex justify-between items-center">
+                {/* Affection, Guard Tier & Dynamic Choice Sentiment */}
+                <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2.5">
+                  <div className="flex justify-between items-center gap-2 flex-wrap">
                     <span className="text-zinc-300 font-bold flex items-center gap-1.5">
                       <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
                       Heart Resonance (Affection)
                     </span>
-                    <span className="text-sm font-black text-rose-300 font-mono">
-                      {compAffection}%
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`text-[9px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-wider ${
+                          resistanceProfile.guardTier === "IRONCLAD"
+                            ? "bg-amber-950/70 border-amber-400/50 text-amber-200"
+                            : resistanceProfile.guardTier === "SELECTIVE"
+                            ? "bg-purple-950/70 border-purple-400/50 text-purple-200"
+                            : "bg-emerald-950/70 border-emerald-400/50 text-emerald-200"
+                        }`}
+                      >
+                        {resistanceProfile.badgeLabel}
+                      </span>
+                      <span className="text-sm font-black text-rose-300 font-mono">
+                        {compAffection}%
+                      </span>
+                    </div>
                   </div>
                   <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
                     <div
@@ -590,8 +626,28 @@ export function CharacterCardModal({
                       style={{ width: `${compAffection}%` }}
                     />
                   </div>
-                  <p className="text-[11px] text-zinc-400 italic leading-relaxed pt-1">
-                    Current Sentiment: {getDynamicSentiment()}
+                  {(resistanceProfile.guardTier === "IRONCLAD" || resistanceProfile.guardTier === "SELECTIVE") &&
+                    compAffection < resistanceProfile.guardedThreshold && (
+                      <div className="flex items-center justify-between gap-2 text-[10px] px-2.5 py-1.5 rounded-xl bg-black/40 border border-rose-500/20">
+                        <span className="text-rose-200/90 font-medium">
+                          ✦ Cracks in Her Armor:{" "}
+                          <strong className="text-rose-300">{companion.armorCrackCount || 0}</strong>
+                        </span>
+                        <span className="text-zinc-400 font-mono">
+                          Next Trust Breakthrough: {Math.round(((companion.trustProgress || 0) % 1) * 100)}%
+                        </span>
+                      </div>
+                    )}
+                  <div className="p-2.5 rounded-xl bg-black/35 border border-white/5 space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider font-bold text-rose-300/90 block">
+                      Current Sentiment (Choice-Driven)
+                    </span>
+                    <p className="text-[11px] text-zinc-200 italic leading-relaxed">
+                      {getDynamicSentiment()}
+                    </p>
+                  </div>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed">
+                    <strong className="text-zinc-300">How to Earn Her Heart:</strong> {resistanceProfile.whatEarnsAffection}
                   </p>
                 </div>
 
@@ -827,45 +883,145 @@ export function CharacterCardModal({
 
             {/* TAB 4: CORE MEMORIES */}
             {activeTab === "memories" && (
-              <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="space-y-4 animate-in fade-in duration-200">
                 <p className="text-zinc-400 text-[11px]">
-                  Pivotal romantic memories, comedic blunders, and heartfelt breakthroughs experienced together on Port
-                  Solaris.
+                  Pivotal romantic memories, cracks in her armor, and heartfelt breakthroughs forged by your choices and
+                  actions throughout the story.
                 </p>
 
-                {dossier?.unlockedCoreMemories && dossier.unlockedCoreMemories.length > 0 ? (
-                  dossier.unlockedCoreMemories.map((memId, idx) => {
-                    const memMeta = CORE_MEMORY_CATALOG[memId] || {
-                      title: memId.replace(/_/g, " ").toUpperCase(),
-                      hint: "An unforgettable moment on Port Solaris.",
-                    };
+                {/* SECTION A: PLAYER-FORGED DYNAMIC STORY MEMORIES */}
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                      Memories Forged by Your Choices
+                    </span>
+                    <span className="text-[9px] text-zinc-500 font-mono">
+                      {Array.isArray(companion.dynamicCoreMemories) ? companion.dynamicCoreMemories.length : 0} Forged
+                    </span>
+                  </div>
 
-                    return (
+                  {Array.isArray(companion.dynamicCoreMemories) && companion.dynamicCoreMemories.length > 0 ? (
+                    companion.dynamicCoreMemories.map((mem, idx) => (
                       <div
-                        key={idx}
-                        className="p-3.5 rounded-2xl bg-zinc-900/80 border border-white/10 flex items-start gap-3 hover:border-rose-400/40 transition-colors"
+                        key={mem.id || idx}
+                        className="p-3.5 rounded-2xl bg-gradient-to-r from-rose-950/40 via-zinc-900/80 to-zinc-900/90 border border-rose-500/30 flex items-start gap-3 hover:border-rose-400/60 transition-colors"
                       >
-                        <div className="p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 shrink-0">
-                          <Award className="w-4 h-4" />
+                        <div className="p-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-200 shrink-0">
+                          <Heart className="w-4 h-4 fill-rose-400/50" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-bold text-white text-xs">{memMeta.title}</h4>
-                            <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                              Unlocked
-                            </span>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <h4 className="font-bold text-white text-xs">{mem.title}</h4>
+                            <div className="flex items-center gap-1.5">
+                              {mem.location && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-white/10">
+                                  {mem.location}
+                                </span>
+                              )}
+                              {typeof mem.turnUnlocked === "number" && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-200 border border-rose-500/40 font-mono">
+                                  Turn {mem.turnUnlocked}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-[11px] text-zinc-300 mt-1 leading-relaxed">{memMeta.hint}</p>
+                          <p className="text-[11px] text-zinc-200 mt-1 leading-relaxed">{mem.hint}</p>
                         </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="p-3.5 rounded-2xl bg-zinc-900/40 border border-white/5 text-[11px] text-zinc-400">
+                      Make bold, charismatic choices, keep promises, or break through {companion.name}&apos;s guard in
+                      dialogue to forge personal story memories together.
+                    </div>
+                  )}
+                </div>
+
+                {/* SECTION B: SIGNATURE HEROINE CORE MEMORIES */}
+                <div className="space-y-2.5 pt-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                    Signature Heroine Core Memories
+                  </span>
+
+                  {(() => {
+                    const canonicalIds = Array.from(
+                      new Set([
+                        ...(dossier?.unlockedCoreMemories || []),
+                        ...(Array.isArray(companion.unlockedCoreMemories) ? companion.unlockedCoreMemories : []),
+                      ])
                     );
-                  })
-                ) : (
-                  <div className="p-6 rounded-2xl bg-zinc-900/40 border border-white/5 text-center text-zinc-500">
-                    <BookOpen className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                    <span>No core memories unlocked yet. Spend time with {companion.name} to awaken them!</span>
-                  </div>
-                )}
+
+                    if (canonicalIds.length === 0) {
+                      return (
+                        <div className="p-5 rounded-2xl bg-zinc-900/40 border border-white/5 text-center text-zinc-500">
+                          <BookOpen className="w-5 h-5 mx-auto mb-1.5 opacity-50" />
+                          <span>Spend time with {companion.name} to uncover her signature core memories!</span>
+                        </div>
+                      );
+                    }
+
+                    return canonicalIds.map((memId, idx) => {
+                      const memMeta = CORE_MEMORY_CATALOG[memId] || {
+                        title: memId.replace(/_/g, " ").toUpperCase(),
+                        hint: "An unforgettable moment on Port Solaris.",
+                      };
+
+                      const requiredAffection = idx === 0 ? 50 : 75;
+                      const isDynamicallyUnlockedByStory =
+                        Array.isArray(companion.unlockedCoreMemories) &&
+                        companion.unlockedCoreMemories.includes(memId);
+                      const isUnlockedByRankOrAffection =
+                        idx === 0
+                          ? isCharacterCardSecretUnlocked(compAffection, dossier?.intimacyRank ?? 1)
+                          : compAffection >= 75 || (dossier?.intimacyRank ?? 1) >= 4;
+                      const isMemUnlocked = isDynamicallyUnlockedByStory || isUnlockedByRankOrAffection;
+
+                      return (
+                        <div
+                          key={memId}
+                          className={`p-3.5 rounded-2xl border flex items-start gap-3 transition-colors ${
+                            isMemUnlocked
+                              ? "bg-zinc-900/80 border-white/10 hover:border-rose-400/40"
+                              : "bg-zinc-900/40 border-white/5 opacity-80"
+                          }`}
+                        >
+                          <div
+                            className={`p-2 rounded-xl border shrink-0 ${
+                              isMemUnlocked
+                                ? "bg-rose-500/15 border-rose-500/30 text-rose-300"
+                                : "bg-zinc-800/70 border-white/10 text-amber-400"
+                            }`}
+                          >
+                            {isMemUnlocked ? <Award className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="font-bold text-white text-xs">
+                                {isMemUnlocked ? memMeta.title : `Locked Signature Memory #${idx + 1}`}
+                              </h4>
+                              <span
+                                className={`text-[9px] px-2 py-0.5 rounded border ${
+                                  isMemUnlocked
+                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                    : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                                }`}
+                              >
+                                {isMemUnlocked ? "Unlocked" : `Requires ${requiredAffection}% or Story Trigger`}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 mt-1 leading-relaxed">
+                              {isMemUnlocked
+                                ? memMeta.hint
+                                : `Reach ${requiredAffection}% Heart Resonance with ${companion.name} or trigger this personal moment through your choices in the story.`}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
               </div>
             )}
           </div>

@@ -12,7 +12,9 @@ import {
   GiftItemRecord, 
   TimelineEcho, 
   PlayerProfile,
-  StoryCompanion
+  StoryCompanion,
+  HeroineGuardTier,
+  CompanionCoreMemory
 } from "@/types/story";
 
 export type { ActiveTrialCompanion, CombatStanceType, CombatStanceConfig, GiftItemRecord };
@@ -1069,3 +1071,849 @@ export function detectContextualEquipmentAcquisition(params: {
 
   return null;
 }
+
+// ============================================================================
+// 8. EARNED ROMANCE PROGRESSION, HEROINE RESISTANCE & DYNAMIC MEMORY ENGINE
+// ============================================================================
+
+export interface HeroineResistanceProfile {
+  guardTier: HeroineGuardTier;
+  badgeLabel: string;
+  lowTierMaxGain: number;
+  trustStepPerResonance: number; // How much trustProgress (0..1) a standard positive beat adds below threshold
+  guardedThreshold: number; // Affection level below which her initial guard is active
+  whatEarnsAffection: string;
+  armorCrackTell: string;
+  initialSentiment: string;
+  canonicalMemoryTriggers: Array<{
+    memoryId: string;
+    unlockAffection: number;
+    keywords: RegExp;
+  }>;
+}
+
+const HEROINE_RESISTANCE_CATALOG: Record<string, HeroineResistanceProfile> = {
+  "seraphina vane": {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • High-Society Ojou",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.5,
+    guardedThreshold: 40,
+    whatEarnsAffection:
+      "Demonstrating effortless competence under pressure, upholding Five-Star hospitality standards, calling her bluff with calm charisma, or shielding her from her father's impossible expectations.",
+    armorCrackTell:
+      "She clutches her gold-plated clipboard tighter to hide a sudden blush, steals a lingering glance at his lips or shoulders when she thinks he isn't looking, and privately scolds her racing pulse while insisting to herself that her interest is 'strictly professional.'",
+    initialSentiment:
+      "Strictly Professional Scrutiny — She keeps her gold-plated clipboard raised like a shield, convinced you are a reckless proprietor, even if your unbothered poise already unsettles her rhythm.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "midnight_ramen_addiction",
+        unlockAffection: 50,
+        keywords: /\b(ramen|instant\s+noodle|midnight\s+snack|comfort\s+food|late[- ]night\s+kitchen|broth)\b/i,
+      },
+      {
+        memoryId: "father_resort_ultimatum",
+        unlockAffection: 75,
+        keywords: /\b(father|ultimatum|vane\s+holdings|corporate\s+heir|foreclosure\s+decree|family\s+pressure)\b/i,
+      },
+    ],
+  },
+  "vivienne laurent": {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • Sovereign Heiress",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.5,
+    guardedThreshold: 42,
+    whatEarnsAffection:
+      "Refusing to be bought or intimidated by her net worth, matching her boardroom poise with magnetic self-assurance, and treating her as a woman rather than a gilded trophy.",
+    armorCrackTell:
+      "Her cool champagne-flute composure slips for a heartbeat—her fingers brush yours a fraction too long, her gaze lingers on your eyes from behind her designer sunglasses, and her inner thoughts betray a thrill at finally meeting a man she cannot easily price or control.",
+    initialSentiment:
+      "Velvet Boardroom Distance — She appraises you from behind a billion-crown wall of amused detachment, waiting to see if you fold like every other suitor on the island.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "secret_charity_patron",
+        unlockAffection: 50,
+        keywords: /\b(anonymous\s+patron|scholarship|grant|harbor\s+trust|secret\s+donation|charity)\b/i,
+      },
+      {
+        memoryId: "fear_of_thunderstorms",
+        unlockAffection: 75,
+        keywords: /\b(thunder|lightning|storm|squall|blackout|monsoon)\b/i,
+      },
+    ],
+  },
+  "kaede tachibana": {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • Stoic Bushido",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.5,
+    guardedThreshold: 40,
+    whatEarnsAffection:
+      "Unwavering physical discipline, honorable action without excuses, steady physical presence during danger, and sincere respect for her martial code.",
+    armorCrackTell:
+      "Her stoic posture stiffens as a crimson flush creeps up her neck; her fingers accidentally graze your wrist during a stance check, and in her private thoughts she wonders why a single confident look from you leaves her more breathless than a hundred dawn katas.",
+    initialSentiment:
+      "Measured Martial Vigilance — She observes your footwork and resolve in quiet silence, respecting strength of character far more than easy words.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "sunrise_pier_kata",
+        unlockAffection: 50,
+        keywords: /\b(sunrise|dawn\s+kata|shinai|pier\s+training|morning\s+practice|bamboo\s+sword)\b/i,
+      },
+      {
+        memoryId: "plushie_claw_machine_master",
+        unlockAffection: 75,
+        keywords: /\b(plushie|claw\s+machine|stuffed\s+seal|arcade\s+prize|cute)\b/i,
+      },
+    ],
+  },
+  "nadia saint-clair": {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • Perfectionist Appraiser",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.5,
+    guardedThreshold: 38,
+    whatEarnsAffection:
+      "Attention to fine craftsmanship, keeping your word down to the smallest detail, and seeing past her sharp perfectionism to her genuine passion.",
+    armorCrackTell:
+      "She adjusts her spectacles to hide the sudden warmth in her cheeks, catches herself staring a beat too long as you lean in, and privately admits that your voice has a dangerously distracting resonance.",
+    initialSentiment:
+      "Exacting Appraisal — She evaluates every choice you make with a jeweler's loupe, skeptical of shortcuts but secretly attentive whenever you show real conviction.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "flea_market_treasure_hunter",
+        unlockAffection: 50,
+        keywords: /\b(flea\s+market|bargain|antique|watchmaker|vintage\s+stall|appraisal)\b/i,
+      },
+      {
+        memoryId: "handwritten_love_letters",
+        unlockAffection: 75,
+        keywords: /\b(letter|fountain\s+pen|wax\s+seal|calligraphy|correspondence|unsent)\b/i,
+      },
+    ],
+  },
+  "colette moreau": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Teasing Sommelier",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 30,
+    whatEarnsAffection:
+      "Trading unbothered witty banter, turning her own teasing back on her with smooth confidence, and appreciating the quiet artistry behind her lounge persona.",
+    armorCrackTell:
+      "Her sultry, all-knowing smirk falters for a split second when you step into her space without blinking; her fingers linger against yours on the crystal glass, and she privately marvels that you just turned the tables on her.",
+    initialSentiment:
+      "Amused Connoisseur — She swirls her glass with a knowing smirk, enjoying the game of trying to fluster you while keeping her own heart safely behind the bar.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "secret_romance_sketchbook",
+        unlockAffection: 50,
+        keywords: /\b(sketchbook|drawing|charcoal|portrait|illustrat|art)\b/i,
+      },
+      {
+        memoryId: "vineyard_inheritance_dispute",
+        unlockAffection: 75,
+        keywords: /\b(vineyard|cellar|moreau\s+estate|sommelier|vintage\s+reserve|inheritance)\b/i,
+      },
+    ],
+  },
+  "chloe lin": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Deadpan Prodigy",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 28,
+    whatEarnsAffection:
+      "Respecting her quiet personal space, matching her dry humor, noticing her subtle non-verbal cues, and sharing comfortable low-pressure company.",
+    armorCrackTell:
+      "She tugs her headphones down around her neck, her gaze darting away a millisecond too late after watching you, while her internal monologue calculates why her heart rate spikes every time your shoulder brushes hers.",
+    initialSentiment:
+      "Low-Battery Curiosity — She watches you from behind her headphones with deadpan calm, conserving her social energy until you prove you're worth unmuting for.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "undefeated_rhythm_queen",
+        unlockAffection: 50,
+        keywords: /\b(arcade|rhythm\s+game|high\s+score|neon\s+token|frame[- ]perfect|cabinet)\b/i,
+      },
+      {
+        memoryId: "sleepless_ledger_guardian",
+        unlockAffection: 75,
+        keywords: /\b(ledger|accounting|3\s*a\.?m\.?|spreadsheets|late\s+night\s+books|audit\s+math)\b/i,
+      },
+    ],
+  },
+  "roxy vance": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Thrill-Seeking Rebel",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 28,
+    whatEarnsAffection:
+      "Boldness, refusing to flinch at her provocations, backing her up in high-heat moments, and seeing the loyal heart underneath her tabloid bravado.",
+    armorCrackTell:
+      "Her cocky grin stutters into a genuine, wide-eyed flush when you hold her gaze without backing down; she nudges your arm to play it off, privately admitting you hit way harder than she expected.",
+    initialSentiment:
+      "Provocative Sizing-Up — She pokes at your composure with a sharp grin to see if you're all talk or if you have the nerve to keep up with her.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "anonymous_stray_rescuer",
+        unlockAffection: 50,
+        keywords: /\b(stray|kittens|alley\s+cats|dockside\s+shelter|feeding|rescue)\b/i,
+      },
+      {
+        memoryId: "deleted_scoop_sacrifice",
+        unlockAffection: 75,
+        keywords: /\b(camera|deleted\s+photo|tabloid|front[- ]page\s+scoop|memory\s+card|press)\b/i,
+      },
+    ],
+  },
+  "mia bellini": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Warm Rival • Fiery Childhood Friend",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 20,
+    whatEarnsAffection:
+      "Rolling up your sleeves in the kitchen, praising her culinary craft with genuine warmth, and reminding her she comes first even when glamorous outsiders arrive.",
+    armorCrackTell:
+      "She huffs and dusts flour off her apron to hide her glowing cheeks, her eyes softening with unmistakable fondness the moment your hand steadies hers.",
+    initialSentiment:
+      "Affectionate Exasperation — She hides her Ride-or-Die devotion behind bossy kitchen banter, fiercely protective of both the Stray Anchor and you.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "childhood_promise_recipe",
+        unlockAffection: 50,
+        keywords: /\b(recipe\s+notebook|childhood\s+promise|brioche|nonna|kitchen\s+vow|pastry)\b/i,
+      },
+      {
+        memoryId: "jealous_apron_vigil",
+        unlockAffection: 75,
+        keywords: /\b(apron|patio\s+window|jealous|other\s+girls|closing\s+shift|taste[- ]test)\b/i,
+      },
+    ],
+  },
+  "pippa reyes": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Warm Rival • Sun-Kissed Sparkplug",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 20,
+    whatEarnsAffection:
+      "Matching her upbeat energy, celebrating her promotional wins, and noticing when her bright smile is masking exhaustion.",
+    armorCrackTell:
+      "She freezes mid-bounce with a rosy blush across the bridge of her nose, suddenly shy as her fingers tangle with yours.",
+    initialSentiment:
+      "Sunlit Enthusiasm — She's immediately energized by your presence, eager to team up and see if your leadership lives up to the boardwalk hype.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "sunset_lighthouse_confession",
+        unlockAffection: 50,
+        keywords: /\b(lighthouse|boardwalk\s+sunset|megaphone|mascot|beacon|lantern)\b/i,
+      },
+      {
+        memoryId: "festival_fireworks_wish",
+        unlockAffection: 75,
+        keywords: /\b(fireworks|regatta|summer\s+festival|lantern\s+launch|wish)\b/i,
+      },
+    ],
+  },
+  "zuri delacroix": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Warm Rival • Botanical Alchemist",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 22,
+    whatEarnsAffection:
+      "Curiosity about her botanical infusions, gentle attentiveness, and patient warmth during quiet greenhouse or kitchen moments.",
+    armorCrackTell:
+      "A soft gasp escapes her as she inhales sharply, her pulse fluttering visibly at her throat while she leans a fraction closer to your warmth.",
+    initialSentiment:
+      "Warm Botanical Curiosity — She studies your aura with gentle, perceptive eyes, intrigued by the steady calm you bring into the room.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "moonlight_greenhouse_bloom",
+        unlockAffection: 50,
+        keywords: /\b(greenhouse|night[- ]blooming|orchid|botanical|tea\s+blend|herbal)\b/i,
+      },
+      {
+        memoryId: "grandmother_apothecary_journal",
+        unlockAffection: 75,
+        keywords: /\b(apothecary|grandmother|delacroix\s+journal|elixir|heirloom\s+seeds)\b/i,
+      },
+    ],
+  },
+};
+
+export function getHeroineResistanceProfile(
+  companionOrName?: Partial<StoryCompanion> | string | null
+): HeroineResistanceProfile {
+  const rawName =
+    typeof companionOrName === "string"
+      ? companionOrName
+      : companionOrName?.name || "";
+  const norm = rawName.toLowerCase().trim();
+
+  for (const [key, profile] of Object.entries(HEROINE_RESISTANCE_CATALOG)) {
+    if (norm.includes(key) || key.includes(norm) && norm.length >= 3) {
+      return profile;
+    }
+  }
+
+  // Check Sovereign Spire / Dark Fantasy or custom heroines by name/personality
+  const personality =
+    typeof companionOrName === "object" && companionOrName
+      ? `${companionOrName.personality || ""} ${companionOrName.title || ""} ${companionOrName.role || ""}`.toLowerCase()
+      : norm;
+
+  if (
+    /beatrix|cassia|serena|aria\s+shadowthorn|cold|stoic|haughty|ice|arrogant|strict|guarded|inquisitor|noble|ojou/i.test(
+      `${norm} ${personality}`
+    )
+  ) {
+    return {
+      guardTier: "IRONCLAD",
+      badgeLabel: "Ironclad Guard • Composed & Exacting",
+      lowTierMaxGain: 1,
+      trustStepPerResonance: 0.5,
+      guardedThreshold: 40,
+      whatEarnsAffection:
+        "Proving your competence through decisive action, respecting her code of honor, and holding your ground with unshakable charisma.",
+      armorCrackTell:
+        "Her disciplined composure fractures for a fleeting second—an involuntary flush, a stolen glance when she thinks you aren't looking, and unspoken inner thoughts acknowledging the magnetic pull she refuses to voice aloud.",
+      initialSentiment:
+        "Guarded & Exacting — She keeps a disciplined perimeter around her emotions, watching closely to see if your actions match your audacity.",
+      canonicalMemoryTriggers: [],
+    };
+  }
+
+  if (
+    /ysolde|vespera|evelyn|morgana|cunning|teasing|sly|mysterious|calculating|schol|alchem/i.test(
+      `${norm} ${personality}`
+    )
+  ) {
+    return {
+      guardTier: "SELECTIVE",
+      badgeLabel: "Selective Guard • Witty & Discerning",
+      lowTierMaxGain: 1,
+      trustStepPerResonance: 0.65,
+      guardedThreshold: 30,
+      whatEarnsAffection:
+        "Sharp intellectual parity, unbothered banter, and seeing beneath her calculated exterior.",
+      armorCrackTell:
+        "Her knowing smile wavers into genuine surprise as her gaze lingers on yours a beat too long, privately intrigued by how effortlessly you read her.",
+      initialSentiment:
+        "Intrigued & Selective — She weighs you with a perceptive smile, immune to textbook flattery but genuinely drawn to sharp wit and poise.",
+      canonicalMemoryTriggers: [],
+    };
+  }
+
+  return {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Warm Rival • Expressive & Loyal",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 22,
+    whatEarnsAffection:
+      "Sincere emotional honesty, shared effort side by side, and protective loyalty.",
+    armorCrackTell:
+      "Her cheeks warm immediately and her eyes brighten, unable to hide how much your attention means to her.",
+    initialSentiment:
+      "Warm & Attentive — She responds openly to your presence, appreciative of honest teamwork and genuine camaraderie.",
+    canonicalMemoryTriggers: [],
+  };
+}
+
+const SURFACE_FLATTERY_REGEX =
+  /\b(pickup\s+line|catcall|grope|grab\s+her\s+waist|force\s+a\s+kiss|kiss\s+her\s+lips|you're\s+so\s+hot|sexy\s+babe|be\s+my\s+girl)\b/i;
+
+const GENUINE_CHARISMA_REGEX =
+  /\b(hold\s+her\s+gaze|meet\s+her\s+(?:eyes|gaze)|steady\s+voice|calm(?:ly)?|unbothered|confident|teas(?:e|ing)|wink|smirk|step\s+closer|lean\s+in|brush|gentle|protect|shield|help\s+her|slide\s+the|offer\s+her|call\s+her\s+bluff|whisper|charm|sincere|promise|defend|wager|toast)\b/i;
+
+export function evaluateCharismaAndArmorCrack(params: {
+  actionText: string;
+  companion?: Partial<StoryCompanion> | null;
+  rawDelta: number;
+}): {
+  isSurfaceAdvance: boolean;
+  isGenuineCharisma: boolean;
+  triggersArmorCrack: boolean;
+  bpmBonus: number;
+} {
+  const action = (params.actionText || "").trim();
+  const aff = params.companion?.affection ?? 20;
+  const profile = getHeroineResistanceProfile(params.companion);
+
+  const hasSurfacePattern = SURFACE_FLATTERY_REGEX.test(action);
+  const hasCharismaPattern = GENUINE_CHARISMA_REGEX.test(action) || action.length >= 45;
+
+  // Surface advance only triggers if affection is low (<35%) and it looks like cheap/presumptuous line without genuine depth
+  const isSurfaceAdvance =
+    aff < 35 &&
+    profile.guardTier !== "WARM_RIVAL" &&
+    hasSurfacePattern &&
+    params.rawDelta <= 1;
+
+  // Genuine charisma triggers when the player acts with poise, wit, magnetic confidence, or earns positive delta
+  const isGenuineCharisma =
+    !isSurfaceAdvance &&
+    (params.rawDelta > 0 || (hasCharismaPattern && params.rawDelta >= 0));
+
+  // Even IRONCLAD heroines show cracks in their armor when met with genuine charisma!
+  const triggersArmorCrack =
+    isGenuineCharisma &&
+    (profile.guardTier === "IRONCLAD" || profile.guardTier === "SELECTIVE") &&
+    aff < 65;
+
+  const bpmBonus = triggersArmorCrack
+    ? profile.guardTier === "IRONCLAD"
+      ? 8
+      : 6
+    : isGenuineCharisma
+    ? 4
+    : 0;
+
+  return {
+    isSurfaceAdvance,
+    isGenuineCharisma,
+    triggersArmorCrack,
+    bpmBonus,
+  };
+}
+
+export function calculateEarnedAffectionDelta(params: {
+  companion: StoryCompanion;
+  rawDelta: number;
+  actionText: string;
+  activeCap: number;
+  isGiftInteraction?: boolean;
+  isMilestoneBreakthrough?: boolean;
+}): {
+  appliedDelta: number;
+  newAffection: number;
+  updatedTrustProgress: number;
+  updatedArmorCrackCount: number;
+  isArmorCracked: boolean;
+  resistanceNote: string | null;
+  bpmSpikeBonus: number;
+  crossedMilestone: number | null;
+} {
+  const { companion, rawDelta, actionText, activeCap, isGiftInteraction, isMilestoneBreakthrough } = params;
+  const currentAff = typeof companion.affection === "number" ? companion.affection : 0;
+  const profile = getHeroineResistanceProfile(companion);
+  let trustProgress = typeof companion.trustProgress === "number" ? companion.trustProgress : 0;
+  let armorCrackCount = typeof companion.armorCrackCount === "number" ? companion.armorCrackCount : 0;
+
+  const charismaEval = evaluateCharismaAndArmorCrack({
+    actionText,
+    companion,
+    rawDelta,
+  });
+
+  // 1. Handle negative deltas (friction/dislikes always apply immediately)
+  if (rawDelta < 0) {
+    const appliedNegative = Math.max(-5, rawDelta);
+    const newAffection = Math.max(0, Math.min(100, currentAff + appliedNegative));
+    return {
+      appliedDelta: newAffection - currentAff,
+      newAffection,
+      updatedTrustProgress: Math.max(0, trustProgress - 0.25),
+      updatedArmorCrackCount: armorCrackCount,
+      isArmorCracked: false,
+      resistanceNote: `${companion.name}'s guard hardened (${appliedNegative}% Affection).`,
+      bpmSpikeBonus: 0,
+      crossedMilestone: null,
+    };
+  }
+
+  // 2. Handle surface-level/presumptuous flattery on guarded heroines at low affection
+  if (charismaEval.isSurfaceAdvance) {
+    const backfireDelta = profile.guardTier === "IRONCLAD" && currentAff < 25 ? -1 : 0;
+    const newAffection = Math.max(0, currentAff + backfireDelta);
+    return {
+      appliedDelta: newAffection - currentAff,
+      newAffection,
+      updatedTrustProgress: trustProgress,
+      updatedArmorCrackCount: armorCrackCount,
+      isArmorCracked: false,
+      resistanceNote: `${companion.name} deflected the surface-level advance—she requires genuine charisma or proven action.`,
+      bpmSpikeBonus: 2,
+      crossedMilestone: null,
+    };
+  }
+
+  // 3. Handle Gift or Milestone Breakthrough (bypass fractional resistance, respect cap)
+  if (isGiftInteraction || isMilestoneBreakthrough) {
+    const maxGiftGain = isMilestoneBreakthrough ? 5 : Math.min(4, Math.max(1, rawDelta));
+    const unclamped = currentAff + maxGiftGain;
+    const newAffection = Math.max(0, Math.min(activeCap, unclamped));
+    const crossed =
+      [25, 50, 75, 90].find((m) => currentAff < m && newAffection >= m) || null;
+    if (charismaEval.triggersArmorCrack) {
+      armorCrackCount += 1;
+    }
+    return {
+      appliedDelta: newAffection - currentAff,
+      newAffection,
+      updatedTrustProgress: trustProgress,
+      updatedArmorCrackCount: armorCrackCount,
+      isArmorCracked: charismaEval.triggersArmorCrack,
+      resistanceNote: null,
+      bpmSpikeBonus: charismaEval.bpmBonus,
+      crossedMilestone: crossed,
+    };
+  }
+
+  // 4. Standard Turn Progression with Heroine Guard Resistance & Armor Cracks
+  let appliedDelta = 0;
+  let resistanceNote: string | null = null;
+  let isArmorCracked = charismaEval.triggersArmorCrack;
+
+  if (rawDelta > 0) {
+    if (currentAff < profile.guardedThreshold && profile.guardTier !== "WARM_RIVAL") {
+      // Guarded phase: accumulate trustProgress via Armor Cracks & value alignment
+      const step =
+        rawDelta >= 2 && charismaEval.isGenuineCharisma
+          ? Math.min(1.0, profile.trustStepPerResonance * 1.6)
+          : profile.trustStepPerResonance;
+      trustProgress = Number((trustProgress + step).toFixed(2));
+      isArmorCracked = true;
+      armorCrackCount += 1;
+
+      if (trustProgress >= 1.0) {
+        appliedDelta = 1;
+        trustProgress = Number((trustProgress - 1.0).toFixed(2));
+        resistanceNote = `Crack in ${companion.name}'s armor! Your charisma broke through her composed guard (+1% Earned Affection).`;
+      } else {
+        appliedDelta = 0;
+        resistanceNote = `Crack in ${companion.name}'s armor (${Math.round(trustProgress * 100)}% toward next breakthrough)—her pulse spiked and her gaze lingered despite her guarded words.`;
+      }
+    } else {
+      // Past initial guard threshold or WARM_RIVAL heroine
+      const maxAllowed = currentAff < 50 ? profile.lowTierMaxGain : 2;
+      appliedDelta = Math.min(maxAllowed, rawDelta);
+      if (isArmorCracked) {
+        armorCrackCount += 1;
+      }
+    }
+  } else if (charismaEval.triggersArmorCrack) {
+    // Even when rawDelta == 0, genuine charismatic tension cracks her armor and builds 0.25 trustProgress!
+    trustProgress = Number(Math.min(0.95, trustProgress + 0.25).toFixed(2));
+    armorCrackCount += 1;
+    isArmorCracked = true;
+    resistanceNote = `${companion.name} maintained her outward poise, but a fleeting blush and stolen glance betrayed her attraction (${Math.round(trustProgress * 100)}% Trust Breakthrough).`;
+  }
+
+  // Clamp against active milestone cap (25, 50, 75, 90, 100)
+  const targetAffection = Math.max(0, Math.min(activeCap, currentAff + appliedDelta));
+  const finalDelta = targetAffection - currentAff;
+  const crossedMilestone =
+    [25, 50, 75, 90].find((m) => currentAff < m && targetAffection >= m) || null;
+
+  return {
+    appliedDelta: finalDelta,
+    newAffection: targetAffection,
+    updatedTrustProgress: trustProgress,
+    updatedArmorCrackCount: armorCrackCount,
+    isArmorCracked,
+    resistanceNote,
+    bpmSpikeBonus: charismaEval.bpmBonus,
+    crossedMilestone,
+  };
+}
+
+export function synthesizeDynamicCompanionSentiment(params: {
+  companion: Partial<StoryCompanion>;
+  llmSentiment?: string | null;
+  actionText?: string;
+  appliedDelta?: number;
+  isArmorCracked?: boolean;
+  activeCap?: number;
+}): string {
+  const { companion, llmSentiment, actionText, appliedDelta = 0, isArmorCracked = false } = params;
+  const aff = companion.affection ?? 20;
+  const profile = getHeroineResistanceProfile(companion);
+
+  const tierPrefix =
+    aff < 25
+      ? "Guarded & Observant"
+      : aff < 45
+      ? "Warming Rivalry"
+      : aff < 70
+      ? "Flustered Complicity"
+      : aff < 90
+      ? "Deep Romantic Tension"
+      : "Devoted Dyad Harmony";
+
+  // If LLM generated a fresh choice-driven sentiment on this turn, pair it with the canonical tier prefix
+  if (llmSentiment && llmSentiment.trim().length > 12) {
+    const cleaned = llmSentiment.trim().replace(/^["']|["']$/g, "");
+    if (cleaned.includes(tierPrefix)) {
+      return cleaned;
+    }
+    return `${tierPrefix} — ${cleaned}`;
+  }
+
+  // If an action occurred this turn without an explicit LLM sentiment field, synthesize a dynamic update
+  if (actionText && actionText.trim().length > 0) {
+    const cleanAction = actionText
+      .replace(/^\[[^\]]+\]:\s*/, "")
+      .trim()
+      .slice(0, 90);
+
+    if (appliedDelta < 0) {
+      return `${tierPrefix} — Bristling after your recent choice ("${cleanAction}"); her defenses have tightened and she expects you to prove your sincerity.`;
+    }
+    if (isArmorCracked && aff < 45) {
+      return `${tierPrefix} — Outwardly she insists on strict composure after your move ("${cleanAction}"), yet her stolen glances and racing pulse betray a growing physical and emotional pull she won't admit aloud.`;
+    }
+    if (appliedDelta > 0) {
+      return `${tierPrefix} — Genuinely moved by how you handled things ("${cleanAction}"); her trust in your leadership and magnetic presence is steadily deepening.`;
+    }
+  }
+
+  // If companion already has a stored currentSentiment from a previous turn, preserve it
+  if (companion.currentSentiment && companion.currentSentiment.trim().length > 0) {
+    if (companion.currentSentiment.includes(tierPrefix)) {
+      return companion.currentSentiment;
+    }
+    return `${tierPrefix} — ${companion.currentSentiment}`;
+  }
+
+  // Heroine-specific initial baseline sentiment
+  return `${tierPrefix} — ${profile.initialSentiment}`;
+}
+
+export function evaluateDynamicCoreMemoryUnlock(params: {
+  companion: StoryCompanion;
+  llmCoreMemory?: { id?: string; title?: string; summary?: string } | null;
+  legacyMemoryText?: string | null;
+  actionText?: string;
+  narrativeText?: string;
+  oldAffection: number;
+  newAffection: number;
+  turnNumber: number;
+  location: string;
+  isArmorCracked?: boolean;
+}): {
+  updatedCatalogIds: string[];
+  updatedDynamicMemories: CompanionCoreMemory[];
+  newlyUnlockedTitles: string[];
+} {
+  const {
+    companion,
+    llmCoreMemory,
+    legacyMemoryText,
+    actionText = "",
+    narrativeText = "",
+    oldAffection,
+    newAffection,
+    turnNumber,
+    location,
+    isArmorCracked = false,
+  } = params;
+
+  const profile = getHeroineResistanceProfile(companion);
+  const existingCatalogIds = Array.isArray(companion.unlockedCoreMemories)
+    ? [...companion.unlockedCoreMemories]
+    : [];
+  const existingDynamic = Array.isArray(companion.dynamicCoreMemories)
+    ? [...companion.dynamicCoreMemories]
+    : [];
+  const newlyUnlockedTitles: string[] = [];
+
+  const combinedText = `${actionText} ${narrativeText}`;
+
+  // 1. Check canonical catalog memory triggers (by affection threshold OR story keywords!)
+  for (const trigger of profile.canonicalMemoryTriggers) {
+    if (!existingCatalogIds.includes(trigger.memoryId)) {
+      const reachedAffection = newAffection >= trigger.unlockAffection;
+      const matchedStoryBeat =
+        newAffection >= 25 && trigger.keywords.test(combinedText);
+      if (reachedAffection || matchedStoryBeat) {
+        existingCatalogIds.push(trigger.memoryId);
+        newlyUnlockedTitles.push(trigger.memoryId);
+      }
+    }
+  }
+
+  // 2. Check structured LLM core_memory_unlocked
+  if (
+    llmCoreMemory &&
+    typeof llmCoreMemory.title === "string" &&
+    llmCoreMemory.title.trim().length > 0 &&
+    typeof llmCoreMemory.summary === "string" &&
+    llmCoreMemory.summary.trim().length > 0
+  ) {
+    const memId =
+      llmCoreMemory.id ||
+      `mem_${companion.id}_${turnNumber}_${llmCoreMemory.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .slice(0, 24)}`;
+    const isDuplicate = existingDynamic.some(
+      (m) =>
+        m.id === memId ||
+        m.title.toLowerCase() === llmCoreMemory.title!.trim().toLowerCase()
+    );
+    if (!isDuplicate) {
+      existingDynamic.unshift({
+        id: memId,
+        title: llmCoreMemory.title.trim(),
+        hint: llmCoreMemory.summary.trim(),
+        turnUnlocked: turnNumber,
+        location,
+        affectionAtUnlock: newAffection,
+        category: "choice",
+      });
+      newlyUnlockedTitles.push(llmCoreMemory.title.trim());
+    }
+  } else if (
+    legacyMemoryText &&
+    typeof legacyMemoryText === "string" &&
+    legacyMemoryText.trim().length > 10 &&
+    legacyMemoryText.toLowerCase().includes((companion.name.split(" ")[0] || "").toLowerCase())
+  ) {
+    // 3. Fallback: If legacy new_memory_unlocked specifically mentions this heroine and no structured core memory was emitted
+    const cleanSummary = legacyMemoryText.trim();
+    const isDuplicate = existingDynamic.some((m) => m.hint === cleanSummary);
+    if (!isDuplicate) {
+      const shortTitle = `Shared Moment at ${location || "Port Solaris"}`;
+      existingDynamic.unshift({
+        id: `mem_${companion.id}_turn_${turnNumber}`,
+        title: shortTitle,
+        hint: cleanSummary,
+        turnUnlocked: turnNumber,
+        location,
+        affectionAtUnlock: newAffection,
+        category: "choice",
+      });
+      newlyUnlockedTitles.push(shortTitle);
+    }
+  }
+
+  // 4. Automatic Milestone Breakthrough Core Memory (25%, 50%, 75%, 90%)
+  const milestones = [
+    {
+      threshold: 25,
+      title: `First Earned Trust (${companion.name.split(" ")[0]})`,
+      summary: `Broke through ${companion.name}'s initial perimeter at ${location}, proving your resolve through action rather than empty words.`,
+    },
+    {
+      threshold: 50,
+      title: `Behind the Mask (${companion.name.split(" ")[0]})`,
+      summary: `Earned access to ${companion.name}'s guarded inner world at ${location}, turning rivalry into unspoken complicity.`,
+    },
+    {
+      threshold: 75,
+      title: `Unanimous Heartbeat (${companion.name.split(" ")[0]})`,
+      summary: `Crossed into deep romantic devotion with ${companion.name} at ${location} after standing by her side when it mattered most.`,
+    },
+    {
+      threshold: 90,
+      title: `Sworn Dyad Covenant (${companion.name.split(" ")[0]})`,
+      summary: `Forged an unbreakable soulbound partnership with ${companion.name}—her heart and trust belong wholly to you.`,
+    },
+  ];
+
+  for (const m of milestones) {
+    if (oldAffection < m.threshold && newAffection >= m.threshold) {
+      const memId = `milestone_${companion.id}_${m.threshold}`;
+      if (!existingDynamic.some((em) => em.id === memId)) {
+        existingDynamic.unshift({
+          id: memId,
+          title: m.title,
+          hint: m.summary,
+          turnUnlocked: turnNumber,
+          location,
+          affectionAtUnlock: newAffection,
+          category: "milestone",
+        });
+        newlyUnlockedTitles.push(m.title);
+      }
+    }
+  }
+
+  // 5. First "Crack in the Armor" Memory for IRONCLAD/SELECTIVE heroines
+  if (
+    isArmorCracked &&
+    (profile.guardTier === "IRONCLAD" || profile.guardTier === "SELECTIVE") &&
+    existingDynamic.filter((m) => m.category === "charisma_breakthrough").length === 0 &&
+    actionText.trim().length > 0
+  ) {
+    const cleanAct = actionText.replace(/^\[[^\]]+\]:\s*/, "").trim();
+    const memId = `armor_crack_${companion.id}_first`;
+    const title = `First Crack in ${companion.name.split(" ")[0]}'s Armor`;
+    const summary = `At ${location}, your genuine charisma ("${cleanAct.slice(0, 80)}") slipped past ${companion.name}'s composed facade—drawing an involuntary blush and a lingering glance she refused to admit aloud.`;
+    existingDynamic.unshift({
+      id: memId,
+      title,
+      hint: summary,
+      turnUnlocked: turnNumber,
+      location,
+      affectionAtUnlock: newAffection,
+      category: "charisma_breakthrough",
+    });
+    newlyUnlockedTitles.push(title);
+  }
+
+  return {
+    updatedCatalogIds: existingCatalogIds,
+    updatedDynamicMemories: existingDynamic.slice(0, 12),
+    newlyUnlockedTitles,
+  };
+}
+
+export function buildEarnedRomancePacingDirective(params: {
+  companion?: StoryCompanion | null;
+  actionText: string;
+  activeCap: number;
+  protagonistName: string;
+}): string {
+  const { companion, actionText, activeCap, protagonistName } = params;
+  if (!companion) return "";
+
+  const aff = companion.affection ?? 20;
+  const profile = getHeroineResistanceProfile(companion);
+  const charismaEval = evaluateCharismaAndArmorCrack({
+    actionText,
+    companion,
+    rawDelta: 1,
+  });
+
+  const stageLabel =
+    aff < 25
+      ? "STAGE 1: GUARDED PERIMETER & TESTING THE WATERS (0–24%)"
+      : aff < 50
+      ? "STAGE 2: WARMING RIVALRY & CRACKS IN THE ARMOR (25–49%)"
+      : aff < 75
+      ? "STAGE 3: FLUSTERED COMPLICITY & SHARED SECRETS (50–74%)"
+      : aff < 90
+      ? "STAGE 4: DEEP ROMANTIC TENSION & DEVOTION (75–89%)"
+      : "STAGE 5: SWORN DYAD HARMONY (90–100%)";
+
+  const armorCrackInstruction =
+    profile.guardTier === "IRONCLAD" || profile.guardTier === "SELECTIVE"
+      ? `--- COURTSHIP DIFFICULTY: ${profile.badgeLabel.toUpperCase()} ---
+- WHAT EARNS HER AFFECTION: ${profile.whatEarnsAffection}
+- SURFACE FLATTERY GUARD: ${companion.name} is NOT won over by generic pickup lines or unearned presumptuous advances. ${
+          charismaEval.isSurfaceAdvance
+            ? `WARNING: The player's current action looks like a premature surface-level advance at ${aff}% affection—have ${companion.name} coolly deflect or tease him for thinking she's that easy (set affection_delta to 0 or -1).`
+            : ""
+        }
+- CRACKS IN HER ARMOR (CRITICAL FOR ROMANTIC FEEDBACK): Even when ${companion.name}'s affection is below 50% (currently ${aff}%), she is NOT an unfeeling statue! Whenever ${protagonistName} demonstrates **genuine charisma, magnetic composure, sharp wit, or physical presence** (beyond surface flattery) and there is physical chemistry between them:
+  1. Outwardly, her spoken dialogue should still reflect her proud, guarded, or teasing persona—she won't throw herself at him overnight.
+  2. HOWEVER, you MUST reward the player with unmistakable **cracks in her armor** in the narrative prose: ${profile.armorCrackTell}
+  3. Include **subtle third-person glimpses of her unspoken inner thoughts**—things she would NEVER admit out loud yet (e.g., privately noticing how dangerously attractive his poise is, or trying to rationalize why her heart skipped a beat when their fingers brushed)—so the player clearly feels that their charisma is working!`
+      : `--- COURTSHIP PROFILE: ${profile.badgeLabel.toUpperCase()} ---
+- WHAT EARNS HER AFFECTION: ${profile.whatEarnsAffection}
+- ${companion.name} is expressive and emotionally warm when treated with sincerity, though her deepest romantic milestones (25%, 50%, 75%, 90%) must still feel genuinely earned through shared action and trust.`;
+
+  return `--- EARNED ROMANCE PROGRESSION & PACING DIRECTIVE (${companion.name.toUpperCase()} — AFFECTION: ${aff}%, CAP: ${activeCap}%) ---
+- Current Relationship Stage: ${stageLabel}
+${armorCrackInstruction}
+- DYNAMIC SENTIMENT & CORE MEMORY OUTPUT RULES:
+  * Always populate "state_updates.companion_sentiment" with 1–2 vivid sentences describing how ${companion.name} currently feels about ${protagonistName} *specifically referencing his latest choice/action* (including any unspoken attraction or cracks in her guard).
+  * Populate "state_updates.core_memory_unlocked" ({ "id", "title", "summary" }) ONLY when this turn's choice forges a truly memorable emotional beat, keeps a meaningful promise, wins a wager, or cracks her guarded exterior in a way she won't forget.`;
+}
+
