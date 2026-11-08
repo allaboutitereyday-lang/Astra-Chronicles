@@ -192,9 +192,20 @@ export function buildAntiRepetitionDirective(
           .join("\n")}`
       : "";
 
+  const exchangeCount = Math.max(1, Math.floor(recentHistory.length / 2));
+  const softPacingGuidanceBlock =
+    exchangeCount >= 2
+      ? `\n--- SOFT PACING & CONVERSATIONAL EVOLUTION GUIDE (${exchangeCount}+ EXCHANGES IN CURRENT SCENE) ---
+The characters have shared ${exchangeCount} exchanges in ${location}.
+- RESPECT PLAYER AGENCY TO LINGER OR ADVANCE:
+  * If ${playerFirstName}'s chosen action stays in ${location} to keep talking, teasing, or sharing a moment, DO NOT forcibly rush them out of the room. Allow them to enjoy the scene!
+  * However, the conversation itself MUST EVOLVE FORWARD: never repeat the same surface-level argument or prop gag. Peel back a new layer of the companion's personality, shift the emotional temperature, advance the hands-on activity they are doing together, and naturally plant an inviting hook for the next story beat when they are ready.
+  * Conversely, if ${playerFirstName}'s action seeks to settle the deal, fulfill an objective, or move to a new location, have the companion accept the outcome and advance the plot without deflecting back into circular debate.`
+      : "";
+
   return `--- ANTI-REPETITION & FORWARD SCENE MOMENTUM DIRECTIVE (CRITICAL — ZERO LOOP TOLERANCE) ---
 ${forbiddenQuotesBlock}
-${forbiddenBeatsBlock}
+${forbiddenBeatsBlock}${softPacingGuidanceBlock}
 
 MANDATORY ANTI-LOOP & SCENE ADVANCEMENT RULES:
 1. ZERO DIALOGUE OR PARAGRAPH SHUFFLING:
@@ -205,8 +216,8 @@ MANDATORY ANTI-LOOP & SCENE ADVANCEMENT RULES:
 3. DO NOT PUPPETEER ${playerFirstName.toUpperCase()} INSIDE "narrative_text":
    - ${playerFirstName}'s action and spoken dialogue belong EXCLUSIVELY in "player_execution".
    - In "narrative_text", NEVER write spoken dialogue for ${playerFirstName} (e.g., NEVER write '${playerFirstName} chuckled, "Relax..."' inside "narrative_text"). "narrative_text" must strictly portray how the companions and environment respond to ${playerFirstName}'s NEW action!
-4. DIRECT CAUSAL RESPONSE TO THE NEW ACTION:
-   - Your response MUST directly answer the specific new choice/action the player just took, introducing fresh dialogue topics, new spatial movement, and new narrative progression in ${location}.`;
+4. EVOLVE EVERY EXCHANGE — NO CIRCULAR STALLING:
+   - Whether the player chooses to linger in conversation or push the plot to a new location, every turn must move the emotional dynamic, shared activity, or story stakes forward into fresh territory.`;
 }
 
 /**

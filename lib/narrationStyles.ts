@@ -100,13 +100,15 @@ export function getNarrativeDepthDirective(depth: NarrativeDepthMode = "deep_nov
   if (depth === "standard") {
     return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [STANDARD VISUAL NOVEL PACING (2–3 PARAGRAPHS)] ---
 - Structure "narrative_text" into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks (\\n\\n).
-- Balance atmospheric sensory details, character body language, and spoken dialogue in double quotation marks ("...").`;
+- Balance atmospheric sensory details, character body language, and spoken dialogue in double quotation marks ("...").
+- MANDATORY FORWARD PLOT PROGRESSION: Never stall in stationary banter! Resolve the current conversational beat within this turn and end on a concrete action, decision, arrival, or scene transition that moves the story forward.`;
   }
 
   if (depth === "expansive") {
     return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [EXPANSIVE SCENE & DIALOGUE (3–5 PARAGRAPHS)] ---
 - Structure "narrative_text" into 3 to 5 rich, detailed paragraphs (approx. 300–450 words) separated by clean line breaks (\\n\\n).
-- Include multiple spoken dialogue beats interleaved with physical movement, environmental reactions, and psychological nuance.`;
+- Include multiple spoken dialogue beats interleaved with physical movement, environmental reactions, and psychological nuance.
+- MANDATORY FORWARD PLOT PROGRESSION: Do NOT loop in endless verbal sparring on the same topic. Resolve the immediate exchange and introduce a concrete plot shift, fulfilled objective beat, or physical transition by the final paragraph.`;
   }
 
   return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [DEEP NOVELISTIC MULTI-BEAT ARCHITECTURE (5–7+ PARAGRAPHS)] ---
@@ -118,11 +120,11 @@ Unfold every turn across these four mandatory narrative beats:
 2. BEAT 2 — PSYCHOLOGICAL SUBTEXT & MICRO-EXPRESSIONS (Paragraphs 2–3):
    - Before or as the active character speaks, portray their internal emotional and analytical reaction through vivid physical tells: micro-expressions, gaze tracking, breathing cadence, posture adjustments, weapon or garment handling, and unspoken tension.
    - Show—do not merely tell—how they weigh the protagonist's motives, competence, or audacity.
-3. BEAT 3 — MULTI-STAGE DIALOGUE & PHYSICAL CHOREOGRAPHY (Paragraphs 3–5):
-   - NEVER limit a character to a single isolated quote at the end of the turn!
-   - Write **at least 2 to 3 distinct spoken dialogue segments** in double quotation marks ("...") woven across multiple paragraphs, broken up by physical pacing, stepping closer or circling, interacting with the surroundings, and shifting vocal cadence.
-4. BEAT 4 — WORLD ESCALATION & NARRATIVE HOOK (Paragraphs 5–7):
-   - Advance the physical scene, interpersonal chemistry, or tactical stakes forward so the environment evolves dynamically and concludes on an evocative, high-tension beat that naturally sets up the next decision.`;
+3. BEAT 3 — MULTI-STAGE DIALOGUE & MEANINGFUL PROGRESSION (Paragraphs 3–5):
+   - Write **2 to 3 distinct spoken dialogue segments** in double quotation marks ("...") woven across multiple paragraphs, broken up by physical movement and interacting with the surroundings.
+   - SOFT PACING & ANTI-STALL RULE: If the player chooses to stay and talk, honor their choice to remain in the scene while evolving the conversation into deeper personal territory (never repeating the same surface argument or prop gag). If the player acts to settle a wager, serve a dish, or advance an objective, have the companion respond decisively so the story progresses naturally.
+4. BEAT 4 — NARRATIVE MOMENTUM & FORWARD HOOK (Paragraphs 5–7):
+   - Advance the emotional chemistry, active task, or plot stakes so the scene feels alive and evolving, concluding on a natural hook that lets the player either linger a bit longer in the moment or step into the next phase of the story.`;
 }
 
 /**
@@ -280,13 +282,13 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`;
 export function getChoicesStyleDirective(rawTone?: string): string {
   const key = resolveNarrationStyleKey(rawTone);
   if (key === "coastal_romcom") {
-    return `Generate 4 distinct player action choices reflecting a Sun-Drenched Coastal Rom-Com & Flair Showdown dynamic: witty, charming, hands-on culinary/athletic craft, playful teasing that pushes heroines into the Blush Zone, and bold Article 9 wagers. Each choice must have flawless grammar and syntax.`;
+    return `Generate 4 distinct, plot-advancing player action choices reflecting a Sun-Drenched Coastal Rom-Com & Flair Showdown dynamic: (1) completing the active quest objective or sealing a deal/wager, (2) physically moving to a new island/café location, (3) triggering a hands-on culinary/social showdown or decisive action, and (4) shifting the scene dynamic or bringing in a new activity/character. Never offer 4 stationary banter-only options.`;
   }
   if (key === "light_novel") {
-    return `Generate 4 distinct player action choices reflecting a Light Novel / High Fantasy dynamic: snappy, proactive, spirited, and heroic with tactical and character-driven flavor. Each choice must have flawless grammar and syntax.`;
+    return `Generate 4 distinct, plot-advancing player action choices reflecting a Light Novel / High Fantasy dynamic: proactive, kinetic, and story-driving—advancing quest objectives, transitioning locations, escalating stakes, and initiating decisive action rather than stalling in small talk.`;
   }
   if (key === "noir") {
-    return `Generate 4 distinct player action choices reflecting a Noir Arcana style: cynical, sharp, street-smart, guarded, and pragmatic underworld maneuvering. Each choice must have flawless grammar and syntax.`;
+    return `Generate 4 distinct, plot-advancing player action choices reflecting a Noir Arcana style: sharp, street-smart underworld maneuvers that close deals, move to new sectors, press critical leads, or escalate the investigation.`;
   }
-  return `Generate 4 distinct player action choices reflecting a Grimdark & Atmospheric style: tense, calculated, gritty, and acutely aware of mortal consequences. Each choice must have flawless grammar and syntax.`;
+  return `Generate 4 distinct, plot-advancing player action choices reflecting a Grimdark & Atmospheric style: decisive, calculated actions that advance active objectives, move across sectors, confront hazards, and drive the story forward.`;
 }

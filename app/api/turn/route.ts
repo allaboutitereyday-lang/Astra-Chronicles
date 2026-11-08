@@ -448,6 +448,34 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
 
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
 
+    const pendingObjectives: string[] = [];
+    if (Array.isArray(systemState?.activeQuests)) {
+      for (const q of systemState.activeQuests) {
+        for (const obj of q.objectives || []) {
+          if (!obj.completed && obj.text) {
+            pendingObjectives.push(obj.text);
+          }
+        }
+      }
+    }
+
+    const otherHeroineNames: string[] = (partyMembers || [])
+      .filter((c: any) => c.name && !presentHeroineNames.includes(c.name))
+      .map((c: any) => c.name);
+
+    const candidateNextLocations: string[] = [];
+    const currentLocLower = (gameState?.location || "").toLowerCase();
+    for (const node of storyContext?.startingNodes || []) {
+      if (node?.location && node.location.toLowerCase() !== currentLocLower && !candidateNextLocations.includes(node.location)) {
+        candidateNextLocations.push(node.location);
+      }
+    }
+    for (const comp of storyContext?.companions || []) {
+      if (comp?.defaultLocation && comp.defaultLocation.toLowerCase() !== currentLocLower && !candidateNextLocations.includes(comp.defaultLocation)) {
+        candidateNextLocations.push(comp.defaultLocation);
+      }
+    }
+
     const dynamicChoiceDirective = buildDynamicChoiceDirective({
       playerName: playerProfile.name,
       playerRole: playerProfile.role,
@@ -468,6 +496,11 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
       mood: gameState.mood,
       isProtagonistAlone,
       presentHeroineNames,
+      pendingObjectives,
+      candidateNextLocations: candidateNextLocations.slice(0, 3),
+      otherHeroineNames,
+      storyId: storyContext?.id,
+      turnsInScene: Array.isArray(recentHistory) ? Math.floor(recentHistory.length / 2) : 1,
     });
 
     const plausibilityCapabilityDirective = buildPlausibilityCapabilityEnvelope(
@@ -851,21 +884,32 @@ ${visualInspectionInstruction}`;
     }
 
     const cleanActionSummary = (action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim() || action;
+    const primaryPendingObj = pendingObjectives[0] || "Resolve the current confrontation and advance to the next scene";
 
     const userPromptContent = isCustom
       ? `[TURN EXECUTION MANDATE — CUSTOM PLAYER ACTION]
-1. Direct Consequence Only: In "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" that directly answer and advance the immediate consequence of ${playerFirstName}'s custom action below.
+1. Direct Consequence & Story Momentum: In "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" that directly answer ${playerFirstName}'s custom action below. Honor their intent (whether lingering in conversation to deepen the moment or pushing the plot to a new stage/location), and ensure the conversation and story stakes evolve forward without repeating prior beats.
 2. Zero Scene Re-Staging: The events in the previous turn are FINISHED. Do NOT repeat or reorder any quotes, prop actions, or side-character interruptions from the previous turn, and do NOT write spoken dialogue for ${playerFirstName} inside "narrative_text".
-3. Next Choices: Generate 4 new "suggested_choices" aligned with ${playerFirstName}'s "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality.
+3. 4 Balanced Story & Roleplay Choices ("suggested_choices"): Generate 4 distinct choices in ${playerFirstName}'s "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) voice:
+   - Choice 1 (Advance Objective / Plot): Directly advance the active objective ("${primaryPendingObj}") or bring the current exchange to a meaningful decision.
+   - Choice 2 (Linger & Deepen): Stay in the current scene to explore a deeper personal/romantic/banter angle with ${sanitizedContextSpeaker}.
+   - Choice 3 (High-Stakes Action / Flair): Take a bold physical action, wager, or hands-on skill move in the scene.
+   - Choice 4 ("[Move/Transition]: ..."): Transition out of ${gameState.location} toward a new area or next phase when ready.
 
 >>> NEW PLAYER ACTION TO ANSWER NOW: "${action}" <<<`
       : `[TURN EXECUTION MANDATE — PRESET CHOICE VECTOR]
 1. Protagonist Execution ("player_execution"): Expand the choice vector below into a vivid 2-paragraph passage (6–10 sentences separated by "\\n\\n") of ${playerFirstName}'s physical movements and spoken dialogue ("...") in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) voice. Strip all bracket tags.
-2. World & Companion Consequence ("narrative_text"): Author ${paragraphSpecLabel} separated by "\\n\\n" showing how ${sanitizedContextSpeaker} and the environment directly respond to THIS specific new move ("${cleanActionSummary}").
+2. World Consequence & Soft Pacing Balance ("narrative_text"): Author ${paragraphSpecLabel} separated by "\\n\\n" showing how ${sanitizedContextSpeaker} and the world directly respond to THIS move ("${cleanActionSummary}").
+   - If the player's move stays in the scene to talk or banter, let them stay and deepen the interaction (revealing new character nuance, shifting emotional tension, or advancing what they are doing together—never looping on the same surface argument).
+   - If the player's move settles a deal, completes a task, or transitions locations, accept the outcome and advance the plot into its next stage (updating "state_updates.current_location" when moving).
 3. Strict Anti-Repetition & Boundary Rules:
    - NEVER write spoken dialogue or actions for ${playerFirstName} inside "narrative_text" (${playerFirstName}'s speech belongs ONLY in "player_execution").
-   - NEVER repeat, paraphrase, or shuffle paragraphs, quotes, prop gags (e.g., sipping the same drink again, dropping a clipboard again, polishing a glass again), or side-character quips from the previous turn! Every paragraph must move the conversation and scene forward into new territory.
-4. Next Choices: Write 4 fresh "suggested_choices" in ${playerFirstName}'s "${personaVoice.personaTitle}" voice.
+   - NEVER repeat, paraphrase, or shuffle paragraphs, quotes, prop gags, or side-character quips from the previous turn!
+4. 4 Balanced Story & Roleplay Choices ("suggested_choices"): Write 4 distinct choices in ${playerFirstName}'s "${personaVoice.personaTitle}" voice:
+   - Choice 1 (Advance Objective / Plot): Directly advance the active objective ("${primaryPendingObj}") or settle the current point.
+   - Choice 2 (Linger & Deepen): Remain in the scene to deepen the conversation, personal connection, or banter with ${sanitizedContextSpeaker} from a fresh angle.
+   - Choice 3 (High-Stakes Action / Flair): Initiate a decisive physical action, wager, or signature craft move.
+   - Choice 4 ("[Move/Transition]: ..."): Physically lead the way to a new location or next activity when the player is ready to move on.
 
 >>> SELECTED CHOICE VECTOR TO EXECUTE & ANSWER NOW: "${action}" <<<`;
 

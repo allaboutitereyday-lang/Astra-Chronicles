@@ -123,6 +123,29 @@ export async function POST(req: Request) {
       ? recentHistory.slice(-6).map((h: any) => `${h.speaker}: "${h.text}"`).join("\n")
       : `Scene: ${sanitizedSpeaker}: "${gameState?.dialogue || "..."}"`;
 
+    const pendingObjectives: string[] = [];
+    if (Array.isArray(systemState?.activeQuests)) {
+      for (const q of systemState.activeQuests) {
+        for (const obj of q.objectives || []) {
+          if (!obj.completed && obj.text) {
+            pendingObjectives.push(obj.text);
+          }
+        }
+      }
+    }
+
+    const otherHeroineNames: string[] = (partyMembers || [])
+      .filter((c: any) => c.name && !presentHeroineNames.includes(c.name))
+      .map((c: any) => c.name);
+
+    const candidateNextLocations: string[] = [];
+    const currentLocLower = (gameState?.location || "").toLowerCase();
+    for (const node of storyContext?.startingNodes || []) {
+      if (node?.location && node.location.toLowerCase() !== currentLocLower && !candidateNextLocations.includes(node.location)) {
+        candidateNextLocations.push(node.location);
+      }
+    }
+
     const choiceDirective = buildDynamicChoiceDirective({
       playerName: playerProfile?.name || "Protagonist",
       playerRole: playerProfile?.role || "Adventurer",
@@ -143,6 +166,10 @@ export async function POST(req: Request) {
       mood: gameState?.mood,
       isProtagonistAlone,
       presentHeroineNames,
+      pendingObjectives,
+      candidateNextLocations: candidateNextLocations.slice(0, 3),
+      otherHeroineNames,
+      storyId: storyContext?.id,
     });
 
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
