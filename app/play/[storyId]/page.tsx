@@ -183,6 +183,8 @@ import {
   isCompanionSpotlighted,
   getStageSpriteClasses,
   getStageHeroineAura,
+  getAffectionBpmCeiling,
+  getBpmZone,
 } from "@/lib/portSolarisEngine";
 
 // Dynamic code splitting for heavy interactive canvas graph
@@ -1723,8 +1725,12 @@ export default function VisualNovelGame() {
 
   useEffect(() => {
     const loc = (gameState.location || "").trim();
-    if (!loc || !prevLocationRef.current) {
-      if (loc) prevLocationRef.current = loc;
+    if (!loc) return;
+    const isInitialDefaultSync =
+      prevLocationRef.current === "Imperial Capital Imperium" &&
+      currentStory?.id !== "astra-chronicles";
+    if (!isConfigured || !pageLoaded || !prevLocationRef.current || isInitialDefaultSync) {
+      prevLocationRef.current = loc;
       return;
     }
     if (loc.toLowerCase() !== prevLocationRef.current.toLowerCase()) {
@@ -1733,10 +1739,14 @@ export default function VisualNovelGame() {
         name: loc,
         sub: gameState.mood ? `Atmosphere: ${gameState.mood}` : "Sector Resonance Stabilized",
       });
-      const timer = setTimeout(() => setSectorBanner(null), 4200);
-      return () => clearTimeout(timer);
     }
-  }, [gameState.location, gameState.mood]);
+  }, [gameState.location, isConfigured, pageLoaded, currentStory?.id]);
+
+  useEffect(() => {
+    if (!sectorBanner) return;
+    const timer = setTimeout(() => setSectorBanner(null), 3500);
+    return () => clearTimeout(timer);
+  }, [sectorBanner]);
 
   const activeConditionPills = useMemo(() => {
     const pills: { label: string; color: string; title: string }[] = [];
@@ -4969,12 +4979,16 @@ export default function VisualNovelGame() {
           }
         }
 
+        const bpmCeiling = getAffectionBpmCeiling(updatedAffection, profile.guardTier);
         let updatedBpm = (comp as any).heartRateBpm;
-        if (portUpdates && comp.name.toLowerCase().includes((portUpdates.speakerName || "").toLowerCase())) {
-          updatedBpm = portUpdates.bpm;
-        }
-        if ((isAffected || isCurrentSpeaker) && activeEarnedEval?.bpmSpikeBonus && typeof updatedBpm === "number") {
-          updatedBpm = Math.min(100, updatedBpm + activeEarnedEval.bpmSpikeBonus);
+        const hasServerBpmUpdate =
+          portUpdates && comp.name.toLowerCase().includes((portUpdates.speakerName || "").toLowerCase());
+        if (hasServerBpmUpdate) {
+          updatedBpm = Math.min(bpmCeiling, portUpdates.bpm);
+        } else if ((isAffected || isCurrentSpeaker) && activeEarnedEval?.bpmSpikeBonus && typeof updatedBpm === "number") {
+          updatedBpm = Math.min(bpmCeiling, updatedBpm + activeEarnedEval.bpmSpikeBonus);
+        } else if (typeof updatedBpm === "number") {
+          updatedBpm = Math.min(bpmCeiling, updatedBpm);
         }
 
         let updatedSentiment = (comp as any).currentSentiment;
@@ -10029,8 +10043,12 @@ export default function VisualNovelGame() {
 
             {/* SECTOR ENTRY CINEMATIC BANNER */}
             {sectorBanner && (
-              <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-3 duration-500">
-                <div className="px-6 py-2.5 rounded-2xl bg-zinc-950/90 border border-emerald-500/40 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.25)] text-center">
+              <div
+                onClick={() => setSectorBanner(null)}
+                title="Click to dismiss"
+                className="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-auto cursor-pointer animate-in fade-in slide-in-from-top-3 duration-500"
+              >
+                <div className="px-6 py-2.5 rounded-2xl bg-zinc-950/90 hover:bg-zinc-900/95 border border-emerald-500/40 backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.25)] text-center transition-colors">
                   <p className="text-[9px] font-mono uppercase tracking-[0.25em] text-emerald-400">
                     ✦ Sector Transition ✦
                   </p>
@@ -10421,12 +10439,16 @@ export default function VisualNovelGame() {
               {/* Port Solaris Live BPM & Blush Badge in Speaker Bar */}
               {isSpeakingHeroine && currentStory.id === "port-solaris" && (() => {
                 const solarisMeta = PORT_SOLARIS_HEROINE_DOSSIERS[isSpeakingHeroine.name];
-                const liveBpm =
+                const speakingProfile = getHeroineResistanceProfile(isSpeakingHeroine as StoryCompanion);
+                const bpmCeiling = getAffectionBpmCeiling(isSpeakingHeroine.affection, speakingProfile.guardTier);
+                const rawBpm =
                   (isSpeakingHeroine as any).heartRateBpm ??
-                  (solarisMeta ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (isSpeakingHeroine.affection - 20) * 0.45)) : 55);
-                const isBlush = liveBpm >= 50 && liveBpm <= 84;
-                const isFever = liveBpm >= 85 && liveBpm < 100;
-                const isShortCircuit = liveBpm >= 100;
+                  (solarisMeta ? Math.round(solarisMeta.heartRateBpm + Math.max(0, isSpeakingHeroine.affection - 20) * 0.35) : 55);
+                const liveBpm = Math.max(40, Math.min(bpmCeiling, rawBpm));
+                const bpmZoneInfo = getBpmZone(liveBpm);
+                const isShortCircuit = bpmZoneInfo.zone === "SHORT_CIRCUIT";
+                const isBlush = bpmZoneInfo.zone === "BLUSH_ZONE" || bpmZoneInfo.zone === "FEVER_PITCH";
+                const isGuardedIntrigued = bpmZoneInfo.zone === "GUARDED_DEFLECTION";
 
                 return (
                   <button
@@ -10438,19 +10460,19 @@ export default function VisualNovelGame() {
                     className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-mono text-[10px] font-bold shadow-inner shrink-0 transition-all cursor-pointer ${
                       isShortCircuit
                         ? "bg-amber-950/90 border-amber-400 text-amber-200 animate-bounce"
-                        : isFever
-                        ? "bg-rose-950/90 border-rose-500 text-rose-200 animate-pulse"
                         : isBlush
-                        ? "bg-pink-950/80 border-pink-400/60 text-pink-200"
+                        ? "bg-pink-950/85 border-pink-400/70 text-pink-200 animate-pulse"
+                        : isGuardedIntrigued
+                        ? "bg-amber-950/70 border-amber-500/40 text-amber-200"
                         : "bg-black/60 border-white/10 text-zinc-300 hover:border-white/20"
                     }`}
-                    title={`Live Heart-Rate: ${liveBpm} BPM (${isShortCircuit ? "Short-Circuit!" : isFever ? "Fever Pitch" : isBlush ? "Blush Zone" : "Composed"}) • Click to open Dossier`}
+                    title={`Live Heart-Rate: ${liveBpm} BPM (${bpmZoneInfo.label}) • Click to open Dossier`}
                   >
-                    <Heart className={`w-3 h-3 text-rose-400 fill-rose-400 shrink-0 ${liveBpm >= 50 ? "animate-pulse" : ""}`} />
+                    <Heart className={`w-3 h-3 text-rose-400 fill-rose-400 shrink-0 ${liveBpm >= 83 ? "animate-pulse" : ""}`} />
                     <span className="whitespace-nowrap">{liveBpm} BPM</span>
                     <span className="hidden xl:inline">•</span>
                     <span className="hidden xl:inline uppercase whitespace-nowrap">
-                      {isShortCircuit ? "Short-Circuit!" : isFever ? "Fever Pitch" : isBlush ? "Blush Zone" : "Composed"}
+                      {isShortCircuit ? "Short-Circuit!" : isBlush ? "Blush Zone" : isGuardedIntrigued ? "Intrigued" : "Composed"}
                     </span>
                   </button>
                 );

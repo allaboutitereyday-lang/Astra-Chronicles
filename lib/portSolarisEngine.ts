@@ -647,37 +647,40 @@ export function getBpmZone(bpm: number): {
 } {
   const clamped = Math.max(40, Math.min(100, bpm));
 
-  if (clamped >= 100) {
+  if (clamped >= 96) {
     return {
       zone: "SHORT_CIRCUIT",
       label: "💥 100 BPM • SHORT-CIRCUIT!",
       color: "rose",
       badgeClass: "bg-rose-950/80 text-rose-300 border-rose-500 animate-pulse font-bold",
-      description: "Total emotional meltdown! Facade shattered, helpless blushing, instant victory.",
-      socialDefenseMultiplier: 0.0,
-      affectionBonusMultiplier: 2.0,
-    };
-  }
-  if (clamped >= 85) {
-    return {
-      zone: "FEVER_PITCH",
-      label: "🔥 Fever Pitch",
-      color: "amber",
-      badgeClass: "bg-amber-950/80 text-amber-300 border-amber-500 animate-bounce font-semibold",
-      description: "Rapid breathing, crimson blush along collarbone, audible heartbeat, stammering.",
-      socialDefenseMultiplier: 0.5,
+      description:
+        "Emotional composure overloaded after sustained, earned romantic tension! Her guarded facade finally slips—momentary speechlessness, fierce blush, and a genuine emotional breakthrough.",
+      socialDefenseMultiplier: 0.25,
       affectionBonusMultiplier: 1.5,
     };
   }
-  if (clamped >= 50) {
+  if (clamped >= 83) {
     return {
       zone: "BLUSH_ZONE",
       label: "💓 Blush Zone",
       color: "pink",
       badgeClass: "bg-pink-950/60 text-pink-300 border-pink-500 font-medium",
-      description: "Averting eyes, twirling hair, nervous throat clearing, transparent excuses.",
+      description:
+        "Visibly flustered, pulse noticeably elevated, averting her gaze or offering sharp excuses to hide that the protagonist got under her skin.",
       socialDefenseMultiplier: 0.75,
-      affectionBonusMultiplier: 1.25,
+      affectionBonusMultiplier: 1.2,
+    };
+  }
+  if (clamped >= 69) {
+    return {
+      zone: "GUARDED_DEFLECTION",
+      label: "⚡ Guarded & Intrigued",
+      color: "amber",
+      badgeClass: "bg-amber-950/60 text-amber-300 border-amber-500/60 font-medium",
+      description:
+        "Competitive awareness and sharp banter. She recognizes the protagonist's competence and pushes back with wit and high standards, keeping her romantic guard firmly up.",
+      socialDefenseMultiplier: 0.9,
+      affectionBonusMultiplier: 1.05,
     };
   }
   return {
@@ -685,14 +688,35 @@ export function getBpmZone(bpm: number): {
     label: "😎 Composed",
     color: "emerald",
     badgeClass: "bg-emerald-950/50 text-emerald-300 border-emerald-600 font-normal",
-    description: "Aloof, poised, unbothered, full composure defenses active.",
+    description:
+      "Poised, analytical, and in full control of her tempo. She maintains her standards, critiques flaws honestly, and is not easily flustered or impressed by ordinary moves.",
     socialDefenseMultiplier: 1.0,
     affectionBonusMultiplier: 1.0,
   };
 }
 
 /**
- * Calculates live turn-by-turn BPM delta based on choices, romance, and contact.
+ * Returns the maximum BPM a heroine can reach during normal interaction based on her current Favor (affection).
+ * Prevents low-affection or Ironclad heroines from prematurely hitting Blush Zone or 100 BPM Short-Circuit.
+ */
+export function getAffectionBpmCeiling(
+  affection: number = 20,
+  guardTier: "IRONCLAD" | "SELECTIVE" | "WARM_RIVAL" = "SELECTIVE"
+): number {
+  if (affection < 25) {
+    return guardTier === "IRONCLAD" ? 72 : 76;
+  }
+  if (affection < 50) {
+    return guardTier === "IRONCLAD" ? 85 : 89;
+  }
+  if (affection < 70 && guardTier === "IRONCLAD") {
+    return 94;
+  }
+  return 100;
+}
+
+/**
+ * Calculates live turn-by-turn BPM delta based on choices, romance, guard resistance, and affection ceiling.
  */
 export function calculateBpmDelta(
   currentBpm: number,
@@ -704,6 +728,9 @@ export function calculateBpmDelta(
     isCaughtRedHanded?: boolean;
     isHeartToHeart?: boolean;
     isColdResponse?: boolean;
+    affection?: number;
+    guardTier?: "IRONCLAD" | "SELECTIVE" | "WARM_RIVAL";
+    bypassAffectionCeiling?: boolean;
   }
 ): {
   newBpm: number;
@@ -711,51 +738,72 @@ export function calculateBpmDelta(
   shortCircuited: boolean;
   delta: number;
 } {
-  const base = Math.max(40, Math.min(100, currentBpm || 50));
+  const affection = typeof options?.affection === "number" ? options.affection : 20;
+  const guardTier = options?.guardTier || "SELECTIVE";
+  const ceiling = options?.bypassAffectionCeiling
+    ? 100
+    : getAffectionBpmCeiling(affection, guardTier);
+
+  // If she was previously at Short-Circuit (>= 96 BPM) or above her current affection ceiling,
+  // apply natural post-spike composure recovery first so she never stays permanently locked at 100 BPM.
+  const rawBase = Math.max(40, Math.min(100, currentBpm || 55));
+  const base = rawBase >= 96 ? 76 : Math.min(rawBase, ceiling);
+
   let delta = 0;
 
   if (options?.isHeartToHeart) {
     // Cooldown relaxation scene on rooftop terrace or sunset pier
-    delta -= 35;
+    delta -= 25;
   } else if (options?.isColdResponse) {
     // Aloof / business-only choice
     delta -= 8;
   } else {
-    // Romantic / emotional stimulation
-    if (isRomanceChoice) delta += 8;
-    if (isBlushTrigger) delta += 10;
-    if (options?.isPhysicalTouch) delta += 18;
-    if (options?.isCaughtRedHanded) delta += 25;
+    // Romantic / emotional stimulation (base increments before guard-tier resistance)
+    if (isRomanceChoice) delta += 5;
+    if (isBlushTrigger) delta += 4;
+    if (options?.isPhysicalTouch) delta += 9;
+    if (options?.isCaughtRedHanded) delta += 14;
 
     // Affection progression scaling
     if (affectionDelta > 0) {
-      delta += Math.round(affectionDelta * 1.5);
+      delta += Math.round(affectionDelta * 2);
     } else if (affectionDelta < 0) {
-      delta += affectionDelta;
+      delta += affectionDelta * 3;
     } else if (!isRomanceChoice && !isBlushTrigger && !options?.isPhysicalTouch && !options?.isCaughtRedHanded) {
-      // Passive resting decay
-      delta -= 3;
+      // Passive resting composure recovery toward ~56 BPM
+      if (base > 58) {
+        delta -= 5;
+      } else if (base < 52) {
+        delta += 2;
+      }
+    }
+
+    // Apply Guard-Tier composure resistance to positive BPM spikes
+    if (delta > 0) {
+      const resistanceMultiplier =
+        guardTier === "IRONCLAD" ? 0.45 : guardTier === "SELECTIVE" ? 0.7 : 1.0;
+      delta = Math.max(1, Math.round(delta * resistanceMultiplier));
     }
   }
 
   const raw = base + delta;
-  const newBpm = Math.max(40, Math.min(100, raw));
-  const shortCircuited = newBpm >= 100;
+  const newBpm = Math.max(40, Math.min(ceiling, raw));
+  const shortCircuited = newBpm >= 96 && ceiling >= 96;
   const zoneInfo = getBpmZone(newBpm);
 
   return {
     newBpm,
     zone: zoneInfo.zone,
     shortCircuited,
-    delta: newBpm - base,
+    delta: newBpm - rawBase,
   };
 }
 
 /**
- * Formulates the LLM short-circuit narrative directive when a heroine reaches 100 BPM.
+ * Formulates the LLM short-circuit narrative directive when a heroine genuinely reaches 96-100 BPM at high Favor.
  */
 export function getShortCircuitDirective(heroineName: string): string {
-  return `💥 100 BPM SHORT-CIRCUIT TRIGGER: ${heroineName}'s emotional composure has completely overloaded (100 BPM)! She cannot maintain her facade—she MUST react with overwhelming blush, stammering speech, hiding behind her hair/objects, or dropping her composure entirely. The protagonist wins the verbal confrontation and earns an exclusive Core Memory!`;
+  return `💥 100 BPM SHORT-CIRCUIT TRIGGER: ${heroineName}'s emotional composure has genuinely overloaded after sustained romantic buildup! Her usual poised facade slips—she reacts with an unmistakable blush, a momentary catch in her voice, or looking away to hide her expression before trying to recover her pride.`;
 }
 
 // ============================================================================
@@ -1179,6 +1227,8 @@ export function adjustFactionStanding(
 export function buildPortSolarisTurnDirective(params: {
   activeSpeaker: string;
   speakerBpm?: number;
+  speakerAffection?: number;
+  speakerGuardTier?: "IRONCLAD" | "SELECTIVE" | "WARM_RIVAL";
   boardingHouseState?: BoardingHouseState;
   equippedKeepsakes?: KeepsakeItem[];
   factionStanding?: Record<IslandFaction, number>;
@@ -1191,23 +1241,28 @@ export function buildPortSolarisTurnDirective(params: {
 }): string {
   const {
     activeSpeaker,
-    speakerBpm = 50,
+    speakerBpm = 55,
+    speakerAffection = 20,
+    speakerGuardTier = "SELECTIVE",
     boardingHouseState,
     equippedKeepsakes = [],
     activeShowdown,
   } = params;
 
-  const bpmZone = getBpmZone(speakerBpm);
+  const ceiling = getAffectionBpmCeiling(speakerAffection, speakerGuardTier);
+  const effectiveBpm = Math.max(40, Math.min(ceiling, speakerBpm));
+  const bpmZone = getBpmZone(effectiveBpm);
   const jealousy = detectKeepsakeJealousy(equippedKeepsakes, activeSpeaker);
 
   const lines: string[] = [
     "--- PORT SOLARIS ROM-COM & ARTICLE 9 SHOWDOWN DIRECTIVE ---",
     `SETTING CONTEXT: Port Solaris — Sun-drenched coastal island of culinary rivalries, boarding house banters, fake-dating pacts, and Article 9 Showdowns. NO dark fantasy death, NO mortal bleeding, NO Eldritch void regressions.`,
-    `ACTIVE SPEAKER BPM & BLUSH STATE: ${activeSpeaker} is currently at ${speakerBpm} BPM (${bpmZone.label}).`,
+    `ACTIVE SPEAKER BPM & COMPOSURE STATE: ${activeSpeaker} is currently at ${effectiveBpm} BPM (${bpmZone.label} — Favor: ${speakerAffection}%).`,
     `BEHAVIOR DIRECTIVE: ${bpmZone.description}`,
+    `ANTI-SYCOPHANCY & COMPOSURE RULE: Heroines are NOT easily dazzled, slack-jawed, or breathless over routine actions. At <50% Favor, ${activeSpeaker} maintains her pride, critical standards, and agency—she pushes back, critiques flaws, or tests the protagonist rather than fawning over him or melting into instant worship.`,
   ];
 
-  if (speakerBpm >= 100) {
+  if (effectiveBpm >= 96 && ceiling >= 96) {
     lines.push(getShortCircuitDirective(activeSpeaker));
   }
 

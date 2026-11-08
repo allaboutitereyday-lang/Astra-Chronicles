@@ -43,7 +43,12 @@ export interface KeepsakeItem {
   };
 }
 
-export type BpmZone = "COMPOSED" | "BLUSH_ZONE" | "FEVER_PITCH" | "SHORT_CIRCUIT";
+export type BpmZone =
+  | "COMPOSED"
+  | "GUARDED_DEFLECTION"
+  | "BLUSH_ZONE"
+  | "FEVER_PITCH"
+  | "SHORT_CIRCUIT";
 
 export type ScandalTier = "LOW" | "BUZZING" | "TABLOID" | "WILDFIRE";
 
@@ -74,7 +79,7 @@ export interface HeroineProfile {
   preferredShopRole: ShopRole;
   intimacyRank: 0 | 1 | 2 | 3 | 4 | 5; // Rank 3 = Moves into Boarding House; Rank 5 = True Route
   affectionPoints: number;
-  heartRateBpm: number; // 0 to 100 (50-85 = Blush Zone, 100 = Short-Circuit)
+  heartRateBpm: number; // 40 to 100 (40-68 = Composed, 69-82 = Guarded Deflection, 83-95 = Blush Zone, 96-100 = Short-Circuit)
   isBoardingHouseTenant: boolean;
   assignedRoomNumber?: number; // 1-6 or 201-206
   unlockedCoreMemories: string[];

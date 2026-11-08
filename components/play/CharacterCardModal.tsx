@@ -27,6 +27,7 @@ import {
 } from "@/types/port_solaris";
 import {
   getBpmZone,
+  getAffectionBpmCeiling,
   BOARDING_HOUSE_ROOMS,
 } from "@/lib/portSolarisEngine";
 import {
@@ -276,17 +277,20 @@ export function resolveCharacterCardBpm(
   propLiveBpm?: number
 ): { resolvedBpm: number; zone: BpmZone } {
   const compAffection = typeof companion.affection === "number" ? companion.affection : 15;
+  const profile = getHeroineResistanceProfile(companion as Partial<StoryCompanion>);
+  const ceiling = getAffectionBpmCeiling(compAffection, profile.guardTier);
   const dossier =
     PORT_SOLARIS_HEROINE_DOSSIERS[companion.name] ||
     Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
       (d) => companion.name.toLowerCase().includes(d.name.toLowerCase())
     );
-  const resolvedBpm =
+  const rawBpm =
     typeof propLiveBpm === "number"
       ? propLiveBpm
       : dossier
-      ? Math.min(100, Math.round(dossier.heartRateBpm + (compAffection - 20) * 0.45))
+      ? Math.round(dossier.heartRateBpm + Math.max(0, compAffection - 20) * 0.35)
       : 55;
+  const resolvedBpm = Math.max(40, Math.min(ceiling, rawBpm));
   return {
     resolvedBpm,
     zone: getBpmZone(resolvedBpm).zone,
@@ -472,10 +476,12 @@ export function CharacterCardModal({
           {/* Ambient Faction / Blush Aura */}
           <div
             className={`absolute -top-12 -left-12 w-64 h-64 rounded-full blur-3xl opacity-35 pointer-events-none transition-all duration-700 ${
-              resolvedBpm >= 85
+              resolvedBpm >= 96
                 ? "bg-rose-500 animate-pulse"
-                : resolvedBpm >= 50
+                : resolvedBpm >= 83
                 ? "bg-pink-500"
+                : resolvedBpm >= 69
+                ? "bg-amber-500"
                 : "bg-cyan-500"
             }`}
           />
@@ -498,17 +504,17 @@ export function CharacterCardModal({
             {/* Live BPM Badge */}
             <div
               className={`w-full py-1.5 px-3 rounded-2xl border text-center font-mono flex items-center justify-between gap-2 shadow-lg backdrop-blur-md transition-all ${
-                resolvedBpm >= 100
+                resolvedBpm >= 96
                   ? "bg-amber-950/90 border-amber-400 text-amber-200 animate-bounce"
-                  : resolvedBpm >= 85
-                  ? "bg-rose-950/90 border-rose-500 text-rose-200 animate-pulse"
-                  : resolvedBpm >= 50
-                  ? "bg-pink-950/80 border-pink-400/60 text-pink-200"
+                  : resolvedBpm >= 83
+                  ? "bg-pink-950/85 border-pink-400/70 text-pink-200 animate-pulse"
+                  : resolvedBpm >= 69
+                  ? "bg-amber-950/75 border-amber-500/50 text-amber-200"
                   : "bg-cyan-950/70 border-cyan-500/40 text-cyan-200"
               }`}
             >
               <div className="flex items-center gap-1.5">
-                <Heart className={`w-4 h-4 fill-current ${resolvedBpm >= 50 ? "animate-pulse" : ""}`} />
+                <Heart className={`w-4 h-4 fill-current ${resolvedBpm >= 83 ? "animate-pulse" : ""}`} />
                 <span className="text-xs font-black tracking-tight">{resolvedBpm} BPM</span>
               </div>
               <span className="text-[10px] font-bold uppercase tracking-wider">

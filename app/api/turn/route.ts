@@ -530,10 +530,19 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
         speakerPartyMember?.heartRateBpm ??
         speakerDossier?.heartRateBpm ??
         55;
+      const speakerAffection =
+        typeof speakerPartyMember?.affection === "number"
+          ? speakerPartyMember.affection
+          : speakerDossier?.affectionPoints ?? 20;
+      const speakerResistance = getHeroineResistanceProfile(
+        speakerPartyMember || { name: sanitizedContextSpeaker, affection: speakerAffection }
+      );
 
       portSolarisDirective = buildPortSolarisTurnDirective({
         activeSpeaker: sanitizedContextSpeaker,
         speakerBpm: currentBpm,
+        speakerAffection,
+        speakerGuardTier: speakerResistance.guardTier,
         boardingHouseState: playerProfile?.boardingHouse,
         equippedKeepsakes: playerProfile?.equippedKeepsakes || [],
         factionStanding: playerProfile?.factionStanding,
@@ -587,10 +596,11 @@ ${companionDossiers}
    - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
    - NATURAL HUMAN PROSE — NO CATALOG LABELS OR FULL-NAME REPETITION: Write like a human novelist, never like an RPG database dump. Refer to characters by their first name ("${playerFirstName}", "Cassia", "Beatrix", "Ysolde", "Kestrel") or pronouns—never repeat full first+last names or inline rank numbers like "(#184)". Never paste capitalized UI item labels ("Notched Chancellery Longsword", "Shadow-Weave Syndicate Jacket") or full map headers ("Stratum I: The Sunken Cloisters") into narrative sentences; describe weapons, clothing, techniques, and rooms naturally ("the notched blade", "his dark coat", "the flooded cloister").
    - PARAGRAPHING & DEPTH: Structure "narrative_text" into ${paragraphSpecLabel} separated by clean double line breaks ("\\n\\n"). Interleave multiple distinct spoken dialogue segments with physical choreography, psychological subtext, and atmospheric detail.
-7. Anti-Sycophancy & Tone Rigidity:
-   - Companions MUST NOT default to subservient, agreeable, or overly eager personalities.
-   - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer cynical reality checks according to their persona.
-   - Affection cannot be forced in a single turn. Retain guarded boundaries and respect their defined personality constraints.
+7. Anti-Sycophancy, Realistic Composure & Tone Rigidity (MANDATORY):
+   - Companions MUST NOT default to subservient, agreeable, or overly dazzled reactions.
+   - NEVER write sycophantic prose that treats ordinary protagonist actions (e.g., heating a pan, leaning on a counter, speaking calmly, or making a cocky quip) as godlike miracles that leave elite heroines breathless, slack-jawed, comparing him to world-renowned masters, or flushing violently to their ears.
+   - At <50% Favor, heroines keep their composure, critique flaws honestly, challenge presumptuous behavior, and require sustained proof before yielding even a grudging nod of respect.
+   - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer sharp reality checks according to their persona.
 8. Hostile Encounter Escalation & Combat Detection Directive ("story_clash"):
    - PROXIMITY, OBSERVATION, STEALTH & STANDOFFS MUST NEVER TRIGGER COMBAT:
      Merely observing an adversary, spotting guards on patrol, tailing a creature, hiding from an abomination, speaking during a tense armed standoff, sizing up an enemy, or sneaking past sentinels MUST NEVER set "state_updates.story_clash.isActive": true.
@@ -1350,26 +1360,41 @@ ${visualInspectionInstruction}`;
               (d) => resolvedSpeaker && resolvedSpeaker.toLowerCase().includes(d.name.toLowerCase())
             );
           const currentBpm = speakerComp?.heartRateBpm ?? speakerDossier?.heartRateBpm ?? 55;
+          const speakerAffection =
+            typeof speakerComp?.affection === "number"
+              ? speakerComp.affection
+              : speakerDossier?.affectionPoints ?? 20;
+          const speakerResistance = getHeroineResistanceProfile(
+            speakerComp || { name: resolvedSpeaker, affection: speakerAffection }
+          );
           const affectionDelta = Number(responseData.state_updates?.affection_delta || 0);
+          const actionStr = action || "";
 
           const isRomanceChoice =
-            (action || "").toLowerCase().includes("romance") ||
-            (action || "").toLowerCase().includes("flirt") ||
-            (action || "").toLowerCase().includes("blush") ||
-            (action || "").toLowerCase().includes("hand") ||
-            (action || "").toLowerCase().includes("embrace") ||
-            (action || "").toLowerCase().includes("kiss");
+            /\[(romance|flirt|intimate|seduce|tease)\b/i.test(actionStr) ||
+            /\b(flirt|kiss|embrace|caress|whisper\s+in\s+her\s+ear|pull\s+her\s+close|hold\s+her\s+hand|brush\s+her\s+(?:fingers|lips|cheek))\b/i.test(
+              actionStr
+            );
+
+          const isPhysicalTouch =
+            /\b(hold\s+her\s+hand|take\s+her\s+hand|interlace\s+fingers|brush\s+her\s+(?:hand|fingers|cheek|lips|hair)|pull\s+her\s+(?:close|into)|embrace\s+her|kiss\s+her|wrap\s+your\s+arm)\b/i.test(
+              actionStr
+            );
+
+          const isColdResponse =
+            /\[(dismiss|cold|aloof|business|reject)\b/i.test(actionStr) ||
+            affectionDelta < 0;
 
           const bpmResult = calculateBpmDelta(
             currentBpm,
             affectionDelta,
             isRomanceChoice,
-            isRomanceChoice || affectionDelta > 0,
+            (isRomanceChoice && affectionDelta > 0) || affectionDelta >= 2,
             {
-              isPhysicalTouch:
-                (action || "").toLowerCase().includes("hand") ||
-                (action || "").toLowerCase().includes("touch") ||
-                (action || "").toLowerCase().includes("kiss"),
+              isPhysicalTouch,
+              isColdResponse,
+              affection: speakerAffection,
+              guardTier: speakerResistance.guardTier,
             }
           );
 
@@ -1377,7 +1402,7 @@ ${visualInspectionInstruction}`;
           const nextBpmZone = getBpmZone(nextBpm);
 
           let shortCircuitDirective: string | null = null;
-          if (bpmResult.shortCircuited || nextBpm >= 100) {
+          if (bpmResult.shortCircuited) {
             shortCircuitDirective = getShortCircuitDirective(resolvedSpeaker);
           }
 
@@ -1396,7 +1421,7 @@ ${visualInspectionInstruction}`;
             bpm: nextBpm,
             bpmZone: nextBpmZone.zone,
             bpmDelta: bpmResult.delta,
-            isShortCircuit: bpmResult.shortCircuited || nextBpm >= 100,
+            isShortCircuit: bpmResult.shortCircuited,
             shortCircuitDirective,
             dailyRevenueDelta,
           };

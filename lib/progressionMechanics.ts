@@ -1428,7 +1428,7 @@ const SURFACE_FLATTERY_REGEX =
   /\b(pickup\s+line|catcall|grope|grab\s+her\s+waist|force\s+a\s+kiss|kiss\s+her\s+lips|you're\s+so\s+hot|sexy\s+babe|be\s+my\s+girl)\b/i;
 
 const GENUINE_CHARISMA_REGEX =
-  /\b(hold\s+her\s+gaze|meet\s+her\s+(?:eyes|gaze)|steady\s+voice|calm(?:ly)?|unbothered|confident|teas(?:e|ing)|wink|smirk|step\s+closer|lean\s+in|brush|gentle|protect|shield|help\s+her|slide\s+the|offer\s+her|call\s+her\s+bluff|whisper|charm|sincere|promise|defend|wager|toast)\b/i;
+  /\b(hold\s+her\s+gaze|meet\s+her\s+(?:eyes|gaze)|call\s+her\s+bluff|step\s+closer|lean\s+in|brush\s+her|shield\s+her|protect\s+her|whisper|sincere\s+promise|defend\s+her|raise\s+the\s+stakes)\b/i;
 
 export function evaluateCharismaAndArmorCrack(params: {
   actionText: string;
@@ -1445,32 +1445,34 @@ export function evaluateCharismaAndArmorCrack(params: {
   const profile = getHeroineResistanceProfile(params.companion);
 
   const hasSurfacePattern = SURFACE_FLATTERY_REGEX.test(action);
-  const hasCharismaPattern = GENUINE_CHARISMA_REGEX.test(action) || action.length >= 45;
+  const hasCharismaPattern = GENUINE_CHARISMA_REGEX.test(action);
 
-  // Surface advance only triggers if affection is low (<35%) and it looks like cheap/presumptuous line without genuine depth
+  // Surface advance triggers if affection is low (<35%) and it looks like a cheap/presumptuous line
   const isSurfaceAdvance =
     aff < 35 &&
     profile.guardTier !== "WARM_RIVAL" &&
     hasSurfacePattern &&
     params.rawDelta <= 1;
 
-  // Genuine charisma triggers when the player acts with poise, wit, magnetic confidence, or earns positive delta
+  // Genuine charisma requires a positive earned delta AND either a deliberate high-charisma play or a strong (+2) resonance beat
   const isGenuineCharisma =
     !isSurfaceAdvance &&
-    (params.rawDelta > 0 || (hasCharismaPattern && params.rawDelta >= 0));
+    params.rawDelta > 0 &&
+    (hasCharismaPattern || params.rawDelta >= 2);
 
-  // Even IRONCLAD heroines show cracks in their armor when met with genuine charisma!
+  // Armor cracks on IRONCLAD/SELECTIVE heroines require genuine charisma and cannot spam at very low affection (<20%) unless rawDelta >= 2
   const triggersArmorCrack =
     isGenuineCharisma &&
     (profile.guardTier === "IRONCLAD" || profile.guardTier === "SELECTIVE") &&
+    (aff >= 20 || params.rawDelta >= 2) &&
     aff < 65;
 
   const bpmBonus = triggersArmorCrack
     ? profile.guardTier === "IRONCLAD"
-      ? 8
-      : 6
+      ? 3
+      : 4
     : isGenuineCharisma
-    ? 4
+    ? 2
     : 0;
 
   return {
@@ -1537,7 +1539,7 @@ export function calculateEarnedAffectionDelta(params: {
       updatedArmorCrackCount: armorCrackCount,
       isArmorCracked: false,
       resistanceNote: `${companion.name} deflected the surface-level advance—she requires genuine charisma or proven action.`,
-      bpmSpikeBonus: 2,
+      bpmSpikeBonus: 0,
       crossedMilestone: null,
     };
   }
@@ -1567,41 +1569,42 @@ export function calculateEarnedAffectionDelta(params: {
   // 4. Standard Turn Progression with Heroine Guard Resistance & Armor Cracks
   let appliedDelta = 0;
   let resistanceNote: string | null = null;
-  let isArmorCracked = charismaEval.triggersArmorCrack;
+  let isArmorCracked = false;
 
   if (rawDelta > 0) {
     if (currentAff < profile.guardedThreshold && profile.guardTier !== "WARM_RIVAL") {
-      // Guarded phase: accumulate trustProgress via Armor Cracks & value alignment
+      // Guarded phase: accumulate trustProgress via proven competence & value alignment
       const step =
         rawDelta >= 2 && charismaEval.isGenuineCharisma
-          ? Math.min(1.0, profile.trustStepPerResonance * 1.6)
+          ? Math.min(1.0, profile.trustStepPerResonance * 1.4)
           : profile.trustStepPerResonance;
       trustProgress = Number((trustProgress + step).toFixed(2));
-      isArmorCracked = true;
-      armorCrackCount += 1;
 
       if (trustProgress >= 1.0) {
         appliedDelta = 1;
         trustProgress = Number((trustProgress - 1.0).toFixed(2));
-        resistanceNote = `Crack in ${companion.name}'s armor! Your charisma broke through her composed guard (+1% Earned Affection).`;
+        isArmorCracked = true;
+        armorCrackCount += 1;
+        resistanceNote = `Crack in ${companion.name}'s armor! Your consistency broke through her guarded scrutiny (+1% Earned Affection).`;
       } else {
         appliedDelta = 0;
-        resistanceNote = `Crack in ${companion.name}'s armor (${Math.round(trustProgress * 100)}% toward next breakthrough)—her pulse spiked and her gaze lingered despite her guarded words.`;
+        if (charismaEval.triggersArmorCrack) {
+          isArmorCracked = true;
+          armorCrackCount += 1;
+          resistanceNote = `Subtle crack in ${companion.name}'s guard (${Math.round(trustProgress * 100)}% toward next trust point)—she noted your move with grudging respect.`;
+        } else {
+          resistanceNote = `${companion.name} observed your move closely (${Math.round(trustProgress * 100)}% toward next trust point), though her outward guard remains firm.`;
+        }
       }
     } else {
       // Past initial guard threshold or WARM_RIVAL heroine
       const maxAllowed = currentAff < 50 ? profile.lowTierMaxGain : 2;
       appliedDelta = Math.min(maxAllowed, rawDelta);
-      if (isArmorCracked) {
+      if (charismaEval.triggersArmorCrack) {
+        isArmorCracked = true;
         armorCrackCount += 1;
       }
     }
-  } else if (charismaEval.triggersArmorCrack) {
-    // Even when rawDelta == 0, genuine charismatic tension cracks her armor and builds 0.25 trustProgress!
-    trustProgress = Number(Math.min(0.95, trustProgress + 0.25).toFixed(2));
-    armorCrackCount += 1;
-    isArmorCracked = true;
-    resistanceNote = `${companion.name} maintained her outward poise, but a fleeting blush and stolen glance betrayed her attraction (${Math.round(trustProgress * 100)}% Trust Breakthrough).`;
   }
 
   // Clamp against active milestone cap (25, 50, 75, 90, 100)
@@ -1662,13 +1665,16 @@ export function synthesizeDynamicCompanionSentiment(params: {
       .slice(0, 90);
 
     if (appliedDelta < 0) {
-      return `${tierPrefix} — Bristling after your recent choice ("${cleanAction}"); her defenses have tightened and she expects you to prove your sincerity.`;
+      return `${tierPrefix} — Bristling after your recent choice ("${cleanAction}"); her defenses have tightened and she expects you to prove your competence and sincerity.`;
     }
-    if (isArmorCracked && aff < 45) {
-      return `${tierPrefix} — Outwardly she insists on strict composure after your move ("${cleanAction}"), yet her stolen glances and racing pulse betray a growing physical and emotional pull she won't admit aloud.`;
+    if (aff < 25) {
+      return `${tierPrefix} — Scrutinizing your move ("${cleanAction}") with critical standards; she acknowledges basic competence where due, but remains skeptical and far from convinced.`;
+    }
+    if (isArmorCracked && aff < 50) {
+      return `${tierPrefix} — Outwardly maintaining her composed standards after your move ("${cleanAction}"), though a brief flicker of grudging respect and intrigue slipped past her guard.`;
     }
     if (appliedDelta > 0) {
-      return `${tierPrefix} — Genuinely moved by how you handled things ("${cleanAction}"); her trust in your leadership and magnetic presence is steadily deepening.`;
+      return `${tierPrefix} — Impressed by how you handled things ("${cleanAction}"); her respect for your judgment is steadily building.`;
     }
   }
 
@@ -1883,14 +1889,25 @@ export function buildEarnedRomancePacingDirective(params: {
 
   const stageLabel =
     aff < 25
-      ? "STAGE 1: GUARDED PERIMETER & TESTING THE WATERS (0–24%)"
+      ? "STAGE 1: SKEPTICAL SCRUTINY & TESTING STANDARDS (0–24%)"
       : aff < 50
-      ? "STAGE 2: WARMING RIVALRY & CRACKS IN THE ARMOR (25–49%)"
+      ? "STAGE 2: WARMING RIVALRY & EARNED RESPECT (25–49%)"
       : aff < 75
       ? "STAGE 3: FLUSTERED COMPLICITY & SHARED SECRETS (50–74%)"
       : aff < 90
       ? "STAGE 4: DEEP ROMANTIC TENSION & DEVOTION (75–89%)"
       : "STAGE 5: SWORN DYAD HARMONY (90–100%)";
+
+  const antiSycophancyRule = `--- ANTI-SYCOPHANCY & GROUNDED STANDARDS PROTOCOL (MANDATORY) ---
+- NO HYPERBOLIC WORSHIP OF ROUTINE ACTIONS: ${companion.name} is an intelligent, proud individual with high standards—NOT a sycophant waiting to be dazzled by basic competence. Do NOT write purple prose comparing ${protagonistName}'s basic actions (heating a pan, leaning on a counter, making a cocky remark, or setting down utensils) to world-class legends, and do NOT make her feel his glance "like a blow to her sternum" or flush violently to her ears over ordinary moves.
+- REALISTIC PUSHBACK & AGENCY: ${companion.name} has her own agenda, critiques flaws honestly, calls out arrogance, and makes ${protagonistName} work hard for a single nod of approval.
+${
+  aff < 25
+    ? `- LOW FAVOR COMPOSURE LOCK (${aff}% < 25%): At this early stage, ${companion.name} is skeptical and observant. Even if ${protagonistName} executes a move well, her maximum reaction is a measured, grudging reassessment ("All right, at least he knows the basics—though one decent move won't save him"). FORBIDDEN AT <25% FAVOR: Violent blushing, stammering, racing heartbeat, or breathless inner monologues about how magnetic/predatory/irresistible he is.`
+    : aff < 50
+    ? `- MID-EARLY FAVOR PACING (${aff}% — 25–49%): ${companion.name} respects ${protagonistName}'s competence and engages in sharp, competitive banter. Only if ${protagonistName} makes a genuinely bold, witty, or protective play may a subtle, fleeting micro-tell appear (${profile.armorCrackTell}), which she immediately covers up with a sharp remark.`
+    : `- EARNED ROMANTIC TENSION (${aff}% >= 50%): ${protagonistName} has genuinely earned her trust. Visible fluster, lingering physical awareness, and deeper emotional vulnerability (${profile.armorCrackTell}) are now natural when he presses his advantage.`
+}`;
 
   const armorCrackInstruction =
     profile.guardTier === "IRONCLAD" || profile.guardTier === "SELECTIVE"
@@ -1898,22 +1915,19 @@ export function buildEarnedRomancePacingDirective(params: {
 - WHAT EARNS HER AFFECTION: ${profile.whatEarnsAffection}
 - SURFACE FLATTERY GUARD: ${companion.name} is NOT won over by generic pickup lines or unearned presumptuous advances. ${
           charismaEval.isSurfaceAdvance
-            ? `WARNING: The player's current action looks like a premature surface-level advance at ${aff}% affection—have ${companion.name} coolly deflect or tease him for thinking she's that easy (set affection_delta to 0 or -1).`
+            ? `WARNING: The player's current action looks like a premature surface-level advance at ${aff}% affection—have ${companion.name} coolly deflect or shut it down with sharp composure (set affection_delta to 0 or -1).`
             : ""
-        }
-- CRACKS IN HER ARMOR (CRITICAL FOR ROMANTIC FEEDBACK): Even when ${companion.name}'s affection is below 50% (currently ${aff}%), she is NOT an unfeeling statue! Whenever ${protagonistName} demonstrates **genuine charisma, magnetic composure, sharp wit, or physical presence** (beyond surface flattery) and there is physical chemistry between them:
-  1. Outwardly, her spoken dialogue should still reflect her proud, guarded, or teasing persona—she won't throw herself at him overnight.
-  2. HOWEVER, you MUST reward the player with unmistakable **cracks in her armor** in the narrative prose: ${profile.armorCrackTell}
-  3. Include **subtle third-person glimpses of her unspoken inner thoughts**—things she would NEVER admit out loud yet (e.g., privately noticing how dangerously attractive his poise is, or trying to rationalize why her heart skipped a beat when their fingers brushed)—so the player clearly feels that their charisma is working!`
+        }`
       : `--- COURTSHIP PROFILE: ${profile.badgeLabel.toUpperCase()} ---
 - WHAT EARNS HER AFFECTION: ${profile.whatEarnsAffection}
-- ${companion.name} is expressive and emotionally warm when treated with sincerity, though her deepest romantic milestones (25%, 50%, 75%, 90%) must still feel genuinely earned through shared action and trust.`;
+- ${companion.name} is expressive and personable when treated with sincerity, though her romantic milestones (25%, 50%, 75%, 90%) still require genuine shared action and trust.`;
 
   return `--- EARNED ROMANCE PROGRESSION & PACING DIRECTIVE (${companion.name.toUpperCase()} — AFFECTION: ${aff}%, CAP: ${activeCap}%) ---
 - Current Relationship Stage: ${stageLabel}
+${antiSycophancyRule}
 ${armorCrackInstruction}
 - DYNAMIC SENTIMENT & CORE MEMORY OUTPUT RULES:
-  * Always populate "state_updates.companion_sentiment" with 1–2 vivid sentences describing how ${companion.name} currently feels about ${protagonistName} *specifically referencing his latest choice/action* (including any unspoken attraction or cracks in her guard).
-  * Populate "state_updates.core_memory_unlocked" ({ "id", "title", "summary" }) ONLY when this turn's choice forges a truly memorable emotional beat, keeps a meaningful promise, wins a wager, or cracks her guarded exterior in a way she won't forget.`;
+  * Always populate "state_updates.companion_sentiment" with 1–2 grounded sentences describing ${companion.name}'s honest assessment of ${protagonistName} after his latest choice. At <25% Favor, keep this analytical, skeptical, or grudgingly observant—NEVER breathless or infatuated.
+  * Populate "state_updates.core_memory_unlocked" ({ "id", "title", "summary" }) ONLY when this turn's choice completes a major story beat, keeps a meaningful promise, or wins an actual wager/showdown.`;
 }
 
