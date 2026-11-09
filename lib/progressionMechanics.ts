@@ -25,7 +25,7 @@ export {
   getSectorModifiersForRun, 
   getDiscoveredCompanions 
 } from "./trialModifiers";
-import { DeathRegressionRecord, PenaltyScenarioState } from "@/types/system";
+import { DeathRegressionRecord, PenaltyScenarioState, QuestDifficulty, QuestType, SystemQuest } from "@/types/system";
 
 // ============================================================================
 // 1. COMPANION AFFECTION TIERS & TRIALS RESONANCE
@@ -1930,4 +1930,249 @@ ${armorCrackInstruction}
   * Always populate "state_updates.companion_sentiment" with 1–2 grounded sentences describing ${companion.name}'s honest assessment of ${protagonistName} after his latest choice. At <25% Favor, keep this analytical, skeptical, or grudgingly observant—NEVER breathless or infatuated.
   * Populate "state_updates.core_memory_unlocked" ({ "id", "title", "summary" }) ONLY when this turn's choice completes a major story beat, keeps a meaningful promise, or wins an actual wager/showdown.`;
 }
+
+// ============================================================================
+// 8. DETERMINISTIC QUEST DIFFICULTY, LENGTH & REWARD CALIBRATION ENGINE
+// ============================================================================
+
+const QUEST_DIFFICULTY_ORDER: QuestDifficulty[] = ["E", "D", "C", "B", "A", "S", "Calamity"];
+
+export const QUEST_REWARD_BRACKETS: Record<
+  QuestDifficulty,
+  { minExp: number; maxExp: number; baseExp: number; expPerObjective: number; minGold: number; maxGold: number; baseGold: number }
+> = {
+  E: { minExp: 35, maxExp: 55, baseExp: 35, expPerObjective: 8, minGold: 25, maxGold: 60, baseGold: 30 },
+  D: { minExp: 60, maxExp: 90, baseExp: 55, expPerObjective: 12, minGold: 60, maxGold: 120, baseGold: 75 },
+  C: { minExp: 95, maxExp: 140, baseExp: 85, expPerObjective: 16, minGold: 120, maxGold: 220, baseGold: 140 },
+  B: { minExp: 150, maxExp: 220, baseExp: 135, expPerObjective: 22, minGold: 250, maxGold: 400, baseGold: 280 },
+  A: { minExp: 240, maxExp: 340, baseExp: 210, expPerObjective: 30, minGold: 450, maxGold: 700, baseGold: 500 },
+  S: { minExp: 360, maxExp: 480, baseExp: 320, expPerObjective: 38, minGold: 750, maxGold: 1200, baseGold: 850 },
+  Calamity: { minExp: 450, maxExp: 550, baseExp: 450, expPerObjective: 25, minGold: 1000, maxGold: 1500, baseGold: 1200 },
+};
+
+/**
+ * Evaluates a quest's actual difficulty and completion length (objective count, stakes,
+ * quest type, and current player level) so the LLM cannot randomly hand out early S-rank
+ * quests or hallucinate 20,000+ EXP rewards that jump 20+ levels at once.
+ */
+export function calibrateQuestRankAndRewards(
+  rawQuest: Partial<SystemQuest> & { title?: string; description?: string; objectives?: any[]; rewards?: any },
+  options: {
+    playerLevel?: number;
+    turnCount?: number;
+  } = {}
+): SystemQuest {
+  const playerLevel = Math.max(1, options.playerLevel ?? 1);
+  const title = (rawQuest.title || "Unforeseen Scenario").trim();
+  const description = (rawQuest.description || "System protocol initiated.").trim();
+  const qType: QuestType =
+    rawQuest.type && ["scenario", "sub", "urgent", "hidden", "penalty"].includes(rawQuest.type)
+      ? rawQuest.type
+      : "scenario";
+
+  // 1. Normalize objectives list and measure completion length
+  const rawObjs = Array.isArray(rawQuest.objectives) && rawQuest.objectives.length > 0
+    ? rawQuest.objectives
+    : [{ text: "Fulfill the scenario objective", completed: false }];
+
+  const objectives = rawObjs.map((o: any) => ({
+    text: typeof o === "string" ? o.trim() : (o?.text || "Investigate current surroundings").trim(),
+    completed: Boolean(o?.completed),
+  }));
+  const objCount = objectives.length;
+
+  // 2. Analyze actual narrative hazard / stakes from title, description, and objectives
+  const combinedCorpus = `${title} ${description} ${objectives.map((o) => o.text).join(" ")}`.toLowerCase();
+
+  const isPenaltyOrCataclysm =
+    qType === "penalty" ||
+    /\b(void rift|penalty scenario|causal collapse|calamity|100% milestone|sworn dyad|final boss|archon cataclysm)\b/i.test(
+      combinedCorpus
+    );
+
+  const isHighStakesBossOrShowdown =
+    /\b(boss|showdown|article 9|tournament|inquisitor|executioner|archon|covenant|abyssal|sovereign trial|duel|climax|90%|75%|syndicate|foreclosure)\b/i.test(
+      combinedCorpus
+    );
+
+  const isModerateHazardOrMultiStep =
+    /\b(ambush|infiltrat|confront|defend|investigat|wager|inspection|debt|sabotage|escort|25%|50%|clash|patrol|rival)\b/i.test(
+      combinedCorpus
+    );
+
+  const isLowRiskSocialOrIntro =
+    /\b(introduce|greet|talk to|speak with|survey|observe|recon|explore|taste|prep|clean|settle in|orientation|first shift|check in)\b/i.test(
+      combinedCorpus
+    );
+
+  // 3. Determine intrinsic rank from Completion Length (objCount) + Actual Difficulty
+  let computedRankIndex = 1; // Default D
+
+  if (isPenaltyOrCataclysm) {
+    computedRankIndex = objCount >= 4 && playerLevel >= 8 ? 6 : 4; // Calamity (late) or A
+  } else if (objCount <= 1) {
+    // 1-step short task: E or D (max C if urgent boss/showdown)
+    if (isHighStakesBossOrShowdown) computedRankIndex = 2; // C
+    else if (isModerateHazardOrMultiStep && !isLowRiskSocialOrIntro) computedRankIndex = 1; // D
+    else computedRankIndex = 0; // E
+  } else if (objCount === 2) {
+    // 2-step short-to-medium task: E, D, or C
+    if (isHighStakesBossOrShowdown) computedRankIndex = 2; // C
+    else if (isLowRiskSocialOrIntro && !isModerateHazardOrMultiStep) computedRankIndex = 0; // E
+    else computedRankIndex = 1; // D
+  } else if (objCount === 3) {
+    // 3-step full scenario: D, C, or B
+    if (isHighStakesBossOrShowdown) computedRankIndex = 3; // B
+    else if (isModerateHazardOrMultiStep) computedRankIndex = 2; // C
+    else computedRankIndex = 1; // D
+  } else {
+    // 4+ objectives (long multi-stage arc): C, B, A, or S
+    if (isHighStakesBossOrShowdown && objCount >= 5 && playerLevel >= 8) {
+      computedRankIndex = 5; // S
+    } else if (isHighStakesBossOrShowdown && objCount >= 4) {
+      computedRankIndex = 4; // A
+    } else if (isModerateHazardOrMultiStep) {
+      computedRankIndex = 3; // B
+    } else {
+      computedRankIndex = 2; // C
+    }
+  }
+
+  // 4. Blend with LLM's requested rank ONLY within +/- 1 tier of intrinsic length/difficulty,
+  // and enforce strict Length & Player Level Ceilings so early S-ranks are impossible.
+  const rawDifficulty = (rawQuest.difficulty || "C") as QuestDifficulty;
+  const llmRankIndex = QUEST_DIFFICULTY_ORDER.indexOf(rawDifficulty);
+
+  if (llmRankIndex !== -1 && !isPenaltyOrCataclysm) {
+    if (llmRankIndex > computedRankIndex) {
+      // Allow LLM to bump rank by at most +1 tier if not a 1-step trivial task
+      if (objCount >= 2 && !isLowRiskSocialOrIntro) {
+        computedRankIndex = Math.min(computedRankIndex + 1, llmRankIndex);
+      }
+    } else if (llmRankIndex < computedRankIndex) {
+      computedRankIndex = Math.max(computedRankIndex - 1, llmRankIndex);
+    }
+  }
+
+  // Hard Length-of-Completion Ceiling:
+  // - 1 objective can NEVER exceed C-Rank
+  // - 2 objectives can NEVER exceed C-Rank (or B-Rank if urgent boss showdown)
+  // - 3 objectives can NEVER exceed B-Rank (or A-Rank at Lv.6+)
+  // - S-Rank strictly requires 4+ objectives!
+  if (!isPenaltyOrCataclysm) {
+    if (objCount <= 1) {
+      computedRankIndex = Math.min(computedRankIndex, 2); // Max C
+    } else if (objCount === 2) {
+      computedRankIndex = Math.min(computedRankIndex, isHighStakesBossOrShowdown ? 3 : 2); // Max C (or B for boss)
+    } else if (objCount === 3) {
+      computedRankIndex = Math.min(computedRankIndex, playerLevel >= 6 && isHighStakesBossOrShowdown ? 4 : 3); // Max B (or A at Lv.6+)
+    }
+
+    // Hard Campaign Stage / Player Level Ceiling (prevents random early S/A ranks):
+    if (playerLevel <= 3) {
+      // Early game (Lv.1-3): Max C for normal quests, Max B for 3+ step major showdowns
+      const earlyMax = objCount >= 3 && isHighStakesBossOrShowdown ? 3 : 2;
+      computedRankIndex = Math.min(computedRankIndex, earlyMax);
+    } else if (playerLevel <= 6) {
+      // Mid game (Lv.4-6): Max B for normal quests, Max A for 4+ step major arcs
+      const midMax = objCount >= 4 && isHighStakesBossOrShowdown ? 4 : 3;
+      computedRankIndex = Math.min(computedRankIndex, midMax);
+    } else if (playerLevel < 8) {
+      // Upper-mid game (Lv.7): Max A
+      computedRankIndex = Math.min(computedRankIndex, 4);
+    }
+  }
+
+  const calibratedDifficulty: QuestDifficulty =
+    QUEST_DIFFICULTY_ORDER[Math.max(0, Math.min(QUEST_DIFFICULTY_ORDER.length - 1, computedRankIndex))];
+
+  // 5. Deterministically calibrate EXP and Gold rewards to match the calibrated Rank & Objective Count
+  const bracket = QUEST_REWARD_BRACKETS[calibratedDifficulty];
+  const targetExp = Math.min(
+    bracket.maxExp,
+    Math.max(bracket.minExp, bracket.baseExp + Math.min(5, objCount) * bracket.expPerObjective)
+  );
+
+  const rawExp = Number(rawQuest.rewards?.exp);
+  // If rawExp is within the valid bracket for this rank, preserve it; otherwise use deterministic targetExp
+  const calibratedExp =
+    !isNaN(rawExp) && rawExp >= bracket.minExp && rawExp <= bracket.maxExp
+      ? Math.round(rawExp)
+      : targetExp;
+
+  const rawGold = Number(rawQuest.rewards?.gold);
+  const calibratedGold =
+    !isNaN(rawGold) && rawGold > 0
+      ? Math.min(bracket.maxGold, Math.max(bracket.minGold, Math.round(rawGold)))
+      : rawGold === 0
+      ? 0
+      : bracket.baseGold;
+
+  const calibratedStatPoints =
+    calibratedDifficulty === "S" || calibratedDifficulty === "Calamity"
+      ? 2
+      : calibratedDifficulty === "A" || calibratedDifficulty === "B"
+      ? 1
+      : undefined;
+
+  return {
+    id: rawQuest.id || `quest_${Date.now()}`,
+    title,
+    description,
+    type: qType,
+    difficulty: calibratedDifficulty,
+    objectives,
+    rewards: {
+      ...(rawQuest.rewards || {}),
+      exp: calibratedExp,
+      ...(calibratedGold > 0 ? { gold: calibratedGold } : {}),
+      ...(Array.isArray(rawQuest.rewards?.items) ? { items: rawQuest.rewards.items.slice(0, 3) } : {}),
+      ...(rawQuest.rewards?.title ? { title: rawQuest.rewards.title } : {}),
+      ...(calibratedStatPoints ? { statPoints: calibratedStatPoints } : {}),
+    },
+    status: rawQuest.status || "active",
+    ...(rawQuest.progressNote ? { progressNote: rawQuest.progressNote } : {}),
+    ...(rawQuest.failureConsequence ? { failureConsequence: rawQuest.failureConsequence } : {}),
+    ...(typeof rawQuest.isClaimed === "boolean" ? { isClaimed: rawQuest.isClaimed } : {}),
+    ...(rawQuest.claimedAt ? { claimedAt: rawQuest.claimedAt } : {}),
+  };
+}
+
+/**
+ * Strictly clamps per-turn EXP, HP, and MP deltas so LLM hallucinations
+ * (e.g., outputting 30,000 HP or 25,000 EXP on a single narrative turn)
+ * can never corrupt player vitals, UI badges, or level progression.
+ */
+export function clampTurnProgressionDeltas(params: {
+  expGained?: number;
+  hpChange?: number;
+  mpChange?: number;
+  maxHp?: number;
+  maxMp?: number;
+}): {
+  expGained: number;
+  hpChange: number;
+  mpChange: number;
+} {
+  const rawExp = Number(params.expGained);
+  const expGained =
+    !isNaN(rawExp) && rawExp > 0
+      ? Math.max(5, Math.min(45, Math.round(rawExp)))
+      : 20;
+
+  const maxAllowedHpDelta = Math.min(50, Math.max(35, Math.round((params.maxHp ?? 100) * 0.45)));
+  const rawHp = Number(params.hpChange || 0);
+  const hpChange = !isNaN(rawHp)
+    ? Math.max(-maxAllowedHpDelta, Math.min(maxAllowedHpDelta, Math.round(rawHp)))
+    : 0;
+
+  const maxAllowedMpDelta = Math.min(40, Math.max(25, Math.round((params.maxMp ?? 60) * 0.5)));
+  const rawMp = Number(params.mpChange || 0);
+  const mpChange = !isNaN(rawMp)
+    ? Math.max(-maxAllowedMpDelta, Math.min(maxAllowedMpDelta, Math.round(rawMp)))
+    : 0;
+
+  return { expGained, hpChange, mpChange };
+}
+
 

@@ -27,6 +27,8 @@ import {
   detectContextualEquipmentAcquisition,
   buildEarnedRomancePacingDirective,
   getHeroineResistanceProfile,
+  calibrateQuestRankAndRewards,
+  clampTurnProgressionDeltas,
 } from "@/lib/progressionMechanics";
 import {
   buildDynamicChoiceDirective,
@@ -591,6 +593,7 @@ ${companionDossiers}
    These tags serve as an explicit intent prompt for the AI to author a rich, thoughtful protagonist action and dialogue in subsequent turns.
 6. Narrative Prose, Grammar & Strict Plain-Text JSON Formatting:
    - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
+   - NATURAL, DECIPHERABLE SPOKEN DIALOGUE (CRITICAL): Keep surrounding narrative prose rich and atmospheric, but make all spoken character dialogue inside quotation marks ("...") sound like a real human being talking out loud. Preserve each heroine's distinct personality, attitude, and edge, while using natural contractions ("don't", "you're", "I'll") and direct, conversational phrasing. NEVER write robotic, overly verbose, or textbook-jargon speeches in dialogue (no pseudo-academic phrases like "arborio starch emulsion", "temporary acquiescence", "cervical seal", or "negative frame advantage").
    - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
    - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
    - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
@@ -659,7 +662,7 @@ ${compatibilityDirective}
 
 --- SYSTEM ADMINISTRATOR & QUEST OBJECTIVE TRACKING DIRECTIVE ---
 MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
-1. QUEST OBJECTIVE EVALUATION & STATUS:
+1. QUEST OBJECTIVE EVALUATION, DIFFICULTY RANKING & STATUS:
    - Carefully evaluate the player's action against the pending objectives of active quests.
    - If an objective is satisfied, include its 0-based index in "system_updates.quest_updates.completed_objective_indices".
    - CRITICAL STATUS DETERMINATION:
@@ -667,6 +670,15 @@ MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
      * "status": "completed" -> Use ONLY when EVERY single objective in the quest is completely fulfilled.
      * "status": "failed" -> Use ONLY if an objective is ruined, timed out, or compromised beyond recovery.
    - PREVENT DUPLICATION: Do NOT assign or regenerate quests that are already active or listed in "Completed & Archived Scenarios".
+   - STRICT QUEST RANKING BY ACTUAL DIFFICULTY & LENGTH OF COMPLETION ("system_updates.new_quest"):
+     * NEVER randomly assign "S" or "A" rank to early or short quests! Rank every new quest strictly by its ACTUAL difficulty, current campaign stage (Player Level: ${playerProfile.level || 1}), and number of objectives (length of completion):
+       - "E" Rank (35–55 EXP): Short 1–2 objective routine tasks, introductions, recon, or minor prep.
+       - "D" Rank (60–90 EXP): 2 objective local tasks, minor social/kitchen wagers, or low-risk skirmishes.
+       - "C" Rank (95–140 EXP): Standard 2–3 objective multi-step scenarios, investigations, or sector trials. (Maximum normal rank at Player Level 1–3).
+       - "B" Rank (150–220 EXP): 3–4 objective high-stakes showdowns, boss clashes, or major milestone trials.
+       - "A" Rank (240–340 EXP): 4+ objective multi-sector arc finales (requires Player Level 4+).
+       - "S" Rank (360–480 EXP): Reserved EXCLUSIVELY for 4–5+ objective late-game campaign climaxes (requires Player Level 8+).
+     * NEVER output thousands of EXP or Gold in quest rewards or "player_progression.exp_gained" (per-turn exp_gained must be 15–35 EXP).
 2. CAUSAL PLAUSIBILITY & FANTASY CAPABILITY BENCHMARK:
    - Evaluate strictly against ${playerProfile.name}'s Lineage (${playerProfile.race || "Human"}), Anatomical Traits (${(playerProfile.racialTraits || []).join(", ") || "Standard"}), Class (${playerProfile.role}), and Stats (STR ${playerProfile.stats.str}, DEX ${playerProfile.stats.dex}, INT ${playerProfile.stats.int}).
    - NEVER apply mundane human limits to non-human species (e.g. Beastkin/Lycan superhuman leaps, sprint bursts, scent tracking; Dragonborn scales/strength; Elven agility; Vampire speed) or fantasy class abilities.
@@ -681,7 +693,7 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
 {
   "speaker": string,
   "player_execution": string | null, // When preset choice is selected: a rich 2-paragraph plain-text passage (6–10 sentences separated by "\\n\\n") with flawless grammar and ZERO Markdown asterisks, detailing ${playerProfile.name}'s physical actions, tactical stance, and spoken dialogue in escaped double quotation marks (\\"...\\"). Null only for custom player inputs.
-  "narrative_text": string, // ${paragraphSpecLabel} separated by "\\n\\n", containing rich environmental sensory details, psychological subtext, physical micro-expressions, and multiple character dialogue segments in escaped double quotation marks (\\"...\\"). Flawless grammar and syntax. ZERO Markdown asterisks (* or **). MUST STRICTLY adhere to the active Narration Style and Narrative Depth Directive.
+  "narrative_text": string, // ${paragraphSpecLabel} separated by "\\n\\n", containing rich environmental sensory details, psychological subtext, physical micro-expressions, and multiple character dialogue segments in escaped double quotation marks (\\"...\\"). Spoken dialogue inside quotes MUST sound natural, decipherable, and human-like (no overly verbose or textbook jargon). Flawless grammar and syntax. ZERO Markdown asterisks (* or **). MUST STRICTLY adhere to the active Narration Style and Narrative Depth Directive.
   "suggested_choices": [string, string, string, string], // 4 fresh, scene-specific choices directly answering what just happened in narrative_text, strictly formatted as "[Tone/Action]: 'Spoken dialogue in persona voice' + concrete physical action"
   "state_updates": {
     "current_location": string,
@@ -717,7 +729,7 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
   },
   "mechanics": string | null, // Concise LitRPG system or tactical mechanics readout for this turn (e.g. "[SYSTEM: Stance Resonance Active • Causal Plausibility Stable]"), or null if none.
   "player_progression": {
-    "exp_gained": number,
+    "exp_gained": number, // Strictly 15 to 35 EXP per turn (NEVER output thousands of EXP)
     "hp_change": number, // Negative when taking damage in story (-5 to -30), positive when healed (+10 to +30)
     "mp_change": number, // Negative when casting spells/abilities (-8 to -20), positive when recovering (+10 to +20)
     "vitals_reason": string | null, // Short 2-5 word label explaining the HP/MP change (e.g. "Inquisition Bolt", "Dark Essence Scorch")
@@ -751,12 +763,12 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
       "title": string,
       "description": string,
       "type": "scenario" | "sub" | "urgent" | "hidden" | "penalty",
-      "difficulty": "E" | "D" | "C" | "B" | "A" | "S" | "Calamity",
+      "difficulty": "E" | "D" | "C" | "B" | "A" | "S" | "Calamity", // Ranked strictly by objective count (1-2=E/D, 3=C/B, 4+=A/S) and player level (early game capped at C/B)
       "objectives": [
         { "text": string, "completed": boolean }
       ],
       "rewards": {
-        "exp": number,
+        "exp": number, // Calibrated strictly to rank: E(35-55), D(60-90), C(95-140), B(150-220), A(240-340), S(360-480)
         "gold": number,
         "items": string[]
       }
@@ -1187,6 +1199,21 @@ ${visualInspectionInstruction}`;
             playerProfile,
             action || ""
           );
+
+          // Deterministically calibrate new_quest rank & rewards based on objective length, hazard, and player level
+          if (
+            responseData.system_updates.new_quest &&
+            typeof responseData.system_updates.new_quest === "object" &&
+            responseData.system_updates.new_quest.title
+          ) {
+            responseData.system_updates.new_quest = calibrateQuestRankAndRewards(
+              responseData.system_updates.new_quest,
+              {
+                playerLevel: playerProfile?.level || 1,
+                turnCount: currentTurnNumber,
+              }
+            );
+          }
         }
 
         responseData.mechanics = separated.mechanics || responseData.system_updates?.system_announcement || null;
@@ -1214,8 +1241,16 @@ ${visualInspectionInstruction}`;
           reportedReason: responseData.player_progression.vitals_reason,
           isClashTurn: Boolean(activeClash && activeClash.isActive),
         });
-        responseData.player_progression.hp_change = vitalsEval.hpChange;
-        responseData.player_progression.mp_change = vitalsEval.mpChange;
+        const clampedTurnProg = clampTurnProgressionDeltas({
+          expGained: responseData.player_progression.exp_gained,
+          hpChange: vitalsEval.hpChange,
+          mpChange: vitalsEval.mpChange,
+          maxHp: playerProfile?.stats?.maxHp || 100,
+          maxMp: playerProfile?.stats?.maxMp || 60,
+        });
+        responseData.player_progression.exp_gained = clampedTurnProg.expGained;
+        responseData.player_progression.hp_change = clampedTurnProg.hpChange;
+        responseData.player_progression.mp_change = clampedTurnProg.mpChange;
         responseData.player_progression.vitals_reason = vitalsEval.vitalsReason;
 
         // Evaluate contextual equipment acquisition fallback

@@ -113,6 +113,8 @@ import {
   synthesizeDynamicCompanionSentiment,
   evaluateDynamicCoreMemoryUnlock,
   getHeroineResistanceProfile,
+  calibrateQuestRankAndRewards,
+  clampTurnProgressionDeltas,
 } from "@/lib/progressionMechanics";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { decodeMultiverseSeed } from "@/lib/multiverseShare";
@@ -518,7 +520,7 @@ function preloadStoryAssets(): void {
 /**
  * Normalizes system state, heals improperly completed quests, and deduplicates quests & directives.
  */
-function normalizeSystemState(raw?: SystemState | null): SystemState {
+function normalizeSystemState(raw?: SystemState | null, playerLevel: number = 1): SystemState {
   if (!raw) {
     return {
       plausibility: 80,
@@ -538,19 +540,20 @@ function normalizeSystemState(raw?: SystemState | null): SystemState {
 
   for (const q of completedQuests) {
     if (!q || !q.title) continue;
-    const objs = Array.isArray(q.objectives) ? q.objectives : [];
+    const calibratedQ = calibrateQuestRankAndRewards(q, { playerLevel });
+    const objs = Array.isArray(calibratedQ.objectives) ? calibratedQ.objectives : [];
     const allDone = objs.length === 0 || objs.every((o) => o && o.completed);
-    if (!q.isClaimed && !allDone && objs.length > 1) {
+    if (!calibratedQ.isClaimed && !allDone && objs.length > 1) {
       // It was prematurely completed while having pending objectives
-      restoredQuests.push({ ...q, status: "active" });
+      restoredQuests.push({ ...calibratedQ, status: "active" });
     } else {
       const normalizedItem: SystemQuest = {
-        ...q,
+        ...calibratedQ,
         status: "completed",
         objectives: objs.map((o) => ({ ...o, completed: true })),
       };
-      const qIdKey = (q.id || "").toLowerCase().trim();
-      const qTitleKey = (q.title || "").toLowerCase().trim();
+      const qIdKey = (calibratedQ.id || "").toLowerCase().trim();
+      const qTitleKey = (calibratedQ.title || "").toLowerCase().trim();
       const existingIdx = validCompleted.findIndex(
         (existing) =>
           (qIdKey && (existing.id || "").toLowerCase().trim() === qIdKey) ||
@@ -572,8 +575,9 @@ function normalizeSystemState(raw?: SystemState | null): SystemState {
   const dedupedActive: SystemQuest[] = [];
   for (const q of [...activeQuests, ...restoredQuests]) {
     if (!q || !q.title) continue;
-    const qIdKey = (q.id || "").toLowerCase().trim();
-    const qTitleKey = (q.title || "").toLowerCase().trim();
+    const calibratedQ = calibrateQuestRankAndRewards(q, { playerLevel });
+    const qIdKey = (calibratedQ.id || "").toLowerCase().trim();
+    const qTitleKey = (calibratedQ.title || "").toLowerCase().trim();
 
     const alreadyCompleted = validCompleted.some(
       (c) =>
@@ -589,10 +593,10 @@ function normalizeSystemState(raw?: SystemState | null): SystemState {
     );
     if (alreadyActive) continue;
 
-    const objs = Array.isArray(q.objectives) ? q.objectives : [];
+    const objs = Array.isArray(calibratedQ.objectives) ? calibratedQ.objectives : [];
     const allDone = objs.length > 0 && objs.every((o) => o && o.completed);
     dedupedActive.push({
-      ...q,
+      ...calibratedQ,
       status: allDone ? ("completed" as const) : ("active" as const),
     });
   }
@@ -4269,7 +4273,7 @@ export default function VisualNovelGame() {
       speaker: sanitizedSpeaker || data.gameState?.speaker || (isLoadedAlone ? "Narrator" : "Companion"),
     };
 
-    const safeLoadedPlayer: PlayerProfile = {
+    let safeLoadedPlayer: PlayerProfile = {
       ...loadedPlayer,
       gender: loadedPlayer?.gender || "Male",
       age: loadedPlayer?.age || "22",
@@ -4284,6 +4288,37 @@ export default function VisualNovelGame() {
       pinnedMemories: Array.isArray(loadedPlayer?.pinnedMemories) ? loadedPlayer.pinnedMemories : [],
       unspentStatPoints: typeof loadedPlayer?.unspentStatPoints === "number" ? loadedPlayer.unspentStatPoints : 0,
     };
+
+    // Self-heal save slots affected by legacy uncalibrated S-rank quest EXP surges (e.g. Lv.15+ on early turns)
+    const turnCount = Math.max(1, Math.floor((data.chatLog?.length || 0) / 2));
+    const claimedQuestsCount = (data.systemState?.completedQuests || []).filter((q) => q && q.isClaimed).length;
+    const maxExpectedLevelForProgress = Math.max(4, Math.min(12, 1 + Math.ceil((turnCount * 22 + claimedQuestsCount * 110) / 180)));
+    if ((safeLoadedPlayer.level || 1) > maxExpectedLevelForProgress + 3) {
+      const basePlayerAtLv1: PlayerProfile = {
+        ...safeLoadedPlayer,
+        level: 1,
+        unspentStatPoints: 0,
+        stats: {
+          ...safeLoadedPlayer.stats,
+          hp: 100,
+          maxHp: 100,
+          mp: 60,
+          maxMp: 60,
+          exp: 0,
+          maxExp: 100,
+          str: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.str || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
+          dex: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.dex || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
+          int: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.int || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
+        },
+      };
+      const expectedTotalExp = turnCount * 20 + claimedQuestsCount * 95;
+      const healedProg = applyExpProgression(basePlayerAtLv1, expectedTotalExp);
+      safeLoadedPlayer = {
+        ...healedProg.updatedPlayer,
+        unspentStatPoints: healedProg.levelsGained * 2,
+      };
+    }
+
     playerRef.current = safeLoadedPlayer;
     setPlayer(safeLoadedPlayer);
     if (loadedPlayer?.gender) {
@@ -4322,7 +4357,7 @@ export default function VisualNovelGame() {
     chatLogRef.current = data.chatLog || [];
     setChatLog(data.chatLog || []);
     if (data.systemState) {
-      const normSys = normalizeSystemState(data.systemState);
+      const normSys = normalizeSystemState(data.systemState, safeLoadedPlayer.level || 1);
       systemStateRef.current = normSys;
       setSystemState(normSys);
     }
@@ -5082,8 +5117,15 @@ export default function VisualNovelGame() {
       playerMsg.isPending = false;
 
       const isAmbientSpeaker = ["narrator", "system", "inner monologue"].some((s) => speakerName.toLowerCase().includes(s));
-      const rawHpDelta = Number(data.player_progression?.hp_change || 0);
-      const rawMpDelta = Number(data.player_progression?.mp_change || 0);
+      const clampedVitalsPreview = clampTurnProgressionDeltas({
+        expGained: data.player_progression?.exp_gained,
+        hpChange: data.player_progression?.hp_change,
+        mpChange: data.player_progression?.mp_change,
+        maxHp: playerRef.current.stats.maxHp,
+        maxMp: playerRef.current.stats.maxMp,
+      });
+      const rawHpDelta = clampedVitalsPreview.hpChange;
+      const rawMpDelta = clampedVitalsPreview.mpChange;
       const rawVitalsReason = data.player_progression?.vitals_reason || null;
 
       const companionMsg: ChatMessage = {
@@ -5382,7 +5424,14 @@ export default function VisualNovelGame() {
           });
         }
 
-        const expGained = prog.exp_gained || 20;
+        const clampedProg = clampTurnProgressionDeltas({
+          expGained: prog.exp_gained,
+          hpChange: prog.hp_change,
+          mpChange: prog.mp_change,
+          maxHp: playerRef.current.stats.maxHp,
+          maxMp: playerRef.current.stats.maxMp,
+        });
+        const expGained = clampedProg.expGained;
         triggerExpFeedback(expGained);
         let newExp = playerRef.current.stats.exp + expGained;
         let newLevel = playerRef.current.level;
@@ -5425,8 +5474,8 @@ export default function VisualNovelGame() {
         );
         let finalTurnInventory = unsealTurnRes.updatedInventory;
         // When handleExecuteClashAction already resolved combat vitals for this turn, skip duplicate server HP/MP deltas
-        const hpDeltaToApply = isClashTurn ? 0 : Number(prog.hp_change || 0);
-        const mpDeltaToApply = isClashTurn ? 0 : Number(prog.mp_change || 0);
+        const hpDeltaToApply = isClashTurn ? 0 : clampedProg.hpChange;
+        const mpDeltaToApply = isClashTurn ? 0 : clampedProg.mpChange;
         const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + hpDeltaToApply));
         const resolvedMp = Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + mpDeltaToApply));
 
@@ -5655,24 +5704,13 @@ export default function VisualNovelGame() {
             });
           }
 
-          // 2. Process new quest assignment
+          // 2. Process new quest assignment (calibrated by actual difficulty, objective count, and player level)
           if (sysUpdates.new_quest && typeof sysUpdates.new_quest === "object" && sysUpdates.new_quest.title) {
             const rawQ = sysUpdates.new_quest;
-            const newQ: SystemQuest = {
-              id: rawQ.id || `quest_${Date.now()}`,
-              title: rawQ.title || "Unforeseen Scenario",
-              description: rawQ.description || "System protocol initiated.",
-              type: rawQ.type || "scenario",
-              difficulty: rawQ.difficulty || "C",
-              objectives: Array.isArray(rawQ.objectives)
-                ? rawQ.objectives.map((o: any) => ({
-                    text: typeof o === "string" ? o : o.text || "Investigate anomalies",
-                    completed: Boolean(o?.completed),
-                  }))
-                : [{ text: "Investigate current surroundings", completed: false }],
-              rewards: rawQ.rewards || { exp: 50 },
-              status: "active",
-            };
+            const newQ: SystemQuest = calibrateQuestRankAndRewards(rawQ, {
+              playerLevel: playerRef.current.level || 1,
+              turnCount: currentTurnNumber,
+            });
 
             const isDuplicate =
               updatedActive.some((q) => q.id === newQ.id || q.title.toLowerCase() === newQ.title.toLowerCase()) ||
@@ -6687,12 +6725,15 @@ export default function VisualNovelGame() {
       return;
     }
 
+    const calibratedTarget = calibrateQuestRankAndRewards(rawTarget, {
+      playerLevel: (playerRef.current || player).level || 1,
+    });
     const targetQuest: SystemQuest = {
-      ...rawTarget,
+      ...calibratedTarget,
       status: "completed" as const,
       isClaimed: true,
       claimedAt: Date.now(),
-      objectives: (rawTarget.objectives || []).map((o) => ({ ...o, completed: true })),
+      objectives: (calibratedTarget.objectives || []).map((o) => ({ ...o, completed: true })),
     };
 
     const expRewardToApply = Number(targetQuest.rewards?.exp || 0);

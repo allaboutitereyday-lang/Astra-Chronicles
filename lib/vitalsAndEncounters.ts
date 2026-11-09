@@ -266,6 +266,17 @@ export function inferFallbackVitalsDelta(params: {
 
   let hpChange = typeof reportedHpChange === "number" && !isNaN(reportedHpChange) ? Math.round(reportedHpChange) : 0;
   let mpChange = typeof reportedMpChange === "number" && !isNaN(reportedMpChange) ? Math.round(reportedMpChange) : 0;
+  // Guard against LLM confusing currency/debt/EXP (e.g. 30,000 Crowns) with HP/MP deltas
+  if (Math.abs(hpChange) > 100) {
+    hpChange = 0;
+  } else {
+    hpChange = Math.max(-40, Math.min(40, hpChange));
+  }
+  if (Math.abs(mpChange) > 100) {
+    mpChange = 0;
+  } else {
+    mpChange = Math.max(-35, Math.min(35, mpChange));
+  }
   let vitalsReason: string | null = reportedReason ? String(reportedReason).trim() : null;
   let wasInferredFallback = false;
 
