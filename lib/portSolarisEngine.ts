@@ -164,15 +164,17 @@ function findCompanion(
   identifier: string,
   companions: StoryCompanion[]
 ): StoryCompanion | undefined {
-  if (!identifier) return undefined;
-  const target = identifier.trim().toLowerCase();
-  return companions.find(
-    (c) =>
-      c.id.toLowerCase() === target ||
-      c.name.toLowerCase() === target ||
-      target.includes(c.name.toLowerCase()) ||
-      c.name.toLowerCase().includes(target)
-  );
+  if (!identifier || !Array.isArray(companions)) return undefined;
+  const target = String(identifier).trim().toLowerCase();
+  return companions.find((c) => {
+    if (!c) return false;
+    const cId = typeof c.id === "string" ? c.id.toLowerCase() : "";
+    const cName = typeof c.name === "string" ? c.name.toLowerCase() : "";
+    return (
+      (Boolean(cId) && cId === target) ||
+      (Boolean(cName) && (cName === target || target.includes(cName) || cName.includes(target)))
+    );
+  });
 }
 
 /**
@@ -232,7 +234,7 @@ export function calculateDailyCafeRevenue(
     if (role === "BOUNCER") hasBouncer = true;
     if (role === "PROMOTER") {
       hasPromoter = true;
-      if (assignee.toLowerCase().includes("roxy")) {
+      if (typeof assignee === "string" && assignee.toLowerCase().includes("roxy")) {
         hasRoxyPromoter = true;
       }
     }
@@ -1444,7 +1446,12 @@ export function detectKeepsakeJealousy(
 } {
   const keepsakes = extractKeepsakes(equippedKeepsakes);
   const NON_HEROINES = new Set(["narrator", "player", "protagonist", "wanderer", "system"]);
-  if (!activeHeroineName || NON_HEROINES.has(activeHeroineName.trim().toLowerCase()) || keepsakes.length === 0) {
+  if (
+    !activeHeroineName ||
+    typeof activeHeroineName !== "string" ||
+    NON_HEROINES.has(activeHeroineName.trim().toLowerCase()) ||
+    keepsakes.length === 0
+  ) {
     return { hasJealousy: false, bpmSpike: 0, composurePenalty: 0 };
   }
 
@@ -1452,8 +1459,8 @@ export function detectKeepsakeJealousy(
   const activeTokens = activeNorm.split(/\s+/).filter(Boolean);
 
   for (const item of keepsakes) {
-    const ownerId = item.giftedByHeroineId;
-    if (!ownerId) continue;
+    const ownerId = item?.giftedByHeroineId;
+    if (!ownerId || typeof ownerId !== "string") continue;
 
     const ownerNorm = ownerId.trim().toLowerCase().replace(/^comp_/, "");
     const ownerTokens = ownerNorm.split(/\s+/).filter(Boolean);
@@ -1461,18 +1468,20 @@ export function detectKeepsakeJealousy(
     // Find clean display name of original owner
     let ownerDisplayName = ownerId;
     for (const [key, dossier] of Object.entries(PORT_SOLARIS_HEROINE_DOSSIERS)) {
+      const dId = (dossier?.id || "").toLowerCase();
+      const dName = (dossier?.name || "").toLowerCase();
       if (
-        dossier.id.toLowerCase() === ownerId.toLowerCase() ||
+        (dId && dId === ownerId.toLowerCase()) ||
         key.toLowerCase().includes(ownerNorm) ||
-        dossier.name.toLowerCase().includes(ownerNorm) ||
-        ownerNorm.includes(dossier.id.toLowerCase().replace(/^comp_/, ""))
+        (dName && dName.includes(ownerNorm)) ||
+        (dId && ownerNorm.includes(dId.replace(/^comp_/, "")))
       ) {
         ownerDisplayName = dossier.name;
         break;
       }
     }
 
-    const ownerDisplayTokens = ownerDisplayName.toLowerCase().split(/\s+/).filter(Boolean);
+    const ownerDisplayTokens = (ownerDisplayName || "").toLowerCase().split(/\s+/).filter(Boolean);
 
     const isOwner =
       ownerNorm === activeNorm ||
@@ -1709,13 +1718,14 @@ export function resolveSpotlightCompanion<T extends { name: string } = StoryComp
 ): T | null {
   if (!presentComps || presentComps.length === 0) return null;
   const manualComp = manualSpotlightName
-    ? presentComps.find((c) => c.name.toLowerCase() === manualSpotlightName.toLowerCase())
+    ? presentComps.find((c) => (c?.name || "").toLowerCase() === manualSpotlightName.toLowerCase())
     : null;
   if (manualComp) return manualComp;
 
-  const speakerComp = presentComps.find((c) =>
-    currentSpeaker.toLowerCase().includes(c.name.toLowerCase())
-  );
+  const speakerLower = (currentSpeaker || "").toLowerCase();
+  const speakerComp = speakerLower
+    ? presentComps.find((c) => c?.name && speakerLower.includes(c.name.toLowerCase()))
+    : null;
   if (speakerComp) return speakerComp;
 
   return presentComps[0] || null;
@@ -1731,7 +1741,7 @@ export function isCompanionSpotlighted<T extends { name: string } = StoryCompani
   manualSpotlightName: string | null
 ): boolean {
   const spotlight = resolveSpotlightCompanion(presentComps, currentSpeaker, manualSpotlightName);
-  if (!spotlight) return false;
+  if (!spotlight || !spotlight.name || !compName) return false;
   return spotlight.name.toLowerCase() === compName.toLowerCase();
 }
 
@@ -1749,7 +1759,7 @@ export function getStageSpriteClasses(isSpeaking: boolean): string {
  * Resolves ambient heroine aura styling based on character identity.
  */
 export function getStageHeroineAura(heroineName: string): { background: string; auraClass: string } {
-  const name = heroineName.toLowerCase();
+  const name = (heroineName || "").toLowerCase();
   if (name.includes("seraphina") || name.includes("evelyn") || name.includes("beatrix")) {
     return {
       background: "radial-gradient(circle, rgba(244,63,94,0.7) 0%, transparent 70%)",
@@ -1794,7 +1804,7 @@ export function stageFocusTransitionReducer(
   switch (action.type) {
     case "SELECT_SPOTLIGHT": {
       const isPresent = action.presentComps.some(
-        (c) => c.name.toLowerCase() === action.heroineName.toLowerCase()
+        (c) => (c?.name || "").toLowerCase() === (action.heroineName || "").toLowerCase()
       );
       if (!isPresent) return state;
       // Focus transition updates spotlight while preserving active typewriter animation without freezing

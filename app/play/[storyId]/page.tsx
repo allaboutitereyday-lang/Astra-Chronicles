@@ -1330,9 +1330,11 @@ export default function VisualNovelGame() {
             const startingSpeaker = story.startingNodes?.[0]?.speaker || story.companions[0].name;
             setParty(
               story.companions.map((c, idx) => ({
+                id: c.id || c.name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
                 name: c.name,
                 title: c.title,
                 affection: c.affection ?? c.baseAffection ?? 15,
+                heartRateBpm: c.heartRateBpm ?? 55,
                 expressionKey: c.expressionKey || "neutral",
                 isPresent: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
                 encountered: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
@@ -4997,12 +4999,12 @@ export default function VisualNovelGame() {
 
       // 4. Affected companion and favor delta: absent heroines cannot gain/lose favor
       let rawAffected = data.state_updates?.affected_companion;
-      if (rawAffected && rawAffected.trim().toLowerCase() === player.name.toLowerCase()) {
+      if (rawAffected && typeof rawAffected === "string" && rawAffected.trim().toLowerCase() === (player.name || "").toLowerCase()) {
         rawAffected = null;
       }
-      const affectedComp = rawAffected || (isSceneAlone ? null : speakerName);
+      const affectedComp = (typeof rawAffected === "string" ? rawAffected : null) || (isSceneAlone ? null : speakerName);
       const isCompPhysicallyPresent = affectedComp
-        ? presentList.some((p) => p.toLowerCase().includes(affectedComp.toLowerCase()))
+        ? presentList.some((p) => typeof p === "string" && p.toLowerCase().includes(affectedComp.toLowerCase()))
         : false;
 
       const rawDelta = typeof data.state_updates?.affection_delta === "number" ? data.state_updates.affection_delta : 0;
@@ -5081,10 +5083,11 @@ export default function VisualNovelGame() {
 
       const currentTurnNumber = Math.max(1, Math.floor(chatBeforeTurn.length / 2) + 1);
       const nextPartyState = party.map((comp) => {
-        const isCurrentSpeaker = comp.name.toLowerCase().includes(speakerName.toLowerCase());
-        const isAffected = affectedComp ? comp.name.toLowerCase().includes(affectedComp.toLowerCase()) : false;
-        const isPresent = presentList.some((p) => comp.name.toLowerCase().includes(p.toLowerCase()));
-        const isNewlyMet = newlyMet.some((n) => comp.name.toLowerCase().includes(n.toLowerCase()));
+        const compNameLower = (comp.name || "").toLowerCase();
+        const isCurrentSpeaker = compNameLower.includes((speakerName || "").toLowerCase());
+        const isAffected = affectedComp ? compNameLower.includes(affectedComp.toLowerCase()) : false;
+        const isPresent = presentList.some((p) => typeof p === "string" && compNameLower.includes(p.toLowerCase()));
+        const isNewlyMet = newlyMet.some((n) => typeof n === "string" && compNameLower.includes(n.toLowerCase()));
 
         const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
         const targetCap = getCompanionCap(comp.name);
@@ -5705,8 +5708,8 @@ export default function VisualNovelGame() {
               if (!update) return;
               const updateId = (update.quest_id || "").toLowerCase().trim();
               let qIndex = updatedActive.findIndex((q) => {
-                const qId = q.id.toLowerCase().trim();
-                const qTitle = q.title.toLowerCase().trim();
+                const qId = (q.id || "").toLowerCase().trim();
+                const qTitle = (q.title || "").toLowerCase().trim();
                 return (
                   qId === updateId ||
                   qTitle === updateId ||
@@ -5768,8 +5771,8 @@ export default function VisualNovelGame() {
                   updatedActive.splice(qIndex, 1);
                   const existingCompIdx = updatedCompleted.findIndex(
                     (c) =>
-                      c.id.toLowerCase().trim() === targetQuest.id.toLowerCase().trim() ||
-                      c.title.toLowerCase().trim() === targetQuest.title.toLowerCase().trim()
+                      (c.id || "").toLowerCase().trim() === (targetQuest.id || "").toLowerCase().trim() ||
+                      (c.title || "").toLowerCase().trim() === (targetQuest.title || "").toLowerCase().trim()
                   );
                   if (existingCompIdx !== -1) {
                     updatedCompleted[existingCompIdx] = {
@@ -5827,8 +5830,8 @@ export default function VisualNovelGame() {
             });
 
             const isDuplicate =
-              updatedActive.some((q) => q.id === newQ.id || q.title.toLowerCase() === newQ.title.toLowerCase()) ||
-              updatedCompleted.some((q) => q.id === newQ.id || q.title.toLowerCase() === newQ.title.toLowerCase());
+              updatedActive.some((q) => q.id === newQ.id || (q.title || "").toLowerCase() === (newQ.title || "").toLowerCase()) ||
+              updatedCompleted.some((q) => q.id === newQ.id || (q.title || "").toLowerCase() === (newQ.title || "").toLowerCase());
 
             if (!isDuplicate) {
               updatedActive.push(newQ);

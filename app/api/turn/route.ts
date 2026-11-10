@@ -206,8 +206,9 @@ export async function POST(req: Request) {
     const presentHeroineNames = physicallyPresentCompanions.map((c: any) => c.name);
 
     // Sanitize active speaker context to ensure protagonist is never passed as active speaker
+    const safePlayerName = (playerProfile?.name || "Wanderer").trim();
     let sanitizedContextSpeaker = gameState?.speaker;
-    if (!sanitizedContextSpeaker || sanitizedContextSpeaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
+    if (!sanitizedContextSpeaker || String(sanitizedContextSpeaker).trim().toLowerCase() === safePlayerName.toLowerCase()) {
       sanitizedContextSpeaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
     }
 
@@ -346,8 +347,9 @@ ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? `- Biolo
 - Perci: Values gentleness, patience, protective reassurance, quiet empathy. Dislikes aggression, intimidation, cruelty, sudden shouting.`;
 
     // Helper to determine active threshold cap for any companion (25% -> 50% -> 75% -> 90% -> 100%)
-    const getCompanionCap = (compName: string) => {
-      const norm = compName.toLowerCase().trim();
+    const getCompanionCap = (compName?: string) => {
+      const norm = (compName || "").toLowerCase().trim();
+      if (!norm) return 25;
       const completed = (systemState?.completedQuests || []) as any[];
       const is25Done = completed.some((q: any) => 
         q.status === "completed" && (q.id?.toLowerCase().includes(`milestone_${norm.replace(/[^a-z0-9]/g, "_")}_25`) || (q.title?.toLowerCase().includes(norm) && q.title?.includes("25%")))
@@ -417,7 +419,8 @@ Objective: ${activeClash.tacticalObjective}
       : "";
 
     // Causal Covenant Reality Severance Directive (Pitch A)
-    const isCovenantInvoked = Boolean(covenantAction) || action.toLowerCase().includes("covenant: reality severance");
+    const safeActionLower = String(action || "").toLowerCase();
+    const isCovenantInvoked = Boolean(covenantAction) || safeActionLower.includes("covenant: reality severance");
     const covenantExecutionDirective = isCovenantInvoked
       ? `--- CRITICAL EVENT: CAUSAL COVENANT REALITY SEVERANCE ---
 The protagonist has invoked the forbidden "Causal Covenant: Reality Severance".
@@ -452,12 +455,12 @@ NARRATIVE INSTRUCTION:
 
     const isRomanceTensionElevated = companionAffection >= 50 ||
       (companionAffection >= 25 && (
-        action.toLowerCase().includes("lean") ||
-        action.toLowerCase().includes("close") ||
-        action.toLowerCase().includes("kiss") ||
-        action.toLowerCase().includes("touch") ||
-        action.toLowerCase().includes("whisper") ||
-        action.toLowerCase().includes("hold")
+        safeActionLower.includes("lean") ||
+        safeActionLower.includes("close") ||
+        safeActionLower.includes("kiss") ||
+        safeActionLower.includes("touch") ||
+        safeActionLower.includes("whisper") ||
+        safeActionLower.includes("hold")
       ));
 
     const dynamicRomanceDirective = `${earnedRomanceDirective}${
@@ -1243,407 +1246,6 @@ ${visualInspectionInstruction}`;
           throw new Error(`Model ${model} returned empty or stub narrative content`);
         }
 
-        // Fail-safe post-processing: sanitize and guarantee substantial player_execution for preset choices
-        if (responseData.player_execution) {
-          responseData.player_execution = sanitizeVisualNovelProse(responseData.player_execution);
-        }
-        if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().split(/[.!?]+/).filter(Boolean).length < 2)) {
-          const cleanAct = action.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
-          const stanceDesc = activeStance === "aggressive" || activeStance === "flame" ? "blade angled forward with relentless pressure" : activeStance === "defensive" || activeStance === "frost" ? "guard raised high and footing braced firmly against the ground" : "shoulders squared and senses locked on the target";
-          responseData.player_execution = `${playerProfile.name} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The tension in the air crystallizes as every muscle tightens for immediate follow-through. ${cleanAct}`;
-        }
-
-        // Merge LLM-reported knowledge unlocks with pre-turn deterministic unlocks
-        const finalKnowledgeMap = applyLlmKnowledgeUnlocks(
-          workingKnowledgeMap,
-          presentHeroineNames,
-          responseData.state_updates?.knowledge_unlocked || null
-        );
-        const finalSpeakerName = responseData.speaker || sanitizedContextSpeaker;
-        responseData.speaker = finalSpeakerName;
-        const speakerKnowsNameNow = getCompanionKnowledge(finalKnowledgeMap, finalSpeakerName).knowsName;
-
-        // Deep-sanitize narrative & mechanics: strip inline markdown, fix single-quoted speech, and separate LitRPG readouts
-        const rawMechanicsSource =
-          responseData.mechanics ||
-          responseData.system_updates?.system_announcement ||
-          null;
-        const separated = sanitizeNarrativeAndMechanics(rawNarrativeSource, rawMechanicsSource);
-        let cleanedProse = enforceSpokenDialogueMasking(
-          sanitizeVisualNovelProse(separated.narrative),
-          playerProfile?.name,
-          speakerKnowsNameNow
-        );
-
-        // Guarantee non-empty narrative prose during combat or complex turns
-        if (!cleanedProse || cleanedProse.trim().length < 20) {
-          const cleanActSummary = (action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
-          const enemyLabel = activeClash?.enemyName || "the hostile force";
-          const locLabel = responseData.state_updates?.current_location || gameState?.location || "the sector";
-          if (activeClash?.status === "victory" || (action || "").includes("[Combat Victory")) {
-            cleanedProse = `Shockwaves ripple across ${locLabel} as ${playerProfile?.name || "the protagonist"}'s finishing strike shatters ${enemyLabel}'s final guard. Sparks of dispersing essence scatter into the air as the threat collapses, leaving the perimeter secure.${
-              !isProtagonistAlone && finalSpeakerName !== "Narrator"
-                ? ` ${finalSpeakerName} lowers her weapon slightly, catching her breath as she looks toward ${playerProfile?.name || "you"}. "That settled it. Stay sharp—more may have felt that shockwave."`
-                : ""
-            }`;
-          } else if (activeClash?.status === "retreat" || (action || "").includes("Disengage")) {
-            cleanedProse = `With a sharp burst of evasive footwork, ${playerProfile?.name || "the protagonist"} breaks engagement from ${enemyLabel} and vaults back into tactical cover across ${locLabel}. The immediate line of fire is severed, buying precious seconds to regroup.`;
-          } else if (activeClash && activeClash.isActive) {
-            cleanedProse = `Steel and kinetic aura collide across ${locLabel} as ${playerProfile?.name || "the protagonist"} executes ${cleanActSummary || "a decisive combat maneuver"} against ${enemyLabel} (HP: ${activeClash.enemyHp}/${activeClash.enemyMaxHp}). ${enemyLabel} reels from the impact before surging back with a fierce counter-offensive!`;
-          } else {
-            cleanedProse = `Across ${locLabel}, the atmosphere shifts in immediate response to ${playerProfile?.name || "the protagonist"}'s action. ${
-              !isProtagonistAlone && finalSpeakerName !== "Narrator"
-                ? `${finalSpeakerName} studies the unfolding situation closely before responding. "We've made our move. Let's see how the currents of this sector answer."`
-                : "Every shadow and current of mana in the vicinity reacts to the momentum of the choice."
-            }`;
-          }
-        }
-
-        // Server-side Anti-Repetition Circuit Breaker: detect and break dialogue/narrative loops
-        const loopCheck = detectRepetitionLoop(
-          responseData.player_execution,
-          cleanedProse,
-          recentHistory
-        );
-        const loopResolved = breakStagnationLoop({
-          playerExecution: responseData.player_execution || null,
-          narrativeText: cleanedProse,
-          isExecutionRepeated: loopCheck.isExecutionRepeated,
-          isNarrativeRepeated: loopCheck.isNarrativeRepeated,
-          action: action || "",
-          playerName: playerProfile?.name || "Wanderer",
-          playerRole: playerProfile?.role || "Adventurer",
-          playerRace: playerProfile?.race,
-          speakerName: finalSpeakerName,
-          location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
-          isProtagonistAlone,
-          recentHistory,
-        });
-
-        responseData.player_execution = loopResolved.playerExecution;
-        responseData.narrative_text = loopResolved.narrativeText;
-        responseData.narrative = loopResolved.narrativeText;
-
-        // Server-side Plausibility Capability Safeguard: prevent false "human limits" penalties
-        if (responseData.system_updates) {
-          responseData.system_updates = sanitizePlausibilityEvaluation(
-            responseData.system_updates,
-            playerProfile,
-            action || ""
-          );
-
-          // Deterministically calibrate new_quest rank & rewards based on objective length, hazard, and player level
-          if (
-            responseData.system_updates.new_quest &&
-            typeof responseData.system_updates.new_quest === "object" &&
-            responseData.system_updates.new_quest.title
-          ) {
-            responseData.system_updates.new_quest = calibrateQuestRankAndRewards(
-              responseData.system_updates.new_quest,
-              {
-                playerLevel: playerProfile?.level || 1,
-                turnCount: currentTurnNumber,
-              }
-            );
-          }
-        }
-
-        responseData.mechanics = separated.mechanics || responseData.system_updates?.system_announcement || null;
-        if (!responseData.state_updates) responseData.state_updates = {};
-        responseData.state_updates.npc_knowledge_map = finalKnowledgeMap;
-        responseData.state_updates.newly_unlocked_knowledge = preTurnUnlockEval.newlyUnlocked;
-
-        // Evaluate narrative damage/mana synchronization & fallback delta
-        if (!responseData.player_progression) {
-          responseData.player_progression = {
-            exp_gained: 20,
-            hp_change: 0,
-            mp_change: 0,
-            vitals_reason: null,
-            new_ability_unlocked: null,
-            gear_granted: null,
-            items_dropped: null,
-          };
-        }
-        const vitalsEval = inferFallbackVitalsDelta({
-          storyText: cleanedProse,
-          actionText: action || "",
-          reportedHpChange: responseData.player_progression.hp_change,
-          reportedMpChange: responseData.player_progression.mp_change,
-          reportedReason: responseData.player_progression.vitals_reason,
-          isClashTurn: Boolean(activeClash && activeClash.isActive),
-        });
-        const clampedTurnProg = clampTurnProgressionDeltas({
-          expGained: responseData.player_progression.exp_gained,
-          hpChange: vitalsEval.hpChange,
-          mpChange: vitalsEval.mpChange,
-          maxHp: playerProfile?.stats?.maxHp || 100,
-          maxMp: playerProfile?.stats?.maxMp || 60,
-        });
-        responseData.player_progression.exp_gained = clampedTurnProg.expGained;
-        responseData.player_progression.hp_change = clampedTurnProg.hpChange;
-        responseData.player_progression.mp_change = clampedTurnProg.mpChange;
-        responseData.player_progression.vitals_reason = vitalsEval.vitalsReason;
-
-        // Evaluate contextual equipment acquisition fallback
-        const contextualEquip = detectContextualEquipmentAcquisition({
-          action: action || "",
-          storyText: cleanedProse,
-          currentGear: playerProfile?.gear,
-        });
-
-        if (contextualEquip) {
-          if (!responseData.player_progression.items_dropped) {
-            responseData.player_progression.items_dropped = [];
-          }
-          const alreadyHasItem = responseData.player_progression.items_dropped.some(
-            (i: any) => i && i.name && i.name.toLowerCase() === contextualEquip.name.toLowerCase()
-          );
-          if (!alreadyHasItem) {
-            responseData.player_progression.items_dropped.push(contextualEquip);
-          }
-          if (!responseData.player_progression.gear_granted) {
-            responseData.player_progression.gear_granted = {};
-          }
-          if (!responseData.player_progression.gear_granted[contextualEquip.slot]) {
-            responseData.player_progression.gear_granted[contextualEquip.slot] = contextualEquip.name;
-          }
-        } else if (
-          responseData.player_progression.items_dropped &&
-          Array.isArray(responseData.player_progression.items_dropped)
-        ) {
-          // If the model dropped an item of type weapon/armor/relic but forgot gear_granted, auto-assign
-          const droppedEquip = responseData.player_progression.items_dropped.find(
-            (i: any) => i && (i.type === "weapon" || i.type === "armor" || i.type === "relic")
-          );
-          if (droppedEquip) {
-            if (!responseData.player_progression.gear_granted) {
-              responseData.player_progression.gear_granted = {};
-            }
-            const slot = droppedEquip.type;
-            if (!responseData.player_progression.gear_granted[slot]) {
-              responseData.player_progression.gear_granted[slot] = droppedEquip.name;
-            }
-          }
-        }
-
-        // Evaluate hostile encounter escalation ONLY when LLM escalates a hostile story moment
-        // and the player did not just conclude or disengage from an active clash
-        const isClashJustEnded =
-          activeClash?.status === "victory" ||
-          activeClash?.status === "retreat" ||
-          (action || "").includes("[Combat Victory") ||
-          (action || "").includes("[Subterfuge/Disengage]");
-
-        if (isClashJustEnded) {
-          responseData.state_updates.story_clash = null;
-        } else {
-          const resolvedEncounter = resolveHostileEncounterEscalation({
-            llmStoryClash: responseData.state_updates?.story_clash || null,
-            existingClash: activeClash || null,
-            storyText: cleanedProse,
-            actionText: action || "",
-            location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
-            genre: storyContext?.genre || "Dark Fantasy LitRPG",
-            assistingCompanionName: presentHeroineNames[0] || undefined,
-          });
-          if (resolvedEncounter) {
-            responseData.state_updates.story_clash = resolvedEncounter;
-          }
-        }
-
-        // Sanitize suggested choices and guarantee intent tags (with personality fallback if truncated)
-        if (Array.isArray(responseData.suggested_choices) && responseData.suggested_choices.length > 0) {
-          responseData.suggested_choices = responseData.suggested_choices
-            .filter((c: any) => typeof c === "string" && c.trim().length > 0)
-            .map((c: string) => ensureChoiceIntentTag(sanitizeVisualNovelProse(c)));
-        }
-        if (!Array.isArray(responseData.suggested_choices) || responseData.suggested_choices.length === 0) {
-          responseData.suggested_choices = buildPersonalityFallbackChoices({
-            personality: playerProfile?.personality,
-            personalityTraits: playerProfile?.personalityTraits,
-            playerRole: playerProfile?.role,
-            playerRace: playerProfile?.race,
-            activeSpeaker: responseData.speaker || sanitizedContextSpeaker,
-            location: responseData.state_updates?.current_location || gameState?.location || "this sector",
-            isProtagonistAlone,
-            storyId: storyContext?.id,
-            genre: storyContext?.genre,
-            narrativeText: cleanedProse,
-          });
-        }
-
-        // Fail-safe post-processing: enforce speaker attribution and solitude rules
-        if (responseData.speaker && responseData.speaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
-          responseData.speaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
-        }
-        if (isProtagonistAlone) {
-          if (!responseData.state_updates) responseData.state_updates = {};
-          responseData.state_updates.present_companions = [];
-          responseData.state_updates.affected_companion = null;
-          responseData.state_updates.affection_delta = 0;
-          if (!responseData.speaker || responseData.speaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
-            responseData.speaker = "Narrator";
-          }
-        }
-
-        // Interpersonal Friction & Rivalry Tracking (Pitch B)
-        if (responseData.state_updates?.affected_companion && (responseData.state_updates?.affection_delta || 0) > 0) {
-          const frictionResult = evaluateInterpersonalFriction(
-            partyMembers,
-            responseData.state_updates.affected_companion,
-            responseData.state_updates.affection_delta,
-            frictionState
-          );
-          responseData.state_updates.friction_state = frictionResult.updatedState;
-          if (frictionResult.rivalryAlert) {
-            responseData.state_updates.rivalry_alert = frictionResult.rivalryAlert;
-          }
-          if (frictionResult.triggeredUltimatum) {
-            responseData.state_updates.triggered_ultimatum = frictionResult.triggeredUltimatum;
-          }
-        }
-
-        // Causal Covenant Reality Severance Execution (Pitch A)
-        if (isCovenantInvoked && systemState) {
-          const covenantResult = executeCausalCovenant(systemState, currentTurnNumber, {
-            companionName: sanitizedContextSpeaker,
-            locationName: gameState.location,
-            genre: storyContext?.genre,
-          });
-          if (!responseData.state_updates) responseData.state_updates = {};
-          responseData.state_updates.covenant_update = covenantResult;
-        }
-
-        // Port Solaris Post-Turn Delta Resolution
-        if (isPortSolarisStory) {
-          const resolvedSpeaker = responseData.speaker || sanitizedContextSpeaker;
-          const speakerComp = (partyMembers || []).find((c: any) =>
-            c.name && resolvedSpeaker && c.name.toLowerCase().includes(resolvedSpeaker.toLowerCase())
-          );
-          const speakerDossier =
-            PORT_SOLARIS_HEROINE_DOSSIERS[resolvedSpeaker] ||
-            Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
-              (d) => resolvedSpeaker && resolvedSpeaker.toLowerCase().includes(d.name.toLowerCase())
-            );
-          const currentBpm = speakerComp?.heartRateBpm ?? speakerDossier?.heartRateBpm ?? 55;
-          const speakerAffection =
-            typeof speakerComp?.affection === "number"
-              ? speakerComp.affection
-              : speakerDossier?.affectionPoints ?? 20;
-          const speakerResistance = getHeroineResistanceProfile(
-            speakerComp || { name: resolvedSpeaker, affection: speakerAffection }
-          );
-          const affectionDelta = Number(responseData.state_updates?.affection_delta || 0);
-          const actionStr = action || "";
-
-          const isRomanceChoice =
-            /\[(romance|flirt|intimate|seduce|tease)\b/i.test(actionStr) ||
-            /\b(flirt|kiss|embrace|caress|whisper\s+in\s+her\s+ear|pull\s+her\s+close|hold\s+her\s+hand|brush\s+her\s+(?:fingers|lips|cheek))\b/i.test(
-              actionStr
-            );
-
-          const isPhysicalTouch =
-            /\b(hold\s+her\s+hand|take\s+her\s+hand|interlace\s+fingers|brush\s+her\s+(?:hand|fingers|cheek|lips|hair)|pull\s+her\s+(?:close|into)|embrace\s+her|kiss\s+her|wrap\s+your\s+arm)\b/i.test(
-              actionStr
-            );
-
-          const isColdResponse =
-            /\[(dismiss|cold|aloof|business|reject)\b/i.test(actionStr) ||
-            affectionDelta < 0;
-
-          const bpmResult = calculateBpmDelta(
-            currentBpm,
-            affectionDelta,
-            isRomanceChoice,
-            (isRomanceChoice && affectionDelta > 0) || affectionDelta >= 2,
-            {
-              isPhysicalTouch,
-              isColdResponse,
-              affection: speakerAffection,
-              guardTier: speakerResistance.guardTier,
-            }
-          );
-
-          const nextBpm = bpmResult.newBpm;
-          const nextBpmZone = getBpmZone(nextBpm);
-
-          let shortCircuitDirective: string | null = null;
-          if (bpmResult.shortCircuited) {
-            shortCircuitDirective = getShortCircuitDirective(resolvedSpeaker);
-          }
-
-          let dailyRevenueDelta = 0;
-          let updatedBoardingHouse =
-            playerProfile?.boardingHouse || createInitialBoardingHouseState();
-          let starUpgrade = false;
-          let inspectionAlert: string | undefined;
-
-          if (updatedBoardingHouse) {
-            const dailyRev = calculateDailyCafeRevenue(
-              updatedBoardingHouse,
-              partyMembers || [],
-              updatedBoardingHouse.shopAssignments || {}
-            );
-            dailyRevenueDelta = dailyRev.revenue;
-
-            // Apply natural scandal heat decay or spike
-            const hasKaedeBouncer =
-              updatedBoardingHouse.shopAssignments?.BOUNCER?.toLowerCase().includes("kaede") ||
-              false;
-            const nextHeat = applyTurnScandalDecay(
-              updatedBoardingHouse.scandalHeat ?? 15,
-              !isRomanceChoice,
-              hasKaedeBouncer
-            );
-            updatedBoardingHouse = {
-              ...updatedBoardingHouse,
-              dailyRevenue: dailyRevenueDelta,
-              scandalHeat: nextHeat,
-              totalRevenueCollected:
-                (updatedBoardingHouse.totalRevenueCollected ?? 0) + Math.round(dailyRevenueDelta * 0.25),
-            };
-
-            // Automatically channel shift revenue toward lease debt retirement
-            const debtPayment = Math.round(dailyRevenueDelta * 0.35);
-            if (debtPayment > 0 && updatedBoardingHouse.outstandingDebt > 0) {
-              const paid = paydownDebt(updatedBoardingHouse, debtPayment);
-              updatedBoardingHouse = paid.newState;
-              starUpgrade = paid.starUpgrade;
-            }
-
-            // Advance the 30-day audit countdown when a shift/night concludes
-            const isDayTransitionAction =
-              /\b(sleep|rest|close\s+up|closing\s+shift|next\s+morning|call\s+it\s+a\s+night|end\s+the\s+shift)\b/i.test(
-                actionStr
-              );
-            if (isDayTransitionAction) {
-              const auditStep = advanceAuditDay(updatedBoardingHouse);
-              updatedBoardingHouse = auditStep.newState;
-              inspectionAlert = auditStep.inspectionAlert;
-            }
-          }
-
-          if (!responseData.state_updates) responseData.state_updates = {};
-          responseData.state_updates.port_solaris_updates = {
-            speakerName: resolvedSpeaker,
-            bpm: nextBpm,
-            bpmZone: nextBpmZone.zone,
-            bpmDelta: bpmResult.delta,
-            isShortCircuit: bpmResult.shortCircuited,
-            shortCircuitDirective,
-            dailyRevenueDelta,
-            boardingHouse: updatedBoardingHouse,
-            starUpgrade,
-            inspectionAlert,
-          };
-          responseData.port_solaris_updates = responseData.state_updates.port_solaris_updates;
-        }
-
-        if (visualDescription) {
-          responseData.visual_description = visualDescription;
-        }
-
         const userStats = !isLocal && authCheck.valid
           ? recordUserTurn(activeUser.key, data.usage, model)
           : activeUser;
@@ -1658,6 +1260,416 @@ ${visualInspectionInstruction}`;
 
     if (!responseData) {
       throw lastError || new Error("All fallback models failed to complete the turn.");
+    }
+
+    const rawNarrativeSource =
+      responseData.narrative_text ||
+      responseData.narrate_text ||
+      responseData.narrative ||
+      responseData.dialogue ||
+      responseData.story_text ||
+      responseData.scene ||
+      "";
+
+    // Fail-safe post-processing: sanitize and guarantee substantial player_execution for preset choices
+    if (responseData.player_execution) {
+      responseData.player_execution = sanitizeVisualNovelProse(responseData.player_execution);
+    }
+    if (!isCustom && (!responseData.player_execution || responseData.player_execution.trim().split(/[.!?]+/).filter(Boolean).length < 2)) {
+      const cleanAct = String(action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+      const stanceDesc = activeStance === "aggressive" || activeStance === "flame" ? "blade angled forward with relentless pressure" : activeStance === "defensive" || activeStance === "frost" ? "guard raised high and footing braced firmly against the ground" : "shoulders squared and senses locked on the target";
+      responseData.player_execution = `${safePlayerName} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The tension in the air crystallizes as every muscle tightens for immediate follow-through. ${cleanAct}`;
+    }
+
+    // Merge LLM-reported knowledge unlocks with pre-turn deterministic unlocks
+    const finalKnowledgeMap = applyLlmKnowledgeUnlocks(
+      workingKnowledgeMap,
+      presentHeroineNames,
+      responseData.state_updates?.knowledge_unlocked || null
+    );
+    const finalSpeakerName = String(responseData.speaker || sanitizedContextSpeaker || "Narrator");
+    responseData.speaker = finalSpeakerName;
+    const speakerKnowsNameNow = getCompanionKnowledge(finalKnowledgeMap, finalSpeakerName).knowsName;
+
+    // Deep-sanitize narrative & mechanics: strip inline markdown, fix single-quoted speech, and separate LitRPG readouts
+    const rawMechanicsSource =
+      responseData.mechanics ||
+      responseData.system_updates?.system_announcement ||
+      null;
+    const separated = sanitizeNarrativeAndMechanics(rawNarrativeSource, rawMechanicsSource);
+    let cleanedProse = enforceSpokenDialogueMasking(
+      sanitizeVisualNovelProse(separated.narrative),
+      playerProfile?.name,
+      speakerKnowsNameNow
+    );
+
+    // Guarantee non-empty narrative prose during combat or complex turns
+    if (!cleanedProse || cleanedProse.trim().length < 20) {
+      const cleanActSummary = (action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+      const enemyLabel = activeClash?.enemyName || "the hostile force";
+      const locLabel = responseData.state_updates?.current_location || gameState?.location || "the sector";
+      if (activeClash?.status === "victory" || (action || "").includes("[Combat Victory")) {
+        cleanedProse = `Shockwaves ripple across ${locLabel} as ${playerProfile?.name || "the protagonist"}'s finishing strike shatters ${enemyLabel}'s final guard. Sparks of dispersing essence scatter into the air as the threat collapses, leaving the perimeter secure.${
+          !isProtagonistAlone && finalSpeakerName !== "Narrator"
+            ? ` ${finalSpeakerName} lowers her weapon slightly, catching her breath as she looks toward ${playerProfile?.name || "you"}. "That settled it. Stay sharp—more may have felt that shockwave."`
+            : ""
+        }`;
+      } else if (activeClash?.status === "retreat" || (action || "").includes("Disengage")) {
+        cleanedProse = `With a sharp burst of evasive footwork, ${playerProfile?.name || "the protagonist"} breaks engagement from ${enemyLabel} and vaults back into tactical cover across ${locLabel}. The immediate line of fire is severed, buying precious seconds to regroup.`;
+      } else if (activeClash && activeClash.isActive) {
+        cleanedProse = `Steel and kinetic aura collide across ${locLabel} as ${playerProfile?.name || "the protagonist"} executes ${cleanActSummary || "a decisive combat maneuver"} against ${enemyLabel} (HP: ${activeClash.enemyHp}/${activeClash.enemyMaxHp}). ${enemyLabel} reels from the impact before surging back with a fierce counter-offensive!`;
+      } else {
+        cleanedProse = `Across ${locLabel}, the atmosphere shifts in immediate response to ${playerProfile?.name || "the protagonist"}'s action. ${
+          !isProtagonistAlone && finalSpeakerName !== "Narrator"
+            ? `${finalSpeakerName} studies the unfolding situation closely before responding. "We've made our move. Let's see how the currents of this sector answer."`
+            : "Every shadow and current of mana in the vicinity reacts to the momentum of the choice."
+        }`;
+      }
+    }
+
+    // Server-side Anti-Repetition Circuit Breaker: detect and break dialogue/narrative loops
+    const loopCheck = detectRepetitionLoop(
+      responseData.player_execution,
+      cleanedProse,
+      recentHistory
+    );
+    const loopResolved = breakStagnationLoop({
+      playerExecution: responseData.player_execution || null,
+      narrativeText: cleanedProse,
+      isExecutionRepeated: loopCheck.isExecutionRepeated,
+      isNarrativeRepeated: loopCheck.isNarrativeRepeated,
+      action: action || "",
+      playerName: playerProfile?.name || "Wanderer",
+      playerRole: playerProfile?.role || "Adventurer",
+      playerRace: playerProfile?.race,
+      speakerName: finalSpeakerName,
+      location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
+      isProtagonistAlone,
+      recentHistory,
+    });
+
+    responseData.player_execution = loopResolved.playerExecution;
+    responseData.narrative_text = loopResolved.narrativeText;
+    responseData.narrative = loopResolved.narrativeText;
+
+    // Server-side Plausibility Capability Safeguard: prevent false "human limits" penalties
+    if (responseData.system_updates) {
+      responseData.system_updates = sanitizePlausibilityEvaluation(
+        responseData.system_updates,
+        playerProfile,
+        action || ""
+      );
+
+      // Deterministically calibrate new_quest rank & rewards based on objective length, hazard, and player level
+      if (
+        responseData.system_updates.new_quest &&
+        typeof responseData.system_updates.new_quest === "object" &&
+        responseData.system_updates.new_quest.title
+      ) {
+        responseData.system_updates.new_quest = calibrateQuestRankAndRewards(
+          responseData.system_updates.new_quest,
+          {
+            playerLevel: playerProfile?.level || 1,
+            turnCount: currentTurnNumber,
+          }
+        );
+      }
+    }
+
+    responseData.mechanics = separated.mechanics || responseData.system_updates?.system_announcement || null;
+    if (!responseData.state_updates) responseData.state_updates = {};
+    responseData.state_updates.npc_knowledge_map = finalKnowledgeMap;
+    responseData.state_updates.newly_unlocked_knowledge = preTurnUnlockEval.newlyUnlocked;
+
+    // Evaluate narrative damage/mana synchronization & fallback delta
+    if (!responseData.player_progression) {
+      responseData.player_progression = {
+        exp_gained: 20,
+        hp_change: 0,
+        mp_change: 0,
+        vitals_reason: null,
+        new_ability_unlocked: null,
+        gear_granted: null,
+        items_dropped: null,
+      };
+    }
+    const vitalsEval = inferFallbackVitalsDelta({
+      storyText: cleanedProse,
+      actionText: action || "",
+      reportedHpChange: responseData.player_progression.hp_change,
+      reportedMpChange: responseData.player_progression.mp_change,
+      reportedReason: responseData.player_progression.vitals_reason,
+      isClashTurn: Boolean(activeClash && activeClash.isActive),
+    });
+    const clampedTurnProg = clampTurnProgressionDeltas({
+      expGained: responseData.player_progression.exp_gained,
+      hpChange: vitalsEval.hpChange,
+      mpChange: vitalsEval.mpChange,
+      maxHp: playerProfile?.stats?.maxHp || 100,
+      maxMp: playerProfile?.stats?.maxMp || 60,
+    });
+    responseData.player_progression.exp_gained = clampedTurnProg.expGained;
+    responseData.player_progression.hp_change = clampedTurnProg.hpChange;
+    responseData.player_progression.mp_change = clampedTurnProg.mpChange;
+    responseData.player_progression.vitals_reason = vitalsEval.vitalsReason;
+
+    // Evaluate contextual equipment acquisition fallback
+    const contextualEquip = detectContextualEquipmentAcquisition({
+      action: action || "",
+      storyText: cleanedProse,
+      currentGear: playerProfile?.gear,
+    });
+
+    if (contextualEquip) {
+      if (!responseData.player_progression.items_dropped) {
+        responseData.player_progression.items_dropped = [];
+      }
+      const alreadyHasItem = responseData.player_progression.items_dropped.some(
+        (i: any) => i && i.name && i.name.toLowerCase() === contextualEquip.name.toLowerCase()
+      );
+      if (!alreadyHasItem) {
+        responseData.player_progression.items_dropped.push(contextualEquip);
+      }
+      if (!responseData.player_progression.gear_granted) {
+        responseData.player_progression.gear_granted = {};
+      }
+      if (!responseData.player_progression.gear_granted[contextualEquip.slot]) {
+        responseData.player_progression.gear_granted[contextualEquip.slot] = contextualEquip.name;
+      }
+    } else if (
+      responseData.player_progression.items_dropped &&
+      Array.isArray(responseData.player_progression.items_dropped)
+    ) {
+      // If the model dropped an item of type weapon/armor/relic but forgot gear_granted, auto-assign
+      const droppedEquip = responseData.player_progression.items_dropped.find(
+        (i: any) => i && (i.type === "weapon" || i.type === "armor" || i.type === "relic")
+      );
+      if (droppedEquip) {
+        if (!responseData.player_progression.gear_granted) {
+          responseData.player_progression.gear_granted = {};
+        }
+        const slot = droppedEquip.type;
+        if (!responseData.player_progression.gear_granted[slot]) {
+          responseData.player_progression.gear_granted[slot] = droppedEquip.name;
+        }
+      }
+    }
+
+    // Evaluate hostile encounter escalation ONLY when LLM escalates a hostile story moment
+    // and the player did not just conclude or disengage from an active clash
+    const isClashJustEnded =
+      activeClash?.status === "victory" ||
+      activeClash?.status === "retreat" ||
+      (action || "").includes("[Combat Victory") ||
+      (action || "").includes("[Subterfuge/Disengage]");
+
+    if (isClashJustEnded) {
+      responseData.state_updates.story_clash = null;
+    } else {
+      const resolvedEncounter = resolveHostileEncounterEscalation({
+        llmStoryClash: responseData.state_updates?.story_clash || null,
+        existingClash: activeClash || null,
+        storyText: cleanedProse,
+        actionText: action || "",
+        location: responseData.state_updates?.current_location || gameState?.location || "Uncharted Sector",
+        genre: storyContext?.genre || "Dark Fantasy LitRPG",
+        assistingCompanionName: presentHeroineNames[0] || undefined,
+      });
+      if (resolvedEncounter) {
+        responseData.state_updates.story_clash = resolvedEncounter;
+      }
+    }
+
+    // Sanitize suggested choices and guarantee intent tags (with personality fallback if truncated)
+    if (Array.isArray(responseData.suggested_choices) && responseData.suggested_choices.length > 0) {
+      responseData.suggested_choices = responseData.suggested_choices
+        .filter((c: any) => typeof c === "string" && c.trim().length > 0)
+        .map((c: string) => ensureChoiceIntentTag(sanitizeVisualNovelProse(c)));
+    }
+    if (!Array.isArray(responseData.suggested_choices) || responseData.suggested_choices.length === 0) {
+      responseData.suggested_choices = buildPersonalityFallbackChoices({
+        personality: playerProfile?.personality,
+        personalityTraits: playerProfile?.personalityTraits,
+        playerRole: playerProfile?.role,
+        playerRace: playerProfile?.race,
+        activeSpeaker: responseData.speaker || sanitizedContextSpeaker,
+        location: responseData.state_updates?.current_location || gameState?.location || "this sector",
+        isProtagonistAlone,
+        storyId: storyContext?.id,
+        genre: storyContext?.genre,
+        narrativeText: cleanedProse,
+      });
+    }
+
+    // Fail-safe post-processing: enforce speaker attribution and solitude rules
+    if (responseData.speaker && String(responseData.speaker).trim().toLowerCase() === safePlayerName.toLowerCase()) {
+      responseData.speaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
+    }
+    if (isProtagonistAlone) {
+      if (!responseData.state_updates) responseData.state_updates = {};
+      responseData.state_updates.present_companions = [];
+      responseData.state_updates.affected_companion = null;
+      responseData.state_updates.affection_delta = 0;
+      if (!responseData.speaker || String(responseData.speaker).trim().toLowerCase() === safePlayerName.toLowerCase()) {
+        responseData.speaker = "Narrator";
+      }
+    }
+
+    // Interpersonal Friction & Rivalry Tracking (Pitch B)
+    if (responseData.state_updates?.affected_companion && (responseData.state_updates?.affection_delta || 0) > 0) {
+      const frictionResult = evaluateInterpersonalFriction(
+        partyMembers,
+        responseData.state_updates.affected_companion,
+        responseData.state_updates.affection_delta,
+        frictionState
+      );
+      responseData.state_updates.friction_state = frictionResult.updatedState;
+      if (frictionResult.rivalryAlert) {
+        responseData.state_updates.rivalry_alert = frictionResult.rivalryAlert;
+      }
+      if (frictionResult.triggeredUltimatum) {
+        responseData.state_updates.triggered_ultimatum = frictionResult.triggeredUltimatum;
+      }
+    }
+
+    // Causal Covenant Reality Severance Execution (Pitch A)
+    if (isCovenantInvoked && systemState) {
+      const covenantResult = executeCausalCovenant(systemState, currentTurnNumber, {
+        companionName: sanitizedContextSpeaker,
+        locationName: gameState.location,
+        genre: storyContext?.genre,
+      });
+      if (!responseData.state_updates) responseData.state_updates = {};
+      responseData.state_updates.covenant_update = covenantResult;
+    }
+
+    // Port Solaris Post-Turn Delta Resolution
+    if (isPortSolarisStory) {
+      const resolvedSpeaker = String(responseData.speaker || sanitizedContextSpeaker || "Narrator");
+      const speakerComp = (partyMembers || []).find((c: any) =>
+        c?.name && resolvedSpeaker && c.name.toLowerCase().includes(resolvedSpeaker.toLowerCase())
+      );
+      const speakerDossier =
+        PORT_SOLARIS_HEROINE_DOSSIERS[resolvedSpeaker] ||
+        Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
+          (d) => resolvedSpeaker && d?.name && resolvedSpeaker.toLowerCase().includes(d.name.toLowerCase())
+        );
+      const currentBpm = speakerComp?.heartRateBpm ?? speakerDossier?.heartRateBpm ?? 55;
+      const speakerAffection =
+        typeof speakerComp?.affection === "number"
+          ? speakerComp.affection
+          : speakerDossier?.affectionPoints ?? 20;
+      const speakerResistance = getHeroineResistanceProfile(
+        speakerComp || { name: resolvedSpeaker, affection: speakerAffection }
+      );
+      const affectionDelta = Number(responseData.state_updates?.affection_delta || 0);
+      const actionStr = action || "";
+
+      const isRomanceChoice =
+        /\[(romance|flirt|intimate|seduce|tease)\b/i.test(actionStr) ||
+        /\b(flirt|kiss|embrace|caress|whisper\s+in\s+her\s+ear|pull\s+her\s+close|hold\s+her\s+hand|brush\s+her\s+(?:fingers|lips|cheek))\b/i.test(
+          actionStr
+        );
+
+      const isPhysicalTouch =
+        /\b(hold\s+her\s+hand|take\s+her\s+hand|interlace\s+fingers|brush\s+her\s+(?:hand|fingers|cheek|lips|hair)|pull\s+her\s+(?:close|into)|embrace\s+her|kiss\s+her|wrap\s+your\s+arm)\b/i.test(
+          actionStr
+        );
+
+      const isColdResponse =
+        /\[(dismiss|cold|aloof|business|reject)\b/i.test(actionStr) ||
+        affectionDelta < 0;
+
+      const bpmResult = calculateBpmDelta(
+        currentBpm,
+        affectionDelta,
+        isRomanceChoice,
+        (isRomanceChoice && affectionDelta > 0) || affectionDelta >= 2,
+        {
+          isPhysicalTouch,
+          isColdResponse,
+          affection: speakerAffection,
+          guardTier: speakerResistance.guardTier,
+        }
+      );
+
+      const nextBpm = bpmResult.newBpm;
+      const nextBpmZone = getBpmZone(nextBpm);
+
+      let shortCircuitDirective: string | null = null;
+      if (bpmResult.shortCircuited) {
+        shortCircuitDirective = getShortCircuitDirective(resolvedSpeaker);
+      }
+
+      let dailyRevenueDelta = 0;
+      let updatedBoardingHouse =
+        playerProfile?.boardingHouse || createInitialBoardingHouseState();
+      let starUpgrade = false;
+      let inspectionAlert: string | undefined;
+
+      if (updatedBoardingHouse) {
+        const dailyRev = calculateDailyCafeRevenue(
+          updatedBoardingHouse,
+          partyMembers || [],
+          updatedBoardingHouse.shopAssignments || {}
+        );
+        dailyRevenueDelta = dailyRev.revenue;
+
+        // Apply natural scandal heat decay or spike
+        const hasKaedeBouncer =
+          updatedBoardingHouse.shopAssignments?.BOUNCER?.toLowerCase().includes("kaede") ||
+          false;
+        const nextHeat = applyTurnScandalDecay(
+          updatedBoardingHouse.scandalHeat ?? 15,
+          !isRomanceChoice,
+          hasKaedeBouncer
+        );
+        updatedBoardingHouse = {
+          ...updatedBoardingHouse,
+          dailyRevenue: dailyRevenueDelta,
+          scandalHeat: nextHeat,
+          totalRevenueCollected:
+            (updatedBoardingHouse.totalRevenueCollected ?? 0) + Math.round(dailyRevenueDelta * 0.25),
+        };
+
+        // Automatically channel shift revenue toward lease debt retirement
+        const debtPayment = Math.round(dailyRevenueDelta * 0.35);
+        if (debtPayment > 0 && updatedBoardingHouse.outstandingDebt > 0) {
+          const paid = paydownDebt(updatedBoardingHouse, debtPayment);
+          updatedBoardingHouse = paid.newState;
+          starUpgrade = paid.starUpgrade;
+        }
+
+        // Advance the 30-day audit countdown when a shift/night concludes
+        const isDayTransitionAction =
+          /\b(sleep|rest|close\s+up|closing\s+shift|next\s+morning|call\s+it\s+a\s+night|end\s+the\s+shift)\b/i.test(
+            actionStr
+          );
+        if (isDayTransitionAction) {
+          const auditStep = advanceAuditDay(updatedBoardingHouse);
+          updatedBoardingHouse = auditStep.newState;
+          inspectionAlert = auditStep.inspectionAlert;
+        }
+      }
+
+      if (!responseData.state_updates) responseData.state_updates = {};
+      responseData.state_updates.port_solaris_updates = {
+        speakerName: resolvedSpeaker,
+        bpm: nextBpm,
+        bpmZone: nextBpmZone.zone,
+        bpmDelta: bpmResult.delta,
+        isShortCircuit: bpmResult.shortCircuited,
+        shortCircuitDirective,
+        dailyRevenueDelta,
+        boardingHouse: updatedBoardingHouse,
+        starUpgrade,
+        inspectionAlert,
+      };
+      responseData.port_solaris_updates = responseData.state_updates.port_solaris_updates;
+    }
+
+    if (visualDescription) {
+      responseData.visual_description = visualDescription;
     }
 
     return NextResponse.json(responseData);
