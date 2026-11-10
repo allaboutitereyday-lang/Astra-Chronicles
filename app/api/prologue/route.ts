@@ -38,6 +38,21 @@ const LEGACY_MODEL_MIGRATIONS: Record<string, string> = {
   "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
 };
 
+function shouldUseJsonObjectFormat(model: string): boolean {
+  const m = (model || "").toLowerCase();
+  return m.startsWith("google/") || m.includes("gemini") || m.startsWith("openai/");
+}
+
+function getModelMaxTokens(model: string, baseMaxTokens: number): number {
+  const m = (model || "").toLowerCase();
+  if (m.includes("mythomax")) return Math.min(baseMaxTokens, 900);
+  if (m.includes("lunaris-8b")) return Math.min(baseMaxTokens, 1500);
+  if (m.includes("cydonia") || m.includes("euryale") || m.includes("magnum")) {
+    return Math.min(baseMaxTokens, 2000);
+  }
+  return Math.min(baseMaxTokens, 2400);
+}
+
 export async function POST(req: Request) {
   try {
     const headerKey = req.headers.get("x-user-key");
@@ -552,7 +567,8 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
       ? [effectiveModelId || "hermes3:8b"]
       : (effectiveModelId ? [effectiveModelId, ...PROLOGUE_MODELS.filter((m) => m !== effectiveModelId)] : PROLOGUE_MODELS);
 
-    for (const model of modelsToTry) {
+    for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+      const model = modelsToTry[modelIdx];
       try {
         const fetchUrl = isLocal
           ? "http://127.0.0.1:11434/v1/chat/completions"
@@ -595,17 +611,23 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
         ];
 
         const isAnthropicModel = model.toLowerCase().includes("claude") || model.toLowerCase().startsWith("anthropic/");
+        const modelMaxTokens = getModelMaxTokens(model, effectiveMaxTokens);
+        const useJsonFormat = shouldUseJsonObjectFormat(model);
+        const timeoutMs = isLocal ? 60000 : modelIdx === 0 ? 35000 : 20000;
+
         let response = await fetch(fetchUrl, {
           method: "POST",
           headers,
+          signal: AbortSignal.timeout(timeoutMs),
           body: JSON.stringify({
             model,
             messages,
             user: activeUser.key,
             temperature: effectiveTemperature,
-            max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+            max_tokens: modelMaxTokens,
             ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
-            response_format: { type: "json_object" },
+            ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+            ...(isLocal ? {} : { provider: { allow_fallbacks: true, sort: "throughput" } }),
           }),
         });
 
@@ -635,14 +657,16 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
             response = await fetch(fetchUrl, {
               method: "POST",
               headers,
+              signal: AbortSignal.timeout(timeoutMs),
               body: JSON.stringify({
                 model,
                 messages: fallbackMessages,
                 user: activeUser.key,
                 temperature: effectiveTemperature,
-                max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+                max_tokens: modelMaxTokens,
                 ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
-                response_format: { type: "json_object" },
+                ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+                ...(isLocal ? {} : { provider: { allow_fallbacks: true, sort: "throughput" } }),
               }),
             });
           } else {
@@ -662,8 +686,13 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
         const data = await response.json();
         const content = data.choices?.[0]?.message?.content || "";
         responseData = parseModelJsonLenient(content, startingHeroine);
-        if (!responseData || typeof responseData !== "object") {
-          throw new Error("Malformed JSON response from prologue model");
+        if (
+          !responseData ||
+          typeof responseData !== "object" ||
+          Array.isArray(responseData) ||
+          (!responseData.scene_setup && !responseData.dialogue && !responseData.narrative_text)
+        ) {
+          throw new Error("Malformed or empty JSON response from prologue model");
         }
         const userStats = !isLocal && authCheck.valid
           ? recordUserTurn(activeUser.key, data.usage, model)

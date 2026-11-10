@@ -481,6 +481,20 @@ export function extractStringFieldFromRawText(rawContent: string, fieldName: str
 }
 
 /**
+ * Unwraps a parsed JSON value into a plain object, rejecting primitive arrays like `[1]` or `[]`.
+ */
+function unwrapCandidateObject(candidate: any): Record<string, any> | null {
+  if (!candidate || typeof candidate !== "object") return null;
+  if (Array.isArray(candidate)) {
+    const firstObj = candidate.find(
+      (item) => item && typeof item === "object" && !Array.isArray(item)
+    );
+    return firstObj || null;
+  }
+  return candidate;
+}
+
+/**
  * Comprehensive salvage and normalization of LLM JSON responses.
  * Returns the parsed object with all salvaged fields (including suggested_choices, opening_choices,
  * player_execution, narrative_text, and state_updates) populated.
@@ -496,10 +510,7 @@ export function parseModelJsonLenient(
 
   // Attempt 1: Direct JSON.parse
   try {
-    const candidate = JSON.parse(extracted);
-    if (candidate && typeof candidate === "object") {
-      parsed = candidate;
-    }
+    parsed = unwrapCandidateObject(JSON.parse(extracted));
   } catch {
     // Proceed to repair passes
   }
@@ -508,10 +519,7 @@ export function parseModelJsonLenient(
   if (!parsed) {
     try {
       const repaired = repairJsonControlCharsAndEscapes(extracted);
-      const candidate = JSON.parse(repaired);
-      if (candidate && typeof candidate === "object") {
-        parsed = candidate;
-      }
+      parsed = unwrapCandidateObject(JSON.parse(repaired));
     } catch {
       // Proceed to interior-quote repair
     }
@@ -521,10 +529,7 @@ export function parseModelJsonLenient(
   if (!parsed) {
     try {
       const quoteRepaired = repairUnescapedInteriorQuotes(extracted);
-      const candidate = JSON.parse(quoteRepaired);
-      if (candidate && typeof candidate === "object") {
-        parsed = candidate;
-      }
+      parsed = unwrapCandidateObject(JSON.parse(quoteRepaired));
     } catch {
       // Proceed to comprehensive field salvage
     }
@@ -544,7 +549,11 @@ export function parseModelJsonLenient(
     const narrativeText =
       extractStringFieldFromRawText(repairedSource, "narrative_text") ||
       extractStringFieldFromRawText(rawContent, "narrative_text") ||
-      extractStringFieldFromRawText(repairedSource, "narrative");
+      extractStringFieldFromRawText(repairedSource, "narrate_text") ||
+      extractStringFieldFromRawText(rawContent, "narrate_text") ||
+      extractStringFieldFromRawText(repairedSource, "narrative") ||
+      extractStringFieldFromRawText(repairedSource, "story_text") ||
+      extractStringFieldFromRawText(repairedSource, "response");
     const sceneSetup =
       extractStringFieldFromRawText(repairedSource, "scene_setup") ||
       extractStringFieldFromRawText(rawContent, "scene_setup");
@@ -617,11 +626,53 @@ export function parseModelJsonLenient(
           core_memory_unlocked: coreMemoryUnlocked,
         },
       };
+    } else if (
+      !rawContent.includes("{") &&
+      !rawContent.trim().startsWith("[") &&
+      rawContent.trim().length > 60
+    ) {
+      // Attempt 5: Plain-text roleplay prose salvage when an RP model omits JSON braces entirely
+      const cleanRawProse = rawContent
+        .replace(/^```(?:json|markdown|text)?\s*/im, "")
+        .replace(/\s*```\s*$/m, "")
+        .trim();
+      if (cleanRawProse.length > 60) {
+        parsed = {
+          speaker: fallbackSpeaker || "Narrator",
+          player_execution: null,
+          narrative_text: cleanRawProse,
+          suggested_choices: [],
+          state_updates: {
+            expression_key: "neutral",
+            affected_companion: fallbackSpeaker && fallbackSpeaker !== "Narrator" ? fallbackSpeaker : null,
+            affection_delta: 0,
+          },
+        };
+      }
     }
   }
 
-  if (!parsed || typeof parsed !== "object") {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return null;
+  }
+
+  // Normalize common model key typos for narrative_text (e.g. Cydonia's "narrate_text")
+  if (!parsed.narrative_text) {
+    const altNarrative =
+      parsed.narrate_text ??
+      parsed.narrative ??
+      parsed.story_text ??
+      parsed.response ??
+      parsed.text;
+    if (typeof altNarrative === "string" && altNarrative.trim().length > 0) {
+      parsed.narrative_text = altNarrative;
+    } else if (Array.isArray(altNarrative)) {
+      parsed.narrative_text = altNarrative.filter((p: any) => typeof p === "string").join("\n\n");
+    }
+  }
+
+  if (!parsed.speaker && fallbackSpeaker) {
+    parsed.speaker = fallbackSpeaker;
   }
 
   // Always normalize choice key aliases across suggested_choices, opening_choices, choices, options

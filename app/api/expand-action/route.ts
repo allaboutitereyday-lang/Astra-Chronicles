@@ -25,6 +25,11 @@ const LEGACY_MODEL_MIGRATIONS: Record<string, string> = {
   "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
 };
 
+function shouldUseJsonObjectFormat(model: string): boolean {
+  const m = (model || "").toLowerCase();
+  return m.startsWith("google/") || m.includes("gemini") || m.startsWith("openai/");
+}
+
 function buildFallbackTwoParagraphAction(params: {
   rawAction: string;
   playerName: string;
@@ -221,7 +226,8 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
 
     let expandedText: string | null = null;
 
-    for (const model of modelsToTry) {
+    for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+      const model = modelsToTry[modelIdx];
       try {
         const fetchUrl = isLocal
           ? "http://127.0.0.1:11434/v1/chat/completions"
@@ -236,9 +242,13 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
               "X-Title": "Astra Chronicles",
             };
 
+        const isAnthropicModel = model.toLowerCase().includes("claude") || model.toLowerCase().startsWith("anthropic/");
+        const useJsonFormat = shouldUseJsonObjectFormat(model);
+
         const response = await fetch(fetchUrl, {
           method: "POST",
           headers,
+          signal: AbortSignal.timeout(isLocal ? 30000 : modelIdx === 0 ? 18000 : 12000),
           body: JSON.stringify({
             model,
             messages: [
@@ -250,8 +260,9 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
             ],
             temperature: effectiveTemperature,
             max_tokens: 768,
-            repetition_penalty: effectiveRepetitionPenalty,
-            response_format: { type: "json_object" },
+            ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
+            ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+            ...(isLocal ? {} : { provider: { allow_fallbacks: true, sort: "throughput" } }),
           }),
         });
 
@@ -268,7 +279,21 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
           const firstBrace = content.indexOf("{");
           const lastBrace = content.lastIndexOf("}");
           if (firstBrace !== -1 && lastBrace > firstBrace) {
-            parsed = JSON.parse(content.slice(firstBrace, lastBrace + 1));
+            try {
+              parsed = JSON.parse(content.slice(firstBrace, lastBrace + 1));
+            } catch {
+              const match = content.match(/"expanded_action"\s*:\s*"((?:[^"\\]|\\[\s\S])*)"/);
+              if (match && match[1]) {
+                parsed = {
+                  expanded_action: match[1]
+                    .replace(/\\n/g, "\n")
+                    .replace(/\\"/g, '"')
+                    .replace(/\\'/g, "'"),
+                };
+              }
+            }
+          } else if (!content.startsWith("[") && content.length > 60) {
+            parsed = { expanded_action: content };
           }
         }
 

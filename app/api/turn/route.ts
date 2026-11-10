@@ -77,6 +77,35 @@ const LEGACY_MODEL_MIGRATIONS: Record<string, string> = {
   "deepseek/deepseek-chat": "deepseek/deepseek-v3.2",
 };
 
+/**
+ * Only enable OpenRouter `response_format: { type: "json_object" }` on models with native
+ * schema-Safe JSON mode. Fine-tuned RP models (Euryale, Lunaris, Cydonia, Magnum, MythoMax)
+ * suffer grammar-sampler collapse on OpenRouter (emitting `[1]`, empty 0-byte bodies, or mangled keys)
+ * when `json_object` mode is forced, whereas they output clean JSON directly from prompt instructions.
+ */
+function shouldUseJsonObjectFormat(model: string): boolean {
+  const m = (model || "").toLowerCase();
+  return m.startsWith("google/") || m.includes("gemini") || m.startsWith("openai/");
+}
+
+/**
+ * Calibrates max_tokens per model architecture and context window so requests never exceed
+ * context limits (e.g. MythoMax 4k, Lunaris 8k) or stall past serverless timeouts.
+ */
+function getModelMaxTokens(model: string, baseMaxTokens: number): number {
+  const m = (model || "").toLowerCase();
+  if (m.includes("mythomax")) return Math.min(baseMaxTokens, 900);
+  if (m.includes("lunaris-8b")) return Math.min(baseMaxTokens, 1500);
+  if (m.startsWith("deepseek/")) return Math.min(baseMaxTokens, 1900);
+  if (m.includes("cydonia") || m.includes("euryale") || m.includes("magnum")) {
+    return Math.min(baseMaxTokens, 2000);
+  }
+  if (m.includes("claude") || m.startsWith("anthropic/") || m.includes("hermes-4")) {
+    return Math.min(baseMaxTokens, 2300);
+  }
+  return Math.min(baseMaxTokens, 2500);
+}
+
 export async function POST(req: Request) {
   try {
     const headerKey = req.headers.get("x-user-key");
@@ -120,13 +149,13 @@ export async function POST(req: Request) {
       narrativeDepth === "standard" || narrativeDepth === "expansive" || narrativeDepth === "deep_novelistic"
         ? narrativeDepth
         : "deep_novelistic";
-    const requestedMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 3584;
+    const requestedMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(3000, max_tokens)) : 2400;
     const effectiveMaxTokens =
       effectiveNarrativeDepth === "deep_novelistic"
-        ? Math.max(3584, requestedMaxTokens)
+        ? Math.max(2400, Math.min(2600, requestedMaxTokens))
         : effectiveNarrativeDepth === "expansive"
-        ? Math.max(2560, requestedMaxTokens)
-        : requestedMaxTokens;
+        ? Math.max(1800, Math.min(2200, requestedMaxTokens))
+        : Math.min(1400, requestedMaxTokens);
     const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.5, repetition_penalty)) : 1.1;
     const paragraphSpecLabel =
       effectiveNarrativeDepth === "standard"
@@ -286,9 +315,31 @@ ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? `- Biolo
 - World & Companion Perception: Companions and NPCs naturally perceive and react to this lineage (e.g., recognizing beastkin/lycan predatory instincts and acute olfactory tracking, demonic fiend heritage, high elven grace, etc.).
 - Intimate & Close Proximity Scenes: In romantic, sensory, or high-intimacy encounters, physical interactions must reflect their unique physiology (e.g. running fingers through fur, sensitive ear twitches, animal body heat, fangs grazing skin, purring or deep guttural rumbles).`;
 
-    const compatibilityDirective = storyContext?.companions && storyContext.companions.length > 0
-      ? storyContext.companions.map((c: any) => `- ${c.name}: Values ${c.values?.join(", ") || "Honor, Loyalty"}. Dislikes ${c.dislikes?.join(", ") || "Deceit, Cowardice"}.`).join("\n")
-      : `- Evelyn Abbandonato: Values intellect, arcane precision, subtle manipulation, composure. Dislikes crude brute force, groveling, or blind obedience.
+    const compatibilityDirective =
+      storyContext?.companions && storyContext.companions.length > 0
+        ? storyContext.companions
+            .filter(
+              (c: any) =>
+                presentHeroineNames.includes(c.name) ||
+                c.name === sanitizedContextSpeaker ||
+                (partyMembers || []).some(
+                  (pm: any) => pm.name === c.name && (pm.isPresent || pm.encountered)
+                )
+            )
+            .slice(0, 5)
+            .map(
+              (c: any) =>
+                `- ${c.name}: Values ${c.values?.join(", ") || "Honor, Loyalty"}. Dislikes ${c.dislikes?.join(", ") || "Deceit, Cowardice"}.`
+            )
+            .join("\n") ||
+          storyContext.companions
+            .slice(0, 4)
+            .map(
+              (c: any) =>
+                `- ${c.name}: Values ${c.values?.join(", ") || "Honor, Loyalty"}. Dislikes ${c.dislikes?.join(", ") || "Deceit, Cowardice"}.`
+            )
+            .join("\n")
+        : `- Evelyn Abbandonato: Values intellect, arcane precision, subtle manipulation, composure. Dislikes crude brute force, groveling, or blind obedience.
 - Aria Shadowthorn: Values pragmatism, stealth, tradecraft, quiet competence. Dislikes self-righteous preaching, knightly arrogance, reckless noise.
 - Serena: Values impeccable composure, polite duty, decisive lethality, discipline. Dislikes whining, chaos, disrespect to boundaries, false mercy.
 - Morgana: Values dark planar ambition, fearlessness, sinister wit, raw resolve. Dislikes cowardice, puritanical righteousness, boring compliance.
@@ -870,17 +921,40 @@ ${synergyDirective}
 ${activeSpeakerLock}
 
 --- ENCOUNTER HISTORY & COMPANION RELATIONSHIPS ---
-${partyMembers.map((c: any) => {
-  const encStatus = c.encountered ? "Previously Encountered & Active in Canon" : "Unmet in Current Arc";
-  const cap = getCompanionCap(c.name);
-  const isLocked = c.affection >= cap && cap < 100;
-  const lockStatus = isLocked 
-    ? `[LOCKED AT ${cap}% THRESHOLD - COMPANION QUEST PENDING]` 
-    : `Progression Cap: ${cap}%`;
-  const favorDesc = c.affection >= 75 ? "Deep Intimacy & Trust" : c.affection >= 50 ? "Solid Mutual Respect" : c.affection >= 25 ? "Cautious Wariness" : "Guarded Distrust";
-  const guardProfile = getHeroineResistanceProfile(c);
-  return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${c.isPresent} | Guard: ${guardProfile.guardTier} | Favor: ${c.affection}% (${favorDesc}) | ${lockStatus} | Demeanor: ${c.expressionKey || "neutral"}]`;
-}).join("\n")}
+${(() => {
+  const activeOrEncountered = (partyMembers || []).filter(
+    (c: any) => c.isPresent || c.encountered || c.name === sanitizedContextSpeaker
+  );
+  const unmetOffscreen = (partyMembers || []).filter(
+    (c: any) => !c.isPresent && !c.encountered && c.name !== sanitizedContextSpeaker
+  );
+  const lines = activeOrEncountered.map((c: any) => {
+    const encStatus = c.encountered ? "Previously Encountered & Active in Canon" : "Active in Current Scene";
+    const cap = getCompanionCap(c.name);
+    const isLocked = c.affection >= cap && cap < 100;
+    const lockStatus = isLocked
+      ? `[LOCKED AT ${cap}% THRESHOLD - COMPANION QUEST PENDING]`
+      : `Progression Cap: ${cap}%`;
+    const favorDesc =
+      c.affection >= 75
+        ? "Deep Intimacy & Trust"
+        : c.affection >= 50
+        ? "Solid Mutual Respect"
+        : c.affection >= 25
+        ? "Cautious Wariness"
+        : "Guarded Distrust";
+    const guardProfile = getHeroineResistanceProfile(c);
+    return `  * ${c.name} (${c.title || "Companion"}) [${encStatus} | Present: ${Boolean(c.isPresent)} | Guard: ${guardProfile.guardTier} | Favor: ${c.affection}% (${favorDesc}) | ${lockStatus} | Demeanor: ${c.expressionKey || "neutral"}]`;
+  });
+  if (unmetOffscreen.length > 0) {
+    lines.push(
+      `  * Unmet Off-Screen Heroines (Present: false, Unencountered, Locked at 25% Threshold): ${unmetOffscreen
+        .map((c: any) => `${c.name} (${c.defaultLocation || "Elsewhere"})`)
+        .join(", ")}`
+    );
+  }
+  return lines.join("\n");
+})()}
 
 --- CHRONOLOGICAL RECORD OF PREVIOUS INTERACTIONS & MEMORIES ---
 ${
@@ -993,7 +1067,8 @@ ${visualInspectionInstruction}`;
       ? [effectiveModelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
       : (effectiveModelId ? [effectiveModelId, ...FALLBACK_MODELS.filter((m) => m !== effectiveModelId)] : FALLBACK_MODELS);
 
-    for (const model of modelsToTry) {
+    for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+      const model = modelsToTry[modelIdx];
       try {
         const fetchUrl = isLocal
           ? "http://127.0.0.1:11434/v1/chat/completions"
@@ -1059,18 +1134,23 @@ ${visualInspectionInstruction}`;
         }
 
         const isAnthropicModel = model.toLowerCase().includes("claude") || model.toLowerCase().startsWith("anthropic/");
+        const modelMaxTokens = getModelMaxTokens(model, effectiveMaxTokens);
+        const useJsonFormat = shouldUseJsonObjectFormat(model);
+        const timeoutMs = isLocal ? 60000 : modelIdx === 0 ? 38000 : 22000;
+
         let response = await fetch(fetchUrl, {
           method: "POST",
           headers,
+          signal: AbortSignal.timeout(timeoutMs),
           body: JSON.stringify({
             model,
             messages: modelMessages,
             user: activeUser.key,
             temperature: effectiveTemperature,
-            max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+            max_tokens: modelMaxTokens,
             ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
-            response_format: { type: "json_object" },
-            ...(isLocal ? {} : { provider: { allow_fallbacks: true } }),
+            ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+            ...(isLocal ? {} : { provider: { allow_fallbacks: true, sort: "throughput" } }),
           }),
         });
 
@@ -1105,15 +1185,16 @@ ${visualInspectionInstruction}`;
             response = await fetch(fetchUrl, {
               method: "POST",
               headers,
+              signal: AbortSignal.timeout(timeoutMs),
               body: JSON.stringify({
                 model,
                 messages: fallbackMessages,
                 user: activeUser.key,
                 temperature: effectiveTemperature,
-                max_tokens: isAnthropicModel ? Math.max(4096, effectiveMaxTokens) : effectiveMaxTokens,
+                max_tokens: modelMaxTokens,
                 ...(isAnthropicModel ? {} : { repetition_penalty: effectiveRepetitionPenalty }),
-                response_format: { type: "json_object" },
-                ...(isLocal ? {} : { provider: { allow_fallbacks: true } }),
+                ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+                ...(isLocal ? {} : { provider: { allow_fallbacks: true, sort: "throughput" } }),
               }),
             });
           } else {
@@ -1134,7 +1215,7 @@ ${visualInspectionInstruction}`;
         const content = data.choices?.[0]?.message?.content || "";
         responseData = parseModelJsonLenient(content, sanitizedContextSpeaker);
 
-        if (!responseData || typeof responseData !== "object") {
+        if (!responseData || typeof responseData !== "object" || Array.isArray(responseData)) {
           throw new Error("Malformed or empty JSON response from model");
         }
 
@@ -1144,6 +1225,22 @@ ${visualInspectionInstruction}`;
         }
         if (Array.isArray(responseData.player_execution)) {
           responseData.player_execution = responseData.player_execution.filter((p: any) => typeof p === "string").join("\n\n");
+        }
+
+        // Verify the model actually generated substantive narrative text before accepting it
+        const rawNarrativeSource =
+          responseData.narrative_text ||
+          responseData.narrate_text ||
+          responseData.narrative ||
+          responseData.dialogue ||
+          responseData.story_text ||
+          responseData.scene ||
+          "";
+        if (
+          (!rawNarrativeSource || String(rawNarrativeSource).trim().length < 25) &&
+          !activeClash?.isActive
+        ) {
+          throw new Error(`Model ${model} returned empty or stub narrative content`);
         }
 
         // Fail-safe post-processing: sanitize and guarantee substantial player_execution for preset choices
@@ -1163,16 +1260,10 @@ ${visualInspectionInstruction}`;
           responseData.state_updates?.knowledge_unlocked || null
         );
         const finalSpeakerName = responseData.speaker || sanitizedContextSpeaker;
+        responseData.speaker = finalSpeakerName;
         const speakerKnowsNameNow = getCompanionKnowledge(finalKnowledgeMap, finalSpeakerName).knowsName;
 
         // Deep-sanitize narrative & mechanics: strip inline markdown, fix single-quoted speech, and separate LitRPG readouts
-        const rawNarrativeSource =
-          responseData.narrative_text ||
-          responseData.narrative ||
-          responseData.dialogue ||
-          responseData.story_text ||
-          responseData.scene ||
-          "";
         const rawMechanicsSource =
           responseData.mechanics ||
           responseData.system_updates?.system_announcement ||

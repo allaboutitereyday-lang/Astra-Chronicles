@@ -79,12 +79,12 @@ export function getAllowedUsers(): Record<string, UserConfig> {
   return {
     "ASTRA-DEV-2026": {
       name: "Realm Architect (Admin)",
-      maxTurns: 1000,
+      maxTurns: -1,
       role: "admin",
     },
     "CHRONICLE-GUEST": {
       name: "Traveling Nomad",
-      maxTurns: 25,
+      maxTurns: 250,
       role: "guest",
     },
   };
@@ -135,9 +135,16 @@ export function validateUserKey(rawKey?: string | null): {
     return { valid: false, error: "Access key is required to enter Astra Chronicles." };
   }
 
-  const key = rawKey.trim();
+  const rawTrimmed = rawKey.trim();
   const allowed = getAllowedUsers();
-  const config = allowed[key];
+  const matchedKey =
+    Object.keys(allowed).find((k) => k.toLowerCase() === rawTrimmed.toLowerCase()) || rawTrimmed;
+  const config =
+    allowed[matchedKey] ||
+    (rawTrimmed.startsWith("sk-or-")
+      ? { name: "OpenRouter Direct Key", maxTurns: -1, role: "admin" }
+      : undefined);
+  const key = matchedKey;
 
   if (!config) {
     return { valid: false, error: "Invalid access key. Please check your credentials or request entry." };

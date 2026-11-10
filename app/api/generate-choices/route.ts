@@ -21,6 +21,11 @@ const FALLBACK_MODELS = [
   "sao10k/l3-lunaris-8b",
 ];
 
+function shouldUseJsonObjectFormat(model: string): boolean {
+  const m = (model || "").toLowerCase();
+  return m.startsWith("google/") || m.includes("gemini") || m.startsWith("openai/");
+}
+
 export async function POST(req: Request) {
   try {
     const headerKey = req.headers.get("x-user-key");
@@ -55,9 +60,9 @@ export async function POST(req: Request) {
     const authCheck = validateUserKey(accessKey);
     if (!authCheck.valid) {
       return NextResponse.json(
-        { 
+        {
           error: authCheck.error || "Access denied. Valid access key required.",
-          userStats: authCheck.user 
+          userStats: authCheck.user
         },
         { status: authCheck.user?.remainingTurns === 0 ? 403 : 401 }
       );
@@ -72,8 +77,8 @@ export async function POST(req: Request) {
       physicallyPresentCompanions.length > 0
         ? physicallyPresentCompanions.map((c: any) => c.name)
         : hasTopLevelSpeaker
-        ? [gameState.speaker]
-        : [];
+          ? [gameState.speaker]
+          : [];
 
     let sanitizedSpeaker = gameState?.speaker || "Narrator";
     if (playerProfile?.name && sanitizedSpeaker.trim().toLowerCase() === playerProfile.name.trim().toLowerCase()) {
@@ -105,11 +110,11 @@ export async function POST(req: Request) {
 
     const presentCompanions = physicallyPresentCompanions.length > 0
       ? physicallyPresentCompanions
-          .map((c: any) => `${c.name} (${c.title || c.role || "Companion"}, Favor: ${c.affection}%)`)
-          .join(", ")
+        .map((c: any) => `${c.name} (${c.title || c.role || "Companion"}, Favor: ${c.affection}%)`)
+        .join(", ")
       : hasTopLevelSpeaker
-      ? sanitizedSpeaker
-      : "None present (Protagonist is PHYSICALLY ALONE)";
+        ? sanitizedSpeaker
+        : "None present (Protagonist is PHYSICALLY ALONE)";
 
     const activeQuests = systemState?.activeQuests && systemState.activeQuests.length > 0
       ? systemState.activeQuests.map((q: any) => `- [${q.difficulty}-Rank] "${q.title}": ${q.description}`).join("\n")
@@ -220,8 +225,8 @@ Format Requirement:
 
     const messages = [
       { role: "system", content: systemPrompt },
-      { 
-        role: "user", 
+      {
+        role: "user",
         content: isProtagonistAlone
           ? `Generate 4 dynamic, story-advancing choices for ${playerProfile?.name} exploring ${gameState?.location} alone, voiced strictly in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality.`
           : `Generate 4 distinct, story-advancing choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}, voiced strictly in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.`
@@ -233,13 +238,15 @@ Format Requirement:
       modelId && modelId !== "orchestrated-hybrid" && modelId !== "orchestrated-hybrid-deepseek" && modelId.includes("/")
         ? modelId
         : modelId === "orchestrated-hybrid-deepseek"
-        ? "deepseek/deepseek-v3.2"
-        : "google/gemini-2.5-flash";
+          ? "deepseek/deepseek-v3.2"
+          : "google/gemini-2.5-flash";
     const modelsToTry = [requestedModel, ...FALLBACK_MODELS.filter((m) => m !== requestedModel)];
 
-    for (const model of modelsToTry) {
+    for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+      const model = modelsToTry[modelIdx];
       try {
         const isAnthropicModel = model.toLowerCase().includes("claude") || model.toLowerCase().startsWith("anthropic/");
+        const useJsonFormat = shouldUseJsonObjectFormat(model);
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -248,13 +255,16 @@ Format Requirement:
             "HTTP-Referer": "https://astra-chronicles.local",
             "X-Title": "Astra Chronicles",
           },
+          signal: AbortSignal.timeout(modelIdx === 0 ? 18000 : 12000),
           body: JSON.stringify({
             model,
             messages,
             user: activeUser.key,
             temperature: 0.85,
+            max_tokens: 512,
             ...(isAnthropicModel ? {} : { repetition_penalty: 1.15 }),
-            response_format: { type: "json_object" },
+            ...(useJsonFormat ? { response_format: { type: "json_object" } } : {}),
+            provider: { allow_fallbacks: true, sort: "throughput" },
           }),
         });
 
