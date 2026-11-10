@@ -52,6 +52,10 @@ import {
   getBpmZone,
   calculateDailyCafeRevenue,
   getShortCircuitDirective,
+  createInitialBoardingHouseState,
+  paydownDebt,
+  advanceAuditDay,
+  applyTurnScandalDecay,
 } from "@/lib/portSolarisEngine";
 import { PORT_SOLARIS_HEROINE_DOSSIERS } from "@/types/port_solaris";
 
@@ -586,10 +590,17 @@ ${companionDossiers}
 5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST strictly follow this format:
    "[Tone/Action]: Short summary of character action/dialogue"
    Examples:
-   - "[Combat/Aggressive]: Step forward and drive your broadsword toward the beast's exposed flank."
+   ${
+     isPortSolarisStory
+       ? `- "[Physical Tempo / Culinary Flair]: Fire up the flat-top range and plate a midnight comfort special to test her composure."
+   - "[Social Panache / Table-Turn]: Lean across the mahogany bar and cite Article 6 Clause 6B to call her bluff."
+   - "[Heart-to-Heart / Attentive]: Pour two chilled glasses and ask what she's hiding behind her professional facade."
+   - "[Article 9 Wager / Audacious]: Ring the brass ship's bell and challenge the inspector to a public Sunset Rambla taste-off."`
+       : `- "[Combat/Aggressive]: Step forward and drive your broadsword toward the beast's exposed flank."
    - "[Arcana/Analytical]: Channel ether into your palm to decipher the fluctuating rune sequence."
    - "[Subterfuge/Cunning]: Slip into the perimeter shadows and pick the cargo vault lock."
-   - "[Inquire/Diplomatic]: Lower your weapon, meet her cold gaze, and demand to know House Abbandonato's stake here."
+   - "[Inquire/Diplomatic]: Lower your weapon, meet her cold gaze, and demand to know House Abbandonato's stake here."`
+   }
    These tags serve as an explicit intent prompt for the AI to author a rich, thoughtful protagonist action and dialogue in subsequent turns.
 6. Narrative Prose, Grammar & Strict Plain-Text JSON Formatting:
    - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
@@ -597,23 +608,52 @@ ${companionDossiers}
    - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
    - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
    - ZERO INLINE MARKDOWN IN PROSE: DO NOT output Markdown asterisks (*italics* or **bold**), underscores, headers (#), or Markdown tables inside "narrative_text" or "player_execution". Output clean, publication-grade plain text paragraphs separated by "\\n\\n". Place any LitRPG system / tactical readout strings inside "mechanics" or "system_updates.system_announcement".
-   - NATURAL HUMAN PROSE — NO CATALOG LABELS OR FULL-NAME REPETITION: Write like a human novelist, never like an RPG database dump. Refer to characters by their first name ("${playerFirstName}", "Cassia", "Beatrix", "Ysolde", "Kestrel") or pronouns—never repeat full first+last names or inline rank numbers like "(#184)". Never paste capitalized UI item labels ("Notched Chancellery Longsword", "Shadow-Weave Syndicate Jacket") or full map headers ("Stratum I: The Sunken Cloisters") into narrative sentences; describe weapons, clothing, techniques, and rooms naturally ("the notched blade", "his dark coat", "the flooded cloister").
+   - NATURAL HUMAN PROSE — NO CATALOG LABELS OR FULL-NAME REPETITION: Write like a human novelist, never like an RPG database dump. Refer to characters by their first name (${
+     isPortSolarisStory
+       ? `"${playerFirstName}", "Seraphina", "Mia", "Colette", "Vivienne", "Pippa", "Kaede", "Roxy", "Chloe", "Nadia", "Zuri"`
+       : `"${playerFirstName}", "Cassia", "Beatrix", "Ysolde", "Kestrel"`
+   }) or pronouns—never repeat full first+last names or inline rank numbers. Never paste capitalized UI item labels (${
+     isPortSolarisStory
+       ? `"Damascus Chef's Santoku", "Rolled-Sleeve Linen Proprietor Shirt"`
+       : `"Notched Chancellery Longsword", "Shadow-Weave Syndicate Jacket"`
+   }) or full map headers (${
+     isPortSolarisStory
+       ? `"Driftwood Cove (The Stray Anchor)"`
+       : `"Stratum I: The Sunken Cloisters"`
+   }) into narrative sentences; describe tools, clothing, techniques, and rooms naturally.
    - PARAGRAPHING & DEPTH: Structure "narrative_text" into ${paragraphSpecLabel} separated by clean double line breaks ("\\n\\n"). Interleave multiple distinct spoken dialogue segments with physical choreography, psychological subtext, and atmospheric detail.
 7. Anti-Sycophancy, Realistic Composure & Tone Rigidity (MANDATORY):
    - Companions MUST NOT default to subservient, agreeable, or overly dazzled reactions.
    - NEVER write sycophantic prose that treats ordinary protagonist actions (e.g., heating a pan, leaning on a counter, speaking calmly, or making a cocky quip) as godlike miracles that leave elite heroines breathless, slack-jawed, comparing him to world-renowned masters, or flushing violently to their ears.
    - At <50% Favor, heroines keep their composure, critique flaws honestly, challenge presumptuous behavior, and require sustained proof before yielding even a grudging nod of respect.
    - If the player suggests a foolish, dangerous, or poorly reasoned action, companions MUST object, criticize, or offer sharp reality checks according to their persona.
-8. Hostile Encounter Escalation & Combat Detection Directive ("story_clash"):
+8. ${
+  isPortSolarisStory
+    ? `Article 9 Turf Showdown Escalation Directive ("story_clash"):
+   - CASUAL BANTER, PREP & TASTINGS DO NOT TRIGGER FORMAL SHOWDOWNS:
+     Ordinary café shifts, flirting, or verbal sparring MUST keep "state_updates.story_clash": null.
+   - WHEN AN OFFICIAL ARTICLE 9 SHOWDOWN BEGINS ("story_clash.isActive": true):
+     Set "story_clash.isActive": true ONLY when the player or a rival explicitly initiates a formal, binding Article 9 Turf Showdown (e.g. Culinary Clash, Mixology Rush, VIP Audit Debate, Beach Volleyball, or Dojo Pier Kendo Exhibition). All Port Solaris showdowns are strictly non-lethal contests of Composure, Hype, and Cool!`
+    : `Hostile Encounter Escalation & Combat Detection Directive ("story_clash"):
    - PROXIMITY, OBSERVATION, STEALTH & STANDOFFS MUST NEVER TRIGGER COMBAT:
      Merely observing an adversary, spotting guards on patrol, tailing a creature, hiding from an abomination, speaking during a tense armed standoff, sizing up an enemy, or sneaking past sentinels MUST NEVER set "state_updates.story_clash.isActive": true.
      In these turns, keep "story_clash": null so the player retains narrative agency (to stealth past, negotiate, investigate, retreat, or cast prep buffs).
    - WHEN COMBAT HAS ACTIVELY STARTED ("story_clash.isActive": true):
      ONLY set "story_clash.isActive": true when:
      1. The player explicitly initiates an attack or offensive action (e.g. "[Combat/Aggressive]", swinging a weapon, casting offensive magic, shooting), OR
-     2. An enemy explicitly executes an unavoidable lethal ambush, lunge, or physical melee charge where physical blows are actively struck and exchanged this turn.
+     2. An enemy explicitly executes an unavoidable lethal ambush, lunge, or physical melee charge where physical blows are actively struck and exchanged this turn.`
+}
 
---- ABSOLUTE SYSTEM DIRECTIVE: NO PLAYER SAFEGUARDING & REAL MORTAL CONSEQUENCES ---
+${
+  isPortSolarisStory
+    ? `--- ABSOLUTE SYSTEM DIRECTIVE: PORT SOLARIS REAL STAKES (NON-LETHAL AUDIT, SCANDAL & COMPOSURE CONSEQUENCES) ---
+DO NOT SAFEGUARD THE PROTAGONIST FROM EMBARRASSMENT OR FINANCIAL BLUNDERS:
+1. ALLOW REAL CULINARY, SOCIAL & BUSINESS MISTAKES:
+   - Under Port Solaris Charter Article 3A, lethal violence is strictly non-existent ("death_event" MUST ALWAYS BE null).
+   - However, if the player makes a foolish, arrogant, or sloppy move (serving burnt food, citing a fake Charter Article, wearing another girl's Keepsake on a date, or botching a VIP audit), apply real coastal consequences: sharp heroine pushback, Composure loss, Scandal Heat spikes in "The Solaris Siren", or audit fines.
+2. QUEST & WAGER FAILURES ARE CANON:
+   - If an active quest or Article 9 wager objective is ruined by the player's blunders, mark the quest as "failed" in "system_updates.quest_updates" and narrate the comedic or financial fallout (e.g. washing dishes for a week, buying parfaits for the Breakers Union, or losing ground on the 30-day Star Audit).`
+    : `--- ABSOLUTE SYSTEM DIRECTIVE: NO PLAYER SAFEGUARDING & REAL MORTAL CONSEQUENCES ---
 DO NOT SAFEGUARD THE PROTAGONIST. Remove all artificial plot armor:
 1. ALLOW REAL MISTAKES & SEVERE BLUNDERS:
    - If the player makes a foolish, reckless, or arrogant choice, DO NOT invent convenient coincidences, miraculous parries, or unearned rescues to save them.
@@ -628,7 +668,8 @@ DO NOT SAFEGUARD THE PROTAGONIST. Remove all artificial plot armor:
      * In "death_event", output: { "is_fatal": true, "cause_of_death": "<Brief visceral cause>", "killer_or_hazard": "<Entity or hazard name>" }.
      * In "narrative_text", conclude the scene with the cold, omniscient LitRPG SYSTEM intervention:
        "[SYSTEM ALERT: Vital core depleted. Calamity regression initiated... Causal anchor synchronizing...]"
-     * The game client will intercept this death event, award the regression timeline echo, and rewind reality to an anchor point with retained memories and power.
+     * The game client will intercept this death event, award the regression timeline echo, and rewind reality to an anchor point with retained memories and power.`
+}
 
 --- HEROINE AFFECTION & SLOW-PACED PROGRESSION DIRECTIVE (CRITICAL) ---
 1. AFFECTION IS RARE, EARNED, AND DOES NOT UPDATE EVERY TURN:
@@ -1442,12 +1483,54 @@ ${visualInspectionInstruction}`;
           }
 
           let dailyRevenueDelta = 0;
-          if (playerProfile?.boardingHouse) {
+          let updatedBoardingHouse =
+            playerProfile?.boardingHouse || createInitialBoardingHouseState();
+          let starUpgrade = false;
+          let inspectionAlert: string | undefined;
+
+          if (updatedBoardingHouse) {
             const dailyRev = calculateDailyCafeRevenue(
-              playerProfile.boardingHouse,
-              partyMembers || []
+              updatedBoardingHouse,
+              partyMembers || [],
+              updatedBoardingHouse.shopAssignments || {}
             );
             dailyRevenueDelta = dailyRev.revenue;
+
+            // Apply natural scandal heat decay or spike
+            const hasKaedeBouncer =
+              updatedBoardingHouse.shopAssignments?.BOUNCER?.toLowerCase().includes("kaede") ||
+              false;
+            const nextHeat = applyTurnScandalDecay(
+              updatedBoardingHouse.scandalHeat ?? 15,
+              !isRomanceChoice,
+              hasKaedeBouncer
+            );
+            updatedBoardingHouse = {
+              ...updatedBoardingHouse,
+              dailyRevenue: dailyRevenueDelta,
+              scandalHeat: nextHeat,
+              totalRevenueCollected:
+                (updatedBoardingHouse.totalRevenueCollected ?? 0) + Math.round(dailyRevenueDelta * 0.25),
+            };
+
+            // Automatically channel shift revenue toward lease debt retirement
+            const debtPayment = Math.round(dailyRevenueDelta * 0.35);
+            if (debtPayment > 0 && updatedBoardingHouse.outstandingDebt > 0) {
+              const paid = paydownDebt(updatedBoardingHouse, debtPayment);
+              updatedBoardingHouse = paid.newState;
+              starUpgrade = paid.starUpgrade;
+            }
+
+            // Advance the 30-day audit countdown when a shift/night concludes
+            const isDayTransitionAction =
+              /\b(sleep|rest|close\s+up|closing\s+shift|next\s+morning|call\s+it\s+a\s+night|end\s+the\s+shift)\b/i.test(
+                actionStr
+              );
+            if (isDayTransitionAction) {
+              const auditStep = advanceAuditDay(updatedBoardingHouse);
+              updatedBoardingHouse = auditStep.newState;
+              inspectionAlert = auditStep.inspectionAlert;
+            }
           }
 
           if (!responseData.state_updates) responseData.state_updates = {};
@@ -1459,6 +1542,9 @@ ${visualInspectionInstruction}`;
             isShortCircuit: bpmResult.shortCircuited,
             shortCircuitDirective,
             dailyRevenueDelta,
+            boardingHouse: updatedBoardingHouse,
+            starUpgrade,
+            inspectionAlert,
           };
           responseData.port_solaris_updates = responseData.state_updates.port_solaris_updates;
         }

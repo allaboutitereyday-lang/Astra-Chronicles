@@ -8,7 +8,7 @@
   "themes": [
     "Beachfront Café & Boarding House Management",
     "Sanctioned Article 9 Turf Showdowns",
-    "8-Heroine Domestic Proximity Comedy",
+    "10-Heroine Domestic Proximity Comedy",
     "Solaris Star Ledger (0★ to 5★) Climbing"
   ],
   "narrationStyle": "Light Novel High Fantasy (Dynamic pacing, witty banter, heroic)",
@@ -18,7 +18,7 @@
   "worldContext": {
     "settingName": "Port Solaris & Driftwood Cove (The Stray Anchor)",
     "eraOrPeriod": "High Summer Audit Season — The 30-Day Vane-Valorian Lease Countdown",
-    "loreSummary": "Four Foundational Truths govern Port Solaris: (1) The Solaris Star Ledger (0★ to 5★): Governed by Solaris University and the Platinum Hospitality Conglomerate, every club, café, and student crew is ranked from 0 to 5 Stars, dictating beachfront access, festival budgets, and island prestige. (2) The 30-Day Eviction Rule: Establishments sitting at 0 Stars at the end of the seasonal audit have their leases revoked and are bulldozed to make way for the Vane-Valorian Luxury Resort Expansion. You have inherited the deed and debt to The Stray Anchor, a 0-Star beachfront café, tavern, and 6-room boarding house. (3) The Boarding House Proximity Engine: To pay the bills and staff the shop, you rent the six upstairs bedrooms to a chaotic roster of disgraced heiresses, culinary rivals, beach athletes, and sleepy arcade savants—creating nonstop domestic rom-com friction. (4) Island Charter Article 9 (Sanctioned Public Showdowns): Petty sabotage and lawsuits are banned; all lease disputes, supply monopolies, and romantic rivalries are settled via public Turf Showdowns using Path A: Physical Tempo (Hype 0-100) or Path B: Social Panache (Cool 100%-0%), while managing your Composure / Heart-Rate Gauge (0-100% BPM, with 50-85% triggering The Blush Zone).",
+    "loreSummary": "Four Foundational Truths and the Ten Municipal Charter Articles (Articles 1–10) govern Port Solaris: (1) The Solaris Star Ledger (Articles 1–5, 0★ to 5★): Governed by Solaris University and the four Island Factions across five coastal tiers, every club, café, and establishment is ranked from 0 to 5 Stars (Clause 4A), dictating beachfront supply access (Article 5) and Cultural Merit certifications (Clause 4B). (2) The 30-Day Eviction Rule & Resident Auditor Clause (Article 6): Establishments sitting at 0 Stars or carrying unpaid lease debt at the end of the 30-day audit have their deeds revoked for the Vane-Valorian Luxury Marina Expansion (Clause 6A)—though any Lead Auditor demanding daily probation oversight may be required to reside on-site (Clause 6B). (3) High-Society Family Pacts & The Boarding House Act (Articles 7 & 8): Under Article 7 Clause 7A ('Clause 7'), an heiress in a registered courtship pact with an independent proprietor gains a 90-day moratorium from arranged corporate marriages, while Article 8 (Clauses 8A & 8B) allows proprietors of 6-room coastal inns to commute tenant rent in exchange for specialist café shifts. (4) Island Charter Article 9 (Sanctioned Public Showdowns): Lawsuits and sabotage are banned under Article 3; all lease disputes, supply monopolies, and romantic rivalries are settled via public Turf Showdowns (Clause 9A) using Path A: Physical Tempo (Hype 0-100) or Path B: Social Panache (Cool 100%-0%), while forensic bookkeepers can invoke Clause 9B to cancel predatory compound interest, proprietors can invoke Clause 9C for an all-in deed wager, and reaching 5★ with zero debt earns permanent Island Sovereign immunity under Article 10.",
     "factions": [
       {
         "name": "The Platinum Board (Cliffside Villas & Yacht Club)",
@@ -42,42 +42,42 @@
         "name": "Driftwood Cove (The Stray Anchor)",
         "zone": "Tier 1 (Sea Level) • Player Home Base",
         "danger": "Audit Probation (0★ Lease Eviction Countdown)",
-        "description": "A cozy, slightly weathered two-story Mediterranean timber-and-stone beachfront café and six-room boarding house with warm string lights, espresso machines, a polished mahogany bar, and a wooden deck overlooking a turquoise cove at golden hour.",
+        "description": "A cozy, slightly weathered three-level Mediterranean timber-and-stone beachfront café and six-room boarding house founded by your grandfather and late Uncle Marco. Features a 40-seat waterfront patio, brass espresso bar, open-flame kitchen, Rooms 201–206 on the 2nd floor, and your 3rd-floor Captain's Loft opening onto the rooftop terrace—right across the cobblestone lane from Mia Bellini's family bakery, Bellini Artisan Patisserie.",
         "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg"
       },
       {
         "name": "The Breakers Boardwalk & South Beach",
         "zone": "Tier 2 • Athletic & Festival Hub",
         "danger": "Competitive (Volleyball Courts & Dojo Pier Showdowns)",
-        "description": "A lively tropical sandy beach and wooden pier boardwalk featuring beach volleyball nets, surfboards, lifeguard towers, open-air martial arts dojo mats, and sparkling turquoise ocean waves.",
+        "description": "A lively tropical sandy beach and wooden pier boardwalk featuring South Beach Center Court (where Pippa Reyes and Captain Rex Vance clash), surf-rescue lifeguard towers, and the salt-bleached Dojo Pier martial arts mats presided over by Kaede and Master Kenji Tachibana.",
         "bgImage": "/backgrounds/port-solaris/breakers_boardwalk.jpg"
       },
       {
         "name": "The Sunset Rambla",
         "zone": "Tier 3 • Commercial & Culinary Hub",
         "danger": "Moderate (Culinary Rivals & Guild Inspectors)",
-        "description": "A bustling Mediterranean cobblestone promenade lined with vibrant pastel bistros, striped awnings, artisan bakeries, flower carts, and palm trees glowing under warm sunset lanterns.",
+        "description": "A bustling Mediterranean cobblestone promenade lined with vibrant pastel bistros, Bellini Artisan Patisserie, Chef Dante Moretti's rival 'Dolce Vita' flagship, Colette Moreau's former tasting cellars, and Zuri Delacroix's botanical matcha-and-gelato terrace.",
         "bgImage": "/backgrounds/port-solaris/sunset_rambla.jpg"
       },
       {
         "name": "The Campus Terrace (Solaris University)",
         "zone": "Tier 4 • Academic & Club Hub",
         "danger": "Social (Student Council Audits & Rumor Mills)",
-        "description": "A grand open-air coastal university plaza with whitewashed arches, terra-cotta roofs, marble fountains, flowering bougainvillea vines, and panoramic views of the sapphire sea below.",
+        "description": "A grand open-air coastal university plaza with whitewashed arches, marble fountains, the Solaris Star Ledger Registry Hall, and Roxy Vance's 35mm darkroom and newsroom at The Solaris Siren.",
         "bgImage": "/backgrounds/port-solaris/campus_terrace.jpg"
       },
       {
         "name": "The Platinum Cliffs",
         "zone": "Tier 5 (Top) • High-Society VIP Hub",
         "danger": "High-Stakes (5★ Conglomerate Galas & Lease Auctions)",
-        "description": "An ultra-luxurious cliffside resort terrace with infinity pools, white marble colonnades, superyachts anchored in the harbor below, and champagne gala tables under a twilight sky.",
+        "description": "Reached via the private Cliffside Funicular Tram, this ultra-luxurious resort terrace houses Chairman Alistair Vane's Vane-Valorian Grand Resort, Villa Laurent, Sommelier Marcel Vance's 4-Star cellar L'Étoile d'Or, and Nadia Saint-Clair's Platinum Trust appraisal terrace.",
         "bgImage": "/backgrounds/port-solaris/platinum_cliffs.jpg"
       },
       {
         "name": "The Stray Anchor: Upstairs Boarding House & Rooftop Terrace",
         "zone": "Tier 1 • Domestic Rom-Com Sanctuary",
         "danger": "Domestic Chaos (Thin Walls, Shared Bath & Midnight Snacks)",
-        "description": "Six sunlit upstairs bedrooms connected by a creaky cedar hallway, a single shared bathroom with a finicky hot-water heater, and a lantern-lit rooftop laundry terrace where Composure (BPM) is tested every night.",
+        "description": "Six sunlit 2nd-floor bedrooms (Rooms 201–206) connected by a creaky cedar hallway, a single shared bathroom whose vintage brass water heater drops pressure whenever the espresso steamer runs downstairs, and your 3rd-floor Captain's Loft opening onto the lantern-lit rooftop laundry and herb terrace (protected after 11:00 PM under Article 8 Clause 8B).",
         "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg"
       },
       {
@@ -161,6 +161,7 @@
         "Pippa Reyes",
         "Kaede Tachibana",
         "Roxy Vance",
+        "Chloe Lin",
         "Nadia Saint-Clair",
         "Zuri Delacroix"
       ],
@@ -364,6 +365,90 @@
         "[Attentive / Close Contact]: Reach out with your thumb to brush a dab of green matcha cream from the corner of her lip, watching her pull her twin braids over her blushing face.",
         "[Article 9 Wager / Room 6 Lease]: Offer her Room 6 and full rooftop greenhouse privileges if her signature dessert can sell out The Stray Anchor's patio before sundown."
       ]
+    },
+    {
+      "id": "boarding_house_rooftop",
+      "speaker": "Colette Moreau",
+      "presentCompanions": [
+        "Colette Moreau",
+        "Seraphina Vane",
+        "Mia Bellini",
+        "Kaede Tachibana",
+        "Chloe Lin",
+        "Nadia Saint-Clair",
+        "Zuri Delacroix"
+      ],
+      "title": "3★ Boarding House: Thin Walls & The Blush Zone",
+      "location": "The Stray Anchor: Upstairs Boarding House & Rooftop Terrace",
+      "sceneSetup": "Midnight sea breeze drifts across the lantern-lit cedar rooftop terrace above The Stray Anchor, carrying the scent of jasmine, freshly laundered linen, and late-night espresso. Downstairs, the café's neon '3-STAR HOTSPOT' plaque hums warmly against the stone facade, but up on the second floor, the six boarding rooms are a powder keg of close-quarters tension.\n\nIn the hallway below, Seraphina and Mia are arguing in hushed, flustered whispers over who left a ribbon in the shared bathroom, while Chloe dozes on the porch swing in an oversized hoodie. At the rooftop railing stands Colette Moreau in a loose silk camisole, two crystal coupes of chilled peach bellini in her hands, her amber eyes catching the moonlight as Nadia closes her charcoal sketchbook at the corner table.",
+      "dialogue": "\"Careful where you step, Proprietor,\" Colette murmurs with a low, velvet laugh, though a soft rose flush warms her cheekbones as she hands you a chilled glass. \"Under Article 8 Clause 8B, after-hours peace on this rooftop is the landlord's personal responsibility—and half the girls upstairs have been waiting all evening to corner you alone.\n\nSo tell me honestly, mon cœur... now that The Stray Anchor is the talk of Driftwood Cove, whose door were you actually hoping to knock on tonight?\"",
+      "expressionKey": "intrigued",
+      "initialAffection": 45,
+      "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg",
+      "choices": [
+        "[Heart-to-Heart / Rooftop Railing]: Clink glasses with Colette, lean against the cedar railing beside her shoulder, and tell her you came up here to see her without her sommelier armor.",
+        "[Domestic Mediator / Hallway Check]: Step down to the upstairs landing to settle Seraphina, Mia, and Zuri's late-night kitchen-and-bath turf war with a midnight snack.",
+        "[Quiet Sanctuary / Terrace Sketch]: Pull a chair beside Nadia's lantern-lit table and Chloe's porch swing, sharing warm brioche and quiet midnight conversation.",
+        "[Article 8 Landlord Decree]: Gather all your upstairs tenants under the rooftop string lights for a midnight toast before next week's 4-Star Audit."
+      ]
+    },
+    {
+      "id": "article_9_grand_showdown",
+      "speaker": "Mia Bellini",
+      "presentCompanions": [
+        "Mia Bellini",
+        "Seraphina Vane",
+        "Vivienne Laurent",
+        "Colette Moreau",
+        "Pippa Reyes",
+        "Kaede Tachibana",
+        "Roxy Vance",
+        "Chloe Lin",
+        "Nadia Saint-Clair",
+        "Zuri Delacroix"
+      ],
+      "title": "4★ Article 9 Grand Festival Showdown",
+      "location": "The Breakers Boardwalk & South Beach",
+      "sceneSetup": "Festival banners snap in the salt wind across South Beach and the Breakers Boardwalk as thousands of students, tourists, and Platinum Cliffs VIPs pack the grandstands. Today is the televised High Summer Article 9 Grand Festival Showdown—a three-stage gauntlet of Culinary & Mixology Craft, Beach Court Tempo, and Charter Audit Panache with The Stray Anchor's deed and 4-Star certification on the line.\n\nAcross the stage, Chairman Alistair Vane, Julian Sterling, Chef Dante Moretti, and Executive Sommelier Marcel Vance stand flanked by corporate culinary crews. On your side of the prep line, Mia ties back her hair and checks the oven heat, Colette and Zuri line up chilled botanical infusions, Pippa and Kaede warm up by the court net, and Roxy broadcasts live to the entire island.",
+      "dialogue": "Mia catches your sleeve before the starting bell rings, her hazel eyes bright and fierce despite the flush across her cheeks.\n\n\"Look at that crowd... the whole island is watching us,\" she says, pressing your grandfather's brass espresso tamper into your palm. \"Whatever happens out there, we didn't come this far to let some conglomerate suits turn Driftwood Cove into a yacht parking lot. Call the opening play, Chef—who's taking the first stage with you?\"",
+      "expressionKey": "happy",
+      "initialAffection": 68,
+      "bgImage": "/backgrounds/port-solaris/breakers_boardwalk.jpg",
+      "choices": [
+        "[Path A: Physical Tempo / Culinary Rush]: Fire up the open-flame range alongside Mia and Zuri to overwhelm the judges with a 100-Hype signature tasting menu.",
+        "[Path B: Social Panache / Audit Table-Turn]: Step to the center mic with Seraphina, Vivienne, and Nadia to dismantle Chairman Vane's foreclosure brief under Article 9 Clause 9B.",
+        "[Breakers Blitz / Beach & Pier]: Tag in Pippa and Kaede for the South Shore athletic exhibition to send the boardwalk crowd's Hype meter through the roof.",
+        "[All-In Clause 9C Gambit]: Ring the challenger's brass bell and stake The Stray Anchor's deed against Vane-Valorian's 5-Star Flagship Charter in a winner-takes-all finale."
+      ]
+    },
+    {
+      "id": "solaris_five_star_finale",
+      "speaker": "Seraphina Vane",
+      "presentCompanions": [
+        "Seraphina Vane",
+        "Vivienne Laurent",
+        "Mia Bellini",
+        "Colette Moreau",
+        "Pippa Reyes",
+        "Kaede Tachibana",
+        "Roxy Vance",
+        "Chloe Lin",
+        "Nadia Saint-Clair",
+        "Zuri Delacroix"
+      ],
+      "title": "5★ Island Sovereign: Fireworks Over Driftwood Cove",
+      "location": "Driftwood Cove (The Stray Anchor)",
+      "sceneSetup": "Gold and crimson fireworks blossom across the twilight sky above Driftwood Cove, their reflections shimmering across the turquoise bay. Down on the packed timber deck of The Stray Anchor, laughter and clinking glasses celebrate a historic milestone: the 5,000 Solar Crown lease debt is officially retired, and the golden 5-Star Island Sovereign crest gleams above your front doors under Article 10.\n\nUp on the quiet rooftop terrace above the celebration, the string lights sway in the warm night breeze. One by one, the heroines who turned your run-down café into the beating heart of Port Solaris glance toward the rooftop stairs, waiting to see who you invite up to watch the grand finale fireworks.",
+      "dialogue": "Seraphina stands by the top of the cedar stairs holding the newly stamped, debt-free Article 10 Sovereign Deed in both hands. For once, the proud heiress isn't hiding behind her clipboard—her emerald eyes are soft and luminous in the firework glow.\n\n\"Here—signed, sealed, and permanently immune from foreclosure,\" she says softly, her voice barely above the ocean surf. \"You actually pulled it off, Proprietor. The Stray Anchor is officially a Five-Star Island Sovereign... so before the final firework shell goes up, who are you sharing this roof with tonight?\"",
+      "expressionKey": "blushing",
+      "initialAffection": 85,
+      "bgImage": "/backgrounds/port-solaris/stray_anchor.jpg",
+      "choices": [
+        "[Heart-Lock Confession]: Take the deed from her hands, draw your chosen partner close under the rooftop fireworks, and make your permanent promise in Driftwood Cove.",
+        "[Founder's Toast / House Family]: Raise a glass to every housemate and partner who stood by The Stray Anchor from 0-Star probation to 5-Star legend.",
+        "[Moonlight Cove Walk]: Slip away from the crowded patio down to the quiet tide-line of Driftwood Cove for a private confession by the water.",
+        "[New Season Horizon]: Announce The Stray Anchor's expansion across Sunset Rambla and the Platinum Cliffs as Port Solaris's reigning 5-Star sovereigns."
+      ]
     }
   ],
   "companions": [
@@ -509,7 +594,7 @@
       "role": "Master Mixologist & Evening Lounge Host (Hybrid Flair)",
       "gender": "female",
       "color": "purple",
-      "personality": "Sultry, razor-sharp beverage director and flair-bartending prodigy who walked out on a 5-Star Platinum Cliffs hotel after knocking out a handsy VIP with an ice bucket. Relentlessly teases you with mature 'older-sister' banter behind the bar—until you discover she secretly writes hopeless, starry-eyed romance novels under a pen name and turns bright red when you act out her tropes.",
+      "personality": "Sultry, razor-sharp beverage director and flair-bartending prodigy who was blacklisted from the 4-Star Platinum Cliffs cellar L'Étoile d'Or after exposing Executive Sommelier Marcel Vance's counterfeit vintage wine scam—and knocking out a handsy VIP with a silver champagne bucket on her way out. Relentlessly teases you with mature 'older-sister' banter behind The Stray Anchor's bar and in Room 204—until you discover she secretly writes hopeless, starry-eyed romance novels ('Velvet Tides') under the pen name 'Lady Cerise' and turns bright red when you praise her craft or act out her tropes.",
       "values": [
         "Craft Mixology & Sensory Precision",
         "Creative Independence",
@@ -825,12 +910,15 @@
       "title": "0★ Probation: The Stray Anchor Lease Audit",
       "speaker": "Seraphina Vane",
       "location": "Driftwood Cove (The Stray Anchor)",
-      "summary": "Day 1 convocation on the deck of The Stray Anchor as Seraphina serves the 30-day audit notice while Mia, Colette, Pippa, Kaede, and Roxy converge.",
+      "summary": "Day 1 convocation on the deck of The Stray Anchor as Seraphina serves the 30-day audit notice while all ten island heroines converge.",
       "connectedTo": [
         "node_driftwood_cove",
         "node_sunset_rambla",
         "node_breakers_boardwalk",
-        "node_campus_terrace"
+        "node_campus_terrace",
+        "node_old_pier_arcade",
+        "node_velvet_appraisal",
+        "node_botanical_rambla"
       ]
     },
     {
@@ -839,7 +927,7 @@
       "title": "1★ Boardwalk Newcomer: Driftwood Cove & Room 201",
       "speaker": "Seraphina Vane",
       "location": "Driftwood Cove (The Stray Anchor)",
-      "summary": "Winning Seraphina Vane's midnight comfort-food wager and recruiting your first live-in boarding house tenant.",
+      "summary": "Winning Seraphina Vane's midnight comfort-food wager and invoking Clause 6B to recruit your first live-in boarding house tenant.",
       "connectedTo": [
         "node_sunset_rambla",
         "node_rooftop_heart_to_heart"
@@ -851,10 +939,22 @@
       "title": "2★ Local Favorite: Sunset Rambla Culinary & Mixology",
       "speaker": "Mia Bellini",
       "location": "The Sunset Rambla",
-      "summary": "Teaming up with childhood friend Mia Bellini and master mixologist Colette Moreau to conquer Bistro Row.",
+      "summary": "Teaming up with childhood friend Mia Bellini and master sommelier Colette Moreau to conquer Bistro Row.",
       "connectedTo": [
-        "node_breakers_boardwalk",
+        "node_botanical_rambla",
         "node_rooftop_heart_to_heart"
+      ]
+    },
+    {
+      "id": "node_botanical_rambla",
+      "nodeKey": "prologue_zuri",
+      "title": "2★ Botanical Lab: Matcha Alchemy & Room 206",
+      "speaker": "Zuri Delacroix",
+      "location": "The Sunset Rambla",
+      "summary": "Surviving Zuri Delacroix's heart-rate-spiking pistachio-matcha tasting and welcoming her botanical lab to Room 206.",
+      "connectedTo": [
+        "node_rooftop_heart_to_heart",
+        "node_velvet_appraisal"
       ]
     },
     {
@@ -872,10 +972,34 @@
     {
       "id": "node_campus_terrace",
       "nodeKey": "prologue_roxy",
-      "title": "3★ Island Hotspot: Campus Headlines & Arcade Ledgers",
+      "title": "3★ Island Hotspot: Campus Headlines & Paparazzi Spin",
       "speaker": "Roxy Vance",
       "location": "The Campus Terrace (Solaris University)",
-      "summary": "Turning Roxy Vance's front-page scoops and Chloe 'Zero' Lin's forensic tax loopholes against the foreclosure conspiracy.",
+      "summary": "Turning Roxy Vance's front-page scoops in The Solaris Siren into viral foot-traffic for Driftwood Cove.",
+      "connectedTo": [
+        "node_old_pier_arcade",
+        "node_rooftop_heart_to_heart"
+      ]
+    },
+    {
+      "id": "node_old_pier_arcade",
+      "nodeKey": "prologue_chloe",
+      "title": "3★ Old Pier Night-Owl: Clause 9B Forensic Audit",
+      "speaker": "Chloe Lin",
+      "location": "The Old Pier Arcade & Night Market",
+      "summary": "Recruiting undefeated arcade savant Chloe 'Zero' Lin to Room 202 and invoking Article 9 Clause 9B to slash predatory debt interest.",
+      "connectedTo": [
+        "node_rooftop_heart_to_heart",
+        "node_platinum_cliffs"
+      ]
+    },
+    {
+      "id": "node_velvet_appraisal",
+      "nodeKey": "prologue_nadia",
+      "title": "3★ Cultural Merit: The Velvet Appraiser's Midnight Tasting",
+      "speaker": "Nadia Saint-Clair",
+      "location": "The Platinum Cliffs",
+      "summary": "Winning over senior appraiser Nadia Saint-Clair with midnight saffron risotto for Clause 4B Cultural Merit certification and Room 205.",
       "connectedTo": [
         "node_rooftop_heart_to_heart",
         "node_platinum_cliffs"
@@ -887,7 +1011,7 @@
       "title": "3★ Boarding House: Thin Walls & The Blush Zone",
       "speaker": "Colette Moreau",
       "location": "The Stray Anchor: Upstairs Boarding House & Rooftop Terrace",
-      "summary": "Late-night domestic collisions in the upstairs hallway and lantern-lit confessions on the rooftop terrace.",
+      "summary": "Late-night domestic collisions in the upstairs hallway and lantern-lit confessions on the rooftop terrace under Article 8.",
       "unlockRequirement": {
         "minAffection": 35,
         "hintSilhouette": "Locked: Requires Housemate Bond >= 35%"
@@ -900,10 +1024,10 @@
     {
       "id": "node_platinum_cliffs",
       "nodeKey": "prologue_vivienne",
-      "title": "4★ Premier Establishment: The Platinum Cliffs Gala",
+      "title": "4★ Premier Establishment: Clause 7 & The Platinum Gala",
       "speaker": "Vivienne Laurent",
       "location": "The Platinum Cliffs",
-      "summary": "Whisking Vivienne Laurent away from her gilded cage and crashing the Platinum Board's VIP summer regatta.",
+      "summary": "Whisking Vivienne Laurent away from her gilded cage under a Clause 7 courtship pact and crashing the Platinum Board's VIP regatta.",
       "unlockRequirement": {
         "minAffection": 50,
         "hintSilhouette": "Locked: Requires 4★ Standing & Partner Bond (50%)"
@@ -933,7 +1057,7 @@
       "title": "5★ Island Sovereign: Fireworks Over Driftwood Cove",
       "speaker": "Seraphina Vane",
       "location": "Driftwood Cove (The Stray Anchor)",
-      "summary": "Crowning The Stray Anchor as Port Solaris's legendary 5-Star flagship and choosing who shares the rooftop fireworks with you.",
+      "summary": "Liberating The Stray Anchor under Article 10 as Port Solaris's legendary 5-Star flagship and choosing who shares the rooftop fireworks with you.",
       "unlockRequirement": {
         "minAffection": 80,
         "hintSilhouette": "Locked: Requires 5★ True Route Bond (80%)"

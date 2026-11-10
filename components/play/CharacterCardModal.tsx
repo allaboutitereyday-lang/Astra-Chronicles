@@ -230,6 +230,79 @@ export const CORE_MEMORY_CATALOG: Record<string, { title: string; hint: string }
     title: "The Twin-Braid Defensive Curtain",
     hint: "Wiped a drop of sweet cream from Zuri's mouth, forcing her to hide behind her twin emerald braids.",
   },
+  // Legacy / Bonus Memory Aliases
+  secret_charity_patron: {
+    title: "The Anonymous Harbor Patron",
+    hint: "Discovered Vivienne secretly funding Driftwood Cove student scholarships under an alias.",
+  },
+  fear_of_thunderstorms: {
+    title: "Summer Squall Sanctuary",
+    hint: "Stayed beside Vivienne when a midnight coastal thunderstorm knocked out the boarding house lights.",
+  },
+  sunrise_pier_kata: {
+    title: "Dawn Kata on the Pier",
+    hint: "Matched Kaede's bamboo shinai footwork as the sun rose over South Beach.",
+  },
+  plushie_claw_machine_master: {
+    title: "The Secret Plushie Hoard",
+    hint: "Won a giant stuffed harbour seal for Kaede at the Old Pier Arcade.",
+  },
+  flea_market_treasure_hunter: {
+    title: "The Sunset Flea-Market Find",
+    hint: "Watched Nadia's cool appraisal melt over a vintage brass watchmaker's loupe.",
+  },
+  handwritten_love_letters: {
+    title: "Wax-Sealed Midnight Notes",
+    hint: "Found Nadia's unsent fountain-pen reflections tucked inside her appraisal ledger.",
+  },
+  secret_romance_sketchbook: {
+    title: "After-Hours Menu Sketches",
+    hint: "Caught Colette doodling romantic cocktail names in the margins of the cellar inventory.",
+  },
+  vineyard_inheritance_dispute: {
+    title: "The Moreau Vineyard Vow",
+    hint: "Stood by Colette against the Platinum Cliffs sommelier cartel.",
+  },
+  undefeated_rhythm_queen: {
+    title: "Neon Rhythm Cabinet Queen",
+    hint: "Witnessed Chloe clear a max-difficulty arcade rhythm chart with one hand.",
+  },
+  sleepless_ledger_guardian: {
+    title: "3 A.M. Clause 9B Audit",
+    hint: "Found Chloe asleep over your tax ledgers after shaving 40% off the foreclosure interest.",
+  },
+  anonymous_stray_rescuer: {
+    title: "The Dockside Stray Kittens",
+    hint: "Caught Roxy sneaking leftover cream to the stray cats behind the Old Pier print shop.",
+  },
+  deleted_scoop_sacrifice: {
+    title: "The Deleted Memory Card",
+    hint: "Roxy formatted her own camera card rather than let the Platinum Board use her photos against you.",
+  },
+  childhood_promise_recipe: {
+    title: "Nonna's Brioche Promise",
+    hint: "Baked the exact recipe Mia swore she'd save for the day you returned to Port Solaris.",
+  },
+  jealous_apron_vigil: {
+    title: "The Flour-Dusted Apron Vigil",
+    hint: "Mia marched into the kitchen after hours to make sure hers was the last dish you tasted.",
+  },
+  sunset_lighthouse_confession: {
+    title: "Sunset Lighthouse Breather",
+    hint: "Shared a quiet citrus soda with Pippa at the point lighthouse after a brutal tournament rally.",
+  },
+  festival_fireworks_wish: {
+    title: "South Shore Fireworks Wish",
+    hint: "Held Pippa's hand on the lifeguard tower as the High Summer regatta shells lit the cove.",
+  },
+  moonlight_greenhouse_bloom: {
+    title: "Moonlight Rooftop Bloom",
+    hint: "Watched Zuri's night-blooming vanilla orchid open on the upstairs terrace.",
+  },
+  grandmother_apothecary_journal: {
+    title: "The Delacroix Botanical Grimoire",
+    hint: "Zuri entrusted you with her grandmother's secret herbal infusion notes.",
+  },
 };
 
 export interface CharacterModalState {

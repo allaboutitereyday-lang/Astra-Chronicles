@@ -561,7 +561,7 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     archetype: "Sharp-Tongued Prideful Prodigy / Praise-Weak Tsundere",
     combatDoctrine: "Hybrid Flair / Exiled Beverage Prodigy & Master Mixologist",
     actOneConflict:
-      "Blacklisted from the 5-Star Grand Resort after refusing to serve counterfeit vintage wine to a corrupt executive. Begrudgingly takes over The Stray Anchor's bar and melts into a flustered mess when you genuinely praise her craft.",
+      "Blacklisted from the 4-Star cliffside cellar L'Étoile d'Or after exposing Executive Sommelier Marcel Vance's counterfeit vintage wine scam—and knocking out the handsy Platinum VIP he was serving with a silver champagne bucket. Begrudgingly takes over The Stray Anchor's evening bar (and Room 204), where she secretly writes starry-eyed romance novels under the pen name 'Lady Cerise' and melts into a flustered mess when you genuinely praise her craft.",
     rivalBossTieIn: "Executive Sommelier Marcel Vance & Chef Dante Moretti",
     dyadPassiveName: "100-Proof Blush Elixir",
     dyadPassiveDescription:
@@ -579,7 +579,6 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
     affectionPoints: 28,
     heartRateBpm: 55,
     isBoardingHouseTenant: false,
-    assignedRoomNumber: 6,
     unlockedCoreMemories: ["sprained_ankle_piggyback", "not_just_your_kid_sister"],
     archetype: "Cheeky Spoiled Imōto / Kōhai Firecracker",
     combatDoctrine: "Physical Tempo / Junior Surf & Beach Volleyball Star",
@@ -705,3 +704,502 @@ export const PORT_SOLARIS_HEROINE_DOSSIERS: Record<
       "Boosts Café Dessert Tips by +30% and infuses Physical Tempo dishes with aromatic sensory notes that push rivals straight into The Blush Zone.",
   },
 };
+
+export interface PortSolarisCharterClause {
+  clauseId: string;
+  title: string;
+  summary: string;
+  gameplayEffect: string;
+}
+
+export interface PortSolarisCharterArticle {
+  articleNumber: string;
+  title: string;
+  category: "Governance & Star Ledger" | "Audit & Foreclosure" | "Domestic & Heritage" | "Sanctioned Showdowns";
+  summary: string;
+  clauses: PortSolarisCharterClause[];
+}
+
+export const PORT_SOLARIS_CHARTER_ARTICLES: PortSolarisCharterArticle[] = [
+  {
+    articleNumber: "Article 1",
+    title: "Island Sovereignty, Coastal Tiers & The Four Factions",
+    category: "Governance & Star Ledger",
+    summary:
+      "Establishes the joint municipal charter of Port Solaris between Solaris University and the four recognized island factions across the five coastal tiers.",
+    clauses: [
+      {
+        clauseId: "Clause 1A",
+        title: "Five-Tier Coastal Jurisdiction",
+        summary:
+          "Divides Port Solaris into five regulated zones: Tier 1 (Driftwood Cove), Tier 2 (Breakers Boardwalk & Old Pier), Tier 3 (Sunset Rambla), Tier 4 (Solaris University Campus Terrace), and Tier 5 (The Platinum Cliffs).",
+        gameplayEffect:
+          "Higher-tier zones carry stricter social scrutiny and higher-ranked Article 9 challengers.",
+      },
+      {
+        clauseId: "Clause 1B",
+        title: "The Four Recognized Faction Charters",
+        summary:
+          "Grants formal representation on the Island Council to The Platinum Board, The Boardwalk Guild, The Breakers Union, and The Driftwood Syndicate.",
+        gameplayEffect:
+          "Building Faction Standing (Neutral → Respected → Honored → Exalted) unlocks wholesale discounts, bouncer shields, and audit grace periods.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 2",
+    title: "Commercial Deeds, Inheritance & Solar Crown Currency",
+    category: "Governance & Star Ledger",
+    summary:
+      "Governs the transfer of waterfront business deeds, inherited liabilities, and the island's official Solar Crown currency.",
+    clauses: [
+      {
+        clauseId: "Clause 2A",
+        title: "Inherited Waterfront Deeds & Encumbrances",
+        summary:
+          "An heir who claims an independent beachfront deed (such as The Stray Anchor) assumes both full proprietorship and its outstanding seasonal lease debt (5,000 Solar Crowns).",
+        gameplayEffect:
+          "Establishes your starting proprietorship of The Stray Anchor Café & 6-Room Boarding House in Driftwood Cove.",
+      },
+      {
+        clauseId: "Clause 2B",
+        title: "Solar Crown Legal Tender & Shift Revenue",
+        summary:
+          "Recognizes Solar Crowns earned from café shifts, boarding rent, and sanctioned Showdown pots as legal tender for retiring municipal lease debt.",
+        gameplayEffect:
+          "35% of each turn's café shift revenue automatically pays down your lease debt, or you can manually pay 250 Crowns from the Ledger.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 3",
+    title: "Public Peace, Non-Violence & Press Freedom",
+    category: "Domestic & Heritage",
+    summary:
+      "Protects Port Solaris's sun-drenched resort atmosphere by outlawing lethal force and regulating campus/boardwalk tabloid journalism.",
+    clauses: [
+      {
+        clauseId: "Clause 3A",
+        title: "Strict Prohibition of Lethal Force & Arson",
+        summary:
+          "Lethal weapons, violent property destruction, and covert sabotage result in immediate island expulsion; all conflicts must be channeled into non-lethal Article 9 contests.",
+        gameplayEffect:
+          "Ensures all Port Solaris encounters use non-lethal Composure, Hype, and Cool vitals rather than mortal HP bleed.",
+      },
+      {
+        clauseId: "Clause 3B",
+        title: "Freedom of the Boardwalk Press & Scandal Heat",
+        summary:
+          "Protects student and syndicate publications (such as Roxy Vance's 'The Solaris Siren') covering public dates, audit drama, and beachfront wagers.",
+        gameplayEffect:
+          "Drives the Scandal Heat meter (0–100%): higher heat boosts café foot-traffic up to +50% while raising romantic jealousy risk.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 4",
+    title: "The Solaris Star Ledger & Commercial Tiering",
+    category: "Governance & Star Ledger",
+    summary:
+      "Establishes the 0★ to 5★ rating system jointly administered by Solaris University and the Platinum Hospitality Conglomerate, governing supply rights, beachfront zoning, and festival sponsorship.",
+    clauses: [
+      {
+        clauseId: "Clause 4A",
+        title: "0★ Probation to 5★ Sovereign Thresholds",
+        summary:
+          "Every commercial lease is graded from 0★ (5,000 Debt) to 1★ (≤4,000), 2★ (≤3,000), 3★ (≤2,000), 4★ (≤1,000), and 5★ (0 Debt) based on debt retirement, inspector sign-offs, and Showdown victories.",
+        gameplayEffect:
+          "Each Star upgrade multiplies daily café revenue (1.0x at 0★ up to 6.0x at 5★) and unlocks mid/late-act story nodes.",
+      },
+      {
+        clauseId: "Clause 4B",
+        title: "Cultural & Culinary Merit Certification",
+        summary:
+          "An establishment may bypass corporate franchise fees if certified for 'Irreplaceable Culinary or Cultural Merit' by a senior Platinum Cliffs Heritage Appraiser (such as Nadia Saint-Clair) or Boardwalk Guild Sommelier.",
+        gameplayEffect:
+          "Winning Nadia's or Colette's blind-tasting appraisal grants +1★ audit credit and shields your menu from conglomerate copycat injunctions.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 5",
+    title: "Supply Lines, Artisanal Licensing & Festival Booths",
+    category: "Governance & Star Ledger",
+    summary:
+      "Prevents conglomerate hoarding of Sunset Rambla ingredients and regulates promotional booths along South Beach.",
+    clauses: [
+      {
+        clauseId: "Clause 5A",
+        title: "Open Artisanal Supply & Anti-Monopoly Rule",
+        summary:
+          "Forbids 5-Star resorts from locking independent cafés out of Sunset Rambla bakeries, vineyards, or botanical gelato labs if the café holds at least a 1★ Provisional License.",
+        gameplayEffect:
+          "Allows Mia Bellini, Colette Moreau, and Zuri Delacroix to legally supply The Stray Anchor's kitchen and bar.",
+      },
+      {
+        clauseId: "Clause 5B",
+        title: "South-Shore Tournament & Festival Staging",
+        summary:
+          "Reserves boardwalk promotional booths and High Summer Festival stage slots for establishments backed by active Breakers Union athletes (challenging Captain Rex Vance's volleyball monopoly and Master Kenji Tachibana's Dojo Pier trials).",
+        gameplayEffect:
+          "Partnering with Pippa Reyes and Kaede Tachibana unlocks South Beach promotional rallies and festival Hype bonuses.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 6",
+    title: "The 30-Day Seasonal Audit & Foreclosure Mandate",
+    category: "Audit & Foreclosure",
+    summary:
+      "Governs seasonal debt settlement, property condemnation, and the rights of Platinum Board auditors inspecting 0-Star waterfront properties.",
+    clauses: [
+      {
+        clauseId: "Clause 6A",
+        title: "The 30-Day Eviction & Bulldozing Rule",
+        summary:
+          "Any beachfront establishment remaining at 0★ or carrying unpaid lease debt at the close of the 30-day High Summer Audit forfeits its deed to the Vane-Valorian Marina Expansion.",
+        gameplayEffect:
+          "Triggers formal inspections on Days 25, 20, 10, 5, and Day 0. Retiring the 5,000 Solar Crown debt before Day 0 liberates The Stray Anchor permanently.",
+      },
+      {
+        clauseId: "Clause 6B",
+        title: "The On-Site Resident Auditor Clause",
+        summary:
+          "If a Lead Platinum Board Auditor places a property under daily probation oversight, the proprietor may invoke Clause 6B requiring the auditor to reside on-site in standard tenant quarters to verify round-the-clock operations.",
+        gameplayEffect:
+          "The legal loophole that forces Seraphina Vane to move into Upstairs Room 201 and work floor shifts while her father freezes her black cards.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 7",
+    title: "High-Society Conduct, Sponsorship & Family Pacts",
+    category: "Domestic & Heritage",
+    summary:
+      "Regulates Platinum Cliffs dynastic charters, VIP black-card sponsorships, and the legal exemptions protecting engaged heirs from arranged corporate marriages.",
+    clauses: [
+      {
+        clauseId: "Clause 7A",
+        title: "Betrothal Autonomy & Fake-Fiancé Exemption ('Clause 7')",
+        summary:
+          "Under Platinum Cliffs family charters (colloquially known as 'Clause 7'), an heir or heiress who registers an active courtship pact with an independent island proprietor is granted a 90-day moratorium from parentally arranged mergers (such as Lord Cassian Sterling's suit).",
+        gameplayEffect:
+          "Unlocks Vivienne Laurent's 'Fake-Fiancé Clause 7' Core Memory and her 'Black-Card Escort Clause' Dyad Passive, shielding The Stray Anchor from hostile buyouts.",
+      },
+      {
+        clauseId: "Clause 7B",
+        title: "VIP Patronage & Escort Immunity",
+        summary:
+          "Any establishment hosting a registered Platinum Cliffs patron in good standing cannot have its utilities, deliveries, or patio permits suspended without a public hearing.",
+        gameplayEffect:
+          "Reduces Scandal Heat penalties and blocks Chairman Alistair Vane from shutting down your kitchen via administrative red tape.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 8",
+    title: "The Boarding House Co-Tenancy & Work-Study Act",
+    category: "Domestic & Heritage",
+    summary:
+      "Originally drafted for student co-ops and coastal inns, Article 8 governs mixed-use café boarding houses and live-in staff leases.",
+    clauses: [
+      {
+        clauseId: "Clause 8A",
+        title: "Work-for-Rent Tenant Covenant (Rooms 201–206)",
+        summary:
+          "Allows proprietors of 6-room coastal inns to commute tenant rent in exchange for specialist shop shifts (Chef, Mixologist, Floor Host, Bouncer, or Promoter).",
+        gameplayEffect:
+          "Assigning heroines to Upstairs Rooms 201–206 and active Café Roles multiplies daily Solar Crown revenue and triggers rooftop/shared-bath proximity scenes.",
+      },
+      {
+        clauseId: "Clause 8B",
+        title: "Rooftop Sanctuary & Quiet Hours",
+        summary:
+          "Designates the upstairs hallway and rooftop terrace as private tenant sanctuary after 11:00 PM, requiring the landlord to personally mediate roommate turf wars.",
+        gameplayEffect:
+          "Governs late-night Heart-to-Heart cooldowns (reducing 100% BPM Short-Circuits) and Rooftop Rivalry Ultimatums when housemate tension peaks.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 9",
+    title: "Sanctioned Public Turf Showdowns & Fair Wager Code",
+    category: "Sanctioned Showdowns",
+    summary:
+      "The cornerstone law of Port Solaris: bans violent sabotage and corporate lawsuits in favor of televised public contests of Culinary Craft, Mixology, Beach Athletics, or Social Panache.",
+    clauses: [
+      {
+        clauseId: "Clause 9A",
+        title: "Mandatory Public Turf Resolution",
+        summary:
+          "Any dispute over commercial leases, supplier monopolies, boardwalk booth rights, or personal honor may be settled by a binding Article 9 Showdown judged by crowd Hype (Path A: Physical Tempo) and panel Cool (Path B: Social Panache).",
+        gameplayEffect:
+          "Replaces lethal combat with non-lethal Composure/Poise Showdowns where breaking a rival's Composure to 100% BPM triggers a public Flustered Meltdown.",
+      },
+      {
+        clauseId: "Clause 9B",
+        title: "Anti-Usury & Compound Interest Cap",
+        summary:
+          "Prohibits compound interest traps and hidden balloon clauses on inherited small-business deeds if uncovered by a certified forensic bookkeeper.",
+        gameplayEffect:
+          "Chloe 'Zero' Lin's 'Frame-Perfect Audit Cancel' invokes Clause 9B to slash predatory debt interest by 25%–40%.",
+      },
+      {
+        clauseId: "Clause 9C",
+        title: "Emergency All-In Deed Wager",
+        summary:
+          "When facing imminent foreclosure or an unwinnable audit, a proprietor may stake The Stray Anchor's deed in an all-in Clause 9C Grand Twist—forcing an immediate victory at the cost of heightened Scandal Heat and Composure strain.",
+        gameplayEffect:
+          "Port Solaris's equivalent of the Causal Covenant: guarantees an instant Showdown/Audit breakthrough in exchange for permanent Composure cap pressure.",
+      },
+    ],
+  },
+  {
+    articleNumber: "Article 10",
+    title: "Five-Star Island Sovereign Landmark Immunity",
+    category: "Governance & Star Ledger",
+    summary:
+      "The ultimate prize of the Solaris Star Ledger: permanent protection and sovereign status for any independent establishment that achieves a 5★ rating and zero debt.",
+    clauses: [
+      {
+        clauseId: "Clause 10A",
+        title: "Perpetual Deed Liberation",
+        summary:
+          "An establishment that reaches 5★ and retires its lease debt before the Day 0 Grand Festival Sunset receives perpetual immunity from corporate eminent domain.",
+        gameplayEffect:
+          "Permanently secures The Stray Anchor's deed against Chairman Alistair Vane's marina expansion.",
+      },
+      {
+        clauseId: "Clause 10B",
+        title: "Island Festival Council Seat & Sovereign Ending",
+        summary:
+          "Seats the 5★ proprietor and their chosen partner at the head of the High Summer Fireworks Gala over Driftwood Cove.",
+        gameplayEffect:
+          "Unlocks the '5★ Island Sovereign: Fireworks Over Driftwood Cove' finale and permanent Heart-Lock endings.",
+      },
+    ],
+  },
+];
+
+// ============================================================================
+// CANONICAL ARCHITECTURE, UNCLE MARCO DEED LORE & SIGNATURE HOUSE MENU
+// ============================================================================
+
+export interface PortSolarisDeedLore {
+  founderName: string;
+  heirloomRelic: string;
+  deedHistory: string;
+  debtOrigin: string;
+  proprietorQuarters: string;
+  sharedBathQuirk: string;
+}
+
+export const PORT_SOLARIS_UNCLE_AND_DEED_LORE: PortSolarisDeedLore = {
+  founderName: "Late Uncle Marco ('Skipper' Marco) & Grandfather's Brass Tamper",
+  heirloomRelic: "Heirloom Brass Espresso Tamper (Stamped with the Stray Anchor Crest)",
+  deedHistory:
+    "Founded twenty-five years ago by your grandfather and run by your late Uncle Marco—a retired merchant mariner and legendary midnight cook who treated Driftwood Cove as a safe harbor for misfits, broke students, and runaway heiresses. Whether you returned after being blacklisted from the Vane-Valorian Grand Resort, retired from the martial arts circuit, or won back the final hold-note in a late-night Old Pier poker game, you inherited Uncle Marco's deed and his prized brass espresso tamper.",
+  debtOrigin:
+    "After last autumn's tropical typhoon damaged the cove seawall and timber deck, Uncle Marco took out a 5,000 Solar Crown emergency restoration mortgage. Chairman Alistair Vane's Platinum Hospitality Conglomerate quietly bought up the note, slapping it with a 30-day High Summer Audit ultimatum (Article 6, Clause 6A) to foreclose on the cove and bulldoze it for a private superyacht marina.",
+  proprietorQuarters:
+    "The 3rd-Floor Captain's Attic Loft (Room 301): Your private cedar-beamed loft sits on the third level directly opening onto the string-lit Rooftop Laundry & Herb Terrace. Every tenant going up to the rooftop after 11:00 PM passes right by your door.",
+  sharedBathQuirk:
+    "The Infamous 2nd-Floor Shared Bath: Rooms 201–206 share a single tiled Mediterranean bathroom at the end of the creaky cedar hallway. Its finicky vintage brass water heater drops pressure whenever someone pulls an espresso shot downstairs—making 7:00 AM towel-wrapped hallway collisions and foggy-mirror encounters an everyday hazard.",
+};
+
+export interface PortSolarisFloorplanEntry {
+  locationCode: string;
+  title: string;
+  occupant: string;
+  faction: IslandFaction | "PROPRIETOR";
+  roleAndPerks: string;
+  loreNotes: string;
+}
+
+export const PORT_SOLARIS_FLOORPLAN_CANON: PortSolarisFloorplanEntry[] = [
+  {
+    locationCode: "1st Floor",
+    title: "Sea-Level Café Deck, Open-Flame Kitchen & Mahogany Bar",
+    occupant: "All Active Shift Staff (5 Café Roles)",
+    faction: "PROPRIETOR",
+    roleAndPerks: "Base 100 Crowns/shift + Role & Star Multipliers (1.0x → 6.0x)",
+    loreNotes:
+      "Features a 40-seat weathered timber patio overlooking Driftwood Cove, a brass two-group espresso machine, an open-flame flat-top range, Colette's evening walnut cocktail bar, and Corner Booth #1 (Seraphina's favorite spot).",
+  },
+  {
+    locationCode: "Room 201",
+    title: "The Tsundere Heiress Suite (Front Cove View)",
+    occupant: "Seraphina Vane (Live-In Tenant • Clause 6B)",
+    faction: "PLATINUM_BOARD",
+    roleAndPerks: "Floor Host • -20% Audit Penalties & +30 Crowns/day VIP Referrals",
+    loreNotes:
+      "Moved in on Night 1 with two designer suitcases under Article 6 Clause 6B ('strictly as an on-site resident auditor') after her father froze her credit cards. Sneaks downstairs at midnight for your garlic-butter seafood pasta.",
+  },
+  {
+    locationCode: "Room 202",
+    title: "The Shaded Arcade Den (North Shade Corner)",
+    occupant: "Chloe 'Zero' Lin (Live-In Tenant)",
+    faction: "DRIFTWOOD_SYNDICATE",
+    roleAndPerks: "Floor Host / Night Auditor • -25% Debt Interest (Clause 9B) & +25 Crowns/day",
+    loreNotes:
+      "Blackout curtains, dual fiber-optic monitors, custom Sanwa fight-sticks, and a beanbag throne. Demands iced quad-espresso and morning piggyback rides downstairs.",
+  },
+  {
+    locationCode: "Room 203",
+    title: "The Tatami Sea-Breeze Room (East Pier View)",
+    occupant: "Kaede Tachibana (Live-In Tenant)",
+    faction: "BREAKERS_UNION",
+    roleAndPerks: "Head Bouncer • +10 Morning Composure & -10% Scandal Heat Decay/shift",
+    loreNotes:
+      "Woven rush tatami mats, a wooden bokken rack, sandalwood incense, and a secret stash of stray-kitten treats and arcade plushies hidden inside her closet.",
+  },
+  {
+    locationCode: "Room 204",
+    title: "The Tasting Parlor & Velvet Desk (West Sunset View)",
+    occupant: "Colette Moreau (Live-In Tenant)",
+    faction: "BOARDWALK_GUILD",
+    roleAndPerks: "Master Mixologist • +20% Bar Revenue & +35% Blush Zone Infliction",
+    loreNotes:
+      "Lined with rare botanical tinctures, vintage coupe glasses, and a locked rosewood writing desk where she secretly pens her starry-eyed romance novel 'Velvet Tides' under the pen name 'Lady Cerise'.",
+  },
+  {
+    locationCode: "Room 205",
+    title: "The Velvet Atelier (Private Sea-Breeze Balcony)",
+    occupant: "Nadia Saint-Clair (Live-In Tenant)",
+    faction: "PLATINUM_BOARD",
+    roleAndPerks: "VIP Sommelier & Appraiser • +30% VIP Prestige & Clause 4B Merit (+30 Crowns/day)",
+    loreNotes:
+      "Her quiet sanctuary away from suffocating Platinum Cliffs galas. Contains an easel, charcoal sketchbooks filled with candid drawings of you in the kitchen, and unpretentious coastal vintages.",
+  },
+  {
+    locationCode: "Room 206",
+    title: "The Botanical Greenhouse Suite (Sunny Gables)",
+    occupant: "Zuri Delacroix (Live-In Tenant)",
+    faction: "BOARDWALK_GUILD",
+    roleAndPerks: "Botanical Patissier • +30% Café Dessert Tips & Mood Infusions (+25 Crowns/day)",
+    loreNotes:
+      "Packed with hanging terracotta herb pots, ceremonial matcha whisks, night-blooming orchids, and small-batch copper gelato churners.",
+  },
+  {
+    locationCode: "3rd Floor (Room 301)",
+    title: "The Proprietor's Attic Loft & Rooftop Sanctuary",
+    occupant: "You (The Proprietor) • Open to Late-Night Visitors",
+    faction: "PROPRIETOR",
+    roleAndPerks: "Article 8 Clause 8B Sanctuary • Heart-to-Heart Cooldowns (-25 BPM)",
+    loreNotes:
+      "Your private loft opens directly onto the lantern-lit cedar rooftop laundry and herb terrace. Protected by Quiet Hours after 11:00 PM for one-on-one confessions and mediating housemate ultimatums.",
+  },
+  {
+    locationCode: "Next Door (15 ft)",
+    title: "Bellini Artisan Patisserie (2nd-Floor Apartment)",
+    occupant: "Mia Bellini (Next-Door Neighbor & Spare-Key Holder)",
+    faction: "BOARDWALK_GUILD",
+    roleAndPerks: "Head Chef • +30% Culinary Hype & +25% Morning Composure Brioche",
+    loreNotes:
+      "Lives right across the narrow cobblestone lane above her family bakery (founded by Nonna Bellini). Her bedroom window faces your 2nd-floor landing, and she uses her childhood spare key to barge into your kitchen every dawn.",
+  },
+  {
+    locationCode: "Cliffside / Loft",
+    title: "Villa Laurent (Platinum Cliffs) & Your Loft Daybed",
+    occupant: "Vivienne Laurent (Clause 7A Fake-Fiancé Commuter)",
+    faction: "PLATINUM_BOARD",
+    roleAndPerks: "VIP Promoter • Unlocks Platinum Cliffs & Reflects 30% Snobby Composure Damage",
+    loreNotes:
+      "Officially resides at Villa Laurent on Tier 5, but slips past her bodyguards via the Cliffside Funicular Tram to hide out at The Stray Anchor—keeping a secret stash of casual boardwalk sundresses in your 3rd-floor loft.",
+  },
+  {
+    locationCode: "South-Shore Dorms",
+    title: "Breakers Lifeguard Dorms & Café Booth #4",
+    occupant: "Pippa 'Pip' Reyes (Boardwalk Mascot & Frequent Crasher)",
+    faction: "BREAKERS_UNION",
+    roleAndPerks: "Beach Promoter • +30 Starting Beach Tournament Hype",
+    loreNotes:
+      "Officially assigned to the Solaris University athletic dorms on South Beach, but stores her custom surfboards under your deck and routinely crashes on Kaede's tatami mat in Room 203 or your rooftop hammock.",
+  },
+  {
+    locationCode: "Campus Terrace",
+    title: "The Solaris Siren Press Studio & Darkroom",
+    occupant: "Roxy Vance (Campus Commuter & Bar Counter Regular)",
+    faction: "DRIFTWOOD_SYNDICATE",
+    roleAndPerks: "PR Promoter • Converts Scandal Heat into +35% Café Foot Traffic",
+    loreNotes:
+      "Maintains a red-lit 35mm darkroom above the Campus Terrace student union, but treats Barstool #7 at The Stray Anchor as her personal night-market newsroom.",
+  },
+];
+
+export interface PortSolarisMenuItem {
+  name: string;
+  category: "Midnight Entrée" | "Artisan Pastry" | "Signature Cocktail" | "Botanical Gelato & Parfait";
+  craftedBy: string;
+  effectSummary: string;
+  loreDescription: string;
+}
+
+export const PORT_SOLARIS_SIGNATURE_MENU: PortSolarisMenuItem[] = [
+  {
+    name: "Midnight Garlic-Butter Cove Seafood Pasta",
+    category: "Midnight Entrée",
+    craftedBy: "The Proprietor (Uncle Marco's Secret Recipe)",
+    effectSummary: "Melts Ironclad Composure & triggers Seraphina's 'Midnight Ramen/Pasta' Core Memory",
+    loreDescription:
+      "Fresh-caught Driftwood Cove prawns seared in white wine, roasted garlic butter, chili flakes, and lemon zest—the dish that broke Seraphina Vane's eviction resolve on Night 1.",
+  },
+  {
+    name: "Toasted Ligurian Saffron & Aged Parmigiano Risotto",
+    category: "Midnight Entrée",
+    craftedBy: "The Proprietor & Nadia Saint-Clair",
+    effectSummary: "Unlocks Clause 4B Cultural Merit Appraisal (+1★ Credit) & fogs Nadia's spectacles",
+    loreDescription:
+      "Slow-simmered coastal carnaroli rice finished with golden saffron threads and sea-breeze herbs; the unpretentious copper-pan dish that won over Platinum Trust critic Nadia Saint-Clair.",
+  },
+  {
+    name: "Nonna Bellini's Brown-Butter Almond Croissant & Morning Brioche",
+    category: "Artisan Pastry",
+    craftedBy: "Mia Bellini (Bellini Artisan Patisserie)",
+    effectSummary: "+30% Culinary Showdown Hype & Restores +25% Composure each morning",
+    loreDescription:
+      "Flaky 27-layer laminated pastry dusted with powdered sugar and paired with The Stray Anchor's double-shot brass-tampered espresso.",
+  },
+  {
+    name: "Braised Sea-Salt & Ginger Steamed Pork Buns",
+    category: "Artisan Pastry",
+    craftedBy: "The Proprietor (5:30 AM Dawn Batch)",
+    effectSummary: "Recruits Kaede Tachibana for 12-hour Bouncer shifts & calms boardwalk stray cats",
+    loreDescription:
+      "Pillowy warm steamed buns filled with caramelized sea-salt pork belly—Kaede Tachibana's weakness after dawn kendo kata on the Dojo Pier.",
+  },
+  {
+    name: "100-Proof 'Velvet Tides' Blood-Orange & Peach Bellini",
+    category: "Signature Cocktail",
+    craftedBy: "Colette Moreau (Room 204 Reserve)",
+    effectSummary: "Inflicts +35% Blush Zone vulnerability on Showdown judges & +25% Evening Bar Revenue",
+    loreDescription:
+      "Sparkling coastal prosecco layered with charred oak bitters, white peach purée, and blood-orange oil sheen—served in a chilled crystal coupe.",
+  },
+  {
+    name: "Blush-Zone Ceremonial Pistachio-Matcha Affogato",
+    category: "Botanical Gelato & Parfait",
+    craftedBy: "Zuri Delacroix (Room 206 Botanical Lab)",
+    effectSummary: "+30% Café Dessert Tips & spikes target Heart-Rate BPM by +15–30 BPM",
+    loreDescription:
+      "Velvety stone-ground Uji matcha and Sicilian pistachio gelato drowned in a hot shot of Stray Anchor espresso and garnished with night-blooming orchid sugar.",
+  },
+  {
+    name: "South-Shore Championship Towering Mango-Tajín Parfait",
+    category: "Botanical Gelato & Parfait",
+    craftedBy: "The Proprietor & Pippa Reyes",
+    effectSummary: "+30 Starting Hype in Beach Tournaments & fuels Breakers Union rallies",
+    loreDescription:
+      "A foot-tall glass layered with fresh island mango, coconut sorbet, whipped cream, and chili-lime crunch—Pippa Reyes's mandatory post-volleyball victory fuel.",
+  },
+  {
+    name: "Zero's 2:00 AM Quad-Shot Cold Brew & Noon Buttermilk Pancakes",
+    category: "Midnight Entrée",
+    craftedBy: "The Proprietor (Room 202 Room Service)",
+    effectSummary: "Powers Chloe Lin's Clause 9B Forensic Audit Cancel (-25% to -40% Debt Interest)",
+    loreDescription:
+      "An ice-cold quad-espresso flask delivered to the Old Pier Arcade at 2:00 AM, followed by warm honey-butter pancakes whenever Chloe finally wakes up at noon.",
+  },
+];
+
+

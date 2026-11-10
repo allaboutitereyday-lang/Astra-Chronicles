@@ -71,7 +71,29 @@ export function generateTimelineScar(context: {
   const turn = context.turnNumber || 1;
   const comp = context.companionName || "Companion";
   const loc = context.locationName || "the sector";
-  const isCyber = (context.genre || "").toLowerCase().includes("cyber");
+  const genreLower = (context.genre || "").toLowerCase();
+  const isCyber = genreLower.includes("cyber");
+  const isSolaris =
+    genreLower.includes("rom-com") ||
+    genreLower.includes("solaris") ||
+    genreLower.includes("slice-of-life") ||
+    /\b(driftwood|stray\s+anchor|rambla|platinum\s+cliffs|breakers|solaris|seraphina|vivienne|mia|colette|pippa|kaede|roxy|chloe|nadia|zuri)\b/i.test(
+      `${comp} ${loc}`
+    );
+
+  if (isSolaris) {
+    return {
+      id: `scar_article9c_${Date.now()}`,
+      title: `Clause 9C Deed Wager: High-Stakes Probation on ${loc}`,
+      description: `You rang the challenger's brass bell and invoked Island Charter Article 9 Clause 9C—staking The Stray Anchor's deed in a double-or-nothing reversal alongside ${comp}. The Platinum Board's auditors are now watching every single shift with heightened scrutiny.`,
+      scarType: "severance",
+      affectedCompanionName: comp,
+      affectedLocationName: loc,
+      plausibilityCapReduction: COVENANT_CAP_BURN_AMOUNT,
+      createdAtTurn: turn,
+      createdAtTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+  }
 
   const scarTypes: ("amnesia" | "blight" | "chronal_shadow" | "severance")[] = [
     "amnesia",
@@ -163,6 +185,11 @@ export function getCompanionMoralReactionDirective(companionName?: string): stri
   if (name.includes("perci")) {
     return "Perci cowers behind your mantle, her fox ears flattened in terror at the blinding spatial rift. She whispers tremulously, clinging to your arm to assure herself you are still real.";
   }
+  if (
+    /\b(seraphina|vivienne|mia|colette|pippa|kaede|roxy|chloe|nadia|zuri)\b/i.test(name)
+  ) {
+    return `${companionName}'s pulse spikes into the Blush Zone as you stake The Stray Anchor's deed on an all-in Article 9 Clause 9C wager—stunned and thrilled by your audacity to bet everything on your partnership.`;
+  }
   return "The companion looks upon the shattered spacetime rift with awe and dread, realizing you command powers beyond mortal boundaries.";
 }
 
@@ -208,8 +235,17 @@ export function executeCausalCovenant(
   systemState.plausibility = newCap;
 
   const moralReaction = getCompanionMoralReactionDirective(context.companionName);
+  const isSolaris = scar.id.startsWith("scar_article9c_");
 
-  const narrativeDirective = `--- CAUSAL COVENANT EXECUTED: TIMELINE OVERWRITE EVENT ---
+  const narrativeDirective = isSolaris
+    ? `--- ISLAND CHARTER ARTICLE 9 CLAUSE 9C EXECUTED: ALL-IN DEED WAGER ---
+The protagonist has invoked "Island Charter Article 9 Clause 9C: Emergency All-In Deed Wager".
+- Coastal Showdown Stakes: By staking The Stray Anchor's deed in a public double-or-nothing challenge, the protagonist forces an undeniable, crowd-roaring table-turn victory in the current audit or showdown!
+- Audit Scrutiny Price Paid: Maximum Composure Stability Cap has been permanently strained by -${COVENANT_CAP_BURN_AMOUNT}% (New Cap: ${newCap}%).
+- Charter Record Entry: "${scar.title}" - ${scar.description}
+- Partner Reaction: ${moralReaction}
+- Narration Instruction: Narrate this moment with electric coastal showmanship and romantic tension (NO dark-fantasy void rifts or mortal death). Describe the protagonist ringing the brass challenger's bell and flipping the audit/showdown tables in dazzling style as the boardwalk crowd erupts.`
+    : `--- CAUSAL COVENANT EXECUTED: TIMELINE OVERWRITE EVENT ---
 The protagonist has invoked the forbidden "Causal Covenant: Reality Severance".
 - Cosmic Stakes: The protagonist has forcibly rewritten the outcome of the lethal crisis, achieving an absolute, reality-defying victory/miracle.
 - Dark Price Paid: The maximum causal anchor of reality has permanently burned by -${COVENANT_CAP_BURN_AMOUNT}% (New Anchor Cap: ${newCap}%).
@@ -220,8 +256,10 @@ The protagonist has invoked the forbidden "Causal Covenant: Reality Severance".
   const systemToast: SystemToastNotification = {
     id: `toast_covenant_${Date.now()}`,
     type: "covenant_severance",
-    title: "CAUSAL COVENANT INVOKED",
-    subtitle: `Reality Severed: ${scar.title} • Anchor Burned to ${newCap}%`,
+    title: isSolaris ? "ARTICLE 9 CLAUSE 9C INVOKED" : "CAUSAL COVENANT INVOKED",
+    subtitle: isSolaris
+      ? `All-In Deed Wager: ${scar.title} • Stability Cap ${newCap}%`
+      : `Reality Severed: ${scar.title} • Anchor Burned to ${newCap}%`,
     difficulty: "Calamity",
     timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
   };

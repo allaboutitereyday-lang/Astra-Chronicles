@@ -122,6 +122,48 @@ export const RIVALRY_PAIRS_CATALOG: {
     ideologicalAxis: "Minimalist Sommelier Precision vs. Playful Botanical Sensory Chaos",
     banterTone: "Cool black-lipstick aesthetic critiques clashing with teasing matcha-gelato tastings and Room 205/206 balcony banter.",
   },
+  {
+    pairKey: "vivienne_seraphina",
+    comp1: "Vivienne Laurent",
+    comp2: "Seraphina Vane",
+    ideologicalAxis: "Effortless Shipping-Dynasty Old Money vs. Try-Hard Resort Heiress Pride",
+    banterTone: "Vivienne's polite, deadpan Clause 7 privilege unintentionally making Seraphina bristle with competitive tsundere jealousy.",
+  },
+  {
+    pairKey: "colette_zuri",
+    comp1: "Colette Moreau",
+    comp2: "Zuri Delacroix",
+    ideologicalAxis: "Classic French Sommelier Purism vs. Experimental Matcha-Botanical Alchemy",
+    banterTone: "Two shameless counter-teases competing over whose drink makes the Landlord blush harder.",
+  },
+  {
+    pairKey: "mia_chloe",
+    comp1: "Mia Bellini",
+    comp2: "Chloe Lin",
+    ideologicalAxis: "6 AM Fresh-Baked Kitchen Discipline vs. Noon-Rising Espresso & Shoulder-Nap Freeloader",
+    banterTone: "Mia scolding Chloe for monopolizing the Landlord's shoulder while Chloe calmly cites her Clause 9B tax savings.",
+  },
+  {
+    pairKey: "pippa_roxy",
+    comp1: "Pippa Reyes",
+    comp2: "Roxy Vance",
+    ideologicalAxis: "Protective South-Beach Kōhai Loyalty vs. Shameless Tabloid Scoop Provocation",
+    banterTone: "Pippa stepping in front of Roxy's camera lens whenever Roxy tries to bait the Landlord into a scandal headline.",
+  },
+  {
+    pairKey: "kaede_nadia",
+    comp1: "Kaede Tachibana",
+    comp2: "Nadia Saint-Clair",
+    ideologicalAxis: "Literal-Minded Martial Stoicism vs. Subtle Velvet Aesthetic Subtext",
+    banterTone: "Kaede taking Nadia's dry sommelier metaphors 100% literally while both quietly vie for the Landlord's evening attention.",
+  },
+  {
+    pairKey: "vivienne_mia",
+    comp1: "Vivienne Laurent",
+    comp2: "Mia Bellini",
+    ideologicalAxis: "Clause 7 Fake-Fiancée Contract vs. Unspoken Childhood Cove Promise",
+    banterTone: "Mia's explosive next-door baker jealousy clashing with Vivienne's earnest fascination with 'authentic domestic courtship.'",
+  },
 ];
 
 /**
@@ -243,22 +285,42 @@ export function evaluateInterpersonalFriction(
       };
     }
 
-    // Check for Camp Ultimatum Trigger (Threshold 75+ friction and affection >= 45)
+    // Check for Camp / Rooftop Ultimatum Trigger (Threshold 75+ friction and affection >= 45)
     if (newScore >= 75 && (primaryComp.affection || 0) >= 45 && !state.pendingUltimatum) {
-      triggeredUltimatum = {
-        companionName: primaryComp.name,
-        rivalName: other.name,
-        triggerMilestone: primaryComp.affection || 50,
-        prompt: `Under the dim glow of camp embers, ${other.name} blocks your path, her gaze burning with unresolved tension. "You can't keep playing both sides, Vaughn. Walking the line between my truth and ${primaryComp.name}'s poison will get us both killed. Where does your true allegiance lie?"`,
-        choices: [
-          `[Reconcile/Diplomatic]: Stand firm between both heroines and forge an unyielding tactical compromise.`,
-          `[Affirm ${primaryComp.name}/Decisive]: Look ${other.name} in the eye and make it clear you stand with ${primaryComp.name}.`,
-          `[Affirm ${other.name}/Passionate]: Step closer to ${other.name}, acknowledge her vulnerability, and promise your protection.`,
-          `[Pragmatism/Stern]: Remind them both that survival against the Multiverse Administrator supersedes petty rivalries.`,
-        ],
-      };
+      const isSolarisHeroine = /\b(seraphina|vivienne|mia|colette|pippa|kaede|roxy|chloe|nadia|zuri)\b/i.test(
+        `${primaryComp.name} ${other.name}`
+      );
+      triggeredUltimatum = isSolarisHeroine
+        ? {
+            companionName: primaryComp.name,
+            rivalName: other.name,
+            triggerMilestone: primaryComp.affection || 50,
+            prompt: `Under the warm string lights of The Stray Anchor's upstairs rooftop terrace, ${other.name} corners you by the railing as ${primaryComp.name} steps out onto the landing. "Alright, Landlord, you can't keep dodging this," ${other.name} says, her cheeks flushed at 85+ BPM. "Everyone in this boarding house sees what's going on between you and ${primaryComp.name}. Whose corner are you actually in tonight?"`,
+            choices: [
+              `[Article 8 Landlord Mediation]: Pour two chilled drinks, calm both girls down, and remind them The Stray Anchor needs both of them.`,
+              `[Choose ${primaryComp.name}/Heartfelt]: Look ${other.name} in the eye and admit your heart is with ${primaryComp.name}.`,
+              `[Choose ${other.name}/Passionate]: Step closer to ${other.name} by the railing and tell her she's the one you came upstairs to see.`,
+              `[Proprietor Focus/Pragmatic]: Remind them both that passing the 30-day Solaris Star Audit comes before boarding-house turf wars.`,
+            ],
+          }
+        : {
+            companionName: primaryComp.name,
+            rivalName: other.name,
+            triggerMilestone: primaryComp.affection || 50,
+            prompt: `Under the dim glow of camp embers, ${other.name} blocks your path, her gaze burning with unresolved tension. "You can't keep playing both sides. Walking the line between my truth and ${primaryComp.name}'s doctrine will tear this party apart. Where does your true allegiance lie?"`,
+            choices: [
+              `[Reconcile/Diplomatic]: Stand firm between both heroines and forge an unyielding tactical compromise.`,
+              `[Affirm ${primaryComp.name}/Decisive]: Look ${other.name} in the eye and make it clear you stand with ${primaryComp.name}.`,
+              `[Affirm ${other.name}/Passionate]: Step closer to ${other.name}, acknowledge her vulnerability, and promise your protection.`,
+              `[Pragmatism/Stern]: Remind them both that the mission ahead supersedes personal rivalries.`,
+            ],
+          };
       state.pendingUltimatum = triggeredUltimatum;
-      state.activeJealousyEvents.push(`${primaryComp.name} vs ${other.name} Camp Ultimatum`);
+      state.activeJealousyEvents.push(
+        isSolarisHeroine
+          ? `${primaryComp.name} vs ${other.name} Rooftop Ultimatum`
+          : `${primaryComp.name} vs ${other.name} Camp Ultimatum`
+      );
     }
   }
 

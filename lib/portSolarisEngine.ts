@@ -85,6 +85,45 @@ export const DEBT_STAR_THRESHOLDS = [
 ];
 
 /**
+ * Creates the initial deterministic state for The Stray Anchor Café & Boarding House.
+ */
+export function createInitialBoardingHouseState(opts?: {
+  outstandingDebt?: number;
+  daysUntilAudit?: number;
+  starRating?: 0 | 1 | 2 | 3 | 4 | 5;
+}): BoardingHouseState {
+  return {
+    shopName: "The Stray Anchor",
+    starRating: opts?.starRating ?? 0,
+    daysUntilAudit: opts?.daysUntilAudit ?? 30,
+    dailyRevenue: 165,
+    outstandingDebt: opts?.outstandingDebt ?? 5000,
+    scandalHeat: 15,
+    activeTenants: ["comp_seraphina"],
+    shopAssignments: {
+      FLOOR_HOST: "Seraphina Vane",
+    },
+    roomAssignments: {
+      201: "Seraphina Vane",
+    },
+    totalRevenueCollected: 0,
+    totalDebtPaid: 0,
+  };
+}
+
+/**
+ * Creates initial Island Faction standings for Port Solaris.
+ */
+export function createInitialFactionStandings(): Record<IslandFaction, number> {
+  return {
+    PLATINUM_BOARD: 10,
+    BOARDWALK_GUILD: 15,
+    BREAKERS_UNION: 15,
+    DRIFTWOOD_SYNDICATE: 12,
+  };
+}
+
+/**
  * Checks whether a given companion name or ID has affinity/preference for a shop role.
  */
 export function isPreferredRole(heroineIdOrName: string, role: ShopRole): boolean {
@@ -1041,8 +1080,341 @@ export function resolveShowdownRound(params: {
 }
 
 // ============================================================================
-// 8. "CAUGHT RED-HANDED" KEEPSAKE JEALOUSY
+// 8. "CAUGHT RED-HANDED" KEEPSAKE JEALOUSY & CANONICAL KEEPSAKE CATALOG
 // ============================================================================
+
+export const PORT_SOLARIS_CANONICAL_KEEPSAKES: Record<
+  string,
+  KeepsakeItem & { description: string; effectLabel: string }
+> = {
+  "Seraphina Vane": {
+    id: "keepsake_seraphina_watch",
+    name: "Vintage Platinum Audit Pocket Watch",
+    slot: "TIMEPIECE",
+    giftedByHeroineId: "Seraphina Vane",
+    description:
+      "Seraphina's personal Vane-crested platinum pocket watch, engraved inside the lid with the exact minute of your first midnight ramen truce in Room 201.",
+    effectLabel: "+25% Social Panache & -20% Audit Penalties (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      maxComposure: 15,
+      panachePower: 25,
+      shopRevenueBonus: 20,
+    },
+    jealousyQuirk: {
+      description: "Ticks with unmistakable Vane family precision; rival heroines immediately recognize her monogram.",
+      composurePenaltyOnOtherDates: 15,
+    },
+  },
+  "Vivienne Laurent": {
+    id: "keepsake_vivienne_pearl",
+    name: "Black Sand Pearl Cufflinks & Clause 7 Signet",
+    slot: "HOUSE_EMBLEM",
+    giftedByHeroineId: "Vivienne Laurent",
+    description:
+      "Bespoke black-sand pearl cufflinks from the Laurent Shipping Dynasty, worn by Vivienne's official Clause 7 betrothed escort.",
+    effectLabel: "+30% VIP Prestige & Composure Reflection (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      maxComposure: 20,
+      panachePower: 30,
+      shopRevenueBonus: 25,
+    },
+    jealousyQuirk: {
+      description: "Bears the private Laurent betrothal crest—unmistakable proof of your Clause 7 pact.",
+      composurePenaltyOnOtherDates: 18,
+    },
+  },
+  "Mia Bellini": {
+    id: "keepsake_mia_tamper",
+    name: "Nonna Bellini's Brass Espresso Tamper & Seashell Ribbon",
+    slot: "TOOL_OF_THE_TRADE",
+    giftedByHeroineId: "Mia Bellini",
+    description:
+      "Heirloom brass espresso tamper wrapped in the braided Driftwood Cove seashell ribbon Mia kept since the summer you left.",
+    effectLabel: "+30% Culinary Tempo Hype & +25 Morning Composure (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      maxComposure: 25,
+      tempoPower: 30,
+      shopRevenueBonus: 20,
+    },
+    jealousyQuirk: {
+      description: "Faintly scented with Mia's vanilla-brioche flour and tied with her childhood ribbon.",
+      composurePenaltyOnOtherDates: 15,
+    },
+  },
+  "Colette Moreau": {
+    id: "keepsake_colette_tongs",
+    name: "Silver Sugar-Tongs & Velvet Cellar Key of L'Étoile",
+    slot: "TOOL_OF_THE_TRADE",
+    giftedByHeroineId: "Colette Moreau",
+    description:
+      "Colette's prized sterling silver absinthe-and-sugar tongs paired with the private key to her Room 204 midnight tasting reserve.",
+    effectLabel: "+35% Blush Zone Infliction & +25% Evening Bar Revenue (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      tempoPower: 15,
+      panachePower: 20,
+      blushDamageBonus: 35,
+      shopRevenueBonus: 25,
+    },
+    jealousyQuirk: {
+      description: "Engraved with Colette's sommelier crest and a faint trace of her peach-bellini perfume.",
+      composurePenaltyOnOtherDates: 15,
+    },
+  },
+  "Pippa Reyes": {
+    id: "keepsake_pippa_whistle",
+    name: "Gold-Plated South-Shore Lifeguard Whistle on Braided Cord",
+    slot: "POCKET_CHARM",
+    giftedByHeroineId: "Pippa Reyes",
+    description:
+      "Pippa's championship South Beach whistle on a hand-braided neon cord she wove for her 'favorite Big Bro—and more.'",
+    effectLabel: "+30 Starting Showdown Hype & +20 Physical Tempo (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      maxComposure: 15,
+      tempoPower: 25,
+      blushDamageBonus: 20,
+    },
+    jealousyQuirk: {
+      description: "Has Pippa's cheeky heart-shaped sticker stamped right on the brass barrel.",
+      composurePenaltyOnOtherDates: 15,
+    },
+  },
+  "Kaede Tachibana": {
+    id: "keepsake_kaede_cord",
+    name: "Woven Crimson Dojo Wrist-Cord & Harbour Seal Charm",
+    slot: "POCKET_CHARM",
+    giftedByHeroineId: "Kaede Tachibana",
+    description:
+      "A traditional silk kendo wrist-wrap blessed at the Tachibana shrine, with a tiny arcade harbour-seal charm tucked inside the knot.",
+    effectLabel: "+25% Parry Composure Defense & -15% Scandal Heat (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      maxComposure: 25,
+      tempoPower: 25,
+    },
+    jealousyQuirk: {
+      description: "Tied onto your wrist with a traditional martial-arts betrothal knot only Kaede knows.",
+      composurePenaltyOnOtherDates: 15,
+    },
+  },
+  "Roxy Vance": {
+    id: "keepsake_roxy_film",
+    name: "35mm Brass Film Canister ('DO NOT DEVELOP') & Press Badge",
+    slot: "POCKET_CHARM",
+    giftedByHeroineId: "Roxy Vance",
+    description:
+      "The sole undeveloped 35mm film roll containing Roxy's career-making scoop—which she handed over to you instead of printing.",
+    effectLabel: "+35% Scandal-to-Foot-Traffic Conversion & +25 Panache (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      panachePower: 25,
+      blushDamageBonus: 25,
+      shopRevenueBonus: 35,
+    },
+    jealousyQuirk: {
+      description: "Stamped with Roxy's lipstick mark and 'EDITOR'S EXCLUSIVE PROPERTY' in red ink.",
+      composurePenaltyOnOtherDates: 18,
+    },
+  },
+  "Chloe Lin": {
+    id: "keepsake_chloe_token",
+    name: "Gold-Plated 99-Win Old Pier Arcade Token & Pastel Hoodie Drawstring",
+    slot: "POCKET_CHARM",
+    giftedByHeroineId: "Chloe Lin",
+    description:
+      "Chloe's undefeated Old Pier Arcade champion coin threaded onto a spare pastel drawstring from her favorite oversized nap hoodie.",
+    effectLabel: "-25% Debt Interest (Clause 9B) & +25 Frame-Data Reflex (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      maxComposure: 20,
+      tempoPower: 15,
+      panachePower: 20,
+      shopRevenueBonus: 25,
+    },
+    jealousyQuirk: {
+      description: "Engraved with 'PLAYER TWO RESERVED — ZERO' on the reverse face.",
+      composurePenaltyOnOtherDates: 15,
+    },
+  },
+  "Nadia Saint-Clair": {
+    id: "keepsake_nadia_loupe",
+    name: "24k Gold-Chain Jeweler's Loupe & Signed Charcoal Portrait",
+    slot: "TIMEPIECE",
+    giftedByHeroineId: "Nadia Saint-Clair",
+    description:
+      "Nadia's heirloom Platinum Trust appraisal loupe on a delicate gold chain, accompanied by a folded charcoal sketch of you from Room 205.",
+    effectLabel: "+30% VIP Table Prestige & Clause 4B Cultural Merit (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      maxComposure: 20,
+      panachePower: 30,
+      shopRevenueBonus: 30,
+    },
+    jealousyQuirk: {
+      description: "Hangs from the exact gold spectacle chain design Nadia wears at every tasting.",
+      composurePenaltyOnOtherDates: 16,
+    },
+  },
+  "Zuri Delacroix": {
+    id: "keepsake_zuri_spade",
+    name: "Hand-Carved Olivewood Gelato Spade & Night-Blooming Orchid Vial",
+    slot: "TOOL_OF_THE_TRADE",
+    giftedByHeroineId: "Zuri Delacroix",
+    description:
+      "An heirloom Delacroix olivewood tasting spade paired with a glass pendant of Zuri's 'Blush-Zone Pistachio Matcha' essence.",
+    effectLabel: "+30% Café Dessert Tips & +30% Blush Zone Infliction (Triggers Jealousy if spotted by another heroine)",
+    statModifiers: {
+      tempoPower: 20,
+      panachePower: 15,
+      blushDamageBonus: 30,
+      shopRevenueBonus: 30,
+    },
+    jealousyQuirk: {
+      description: "Gives off Zuri's unmistakable sweet matcha-and-vanilla orchid aroma.",
+      composurePenaltyOnOtherDates: 16,
+    },
+  },
+};
+
+/**
+ * Generates canonical Port Solaris Romance & Article 9 Rival Milestone Quests (25%, 50%, 75%, 90%, 100%).
+ * Replaces generic dark-fantasy "planar crisis" placeholders with coastal rom-com & rival boss storylines.
+ */
+export function buildPortSolarisRomanceMilestoneQuest(
+  canonicalName: string,
+  milestone: 25 | 50 | 75 | 90 | 100
+): {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: "D" | "C" | "B" | "A" | "S";
+  objectives: Array<{ text: string; completed: boolean }>;
+  rewards: {
+    exp: number;
+    gold: number;
+    items?: string[];
+    title?: string;
+  };
+} {
+  const dossier = PORT_SOLARIS_HEROINE_DOSSIERS[canonicalName];
+  const keepsake = PORT_SOLARIS_CANONICAL_KEEPSAKES[canonicalName];
+  const rivalName = dossier?.rivalBossTieIn || "Chairman Alistair Vane's Auditors";
+  const roomLabel =
+    dossier?.isBoardingHouseTenant && dossier?.assignedRoomNumber
+      ? `Room 20${dossier.assignedRoomNumber}`
+      : "The Stray Anchor Rooftop Terrace";
+  const roleLabel = (dossier?.preferredShopRole || "FLOOR_HOST").replace(/_/g, " ");
+  const slug = canonicalName.toLowerCase().replace(/[^a-z0-9]/g, "_");
+
+  switch (milestone) {
+    case 25:
+      return {
+        id: `romance_${slug}_25`,
+        title: `${canonicalName}: After-Hours Shift & First Blush (25% Bond)`,
+        description: `The initial walls are starting to crack. Share a late-night ${roleLabel} shift or private tasting with ${canonicalName} at The Stray Anchor and push her Composure into The Blush Zone.`,
+        difficulty: "D",
+        objectives: [
+          {
+            text: `Work a late-night café shift or boardwalk outing alongside ${canonicalName}`,
+            completed: false,
+          },
+          {
+            text: `Crack ${canonicalName}'s guard during a quiet one-on-one moment in Driftwood Cove`,
+            completed: false,
+          },
+        ],
+        rewards: {
+          exp: 110,
+          gold: 150,
+        },
+      };
+    case 50:
+      return {
+        id: `romance_${slug}_50`,
+        title: `${canonicalName}: Thin Walls & ${roomLabel} Confessional (50% Bond)`,
+        description: `Under Article 8, ${canonicalName} has become indispensable to The Stray Anchor. Uncover her hidden Core Memory during a midnight heart-to-heart in ${roomLabel}.`,
+        difficulty: "C",
+        objectives: [
+          {
+            text: `Meet ${canonicalName} after closing hours in ${roomLabel}`,
+            completed: false,
+          },
+          {
+            text: `Unlock ${canonicalName}'s canonical Core Memory and solidify your housemate pact`,
+            completed: false,
+          },
+        ],
+        rewards: {
+          exp: 165,
+          gold: 300,
+          title: `${canonicalName.split(" ")[0]}'s Confidant`,
+        },
+      };
+    case 75:
+      return {
+        id: `romance_${slug}_75`,
+        title: `${canonicalName}: Article 9 Showdown vs. ${rivalName.split("(")[0].trim()} (75% Bond)`,
+        description: `${rivalName} has issued a public Article 9 challenge targeting ${canonicalName}'s standing on Port Solaris. Stand beside her as her Dyad partner (${dossier?.dyadPassiveName || "Coastal Synergy"}) and shatter her rival's Composure in front of the whole island!`,
+        difficulty: "B",
+        objectives: [
+          {
+            text: `Accept the sanctioned Article 9 Turf Showdown against ${rivalName}`,
+            completed: false,
+          },
+          {
+            text: `Coordinate with ${canonicalName} (${dossier?.dyadPassiveName || "Dyad Synergy"}) to break the rival's Composure`,
+            completed: false,
+          },
+        ],
+        rewards: {
+          exp: 220,
+          gold: 500,
+          title: `Champion of ${canonicalName.split(" ")[0]}`,
+        },
+      };
+    case 90:
+      return {
+        id: `romance_${slug}_90`,
+        title: `${canonicalName}: Midnight Rooftop Fever Pitch (90% Bond)`,
+        description: `With the 30-day Star Audit reaching its climax, ${canonicalName}'s heart rate spikes whenever you're alone together. Share an unguarded midnight confession under the string lights of The Stray Anchor's rooftop terrace.`,
+        difficulty: "A",
+        objectives: [
+          {
+            text: `Invite ${canonicalName} up to the lantern-lit Rooftop Terrace after the evening rush`,
+            completed: false,
+          },
+          {
+            text: `Draw ${canonicalName} past her final defenses without letting her retreat behind her pride`,
+            completed: false,
+          },
+        ],
+        rewards: {
+          exp: 260,
+          gold: 650,
+          title: `${canonicalName.split(" ")[0]}'s Heart-Stealer`,
+        },
+      };
+    case 100:
+    default:
+      return {
+        id: `romance_${slug}_100`,
+        title: `${canonicalName}: Five-Star Sovereign & Driftwood Cove Fireworks (100% Bond)`,
+        description: `True Route Finale. Under the High Summer festival fireworks over Driftwood Cove, seal your permanent Article 10 promise with ${canonicalName} and receive her personal Keepsake.`,
+        difficulty: "S",
+        objectives: [
+          {
+            text: `Share the 5-Star Island Sovereign fireworks finale alone with ${canonicalName}`,
+            completed: false,
+          },
+          {
+            text: `Accept ${canonicalName}'s personal Keepsake (${keepsake?.name || `${canonicalName}'s Keepsake`})`,
+            completed: false,
+          },
+        ],
+        rewards: {
+          exp: 320,
+          gold: 1000,
+          items: [keepsake?.name || `${canonicalName}'s Keepsake`],
+          title: `Consort of ${canonicalName}`,
+        },
+      };
+  }
+}
 
 /**
  * Normalizes a list or map of keepsakes into an array of KeepsakeItem.
@@ -1254,13 +1626,44 @@ export function buildPortSolarisTurnDirective(params: {
   const bpmZone = getBpmZone(effectiveBpm);
   const jealousy = detectKeepsakeJealousy(equippedKeepsakes, activeSpeaker);
 
+  const speakerDossier =
+    PORT_SOLARIS_HEROINE_DOSSIERS[activeSpeaker] ||
+    Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
+      (d) => activeSpeaker && activeSpeaker.toLowerCase().includes(d.name.toLowerCase())
+    );
+
+  const daysLeft = boardingHouseState?.daysUntilAudit ?? 30;
+  const nextMilestone =
+    AUDIT_MILESTONES.find((m) => m.day <= daysLeft) || AUDIT_MILESTONES[AUDIT_MILESTONES.length - 1];
+
   const lines: string[] = [
     "--- PORT SOLARIS ROM-COM & ARTICLE 9 SHOWDOWN DIRECTIVE ---",
     `SETTING CONTEXT: Port Solaris — Sun-drenched coastal island of culinary rivalries, boarding house banters, fake-dating pacts, and Article 9 Showdowns. NO dark fantasy death, NO mortal bleeding, NO Eldritch void regressions.`,
+    `CANONICAL WORLD & ANTI-HALLUCINATION GUARD (DO NOT INVENT OR CONTRADICT):`,
+    `  * DEED & DEBT ORIGIN: The protagonist inherited "The Stray Anchor" (and his grandfather's brass espresso tamper) from his late Uncle Marco ('Skipper' Marco), who took out a 5,000 Solar Crown typhoon-restoration mortgage now held by Chairman Alistair Vane's Platinum Hospitality Conglomerate.`,
+    `  * ARCHITECTURE & UPSTAIRS FLOORPLAN: 1st Floor = 40-seat Cove Patio, Open-Flame Kitchen & Colette's Evening Bar; 2nd Floor = 6 Tenant Bedrooms (Room 201: Seraphina Vane, Room 202: Chloe 'Zero' Lin, Room 203: Kaede Tachibana, Room 204: Colette Moreau [secretly writes romance novel 'Velvet Tides' as 'Lady Cerise'], Room 205: Nadia Saint-Clair, Room 206: Zuri Delacroix) + 1 Shared Bathroom (whose vintage brass water heater drops pressure when the espresso steamer runs); 3rd Floor = The Proprietor's Private Captain's Loft (Room 301) opening onto the Rooftop Laundry & Herb Terrace.`,
+    `  * COMMUTER HEROINES (NON-BOARDERS): Mia Bellini lives 15ft across the cobblestone lane above her family bakery (Bellini Artisan Patisserie, founded by Nonna Bellini) and has a childhood spare key to your kitchen; Vivienne Laurent lives at Villa Laurent on Tier 5 (Platinum Cliffs) and sneaks down the Cliffside Funicular Tram under her Article 7 Clause 7A fake-fiancé pact; Pippa Reyes lives at the South-Shore Lifeguard Dorms (stores her surfboards under your deck); Roxy Vance lives above The Solaris Siren 35mm darkroom on Campus Terrace.`,
+    `  * CHARTER ARTICLES (ONLY ARTICLES 1–10 EXIST — NEVER INVENT OTHER ARTICLE NUMBERS): Article 1 (5 Coastal Tiers & 4 Factions), Article 2 (Deeds & Solar Crowns), Article 3 (Non-Violence & Scandal Heat 0–100%), Article 4 (Star Ledger 0★–5★ & Clause 4B Cultural Merit), Article 5 (Sunset Rambla Supply & South-Shore Stages), Article 6 (Clause 6A 30-Day Eviction Rule & Clause 6B On-Site Resident Auditor forcing Seraphina into Room 201), Article 7 (Clause 7A Fake-Fiancé Exemption & Clause 7B VIP Immunity), Article 8 (Clause 8A Work-for-Rent Shifts & Clause 8B Rooftop Quiet Hours after 11 PM), Article 9 (Clause 9A Public Turf Showdowns, Clause 9B Chloe's Anti-Usury Interest Slash, Clause 9C All-In Deed Wager), Article 10 (5★ Island Sovereign Immunity).`,
     `ACTIVE SPEAKER BPM & COMPOSURE STATE: ${activeSpeaker} is currently at ${effectiveBpm} BPM (${bpmZone.label} — Favor: ${speakerAffection}%).`,
     `BEHAVIOR DIRECTIVE: ${bpmZone.description}`,
     `ANTI-SYCOPHANCY & COMPOSURE RULE: Heroines are NOT easily dazzled, slack-jawed, or breathless over routine actions. At <50% Favor, ${activeSpeaker} maintains her pride, critical standards, and agency—she pushes back, critiques flaws, or tests the protagonist rather than fawning over him or melting into instant worship.`,
   ];
+
+  if (speakerDossier) {
+    const residencyText =
+      speakerDossier.isBoardingHouseTenant && speakerDossier.assignedRoomNumber
+        ? `Live-in Tenant in Upstairs Room 20${speakerDossier.assignedRoomNumber}`
+        : speakerDossier.name === "Mia Bellini"
+        ? "Next-Door Neighbor above Bellini Artisan Patisserie (holds spare kitchen key)"
+        : speakerDossier.name === "Vivienne Laurent"
+        ? "Villa Laurent (Platinum Cliffs) • Clause 7A Fake-Fiancé Commuter"
+        : speakerDossier.name === "Pippa Reyes"
+        ? "South-Shore Lifeguard Dorms • Café Booth #4 Regular"
+        : "Campus Terrace (The Solaris Siren Darkroom) • Barstool #7 Regular";
+    lines.push(
+      `ACTIVE SPEAKER CANON (${speakerDossier.name}): ${speakerDossier.epithet} | Residency: ${residencyText} | Preferred Café Role: ${speakerDossier.preferredShopRole} | Canonical Rival Boss: ${speakerDossier.rivalBossTieIn} | Dyad Passive: ${speakerDossier.dyadPassiveName} (${speakerDossier.dyadPassiveDescription}) | Core Memories: ${speakerDossier.unlockedCoreMemories.join(", ")}.`
+    );
+  }
 
   if (effectiveBpm >= 96 && ceiling >= 96) {
     lines.push(getShortCircuitDirective(activeSpeaker));
@@ -1280,7 +1683,7 @@ export function buildPortSolarisTurnDirective(params: {
 
   if (boardingHouseState) {
     lines.push(
-      `THE STRAY ANCHOR STATUS: ${boardingHouseState.starRating}★ Rating | Debt: ${boardingHouseState.outstandingDebt} Crowns | Days Until Audit: ${boardingHouseState.daysUntilAudit} | Scandal Heat: ${boardingHouseState.scandalHeat}%.`
+      `THE STRAY ANCHOR STATUS: ${boardingHouseState.starRating}★ Rating | Debt: ${boardingHouseState.outstandingDebt} / 5,000 Solar Crowns (Star Thresholds: 1★≤4,000, 2★≤3,000, 3★≤2,000, 4★≤1,000, 5★=0) | Days Until Audit: ${boardingHouseState.daysUntilAudit} (Next Tribunal: Day ${nextMilestone.day} "${nextMilestone.title}" by ${nextMilestone.inspector}, requires ${nextMilestone.requiredStar}★) | Scandal Heat: ${boardingHouseState.scandalHeat}%.`
     );
   }
 

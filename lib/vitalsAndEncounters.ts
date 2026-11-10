@@ -457,6 +457,48 @@ export function generateEnemyIntent(
       : 1.0;
 
   const cycle = turnNumber % 4;
+  const lowerName = (enemyName || "").toLowerCase();
+  const isPortSolarisRival =
+    /\b(vane|sterling|moretti|marcel|rex|tachibana|d'artagnan|auditor|sommelier|chef|captain|boardwalk|platinum|syndicate|showdown|seraphina|vivienne|mia|colette|pippa|kaede|roxy|chloe|nadia|zuri)\b/i.test(
+      lowerName
+    );
+
+  if (isPortSolarisRival) {
+    if (cycle === 2) {
+      const dmg = Math.round(baseAttackPower * 1.4 * rankMult);
+      return {
+        label: `Article 9 Showstopper Gambit`,
+        estimatedDamage: dmg,
+        type: "heavy",
+        counterStanceHint: "Counter with Unflappable Cool (-40% Composure Loss) or Teasing Counter",
+      };
+    }
+    if (cycle === 3) {
+      const dmg = Math.round(baseAttackPower * 1.25 * rankMult);
+      return {
+        label: `VIP Clause Injunction & Snob Critique`,
+        estimatedDamage: dmg,
+        type: "arcane",
+        counterStanceHint: "Counter with Flow-State Rhythm (35% Evade) or Velvet Provocation",
+      };
+    }
+    if (cycle === 0) {
+      const dmg = Math.round(baseAttackPower * 0.9 * rankMult);
+      return {
+        label: `Paparazzi Bait & Smug Provocation`,
+        estimatedDamage: dmg,
+        type: "debuff",
+        counterStanceHint: "Counter with Showstopper Finale (45% Crit) to turn the crowd against them",
+      };
+    }
+    const dmg = Math.round(baseAttackPower * rankMult);
+    return {
+      label: `High-Tempo Rush & Crowd Press`,
+      estimatedDamage: dmg,
+      type: "strike",
+      counterStanceHint: "Counter with High-Heat Rush (+30% Tempo) or Sun-Drenched Tempo",
+    };
+  }
 
   if (cycle === 2) {
     const dmg = Math.round(baseAttackPower * 1.4 * rankMult);

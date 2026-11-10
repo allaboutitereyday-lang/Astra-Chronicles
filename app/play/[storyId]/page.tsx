@@ -179,6 +179,9 @@ import {
   PortSolarisOrigin,
   FlairConduit,
   IslandFaction,
+  BoardingHouseState,
+  KeepsakeItem,
+  ShopRole,
 } from "@/types/port_solaris";
 import {
   resolveSpotlightCompanion,
@@ -187,6 +190,12 @@ import {
   getStageHeroineAura,
   getAffectionBpmCeiling,
   getBpmZone,
+  createInitialBoardingHouseState,
+  createInitialFactionStandings,
+  PORT_SOLARIS_CANONICAL_KEEPSAKES,
+  buildPortSolarisRomanceMilestoneQuest,
+  paydownDebt,
+  calculateDailyCafeRevenue,
 } from "@/lib/portSolarisEngine";
 
 // Dynamic code splitting for heavy interactive canvas graph
@@ -222,6 +231,7 @@ export interface Companion {
   highCompatibility?: string[];
   baseAffection?: number;
   affection: number;
+  heartRateBpm?: number;
   affectionLevel?: number;
   romancePath?: string;
   expressionKey: string;
@@ -281,6 +291,9 @@ interface PlayerProfile {
   patronWing?: PatronWing | IslandFaction;
   matriculationRank?: number;
   semesterDebtQuota?: number;
+  boardingHouse?: BoardingHouseState;
+  factionStanding?: Record<IslandFaction, number>;
+  equippedKeepsakes?: KeepsakeItem[];
 }
 
 interface RoleplayState {
@@ -1368,6 +1381,19 @@ export default function VisualNovelGame() {
                 gold: defOrigin.startingCrowns,
                 abilities: abNames,
                 abilityDetails: abDetails,
+                ...(isSolaris
+                  ? {
+                      boardingHouse:
+                        prev.boardingHouse ||
+                        createInitialBoardingHouseState({
+                          outstandingDebt: (defOrigin as PortSolarisOriginPreset).outstandingDebt ?? 5000,
+                          daysUntilAudit: (defOrigin as PortSolarisOriginPreset).daysUntilAudit ?? 30,
+                          starRating: (defOrigin as PortSolarisOriginPreset).startingStarRating ?? 0,
+                        }),
+                      factionStanding: prev.factionStanding || createInitialFactionStandings(),
+                      equippedKeepsakes: prev.equippedKeepsakes || [],
+                    }
+                  : {}),
                 stats: {
                   ...prev.stats,
                   ...(story.rpgRules?.baseStats || {}),
@@ -1858,26 +1884,29 @@ export default function VisualNovelGame() {
           "Calcification / Resonance Strain Gauge (0-49% Stable, 50-85% The Brink +30% DMG, 100% Calcification Lock — purge via skin-to-skin Soul-Grounding).",
       });
     } else if (currentStory?.id === "port-solaris") {
-      const starRating = Math.min(5, Math.max(0, Math.floor((player.level - 1) / 2)));
+      const bh = player.boardingHouse || createInitialBoardingHouseState();
+      const starRating = bh.starRating ?? 0;
+      const daysLeft = bh.daysUntilAudit ?? 30;
+      const debtLeft = bh.outstandingDebt ?? 5000;
       const starLabel =
         starRating === 0
-          ? "0★ Probation (30d Audit)"
+          ? `0★ Probation (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
           : starRating === 1
-          ? "1★ Boardwalk Newcomer"
+          ? `1★ Provisional (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
           : starRating === 2
-          ? "2★ Local Favorite"
+          ? `2★ Local Favorite (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
           : starRating === 3
-          ? "3★ Island Hotspot"
+          ? `3★ Island Hotspot (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
           : starRating === 4
-          ? "4★ Premier Lounge"
-          : "5★ Island Sovereign";
+          ? `4★ Premier Lounge (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
+          : "5★ Island Sovereign (Deed Liberated!)";
       pills.push({
         label: starLabel,
         color:
           starRating === 0
             ? "border-rose-500/50 bg-rose-950/60 text-rose-300"
             : "border-amber-500/50 bg-amber-950/60 text-amber-300",
-        title: `Solaris Star Ledger Rating for The Stray Anchor (Weekly Rent Quota: ${player.semesterDebtQuota || 1200} Solar Crowns) — Reach 1★+ before the 30-day audit to stop the Vane-Valorian Marina demolition.`,
+        title: `Solaris Star Ledger Rating for The Stray Anchor — Remaining Lease Debt: ${debtLeft.toLocaleString()} Solar Crowns | Audit Countdown: ${daysLeft} Days | Daily Shift Revenue: +${bh.dailyRevenue || 165} Crowns.`,
       });
       if (player.conduit || player.patronWing) {
         const wingPretty = (player.patronWing || "BOARDWALK_GUILD")
@@ -1891,23 +1920,41 @@ export default function VisualNovelGame() {
           title: `Active Showdown Flair (${conduitPretty}) & Island Faction Alignment (${wingPretty}).`,
         });
       }
-      const bpmPct = Math.min(100, Math.max(15, Math.round((1 - mpRatio) * 85) + 15));
+      const activeComp =
+        party.find(
+          (c) =>
+            gameState.speaker &&
+            c.name.toLowerCase() === gameState.speaker.toLowerCase()
+        ) || party.find((c) => c.isPresent);
+      const activeDossier = activeComp ? PORT_SOLARIS_HEROINE_DOSSIERS[activeComp.name] : undefined;
+      const realBpm = Math.min(
+        100,
+        Math.max(40, Math.round(activeComp?.heartRateBpm ?? activeDossier?.heartRateBpm ?? 55))
+      );
+      const bpmZoneInfo = getBpmZone(realBpm);
+      const isBlushOrHigher = realBpm >= 83;
+      const isGuarded = realBpm >= 69 && realBpm < 83;
       pills.push({
         label:
-          bpmPct >= 50
-            ? `💓 Blush Zone (${bpmPct}% BPM)`
-            : `😎 Composed (${bpmPct}% BPM)`,
+          realBpm >= 96
+            ? `💥 Short-Circuit (${realBpm} BPM)`
+            : isBlushOrHigher
+            ? `💓 Blush Zone (${realBpm} BPM)`
+            : isGuarded
+            ? `😳 Guarded (${realBpm} BPM)`
+            : `😎 Composed (${realBpm} BPM)`,
         color:
-          bpmPct >= 50
+          isBlushOrHigher
             ? "border-rose-400/60 bg-rose-950/80 text-rose-200 animate-pulse"
+            : isGuarded
+            ? "border-amber-400/50 bg-amber-950/60 text-amber-200"
             : "border-emerald-500/40 bg-emerald-950/50 text-emerald-300",
-        title:
-          "Composure / Heart-Rate Gauge (0-49% Composed, 50-85% The Blush Zone -25% Social Def & Bold Romance Choices, 100% Short-Circuit).",
+        title: `${activeComp?.name || "Partner"} Heart-Rate Gauge: ${realBpm} BPM (${bpmZoneInfo.label}) — 40-68 Composed, 69-82 Guarded Deflection, 83-95 The Blush Zone, 96-100 Short-Circuit.`,
       });
     }
 
     return pills;
-  }, [player.gear, player.visualDescription, player.stats.hp, player.stats.maxHp, player.stats.mp, player.stats.maxMp, player.race, player.racialTraits, player.level, player.matriculationRank, player.semesterDebtQuota, player.conduit, player.patronWing, currentStory?.id]);
+  }, [player.gear, player.visualDescription, player.stats.hp, player.stats.maxHp, player.stats.mp, player.stats.maxMp, player.race, player.racialTraits, player.level, player.matriculationRank, player.semesterDebtQuota, player.conduit, player.patronWing, player.boardingHouse, party, gameState.speaker, currentStory?.id]);
 
   // Helper to determine active threshold cap for any companion
   const getCompanionCap = (compName?: string | null): number => {
@@ -2807,6 +2854,7 @@ export default function VisualNovelGame() {
     soundEffects.playClick();
     setSelectedWorldOriginPreset(preset.id);
     setPlayer((prev) => {
+      const isSolarisPreset = "outstandingDebt" in preset;
       const next: PlayerProfile = {
         ...prev,
         worldOrigin: preset.name,
@@ -2815,6 +2863,15 @@ export default function VisualNovelGame() {
         matriculationRank: preset.startingRank,
         semesterDebtQuota: preset.semesterDebtQuota,
         gold: preset.startingCrowns,
+        ...(isSolarisPreset
+          ? {
+              boardingHouse: createInitialBoardingHouseState({
+                outstandingDebt: (preset as PortSolarisOriginPreset).outstandingDebt,
+                daysUntilAudit: (preset as PortSolarisOriginPreset).daysUntilAudit,
+                starRating: (preset as PortSolarisOriginPreset).startingStarRating,
+              }),
+            }
+          : {}),
       };
       playerRef.current = next;
       return next;
@@ -2952,7 +3009,44 @@ export default function VisualNovelGame() {
         [item.name]: item.imageUrl || prev.gearImages?.[item.name] || "",
         ...(item.id ? { [item.id]: item.imageUrl || "" } : {}),
       };
-      const nextPlayer = { ...prev, gear: nextGear, gearImages: nextGearImages };
+
+      // Sync Port Solaris equippedKeepsakes for Caught Red-Handed jealousy checks
+      let nextEquippedKeepsakes = prev.equippedKeepsakes || [];
+      if (slotName === "relic") {
+        const lowerName = item.name.toLowerCase();
+        const canonicalMatch = Object.values(PORT_SOLARIS_CANONICAL_KEEPSAKES).find(
+          (k) =>
+            k.name.toLowerCase() === lowerName ||
+            lowerName.includes(k.name.toLowerCase()) ||
+            (k.giftedByHeroineId && lowerName.includes(k.giftedByHeroineId.split(" ")[0].toLowerCase()))
+        );
+        if (canonicalMatch) {
+          nextEquippedKeepsakes = [canonicalMatch];
+        } else {
+          // Check if item mentions any Port Solaris heroine
+          const heroineMatch = Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find((d) =>
+            lowerName.includes(d.name.split(" ")[0].toLowerCase())
+          );
+          if (heroineMatch) {
+            nextEquippedKeepsakes = [
+              {
+                id: item.id || `keepsake_${heroineMatch.id}`,
+                name: item.name,
+                slot: "POCKET_CHARM",
+                giftedByHeroineId: heroineMatch.name,
+                statModifiers: { maxComposure: 15, panachePower: 15 },
+              },
+            ];
+          }
+        }
+      }
+
+      const nextPlayer = {
+        ...prev,
+        gear: nextGear,
+        gearImages: nextGearImages,
+        equippedKeepsakes: nextEquippedKeepsakes,
+      };
       playerRef.current = nextPlayer;
       performAutoSave({ player: nextPlayer });
       return nextPlayer;
@@ -5096,20 +5190,40 @@ export default function VisualNovelGame() {
 
       setParty(nextPartyState);
 
-      if (portUpdates && portUpdates.dailyRevenueDelta > 0) {
+      if (portUpdates) {
         setPlayer((prev) => {
-          const currentHouse = (prev as any).boardingHouse;
-          if (!currentHouse) return prev;
-          const updatedDebt = Math.max(0, currentHouse.outstandingDebt - portUpdates.dailyRevenueDelta);
-          const nextHouse = {
-            ...currentHouse,
-            dailyRevenue: portUpdates.dailyRevenueDelta,
-            outstandingDebt: updatedDebt,
+          const nextHouse =
+            portUpdates.boardingHouse ||
+            prev.boardingHouse ||
+            createInitialBoardingHouseState();
+          const revenueGoldBonus = Math.max(0, Math.round((portUpdates.dailyRevenueDelta || 0) * 0.25));
+          const updated: PlayerProfile = {
+            ...prev,
+            gold: (prev.gold || 0) + revenueGoldBonus,
+            boardingHouse: nextHouse,
           };
-          const updated = { ...prev, boardingHouse: nextHouse };
           playerRef.current = updated;
           return updated;
         });
+
+        if (portUpdates.starUpgrade && portUpdates.boardingHouse) {
+          pushNotification({
+            id: `solaris_star_${Date.now()}`,
+            type: "quest_completed",
+            title: `SOLARIS STAR LEDGER UPGRADE (${portUpdates.boardingHouse.starRating}★)`,
+            subtitle: `The Stray Anchor has climbed to ${portUpdates.boardingHouse.starRating}★ on the Solaris Star Ledger!`,
+            difficulty: "A",
+          });
+        }
+        if (portUpdates.inspectionAlert) {
+          pushNotification({
+            id: `solaris_audit_${Date.now()}`,
+            type: "quest_assigned",
+            title: "ISLAND CHARTER AUDIT NOTICE",
+            subtitle: portUpdates.inspectionAlert,
+            difficulty: "B",
+          });
+        }
       }
 
       // Finalize user message and clear pending state
@@ -6006,16 +6120,53 @@ export default function VisualNovelGame() {
                 [canonicalName]: [...(prev[canonicalName] || []), threshold],
               }));
 
-              const questDifficulty = threshold >= 100 ? "Calamity" : threshold >= 75 ? "S" : threshold >= 50 ? "A" : "B";
-              const questDesc = `${canonicalName} has reached the ${threshold}% emotional barrier! Her favor is locked at ${threshold}% until this crisis is resolved. Complete this scenario to shatter her defenses and synthesize a bespoke CG illustration.`;
+              const isSolarisStory = currentStory.id === "port-solaris";
+              const solarisMilestoneQuest = isSolarisStory
+                ? buildPortSolarisRomanceMilestoneQuest(
+                    canonicalName,
+                    threshold as 25 | 50 | 75 | 90 | 100
+                  )
+                : null;
+              const questDifficulty = solarisMilestoneQuest
+                ? solarisMilestoneQuest.difficulty
+                : threshold >= 100
+                ? "S"
+                : threshold >= 75
+                ? "A"
+                : threshold >= 50
+                ? "B"
+                : "C";
+              const finalQuestTitle = solarisMilestoneQuest
+                ? `[HOUSEMATE QUEST] ${solarisMilestoneQuest.title}`
+                : questTitle;
+              const questDesc = solarisMilestoneQuest
+                ? solarisMilestoneQuest.description
+                : `${canonicalName} has reached the ${threshold}% emotional barrier! Her favor is locked at ${threshold}% until this scenario is resolved. Complete this milestone to deepen your bond and unlock a bespoke CG illustration.`;
+              const questObjectives = solarisMilestoneQuest
+                ? solarisMilestoneQuest.objectives
+                : [
+                    { text: `Share a private one-on-one moment with ${canonicalName}`, completed: false },
+                    { text: `Overcome ${canonicalName}'s guarded defenses at ${threshold}% Favor`, completed: false },
+                  ];
+              const questRewards = solarisMilestoneQuest
+                ? solarisMilestoneQuest.rewards
+                : {
+                    exp: threshold * 3,
+                    gold: threshold * 6,
+                    items: threshold >= 100 ? [`${canonicalName}'s Keepsake`] : undefined,
+                  };
 
               setSystemState((prevSys) => {
                 const existsInSys =
                   prevSys.activeQuests.some(
-                    (q) => q.id.toLowerCase() === milestoneId || q.title.toLowerCase() === questTitle.toLowerCase()
+                    (q) =>
+                      q.id.toLowerCase() === milestoneId ||
+                      q.title.toLowerCase() === finalQuestTitle.toLowerCase()
                   ) ||
                   prevSys.completedQuests.some(
-                    (q) => q.id.toLowerCase() === milestoneId || q.title.toLowerCase() === questTitle.toLowerCase()
+                    (q) =>
+                      q.id.toLowerCase() === milestoneId ||
+                      q.title.toLowerCase() === finalQuestTitle.toLowerCase()
                   );
                 if (existsInSys) return prevSys;
 
@@ -6024,21 +6175,18 @@ export default function VisualNovelGame() {
                   activeQuests: [
                     {
                       id: milestoneId,
-                      title: questTitle,
+                      title: finalQuestTitle,
                       description: questDesc,
                       type: "scenario",
                       difficulty: questDifficulty as any,
-                      objectives: [
-                        { text: `Complete private audience with ${canonicalName}`, completed: false },
-                        { text: `Overcome emotional vulnerability or planar crisis with ${canonicalName}`, completed: false },
-                      ],
-                      rewards: { exp: threshold * 5, gold: threshold * 10, items: [`${canonicalName}'s Keepsake`] },
+                      objectives: questObjectives,
+                      rewards: questRewards,
                       status: "active",
                     },
                     ...prevSys.activeQuests,
                   ],
                   systemDirectives: [
-                    `[SYSTEM: Companion Arc Locked - '${questTitle}' (Favor Capped at ${threshold}%)]`,
+                    `[SYSTEM: Companion Arc Locked - '${finalQuestTitle}' (Favor Capped at ${threshold}%)]`,
                     ...prevSys.systemDirectives,
                   ],
                 };
@@ -11222,6 +11370,66 @@ export default function VisualNovelGame() {
                 : "Companions traveling alongside you across Astra:"}
             </p>
 
+            {currentStory.id === "port-solaris" && (() => {
+              const bh = player.boardingHouse || createInitialBoardingHouseState();
+              const canPayDebt = (player.gold || 0) >= 250 && (bh.outstandingDebt || 0) > 0;
+              return (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-950/35 via-zinc-900/90 to-zinc-950 border border-amber-500/35 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-mono font-bold text-amber-300 uppercase tracking-wider">
+                      ⚓ The Stray Anchor ({bh.starRating}★ Ledger)
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-200 font-bold">
+                      {bh.daysUntilAudit}d Until Audit
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                    <div className="p-2 rounded-xl bg-black/50 border border-white/10">
+                      <span className="text-[9px] text-zinc-400 block">Lease Debt</span>
+                      <span className="text-xs font-bold text-rose-300">
+                        {(bh.outstandingDebt ?? 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/50 border border-white/10">
+                      <span className="text-[9px] text-zinc-400 block">Daily Shift</span>
+                      <span className="text-xs font-bold text-emerald-300">
+                        +{bh.dailyRevenue ?? 165}/turn
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/50 border border-white/10">
+                      <span className="text-[9px] text-zinc-400 block">Scandal Heat</span>
+                      <span className="text-xs font-bold text-amber-300">
+                        {bh.scandalHeat ?? 15}%
+                      </span>
+                    </div>
+                  </div>
+                  {canPayDebt && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playEquipChime();
+                        setPlayer((prev) => {
+                          const currentHouse = prev.boardingHouse || createInitialBoardingHouseState();
+                          const paid = paydownDebt(currentHouse, 250);
+                          const nextPlayer: PlayerProfile = {
+                            ...prev,
+                            gold: Math.max(0, (prev.gold || 0) - paid.effectivePayment),
+                            boardingHouse: paid.newState,
+                          };
+                          playerRef.current = nextPlayer;
+                          performAutoSave({ player: nextPlayer });
+                          return nextPlayer;
+                        });
+                      }}
+                      className="w-full py-1.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/50 text-amber-200 text-[11px] font-mono font-bold transition-all cursor-pointer"
+                    >
+                      Pay 250 Solar Crowns Toward Lease Debt (Have: {player.gold || 0})
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="space-y-3">
               {party.map((comp) => {
                 const sprite = getSpriteSrc(comp.name, comp.expressionKey);
@@ -11234,9 +11442,12 @@ export default function VisualNovelGame() {
                     ? SOVEREIGN_HEROINE_DOSSIERS[comp.name]
                     : undefined;
                 const liveBpm = solarisMeta
-                  ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (comp.affection - 20) * 0.45))
+                  ? Math.min(100, Math.max(40, Math.round((comp as any).heartRateBpm ?? solarisMeta.heartRateBpm)))
                   : undefined;
-                const isBlushZone = liveBpm !== undefined && liveBpm >= 50 && liveBpm <= 85;
+                const isBlushZone = liveBpm !== undefined && liveBpm >= 83;
+                const isAssignedShift =
+                  solarisMeta &&
+                  player.boardingHouse?.shopAssignments?.[solarisMeta.preferredShopRole] === comp.name;
 
                 return (
                   <div
@@ -11289,9 +11500,46 @@ export default function VisualNovelGame() {
                               ? `Room 20${solarisMeta.assignedRoomNumber || 1} Tenant`
                               : "Island VIP"}
                           </span>
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-200">
-                            Role: {solarisMeta.preferredShopRole.replace(/_/g, " ")}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              soundEffects.playClick();
+                              setPlayer((prev) => {
+                                const currentHouse = prev.boardingHouse || createInitialBoardingHouseState();
+                                const nextAssignments = {
+                                  ...(currentHouse.shopAssignments || {}),
+                                  [solarisMeta.preferredShopRole]: comp.name,
+                                };
+                                const tempHouse: BoardingHouseState = {
+                                  ...currentHouse,
+                                  shopAssignments: nextAssignments,
+                                };
+                                const rev = calculateDailyCafeRevenue(tempHouse, party as any, nextAssignments);
+                                const nextHouse: BoardingHouseState = {
+                                  ...tempHouse,
+                                  dailyRevenue: rev.revenue,
+                                };
+                                const nextPlayer: PlayerProfile = {
+                                  ...prev,
+                                  boardingHouse: nextHouse,
+                                };
+                                playerRef.current = nextPlayer;
+                                performAutoSave({ player: nextPlayer });
+                                return nextPlayer;
+                              });
+                            }}
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
+                              isAssignedShift
+                                ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-200 font-bold"
+                                : "bg-sky-500/15 hover:bg-sky-500/25 border-sky-500/30 text-sky-200"
+                            }`}
+                            title="Click to assign this heroine to her preferred Café Shift under Article 8"
+                          >
+                            {isAssignedShift
+                              ? `✓ Shift: ${solarisMeta.preferredShopRole.replace(/_/g, " ")}`
+                              : `+ Assign: ${solarisMeta.preferredShopRole.replace(/_/g, " ")}`}
+                          </button>
                           {liveBpm !== undefined && (
                             <span
                               className={`text-[9px] font-mono px-1.5 py-0.5 rounded border font-bold ${

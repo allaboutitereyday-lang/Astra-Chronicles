@@ -847,6 +847,278 @@ export const CLASS_ARSENALS: Record<string, ClassArsenal> = {
       },
     },
   },
+
+  culinary_maestro: {
+    classKey: "culinary_maestro",
+    className: "Culinary & Mixology Maestro",
+    classTagline: "Boardwalk Guild • High-Heat Wok Rush & Flair Bartending",
+    primaryStat: "STR",
+    accentColor: "text-amber-400",
+    badgeBg: "bg-amber-950/40",
+    badgeBorder: "border-amber-500/40",
+    actions: {
+      strike: {
+        id: "wok_fire_rush",
+        name: "Wok-Fire Rush & Knife-Work",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Blinding Damascus knife-work and high-heat flambé sear that overwhelms rival palates and builds crowd Hype.",
+        effectLabel: "0 Hype • STR/DEX Tempo • +4% Composure",
+        iconType: "flame",
+        scalingStat: "str",
+        baseDamage: 30,
+        coherenceDelta: 4,
+        badgeText: "Physical Tempo",
+      },
+      burst: {
+        id: "five_star_house_special",
+        name: "5-Star House Special: The Stray Anchor",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 24,
+        description: "Plates an unforgettable signature dish that shatters rival Composure and sends the whole boardwalk into a standing ovation.",
+        effectLabel: "24 Hype • 68 Showdown Impact",
+        iconType: "flame",
+        scalingStat: "hybrid",
+        baseDamage: 68,
+        badgeText: "Crowd-Pleaser",
+      },
+      synergy: {
+        id: "midnight_comfort_pairing",
+        name: "Sous-Chef & Sommelier Pairing",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: "Coordinates an artisanal pastry or cocktail pairing with your partner, pressuring the judges and restoring your Composure.",
+        effectLabel: "18 Hype • 36 Impact + 28 Composure",
+        iconType: "sparkles",
+        scalingStat: "hybrid",
+        baseDamage: 36,
+        baseHeal: 28,
+        coherenceDelta: 5,
+        badgeText: "House Pairing",
+      },
+      defense: {
+        id: "mise_en_place_poise",
+        name: "Immaculate Mise-en-Place",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Resets your station with calm chef's focus, shrugging off critic nitpicks and restoring Composure.",
+        effectLabel: "0 Hype • Restore +38 Composure • -70% Pressure",
+        iconType: "shield",
+        scalingStat: "dex",
+        baseHeal: 38,
+        coherenceDelta: 6,
+        badgeText: "Chef's Poise",
+      },
+    },
+  },
+
+  breakers_striker: {
+    classKey: "breakers_striker",
+    className: "Breakers & Dojo Striker",
+    classTagline: "Breakers Union • South-Shore Spike & Shinai Footwork",
+    primaryStat: "DEX",
+    accentColor: "text-sky-400",
+    badgeBg: "bg-sky-950/40",
+    badgeBorder: "border-sky-500/40",
+    actions: {
+      strike: {
+        id: "pier_parry_strike",
+        name: "Article 9 Pier Parry & Spike",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Explosive sand-court footwork and bamboo shinai redirection that turns a rival's momentum against them.",
+        effectLabel: "0 Hype • STR/DEX Tempo • +3% Composure",
+        iconType: "sword",
+        scalingStat: "dex",
+        baseDamage: 31,
+        coherenceDelta: 3,
+        badgeText: "Dojo Tempo",
+      },
+      burst: {
+        id: "south_shore_meteor_spike",
+        name: "South-Shore Championship Finisher",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 24,
+        description: "Leaps high into the golden-hour sun for an unstoppable tournament-winning spike that leaves rivals breathless.",
+        effectLabel: "24 Hype • 70 Showdown Impact",
+        iconType: "zap",
+        scalingStat: "str",
+        baseDamage: 70,
+        badgeText: "MVP Finisher",
+      },
+      synergy: {
+        id: "tandem_lifeguard_rally",
+        name: "South-Beach Tandem Rally",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: "Sets up a synchronized court or dojo combo with your partner, spiking crowd Hype and steadying your pulse.",
+        effectLabel: "18 Hype • 37 Impact + 26 Composure",
+        iconType: "sparkles",
+        scalingStat: "dex",
+        baseDamage: 37,
+        baseHeal: 26,
+        coherenceDelta: 5,
+        badgeText: "Breakers Duo",
+      },
+      defense: {
+        id: "sea_breeze_kata_guard",
+        name: "Sea-Breeze Kata Stance",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Centers your breathing to the rhythm of the surf, deflecting pressure and cooling your heart rate.",
+        effectLabel: "0 Hype • Restore +40 Composure • Flow Parry",
+        iconType: "shield",
+        scalingStat: "str",
+        baseHeal: 40,
+        coherenceDelta: 6,
+        badgeText: "Dojo Guard",
+      },
+    },
+  },
+
+  vip_raconteur: {
+    classKey: "vip_raconteur",
+    className: "VIP Host & Charter Raconteur",
+    classTagline: "Platinum Board • Silver-Tongued Panache & Clause Loopholes",
+    primaryStat: "INT",
+    accentColor: "text-rose-400",
+    badgeBg: "bg-rose-950/40",
+    badgeBorder: "border-rose-500/40",
+    actions: {
+      strike: {
+        id: "charter_clause_rebuttal",
+        name: "Charter Clause Counter-Roast",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Dismantles a rival's smug posturing by citing Island Charter Articles 6 through 9 with effortless charm.",
+        effectLabel: "0 Cool • INT Panache • +4% Composure",
+        iconType: "wand",
+        scalingStat: "int",
+        baseDamage: 29,
+        coherenceDelta: 4,
+        badgeText: "Social Panache",
+      },
+      burst: {
+        id: "velvet_rope_reversal",
+        name: "Velvet-Rope Reversal: All-In Wager",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 24,
+        description: "Flips the entire VIP tribunal table—winning over the judges and sending your rival straight into a 100% BPM meltdown.",
+        effectLabel: "24 Cool • 67 Panache Impact",
+        iconType: "sparkles",
+        scalingStat: "int",
+        baseDamage: 67,
+        badgeText: "Table-Turn",
+      },
+      synergy: {
+        id: "platinum_escort_toast",
+        name: "Clause 7 VIP Champagne Toast",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: "Shares a poised, magnetic toast with your partner that dazzles the gala crowd and restores Composure.",
+        effectLabel: "18 Cool • 35 Impact + 30 Composure",
+        iconType: "sparkles",
+        scalingStat: "int",
+        baseDamage: 35,
+        baseHeal: 30,
+        coherenceDelta: 6,
+        badgeText: "VIP Escort",
+      },
+      defense: {
+        id: "unflappable_host_poise",
+        name: "Unflappable Proprietor Poise",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Adjusts your cuffs with a warm, unbothered smile, neutralizing high-society intimidation.",
+        effectLabel: "0 Cool • Restore +40 Composure • +6% Cool",
+        iconType: "shield",
+        scalingStat: "int",
+        baseHeal: 40,
+        coherenceDelta: 6,
+        badgeText: "Velvet Cool",
+      },
+    },
+  },
+
+  nightlife_fixer: {
+    classKey: "nightlife_fixer",
+    className: "Night-Market Fixer & Mixologist",
+    classTagline: "Driftwood Syndicate • Frame-Perfect Flair & Tabloid Spin",
+    primaryStat: "HYBRID",
+    accentColor: "text-purple-400",
+    badgeBg: "bg-purple-950/40",
+    badgeBorder: "border-purple-500/40",
+    actions: {
+      strike: {
+        id: "sleight_of_hand_pour",
+        name: "Sleight-of-Hand Flair & Snap",
+        type: "strike",
+        category: "Basic Attack",
+        costMp: 0,
+        description: "Combines slick bartender dexterity with razor-sharp Old Pier wit to catch rivals off-guard.",
+        effectLabel: "0 Cool • DEX/INT Hybrid • +3% Composure",
+        iconType: "dagger",
+        scalingStat: "hybrid",
+        baseDamage: 30,
+        coherenceDelta: 3,
+        badgeText: "Hybrid Flair",
+      },
+      burst: {
+        id: "front_page_bombshell",
+        name: "Solaris Siren Front-Page Bombshell",
+        type: "burst",
+        category: "Class Burst",
+        costMp: 24,
+        description: "Drops an undeniable forensic ledger or candid scoop mid-Showdown, shattering the opponent's public façade.",
+        effectLabel: "24 Cool • 68 Hybrid Impact",
+        iconType: "target",
+        scalingStat: "hybrid",
+        baseDamage: 68,
+        badgeText: "Scoop Finisher",
+      },
+      synergy: {
+        id: "after_hours_syndicate_spin",
+        name: "Old Pier Player-Two Combo",
+        type: "synergy",
+        category: "Tactical Synergy",
+        costMp: 18,
+        description: "Executes a frame-perfect tag-team maneuver with your partner, converting Scandal Heat into pure momentum.",
+        effectLabel: "18 Cool • 36 Impact + 28 Composure",
+        iconType: "sparkles",
+        scalingStat: "hybrid",
+        baseDamage: 36,
+        baseHeal: 28,
+        coherenceDelta: 5,
+        badgeText: "Syndicate Duo",
+      },
+      defense: {
+        id: "neon_arcade_feint",
+        name: "Frame-Perfect Audit Parry",
+        type: "defense",
+        category: "Defensive Stance",
+        costMp: 0,
+        description: "Sidesteps the rival's pressure on the exact frame and counters with an Article 9 Clause 9B technicality.",
+        effectLabel: "0 Cool • Restore +38 Composure • Audit Cancel",
+        iconType: "shield",
+        scalingStat: "dex",
+        baseHeal: 38,
+        coherenceDelta: 6,
+        badgeText: "Frame Parry",
+      },
+    },
+  },
 };
 
 /**
@@ -935,6 +1207,48 @@ export function getClassArsenal(roleString?: string): ClassArsenal {
   const r = (roleString || "").toLowerCase().trim();
 
   if (!r) return CLASS_ARSENALS.default;
+
+  // Port Solaris Coastal Specialties
+  if (
+    r.includes("culinary") ||
+    r.includes("maestro") ||
+    r.includes("chef") ||
+    r.includes("baker") ||
+    r.includes("patissier") ||
+    r.includes("boardwalk guild")
+  ) {
+    return CLASS_ARSENALS.culinary_maestro;
+  }
+  if (
+    r.includes("breakers") ||
+    r.includes("dojo") ||
+    r.includes("surf") ||
+    r.includes("volleyball") ||
+    r.includes("shinai") ||
+    r.includes("lifeguard")
+  ) {
+    return CLASS_ARSENALS.breakers_striker;
+  }
+  if (
+    r.includes("raconteur") ||
+    r.includes("vip host") ||
+    r.includes("charter") ||
+    r.includes("sommelier") ||
+    r.includes("platinum board") ||
+    r.includes("proprietor")
+  ) {
+    return CLASS_ARSENALS.vip_raconteur;
+  }
+  if (
+    r.includes("fixer") ||
+    r.includes("night-market") ||
+    r.includes("nightlife") ||
+    r.includes("mixologist") ||
+    r.includes("arcade") ||
+    r.includes("driftwood syndicate")
+  ) {
+    return CLASS_ARSENALS.nightlife_fixer;
+  }
 
   // 1. Reaver / Blood Knight / Berserker / Slayer
   if (r.includes("reaver") || r.includes("blood") || r.includes("slayer") || r.includes("sanguine") || r.includes("carnage") || r.includes("gore") || r.includes("rend")) {

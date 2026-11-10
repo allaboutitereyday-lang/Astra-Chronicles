@@ -30,7 +30,12 @@ import {
   PORT_SOLARIS_ORIGIN_PRESETS,
   PORT_SOLARIS_CONDUIT_PRESETS,
   PORT_SOLARIS_HEROINE_DOSSIERS,
+  PORT_SOLARIS_CHARTER_ARTICLES,
+  PORT_SOLARIS_UNCLE_AND_DEED_LORE,
+  PORT_SOLARIS_FLOORPLAN_CANON,
+  PORT_SOLARIS_SIGNATURE_MENU,
 } from "@/types/port_solaris";
+import { AUDIT_MILESTONES, DEBT_STAR_THRESHOLDS } from "@/lib/portSolarisEngine";
 import { sanitizeImageUrl, DEFAULT_AVATAR, DEFAULT_BG } from "@/lib/imageUtils";
 import { soundEffects } from "@/lib/audioEngine";
 
@@ -225,7 +230,7 @@ const SOVEREIGN_ANTAGONISTS = [
       "Ysolde Kaelen's cold-blooded academic rival who seeks to expose her crystal calcification so he can claim her research and her seat in the Sovereign Circle.",
   },
   {
-    term: "Aldric Drakon (Rank #1)",
+    name: "Aldric Drakon (Rank #1)",
     role: "The First Sword",
     faction: "The Iron Chancellery",
     threat: "Sovereign #1",
@@ -293,7 +298,85 @@ const PORT_SOLARIS_GLOSSARY: GlossaryEntry[] = [
     term: "Solar Crowns & Weekly Rent Ledger",
     category: "Politics & Economy",
     summary:
-      "Island currency earned from café shifts, boarding-house rent, and Article 9 Showdown pots. Used to upgrade The Stray Anchor's kitchen, patio, and upstairs bedrooms.",
+      "Island currency (Article 2, Clause 2B) earned from café shifts, boarding-house rent, and Article 9 Showdown pots. Used to pay down your 5,000 Crown lease debt and upgrade The Stray Anchor.",
+  },
+  {
+    term: "Articles 1–3 (Coastal Tiers, Deeds & Non-Violence)",
+    category: "World & Lore",
+    summary:
+      "Article 1 establishes the 5 Coastal Tiers and 4 Factions; Article 2 governs inherited waterfront deeds and Solar Crown tender; Article 3 bans lethal violence and protects press freedom (Scandal Heat).",
+  },
+  {
+    term: "Articles 4 & 5 (Star Ledger, Clause 4B & Artisanal Supply)",
+    category: "Politics & Economy",
+    summary:
+      "Article 4 grades businesses 0★–5★ and grants +1★ Cultural Merit credit under Clause 4B (Nadia Saint-Clair's appraisal); Article 5 guarantees independent cafés access to Sunset Rambla suppliers and South Beach festival booths.",
+  },
+  {
+    term: "Article 6 & Clause 6B (30-Day Audit & Resident Auditor)",
+    category: "Politics & Economy",
+    summary:
+      "Clause 6A enforces the 30-Day Eviction Rule for 0★ properties—while Clause 6B stipulates that any auditor demanding daily probation oversight must reside on-site, forcing Seraphina Vane into Room 201.",
+  },
+  {
+    term: "Article 7 & Clause 7A ('Clause 7' Fake-Fiancé Exemption)",
+    category: "Politics & Economy",
+    summary:
+      "Platinum Cliffs family charter law: under Clause 7A (colloquially 'Clause 7'), an heiress in a registered courtship pact with an independent proprietor receives a 90-day moratorium from arranged corporate marriages (Vivienne Laurent's pact).",
+  },
+  {
+    term: "Article 8 (Boarding House Co-Tenancy & Quiet Hours)",
+    category: "World & Lore",
+    summary:
+      "Clause 8A commutes upstairs room rent (Rooms 201–206) in exchange for specialist café shifts; Clause 8B designates the upstairs hallway and rooftop terrace as an after-hours tenant sanctuary after 11:00 PM.",
+  },
+  {
+    term: "Article 9 & Clauses 9A–9C (Showdowns, Anti-Usury & Deed Wager)",
+    category: "System Mechanics",
+    summary:
+      "Clause 9A mandates public Turf Showdowns; Clause 9B lets forensic bookkeeper Chloe Lin cancel predatory compound interest (slashing debt by 25–40%); Clause 9C lets you stake The Stray Anchor's deed in an emergency double-or-nothing override.",
+  },
+  {
+    term: "Article 10 (5★ Island Sovereign Immunity)",
+    category: "Politics & Economy",
+    summary:
+      "Clauses 10A & 10B: Reaching 5★ and retiring your lease debt before Day 0 grants permanent deed liberation, immunity from conglomerate eminent domain, and a seat on the Island Festival Council.",
+  },
+  {
+    term: "Uncle Marco ('Skipper' Marco) & The Brass Tamper",
+    category: "World & Lore",
+    summary:
+      "Your late uncle who ran The Stray Anchor for 25 years using your grandfather's brass espresso tamper. After last autumn's typhoon damaged the cove seawall, he took out the 5,000 Solar Crown restoration mortgage now held by Chairman Alistair Vane.",
+  },
+  {
+    term: "The 3rd-Floor Captain's Loft & 2nd-Floor Shared Bath",
+    category: "World & Lore",
+    summary:
+      "Rooms 201–206 occupy the 2nd floor and share a single bathroom whose vintage water heater drops pressure whenever the café espresso steamer runs. Your private quarters (Room 301) sit on the 3rd floor opening onto the Rooftop Sanctuary.",
+  },
+  {
+    term: "Bellini Artisan Patisserie (15 Feet Across the Lane)",
+    category: "World & Lore",
+    summary:
+      "Third-generation family bakery founded by Nonna Bellini and run by Mia Bellini right across the cobblestone alley from The Stray Anchor. Mia's upstairs bedroom window faces your 2nd-floor landing, and she holds a childhood spare key to your kitchen.",
+  },
+  {
+    term: "L'Étoile d'Or & Dolce Vita (Rival Establishments)",
+    category: "Politics & Economy",
+    summary:
+      "L'Étoile d'Or is the 4-Star Platinum Cliffs wine cellar where Sommelier Marcel Vance blacklisted Colette Moreau after she exposed his counterfeit vintage scam (and clocked a handsy VIP with a silver ice bucket); Dolce Vita is Chef Dante Moretti's flashy pastry franchise on Sunset Rambla.",
+  },
+  {
+    term: "The Solaris Siren & 'Lady Cerise'",
+    category: "World & Lore",
+    summary:
+      "The Solaris Siren is Roxy Vance's island-wide tabloid printed above Campus Terrace that drives the Scandal Heat meter (0–100%). 'Lady Cerise' is the secret pen name Colette Moreau uses to write her starry-eyed romance novel 'Velvet Tides' in Room 204.",
+  },
+  {
+    term: "The Cliffside Funicular Tram & Vane-Valorian Resort",
+    category: "World & Lore",
+    summary:
+      "The private glass cable-tram connecting Tier 1–3 boardwalks to Tier 5 (The Platinum Cliffs & Vane-Valorian Grand Resort). Vivienne Laurent sneaks down its service stairs to visit your café under her Clause 7A courtship pact.",
   },
 ];
 
@@ -315,20 +398,52 @@ const PORT_SOLARIS_ANTAGONISTS = [
       "A smug upperclassman resort heir who tries to buy up Sunset Rambla ingredient suppliers and rig the seasonal Star Audit against 0-Star independents.",
   },
   {
-    name: "Chef Marcello Vance-Moretti",
-    role: "Executive Celebrity Chef of Le Soleil d'Or",
+    name: "Lord Cassian Sterling",
+    role: "Shipping Conglomerate Scion & Arranged Suitor",
+    faction: "The Platinum Board",
+    threat: "VIP Gala Challenger",
+    description:
+      "Julian's older brother and Vivienne Laurent's pompous arranged fiancé, who seeks to invalidate your Clause 7 courtship pact through high-society Article 9 etiquette showdowns.",
+  },
+  {
+    name: "Chef Dante Moretti",
+    role: "Celebrity Patissier of 'Dolce Vita'",
+    faction: "The Boardwalk Guild",
+    threat: "Sunset Rambla Rival",
+    description:
+      "A flashy franchise pastry mogul trying to poach Mia Bellini's family bakery lease and crush Driftwood Cove in televised sunrise bake-offs.",
+  },
+  {
+    name: "Executive Sommelier Marcel Vance",
+    role: "Head Cellar Master of L'Étoile d'Or",
     faction: "The Boardwalk Guild",
     threat: "4★ Culinary Gatekeeper",
     description:
-      "Colette's former tyrannical boss on the Platinum Cliffs who challenges The Stray Anchor and Mia's patisserie to televised Article 9 cook-offs.",
+      "Colette Moreau's vindictive former boss who blacklisted her from the Platinum Cliffs after she called out his counterfeit vintage wine list.",
   },
   {
-    name: "Captain Zane 'Riptide' Kurosawa",
-    role: "Varsity Surf & Volleyball Reigning MVP",
+    name: "Chef Laurent D'Artagnan",
+    role: "Chair of the Culinary Heritage Committee",
+    faction: "The Platinum Board / Guild",
+    threat: "4★ Appraisal Boss",
+    description:
+      "An elitist haute-cuisine purist who clashes with Nadia Saint-Clair and Zuri Delacroix over traditionalist vs. botanical fusion menus.",
+  },
+  {
+    name: "Captain Rex Vance",
+    role: "Sponsored South-Beach Pro Volleyball Captain",
     faction: "The Breakers Union",
     threat: "South Beach Turf Boss",
     description:
-      "Pippa and Kaede's boastful beach-court rival who hogs the prime boardwalk festival booths until challenged under Article 9.",
+      "Pippa Reyes's arrogant corporate-sponsored beach rival who tries to monopolize the South Beach tournament courts and boardwalk festival stages.",
+  },
+  {
+    name: "Master Kenji Tachibana",
+    role: "Traditionalist Kendo Grandmaster",
+    faction: "The Breakers Union",
+    threat: "Dojo Pier Grandmaster",
+    description:
+      "Kaede Tachibana's strict older cousin who arrives at Dojo Pier to test whether her 'sea-breeze feng shui' residency at The Stray Anchor has dulled her blade.",
   },
 ];
 
@@ -1111,6 +1226,241 @@ export function WorldGuidebookModal({
                                 </span>
                               ))}
                             </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Port Solaris Island Charter: Articles & Legal Clauses */}
+                  <div className="bg-zinc-900/60 border border-sky-500/25 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-sky-300 flex items-center gap-2">
+                        <Scale className="w-4 h-4 text-sky-400" />
+                        The Port Solaris Island Charter: Articles & Legal Clauses
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Codified municipal statutes governing audits, fake-fiancé pacts, boarding leases & public showdowns
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                      {PORT_SOLARIS_CHARTER_ARTICLES.map((art) => (
+                        <div
+                          key={art.articleNumber}
+                          className="p-4 rounded-xl bg-black/55 border border-white/10 space-y-2.5 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="text-xs font-mono font-bold text-white">
+                                <span className="text-sky-400 mr-1.5">{art.articleNumber}:</span>
+                                {art.title}
+                              </span>
+                              <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300 shrink-0">
+                                {art.category}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">
+                              {art.summary}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2 pt-2 border-t border-white/10">
+                            {art.clauses.map((cl) => (
+                              <div
+                                key={cl.clauseId}
+                                className="p-2.5 rounded-lg bg-zinc-900/90 border border-white/5 space-y-1"
+                              >
+                                <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                  <span className="text-[10px] font-mono font-bold text-amber-300">
+                                    § {cl.clauseId}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-zinc-400">
+                                    {cl.title}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-zinc-300 leading-snug">
+                                  {cl.summary}
+                                </p>
+                                <p className="text-[10px] font-mono text-emerald-300/90 leading-snug pt-0.5">
+                                  ↳ Effect: {cl.gameplayEffect}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 30-Day Seasonal Audit Tribunal Calendar & Star Debt Thresholds */}
+                  <div className="bg-zinc-900/60 border border-rose-500/25 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-rose-300 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-400" />
+                        The 30-Day Audit Tribunal Calendar & Debt Thresholds (5,000 → 0 Crowns)
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Article 4 Clause 4A & Article 6 Clause 6A mandatory inspection checkpoints
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                      {DEBT_STAR_THRESHOLDS.slice()
+                        .reverse()
+                        .map((thresh) => (
+                          <div
+                            key={thresh.star}
+                            className="p-3 rounded-xl bg-black/60 border border-white/10 space-y-1"
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs font-mono font-black text-amber-300">
+                                {thresh.star}★ Tier
+                              </span>
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-200">
+                                ≤ {thresh.maxDebt.toLocaleString()} Cr
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-zinc-400 leading-snug">
+                              {thresh.label}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                      {AUDIT_MILESTONES.map((ms) => (
+                        <div
+                          key={ms.day}
+                          className="p-3.5 rounded-xl bg-black/55 border border-rose-500/20 space-y-1.5 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300">
+                                Day {ms.day} Left
+                              </span>
+                              <span className="text-[10px] font-mono font-bold text-amber-300">
+                                Req: {ms.requiredStar}★
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-mono font-bold text-white pt-0.5">
+                              {ms.title}
+                            </h4>
+                            <p className="text-[10px] font-mono text-sky-300">
+                              Inspector: {ms.inspector}
+                            </p>
+                            <p className="text-[11px] text-zinc-300 leading-snug pt-0.5">
+                              {ms.directive}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* The Stray Anchor Architecture, Uncle Marco's Deed & Boarding Roster (Rooms 201-206) */}
+                  <div className="bg-zinc-900/60 border border-emerald-500/25 rounded-2xl p-5 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-emerald-400" />
+                        The Stray Anchor Architecture, Uncle Marco&apos;s Deed &amp; Boarding Roster (Rooms 201–206)
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Canonical floorplan, inherited mortgage history, live-in rooms &amp; commuter quarters
+                      </span>
+                    </div>
+
+                    {/* Uncle Marco & Architecture Summary Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="p-3.5 rounded-xl bg-black/55 border border-amber-500/25 space-y-1.5">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 block">
+                          ⚓ {PORT_SOLARIS_UNCLE_AND_DEED_LORE.founderName}
+                        </span>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed">
+                          {PORT_SOLARIS_UNCLE_AND_DEED_LORE.deedHistory}
+                        </p>
+                        <p className="text-[11px] text-rose-200/90 leading-relaxed pt-1 border-t border-white/10">
+                          <strong>Why You Owe 5,000 Crowns:</strong> {PORT_SOLARIS_UNCLE_AND_DEED_LORE.debtOrigin}
+                        </p>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-black/55 border border-sky-500/25 space-y-1.5">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-sky-300 block">
+                          🏠 Upstairs Proximity &amp; The Shared Bathroom Rule
+                        </span>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed">
+                          {PORT_SOLARIS_UNCLE_AND_DEED_LORE.proprietorQuarters}
+                        </p>
+                        <p className="text-[11px] text-emerald-200/90 leading-relaxed pt-1 border-t border-white/10">
+                          {PORT_SOLARIS_UNCLE_AND_DEED_LORE.sharedBathQuirk}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Floorplan & Room Roster Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {PORT_SOLARIS_FLOORPLAN_CANON.map((rm) => (
+                        <div
+                          key={rm.locationCode}
+                          className="p-3.5 rounded-xl bg-black/55 border border-white/10 space-y-1.5 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                                {rm.locationCode}
+                              </span>
+                              <span className="text-[10px] font-mono text-amber-300 truncate">
+                                {rm.occupant}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-mono font-bold text-white pt-0.5">
+                              {rm.title}
+                            </h4>
+                            <p className="text-[11px] text-zinc-300 leading-snug">
+                              {rm.loreNotes}
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-white/10 text-[10px] font-mono text-sky-300">
+                            ★ {rm.roleAndPerks}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* The Stray Anchor Canonical House Menu */}
+                  <div className="bg-zinc-900/60 border border-amber-500/25 rounded-2xl p-5 space-y-3.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                        <Flame className="w-4 h-4 text-amber-400" />
+                        The Stray Anchor Canonical House Menu (Signature Dishes, Cocktails &amp; Parfaits)
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Signature specialties used in midnight tastings, Heart-to-Hearts, and Article 9 Showdowns
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {PORT_SOLARIS_SIGNATURE_MENU.map((dish) => (
+                        <div
+                          key={dish.name}
+                          className="p-3.5 rounded-xl bg-black/55 border border-white/10 space-y-1.5 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 inline-block">
+                              {dish.category}
+                            </span>
+                            <h4 className="text-xs font-mono font-bold text-white pt-0.5">
+                              {dish.name}
+                            </h4>
+                            <p className="text-[10px] font-mono text-rose-300">
+                              Crafted by: {dish.craftedBy}
+                            </p>
+                            <p className="text-[11px] text-zinc-300 leading-snug pt-0.5">
+                              {dish.loreDescription}
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-white/10 text-[10px] font-mono text-emerald-300">
+                            ↳ {dish.effectSummary}
                           </div>
                         </div>
                       ))}

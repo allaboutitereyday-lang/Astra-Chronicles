@@ -32,6 +32,12 @@ export function ensureRelicUnsealingCondition<T extends StoryRelicItem>(item: T)
   }
 
   const seed = deterministicHash(`${item.name || "Relic"}_${item.type || "relic"}`);
+  const itemText = `${item.name || ""} ${item.description || ""} ${item.setName || ""}`.toLowerCase();
+  const isPortSolarisItem =
+    /\b(solaris|stray\s+anchor|boardwalk|south-shore|cliffside|old\s+pier|tamper|whistle|arcade|token|pearl|watch|loupe|spade|tongs|film\s+canister|shinai|sommelier|bistro|clause\s*7|vane|bellini|moreau|tachibana|delacroix|saint-clair)\b/i.test(
+      itemText
+    );
+
   const conditionTypes: RelicUnsealingConditionType[] = [
     "clash_victory",
     "turns_survived",
@@ -39,84 +45,109 @@ export function ensureRelicUnsealingCondition<T extends StoryRelicItem>(item: T)
     "low_hp_survival",
     "high_affection",
   ];
-  const chosenType = conditionTypes[seed % conditionTypes.length];
+  const chosenType = isPortSolarisItem ? "high_affection" : conditionTypes[seed % conditionTypes.length];
 
   let condition: RelicUnsealingCondition;
-  switch (chosenType) {
-    case "clash_victory":
-      condition = {
-        id: `unseal_${item.id || seed}_clash`,
-        type: "clash_victory",
-        label: "Blood-Forged Triumph",
-        description: "Triumph in a Sector Clash or endure 3 narrative turns while bearing this artifact.",
-        currentValue: 0,
-        targetValue: 3,
-        isMet: false,
-      };
-      break;
-    case "low_hp_survival":
-      condition = {
-        id: `unseal_${item.id || seed}_lowhp`,
-        type: "low_hp_survival",
-        label: "Abyssal Brink Resonance",
-        description: "Survive a turn below 60% Integrity or endure 2 narrative turns while carrying this seal.",
-        currentValue: 0,
-        targetValue: 2,
-        isMet: false,
-      };
-      break;
-    case "covenant_invoked":
-      condition = {
-        id: `unseal_${item.id || seed}_covenant`,
-        type: "covenant_invoked",
-        label: "Causal Severance Catalyst",
-        description: "Invoke a Reality Severance Covenant or complete 2 narrative turns with this relic.",
-        currentValue: 0,
-        targetValue: 2,
-        isMet: false,
-      };
-      break;
-    case "high_affection":
-      condition = {
-        id: `unseal_${item.id || seed}_bond`,
-        type: "high_affection",
-        label: "Heart-Sync Purification",
-        description: "Attain 20% Affection with any companion or resonate across 2 narrative turns.",
-        currentValue: 0,
-        targetValue: 2,
-        isMet: false,
-      };
-      break;
-    case "turns_survived":
-    default:
-      condition = {
-        id: `unseal_${item.id || seed}_turns`,
-        type: "turns_survived",
-        label: "Temporal Tempering",
-        description: "Resonate with the artifact across 3 narrative turns without succumbing to its curse.",
-        currentValue: 0,
-        targetValue: 3,
-        isMet: false,
-      };
-      break;
+  if (isPortSolarisItem) {
+    condition = {
+      id: `unseal_${item.id || seed}_solaris_bond`,
+      type: "high_affection",
+      label: "Five-Star Heart-Lock Resonance",
+      description: "Build housemate bond (20%+ Favor) or complete 2 shifts/showdowns in Port Solaris while carrying this keepsake.",
+      currentValue: 0,
+      targetValue: 2,
+      isMet: false,
+    };
+  } else {
+    switch (chosenType) {
+      case "clash_victory":
+        condition = {
+          id: `unseal_${item.id || seed}_clash`,
+          type: "clash_victory",
+          label: "Blood-Forged Triumph",
+          description: "Triumph in a Sector Clash or endure 3 narrative turns while bearing this artifact.",
+          currentValue: 0,
+          targetValue: 3,
+          isMet: false,
+        };
+        break;
+      case "low_hp_survival":
+        condition = {
+          id: `unseal_${item.id || seed}_lowhp`,
+          type: "low_hp_survival",
+          label: "Abyssal Brink Resonance",
+          description: "Survive a turn below 60% Integrity or endure 2 narrative turns while carrying this seal.",
+          currentValue: 0,
+          targetValue: 2,
+          isMet: false,
+        };
+        break;
+      case "covenant_invoked":
+        condition = {
+          id: `unseal_${item.id || seed}_covenant`,
+          type: "covenant_invoked",
+          label: "Causal Severance Catalyst",
+          description: "Invoke a Reality Severance Covenant or complete 2 narrative turns with this relic.",
+          currentValue: 0,
+          targetValue: 2,
+          isMet: false,
+        };
+        break;
+      case "high_affection":
+        condition = {
+          id: `unseal_${item.id || seed}_bond`,
+          type: "high_affection",
+          label: "Heart-Sync Purification",
+          description: "Attain 20% Affection with any companion or resonate across 2 narrative turns.",
+          currentValue: 0,
+          targetValue: 2,
+          isMet: false,
+        };
+        break;
+      case "turns_survived":
+      default:
+        condition = {
+          id: `unseal_${item.id || seed}_turns`,
+          type: "turns_survived",
+          label: "Temporal Tempering",
+          description: "Resonate with the artifact across 3 narrative turns without succumbing to its curse.",
+          currentValue: 0,
+          targetValue: 3,
+          isMet: false,
+        };
+        break;
+    }
   }
 
-  const prefixes = ["Sovereign", "Unshackled", "Astral", "Transcended", "Celestial", "Zenith"];
+  const prefixes = isPortSolarisItem
+    ? ["Five-Star", "Sovereign Charter", "Sun-Crested", "Platinum Reserve", "Grand Festival", "Heart-Locked"]
+    : ["Sovereign", "Unshackled", "Astral", "Transcended", "Celestial", "Zenith"];
   const prefix = prefixes[seed % prefixes.length];
-  const baseNameClean = (item.name || "Artifact").replace(/^(Cursed|Sealed|Fractured|Tainted)\s+/i, "");
+  const baseNameClean = (item.name || "Artifact").replace(/^(Cursed|Sealed|Fractured|Tainted|Revoked)\s+/i, "");
   const awakenedName = `${prefix} ${baseNameClean}`;
 
-  const skillVerbs = ["Nova", "Severance", "Aegis", "Cataclysm", "Resonance", "Override"];
+  const skillVerbs = isPortSolarisItem
+    ? ["Showstopper", "Table-Turn", "House Special", "Encore", "Toast", "Flair"]
+    : ["Nova", "Severance", "Aegis", "Cataclysm", "Resonance", "Override"];
   const skillVerb = skillVerbs[(seed >> 3) % skillVerbs.length];
 
-  const signatureSkill: AbilityDetail = {
-    name: `${awakenedName}: ${skillVerb}`,
-    description: `Unleashes the purified core of ${awakenedName}, dealing massive stance-piercing resonance and shielding the wielder's integrity.`,
-    type: "Active",
-    cost: "15 MP",
-    cooldown: "2 Turns",
-    tier: "Mythic",
-  };
+  const signatureSkill: AbilityDetail = isPortSolarisItem
+    ? {
+        name: `${awakenedName}: ${skillVerb}`,
+        description: `Channels the cherished bond inside ${awakenedName}, overwhelming rival Composure in Article 9 Showdowns and restoring +30 Composure.`,
+        type: "Active",
+        cost: "15 Hype/Cool",
+        cooldown: "2 Turns",
+        tier: "Mythic",
+      }
+    : {
+        name: `${awakenedName}: ${skillVerb}`,
+        description: `Unleashes the purified core of ${awakenedName}, dealing massive stance-piercing resonance and shielding the wielder's integrity.`,
+        type: "Active",
+        cost: "15 MP",
+        cooldown: "2 Turns",
+        tier: "Mythic",
+      };
 
   const statBonuses =
     item.type === "weapon"
@@ -125,19 +156,29 @@ export function ensureRelicUnsealingCondition<T extends StoryRelicItem>(item: T)
       ? { str: 3, int: 4, maxHp: 40, maxMp: 15 }
       : { str: 4, dex: 4, int: 6, maxHp: 30, maxMp: 25 };
 
-  const awakenedForm: RelicAwakenedForm = {
-    awakenedName,
-    awakenedDescription: `The abyssal seal upon ${item.name} has been shattered and purified. Its dormant astral lattice now blazes with sovereign authority, converting its former curse into overwhelming mythic resonance.`,
-    awakenedEffect:
-      item.type === "weapon"
-        ? "Purified Mythic Edge: +6 STR, +4 DEX, +25 Max HP & Unlocks Mythic Skill"
-        : item.type === "armor"
-        ? "Purified Mythic Ward: +40 Max HP, +15 Max MP, +4 INT & Unlocks Mythic Skill"
-        : "Purified Astral Core: +6 INT, +4 STR/DEX, +30 Max HP & Unlocks Mythic Skill",
-    visualPrompt: `Mythic awakened celestial fantasy RPG ${item.type} icon, ${awakenedName}, radiant golden and astral starlight aura, intricate sacred engravings, dark obsidian background`,
-    signatureSkill,
-    statBonuses,
-  };
+  const awakenedForm: RelicAwakenedForm = isPortSolarisItem
+    ? {
+        awakenedName,
+        awakenedDescription: `Through late-night shifts, shared rooftop secrets, and Article 9 victories, ${item.name} has become a legendary Five-Star Keepsake of Driftwood Cove—radiating unshakeable coastal panache and heartfelt devotion.`,
+        awakenedEffect:
+          "5★ Awakened Keepsake: +6 INT, +4 STR/DEX, +30 Max Composure & Unlocks Signature Showstopper Skill",
+        visualPrompt: `Masterpiece anime visual novel keepsake icon, ${awakenedName}, warm golden sunset glow over turquoise Mediterranean sea, intricate brass and pearl detailing`,
+        signatureSkill,
+        statBonuses,
+      }
+    : {
+        awakenedName,
+        awakenedDescription: `The abyssal seal upon ${item.name} has been shattered and purified. Its dormant astral lattice now blazes with sovereign authority, converting its former curse into overwhelming mythic resonance.`,
+        awakenedEffect:
+          item.type === "weapon"
+            ? "Purified Mythic Edge: +6 STR, +4 DEX, +25 Max HP & Unlocks Mythic Skill"
+            : item.type === "armor"
+            ? "Purified Mythic Ward: +40 Max HP, +15 Max MP, +4 INT & Unlocks Mythic Skill"
+            : "Purified Astral Core: +6 INT, +4 STR/DEX, +30 Max HP & Unlocks Mythic Skill",
+        visualPrompt: `Mythic awakened celestial fantasy RPG ${item.type} icon, ${awakenedName}, radiant golden and astral starlight aura, intricate sacred engravings, dark obsidian background`,
+        signatureSkill,
+        statBonuses,
+      };
 
   return {
     ...item,

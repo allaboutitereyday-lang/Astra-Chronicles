@@ -217,19 +217,34 @@ export async function POST(req: Request) {
                   "[Audacious/Bold]: Step forward and turn her challenge back on her.",
                   "[Tactical/Ready]: Shift into a balanced guard and test her resolve.",
                 ],
-          initialQuest: {
-            id: "scenario_01",
-            title: `Scenario 1: Matriculation at ${matchingNode?.location || startingLocation}`,
-            description: `Establish your standing with ${matchingComp?.name || startingHeroine} and survive your opening test in ${storyTitle}.`,
-            type: "scenario",
-            difficulty: "E",
-            objectives: [
-              { text: `Respond to ${matchingComp?.name || startingHeroine}'s challenge`, completed: false },
-              { text: `Demonstrate your capability in ${matchingNode?.location || startingLocation}`, completed: false },
-            ],
-            rewards: { exp: 120, gold: 50, title: "Sovereign Initiate" },
-            status: "active",
-          },
+          initialQuest:
+            storyContext?.id === "port-solaris" || storyTitle.toLowerCase().includes("solaris")
+              ? {
+                  id: "scenario_01_solaris",
+                  title: `Act I: Save The Stray Anchor (${matchingNode?.location || startingLocation})`,
+                  description: `Survive your opening encounter with ${matchingComp?.name || startingHeroine}, recruit your first boarding-house shift partner, and begin climbing the Solaris Star Ledger before the 30-day audit expires.`,
+                  type: "scenario",
+                  difficulty: "E",
+                  objectives: [
+                    { text: `Hold your composure and respond to ${matchingComp?.name || startingHeroine}`, completed: false },
+                    { text: `Secure your footing at ${matchingNode?.location || startingLocation} under Island Charter Article 9`, completed: false },
+                  ],
+                  rewards: { exp: 95, gold: 120, title: "Anchor Proprietor" },
+                  status: "active",
+                }
+              : {
+                  id: "scenario_01",
+                  title: `Scenario 1: Matriculation at ${matchingNode?.location || startingLocation}`,
+                  description: `Establish your standing with ${matchingComp?.name || startingHeroine} and survive your opening test in ${storyTitle}.`,
+                  type: "scenario",
+                  difficulty: "E",
+                  objectives: [
+                    { text: `Respond to ${matchingComp?.name || startingHeroine}'s challenge`, completed: false },
+                    { text: `Demonstrate your capability in ${matchingNode?.location || startingLocation}`, completed: false },
+                  ],
+                  rewards: { exp: 95, gold: 50, title: "Sovereign Initiate" },
+                  status: "active",
+                },
         };
 
     const companionDossiers = storyContext?.companions && storyContext.companions.length > 0

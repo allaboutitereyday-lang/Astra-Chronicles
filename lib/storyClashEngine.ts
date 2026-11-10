@@ -14,6 +14,8 @@ import { StoryCompanion, CombatStanceType, AbilityDetail } from "@/types/story";
 import { COMBAT_STANCES, getClassStanceConfig } from "./progressionMechanics";
 import { generateProceduralMonsterSvg } from "./proceduralArt";
 import { generateEnemyIntent } from "./vitalsAndEncounters";
+import { PORT_SOLARIS_HEROINE_DOSSIERS } from "@/types/port_solaris";
+import { SOVEREIGN_HEROINE_DOSSIERS } from "@/types/sovereign_spire";
 
 /**
  * Initializes a new in-scene Story Clash / Hostile Encounter.
@@ -107,12 +109,33 @@ export function getStoryClashChoices(
 
   let strikeAction = arsenal.actions.strike;
   let burstAction = arsenal.actions.burst;
-  const synergyAction = arsenal.actions.synergy;
+  let synergyAction = arsenal.actions.synergy;
   let defenseAction = arsenal.actions.defense;
 
-  // Contextual companion synergy branding
+  // Contextual companion synergy branding (Port Solaris, Sovereign Spire & Astra Continent)
   let synergyActionName = synergyAction.name;
-  if (compName.toLowerCase().includes("perci")) {
+  const solarisDossier = Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
+    (d) => d.name.toLowerCase() === compName.toLowerCase() || compName.toLowerCase().includes(d.name.split(" ")[0].toLowerCase())
+  );
+  const sovereignDossier = Object.values(SOVEREIGN_HEROINE_DOSSIERS).find(
+    (d) => d.name.toLowerCase() === compName.toLowerCase() || compName.toLowerCase().includes(d.name.split(" ")[0].toLowerCase())
+  );
+
+  if (solarisDossier) {
+    synergyActionName = `${solarisDossier.name.split(" ")[0]}'s ${solarisDossier.dyadPassiveName}`;
+    synergyAction = {
+      ...synergyAction,
+      name: synergyActionName,
+      description: solarisDossier.dyadPassiveDescription,
+    };
+  } else if (sovereignDossier) {
+    synergyActionName = `${sovereignDossier.name.split(" ")[0]}'s ${sovereignDossier.dyadPassiveName}`;
+    synergyAction = {
+      ...synergyAction,
+      name: synergyActionName,
+      description: sovereignDossier.dyadPassiveDescription,
+    };
+  } else if (compName.toLowerCase().includes("perci")) {
     synergyActionName = "Perci's Foxfire Crossfire";
   } else if (compName.toLowerCase().includes("morgana")) {
     synergyActionName = "Morgana's Abyssal Entanglement";
