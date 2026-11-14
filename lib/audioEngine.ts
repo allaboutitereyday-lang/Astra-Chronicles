@@ -354,6 +354,168 @@ class AudioEngine {
       });
     } catch {}
   }
+
+  /**
+   * Arcane summoning circle channeling hum + crystalline shimmer
+   */
+  public playSummonChannel() {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      // Warm ascending arcane drone
+      const drone = ctx.createOscillator();
+      const droneGain = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+      drone.type = "triangle";
+      drone.frequency.setValueAtTime(110, now);
+      drone.frequency.exponentialRampToValueAtTime(220, now + 0.9);
+
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(260, now);
+      filter.frequency.exponentialRampToValueAtTime(1200, now + 0.9);
+
+      droneGain.gain.setValueAtTime(0.001, now);
+      droneGain.gain.linearRampToValueAtTime(0.16, now + 0.2);
+      droneGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.05);
+
+      drone.connect(filter);
+      filter.connect(droneGain);
+      droneGain.connect(this.masterGain);
+      drone.start(now);
+      drone.stop(now + 1.1);
+
+      // Shimmering rune overtones
+      [440, 554.37, 659.25, 880].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        g.gain.setValueAtTime(0.001, now + idx * 0.08);
+        g.gain.linearRampToValueAtTime(0.06, now + idx * 0.08 + 0.04);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.65);
+        osc.connect(g);
+        g.connect(this.masterGain!);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.7);
+      });
+    } catch {}
+  }
+
+  /**
+   * Ascending crystalline flare when a summon seal escalates to a higher rarity tier
+   */
+  public playRarityEscalation(tier: number) {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      const clampedTier = Math.max(1, Math.min(5, tier));
+      const baseFreq = 392 * Math.pow(1.18, clampedTier - 1);
+      [baseFreq, baseFreq * 1.25, baseFreq * 1.5].forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = clampedTier >= 4 ? "triangle" : "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
+        g.gain.setValueAtTime(0.001, now + idx * 0.04);
+        g.gain.linearRampToValueAtTime(0.13, now + idx * 0.04 + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.04 + 0.45);
+        osc.connect(g);
+        g.connect(this.masterGain!);
+        osc.start(now + idx * 0.04);
+        osc.stop(now + idx * 0.04 + 0.5);
+      });
+    } catch {}
+  }
+
+  /**
+   * Star Gate prism shatter + celestial chord burst scaled by pulled rarity (1-5)
+   */
+  public playSummonShatter(highestStar: number) {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      // Sub-bass monolith impact
+      const bass = ctx.createOscillator();
+      const bassGain = ctx.createGain();
+      bass.type = "sine";
+      bass.frequency.setValueAtTime(highestStar >= 5 ? 110 : 95, now);
+      bass.frequency.exponentialRampToValueAtTime(40, now + 0.45);
+      bassGain.gain.setValueAtTime(0.24, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+      bass.connect(bassGain);
+      bassGain.connect(this.masterGain);
+      bass.start(now);
+      bass.stop(now + 0.55);
+
+      const chord =
+        highestStar >= 5
+          ? [523.25, 659.25, 783.99, 987.77, 1046.5, 1318.5, 1567.98] // Lush Cmaj9 celestial fanfare
+          : highestStar === 4
+          ? [440, 554.37, 659.25, 880, 1108.73] // A major radiance
+          : [392, 493.88, 587.33, 783.99]; // G major sparkle
+
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = highestStar >= 4 ? "triangle" : "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.045);
+        g.gain.setValueAtTime(0.001, now + idx * 0.045);
+        g.gain.linearRampToValueAtTime(highestStar >= 5 ? 0.14 : 0.11, now + idx * 0.045 + 0.02);
+        g.gain.exponentialRampToValueAtTime(
+          0.0001,
+          now + idx * 0.045 + (highestStar >= 5 ? 1.8 : 1.0)
+        );
+        osc.connect(g);
+        g.connect(this.masterGain!);
+        osc.start(now + idx * 0.045);
+        osc.stop(now + idx * 0.045 + (highestStar >= 5 ? 1.9 : 1.1));
+      });
+    } catch {}
+  }
+
+  /**
+   * Arcane tarot card unseal whoosh + chime scaled by card rarity
+   */
+  public playCardFlip(starRank: number) {
+    if (this.muted) return;
+    const ctx = this.getContext();
+    if (!ctx || !this.masterGain) return;
+
+    try {
+      const now = ctx.currentTime;
+      const tier = Math.max(1, Math.min(5, starRank));
+      const notes =
+        tier >= 5
+          ? [587.33, 739.99, 880, 1174.66, 1479.98]
+          : tier === 4
+          ? [523.25, 659.25, 783.99, 1046.5]
+          : tier === 3
+          ? [493.88, 659.25, 987.77]
+          : [440, 659.25];
+
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = tier >= 4 ? "triangle" : "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.035);
+        g.gain.setValueAtTime(0.001, now + idx * 0.035);
+        g.gain.linearRampToValueAtTime(tier >= 5 ? 0.14 : 0.1, now + idx * 0.035 + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.035 + (tier >= 4 ? 0.9 : 0.45));
+        osc.connect(g);
+        g.connect(this.masterGain!);
+        osc.start(now + idx * 0.035);
+        osc.stop(now + idx * 0.035 + 1.0);
+      });
+    } catch {}
+  }
 }
 
 export const soundEffects = new AudioEngine();
