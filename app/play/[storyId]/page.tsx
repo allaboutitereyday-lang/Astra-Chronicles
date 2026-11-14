@@ -95,11 +95,15 @@ import {
   createBlueprintFromPlayer,
   normalizeCharacterBlueprint,
 } from "@/lib/characterRosterStorage";
-import { StoryCompanion, StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA } from "@/types/story";
+import { StoryCompanion, StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA, HeroineGuardTier, CompanionCoreMemory } from "@/types/story";
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
 import { CharacterCardModal } from "@/components/play/CharacterCardModal";
-import { isFallbackVisualDescription } from "@/lib/visionEncoder";
+import {
+  isExplicitlyNudeOrUnclad,
+  isFallbackVisualDescription,
+  resolvePortraitAttireLabel,
+} from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { ActionInputBar } from "@/components/play/ActionInputBar";
 import { ChatMessageItem } from "@/components/play/ChatMessageItem";
@@ -115,6 +119,11 @@ import {
   getHeroineResistanceProfile,
   calibrateQuestRankAndRewards,
   clampTurnProgressionDeltas,
+  BASE_LEVEL_ONE_MAX_EXP,
+  getRequiredExpForLevel,
+  resolveProtagonistExpGain,
+  resolveCompanionExpGain,
+  calculateClashVictoryExp,
 } from "@/lib/progressionMechanics";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { decodeMultiverseSeed } from "@/lib/multiverseShare";
@@ -161,6 +170,10 @@ import {
   buildPersonalityFallbackChoices,
 } from "@/lib/personalityArchitect";
 import {
+  isValidTacticalChoice,
+  sanitizeAndFilterChoices,
+} from "@/lib/proseSanitizer";
+import {
   SOVEREIGN_ORIGIN_PRESETS,
   SOVEREIGN_CONDUIT_PRESETS,
   SOVEREIGN_HEROINE_DOSSIERS,
@@ -197,6 +210,46 @@ import {
   paydownDebt,
   calculateDailyCafeRevenue,
 } from "@/lib/portSolarisEngine";
+import {
+  STARFALL_HEROINE_DOSSIERS,
+  StarfallOriginPreset,
+  StarfallOrigin,
+  StarfallRole,
+  StarfallFaction,
+  StarRank,
+  HeroStatus,
+  FormationSlot,
+  HeroCombatStats,
+  LabyrinthState,
+} from "@/types/starfall_labyrinth";
+import {
+  MAX_DEPLOYED_PARTY,
+  SummonPullResult,
+  isStarfallLobbyLocation,
+  inferFloorFromLocation,
+  getFloorType,
+  getFloorTypeLabel,
+  getStarLevelCap,
+  matchesHeroineName,
+  createInitialLabyrinthState,
+  applyAwakening,
+  clampProtagonistStarLevel,
+  syncRosterWithParty,
+} from "@/lib/starfallEngine";
+import {
+  getTowerThemeForFloor,
+  getStarfallFloorBackgroundUrl,
+} from "@/lib/starfallTowerThemes";
+import {
+  getWorldPresets,
+  hasCustomWorldPresets,
+  AnyWorldOriginPreset,
+  AnyWorldConduitPreset,
+} from "@/lib/worldRegistry";
+import { SummonModal } from "@/components/play/SummonModal";
+import { StarfallBarracksModal } from "@/components/play/StarfallBarracksModal";
+import { StarfallTacticalCombatHud } from "@/components/play/StarfallTacticalCombatHud";
+import { GameOverModal } from "@/components/play/GameOverModal";
 
 // Dynamic code splitting for heavy interactive canvas graph
 const FlowchartViewer = dynamic(
@@ -229,6 +282,12 @@ export interface Companion {
   values?: string[];
   dislikes?: string[];
   highCompatibility?: string[];
+  guardTier?: HeroineGuardTier;
+  unlockedCoreMemories?: string[];
+  dynamicCoreMemories?: CompanionCoreMemory[];
+  currentSentiment?: string;
+  trustProgress?: number;
+  armorCrackCount?: number;
   baseAffection?: number;
   affection: number;
   heartRateBpm?: number;
@@ -245,6 +304,19 @@ export interface Companion {
   baseImageUrl?: string;
   visualPrompt?: string;
   expressions?: Record<string, string>;
+  starRank?: StarRank;
+  baseStarRank?: StarRank;
+  level?: number;
+  exp?: number;
+  maxExp?: number;
+  heroStatus?: HeroStatus;
+  formationSlot?: FormationSlot;
+  combatStats?: HeroCombatStats;
+  currentHp?: number;
+  currentMp?: number;
+  awakenings?: number;
+  fallenOnFloor?: number;
+  fallenCause?: string;
 }
 
 interface PlayerStats {
@@ -286,14 +358,16 @@ interface PlayerProfile {
   behavioralTendencies?: Record<string, number>;
   pinnedMemories?: string[];
   unspentStatPoints?: number;
-  sovereignOrigin?: SovereignOrigin | PortSolarisOrigin;
-  conduit?: ConduitType | FlairConduit;
-  patronWing?: PatronWing | IslandFaction;
+  sovereignOrigin?: SovereignOrigin | PortSolarisOrigin | StarfallOrigin;
+  conduit?: ConduitType | FlairConduit | StarfallRole;
+  patronWing?: PatronWing | IslandFaction | StarfallFaction;
   matriculationRank?: number;
   semesterDebtQuota?: number;
   boardingHouse?: BoardingHouseState;
   factionStanding?: Record<IslandFaction, number>;
   equippedKeepsakes?: KeepsakeItem[];
+  labyrinthState?: LabyrinthState;
+  starRank?: StarRank;
 }
 
 interface RoleplayState {
@@ -436,6 +510,23 @@ const LOCATION_BACKGROUNDS: Record<string, string> = {
   "The Platinum Cliffs": "/backgrounds/port-solaris/platinum_cliffs.jpg",
   "The Stray Anchor: Upstairs Boarding House & Rooftop Terrace": "/backgrounds/port-solaris/stray_anchor.jpg",
   "The Old Pier Arcade & Night Market": "/backgrounds/port-solaris/breakers_boardwalk.jpg",
+  // Starfall Labyrinth — Floating Lobby Island & 100-Floor Tower Strata
+  "Star Gate Plaza (Main Lobby)": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+  "The Iron Barracks (Lobby Quarters)": "/backgrounds/starfall-labyrinth/roster_barracks.jpg",
+  "The Memorial Wall (Lobby Ossuary)": "/backgrounds/starfall-labyrinth/memorial_sanctum.jpg",
+  "The Master's Conduit Chamber": "/backgrounds/starfall-labyrinth/masters_console.jpg",
+  "Floor 1: The Verdant Antechamber": "/backgrounds/starfall-labyrinth/verdant_antechamber.jpg",
+  "Floor 5: Safe Zone Lantern Bazaar": "/backgrounds/starfall-labyrinth/safe_zone_bazaar.jpg",
+  "Floor 10: Gate of the Hollow King": "/backgrounds/starfall-labyrinth/hollow_king_gate.jpg",
+  "Stratum I: The Sunken Reliquary (Floors 1–25)": "/backgrounds/starfall-labyrinth/sunken_reliquary.jpg",
+  "Floor 25: Chronos Clocktower Ruins": "/backgrounds/starfall-labyrinth/clocktower_ruins.jpg",
+  "Stratum II: The Chronos Foundry (Floors 26–50)": "/backgrounds/starfall-labyrinth/chronos_foundry.jpg",
+  "Floor 40: Cinder Horizon & Unwound Sun Gate": "/backgrounds/starfall-labyrinth/cinder_horizon_gate.jpg",
+  "Upper Safe Zone: Lantern Broker Sky-Sanctum": "/backgrounds/starfall-labyrinth/lantern_sky_oasis.jpg",
+  "Stratum III: The Eclipse Sanctum (Floors 51–75)": "/backgrounds/starfall-labyrinth/eclipse_sanctum.jpg",
+  "Floor 70: Blood-Moon Viaduct & Crimson Trial Court": "/backgrounds/starfall-labyrinth/crimson_trial_court.jpg",
+  "Stratum IV: The Astral Singularity (Floors 76–99)": "/backgrounds/starfall-labyrinth/astral_singularity.jpg",
+  "Floor 100: Throne of the Administrator": "/backgrounds/starfall-labyrinth/administrators_crown.jpg",
 };
 
 const DEFAULT_BG = "/backgrounds/imperial_capital_imperium.jpg";
@@ -737,7 +828,7 @@ export default function VisualNovelGame() {
     pinnedMemories: [],
     unspentStatPoints: 0,
     level: 1,
-    stats: { hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: 100, str: 10, dex: 10, int: 10 },
+    stats: { hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: BASE_LEVEL_ONE_MAX_EXP, str: 10, dex: 10, int: 10 },
     gear: { weapon: "Pending...", armor: "Pending...", relic: "None" },
     abilities: [],
     abilityDetails: {},
@@ -756,69 +847,73 @@ export default function VisualNovelGame() {
   const isHydratingInventoryRef = useRef<boolean>(false);
 
   // Live EXP Gain & Visual Feedback State
-  const [expFeedback, setExpFeedback] = useState<{ amount: number; id: number } | null>(null);
+  const [expFeedback, setExpFeedback] = useState<{ amount: number; reason?: string | null; id: number } | null>(null);
   const expFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const triggerExpFeedback = useCallback((amount: number) => {
+  const triggerExpFeedback = useCallback((amount: number, reason?: string | null) => {
     if (amount <= 0) return;
     if (expFeedbackTimeoutRef.current) {
       clearTimeout(expFeedbackTimeoutRef.current);
     }
-    setExpFeedback({ amount, id: Date.now() });
+    setExpFeedback({ amount, reason: reason || null, id: Date.now() });
     expFeedbackTimeoutRef.current = setTimeout(() => {
       setExpFeedback(null);
-    }, 3200);
+    }, 3400);
   }, []);
 
   const applyExpProgression = useCallback((
     currentPlayer: PlayerProfile,
-    expGained: number
-  ): { updatedPlayer: PlayerProfile; levelsGained: number; newLevel: number } => {
-    let exp = currentPlayer.stats.exp + expGained;
-    let level = currentPlayer.level;
-    let maxExp = currentPlayer.stats.maxExp || (level * 100);
-    let maxHp = currentPlayer.stats.maxHp;
-    let maxMp = currentPlayer.stats.maxMp;
-    let hp = currentPlayer.stats.hp;
-    let mp = currentPlayer.stats.mp;
-    let str = currentPlayer.stats.str;
-    let dex = currentPlayer.stats.dex;
-    let int = currentPlayer.stats.int;
+    expGained: number,
+    opts?: { restoreVitalsOnLevelUp?: boolean; storyIdOverride?: string }
+  ): { updatedPlayer: PlayerProfile; levelsGained: number; newLevel: number; hitLevelCap: boolean } => {
+    const effectiveStoryId = opts?.storyIdOverride || currentStory?.id;
+    const starCap =
+      effectiveStoryId === "starfall-labyrinth"
+        ? getStarLevelCap(currentPlayer.labyrinthState?.protagonistStarRank || currentPlayer.starRank || 1)
+        : 60;
 
-    let levelsGained = 0;
-    while (exp >= maxExp) {
-      levelsGained += 1;
-      exp -= maxExp;
-      level += 1;
-      maxExp = level * 100;
-      maxHp += 20;
-      maxMp += 10;
-      hp = maxHp;
-      mp = maxMp;
-      str += 2;
-      dex += 2;
-      int += 2;
-    }
+    const res = resolveProtagonistExpGain({
+      level: currentPlayer.level,
+      exp: currentPlayer.stats.exp,
+      maxExp: currentPlayer.stats.maxExp,
+      hp: currentPlayer.stats.hp,
+      maxHp: currentPlayer.stats.maxHp,
+      mp: currentPlayer.stats.mp,
+      maxMp: currentPlayer.stats.maxMp,
+      str: currentPlayer.stats.str,
+      dex: currentPlayer.stats.dex,
+      int: currentPlayer.stats.int,
+      unspentStatPoints: currentPlayer.unspentStatPoints || 0,
+      expGained,
+      maxLevelCap: starCap,
+      restoreVitalsOnLevelUp: opts?.restoreVitalsOnLevelUp ?? true,
+    });
 
     const updatedPlayer: PlayerProfile = {
       ...currentPlayer,
-      level,
+      level: res.level,
+      unspentStatPoints: res.unspentStatPoints,
       stats: {
         ...currentPlayer.stats,
-        exp,
-        maxExp,
-        hp,
-        maxHp,
-        mp,
-        maxMp,
-        str,
-        dex,
-        int,
+        exp: res.exp,
+        maxExp: res.maxExp,
+        hp: res.hp,
+        maxHp: res.maxHp,
+        mp: res.mp,
+        maxMp: res.maxMp,
+        str: res.str,
+        dex: res.dex,
+        int: res.int,
       },
     };
 
-    return { updatedPlayer, levelsGained, newLevel: level };
-  }, []);
+    return {
+      updatedPlayer,
+      levelsGained: res.levelsGained,
+      newLevel: res.level,
+      hitLevelCap: res.hitLevelCap,
+    };
+  }, [currentStory?.id]);
 
   const [isRollingAbilities, setIsRollingAbilities] = useState(false);
   const [inspectedAbility, setInspectedAbility] = useState<AbilityDetail | null>(null);
@@ -1105,7 +1200,10 @@ export default function VisualNovelGame() {
     if (snap.systemState) setSystemState(normalizeSystemState(snap.systemState));
     if (snap.memories) setMemories(snap.memories);
     if (snap.chatLog) setChatLog(snap.chatLog);
-    if (snap.choices) setChoices(snap.choices);
+    if (snap.choices) {
+      const sanitizedSnapChoices = sanitizeAndFilterChoices(snap.choices);
+      if (sanitizedSnapChoices.length >= 2) setChoices(sanitizedSnapChoices);
+    }
 
     // Pillar 4: Log persistent timeline rewind echo
     const jumpEcho: TimelineEcho = {
@@ -1316,6 +1414,59 @@ export default function VisualNovelGame() {
     }
   };
 
+  const hydrateCompanionMetadata = (
+    rawComp: any,
+    storyCompanions?: StoryCompanion[],
+    isStarfallStory?: boolean
+  ): Companion => {
+    const compName = (rawComp?.name || "").trim();
+    const storyComp = Array.isArray(storyCompanions)
+      ? storyCompanions.find(
+          (sc) =>
+            (rawComp?.id && sc.id && sc.id === rawComp.id) ||
+            matchesHeroineName(sc.name, compName, sc.id)
+        )
+      : undefined;
+    const sfDossier = isStarfallStory
+      ? STARFALL_HEROINE_DOSSIERS[compName] ||
+        Object.values(STARFALL_HEROINE_DOSSIERS).find((d) =>
+          matchesHeroineName(d.name, compName, rawComp?.id)
+        )
+      : undefined;
+
+    const pickList = (primary?: string[], secondary?: string[], tertiary?: string[]) => {
+      if (Array.isArray(primary) && primary.length > 0) return primary;
+      if (Array.isArray(secondary) && secondary.length > 0) return secondary;
+      if (Array.isArray(tertiary) && tertiary.length > 0) return tertiary;
+      return undefined;
+    };
+
+    const resolvedBaseImg =
+      rawComp?.baseImageUrl ||
+      storyComp?.baseImageUrl ||
+      (sfDossier ? `/characters/starfall-labyrinth/${sfDossier.spriteSlug}/neutral.png` : undefined);
+
+    const resolvedExpressions =
+      rawComp?.expressions && Object.keys(rawComp.expressions).length > 0
+        ? rawComp.expressions
+        : storyComp?.expressions;
+
+    return {
+      ...rawComp,
+      id: rawComp?.id || storyComp?.id || sfDossier?.id || compName.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+      title: rawComp?.title || storyComp?.title || sfDossier?.epithet || "",
+      role: rawComp?.role || storyComp?.role || sfDossier?.combatRole,
+      gender: rawComp?.gender || storyComp?.gender || sfDossier?.gender,
+      personality: rawComp?.personality || storyComp?.personality || sfDossier?.personality,
+      values: pickList(rawComp?.values, storyComp?.values, sfDossier?.values),
+      dislikes: pickList(rawComp?.dislikes, storyComp?.dislikes, sfDossier?.dislikes),
+      highCompatibility: pickList(rawComp?.highCompatibility, storyComp?.highCompatibility),
+      guardTier: (rawComp?.guardTier || storyComp?.guardTier) as HeroineGuardTier | undefined,
+      baseImageUrl: resolvedBaseImg,
+      expressions: resolvedExpressions,
+    };
+  };
+
   useEffect(() => {
     let active = true;
     setLlmConfig(getStoredLlmConfig());
@@ -1328,18 +1479,34 @@ export default function VisualNovelGame() {
           setNarrationStyle(story.narrationStyle || "Grimdark & Atmospheric");
           if (story.companions && story.companions.length > 0) {
             const startingSpeaker = story.startingNodes?.[0]?.speaker || story.companions[0].name;
+            const isStarfallStory = story.id === "starfall-labyrinth";
             setParty(
-              story.companions.map((c, idx) => ({
-                id: c.id || c.name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
-                name: c.name,
-                title: c.title,
-                affection: c.affection ?? c.baseAffection ?? 15,
-                heartRateBpm: c.heartRateBpm ?? 55,
-                expressionKey: c.expressionKey || "neutral",
-                isPresent: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
-                encountered: idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase(),
-                color: c.color || "rose",
-              }))
+              story.companions.map((c, idx) => {
+                const isStarter = idx === 0 || c.name.toLowerCase() === startingSpeaker.toLowerCase();
+                return hydrateCompanionMetadata(
+                  {
+                    ...c,
+                    id: c.id || c.name.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+                    name: c.name,
+                    title: c.title,
+                    affection: c.affection ?? c.baseAffection ?? 15,
+                    heartRateBpm: c.heartRateBpm ?? 55,
+                    expressionKey: c.expressionKey || "neutral",
+                    isPresent: isStarter,
+                    encountered: isStarter,
+                    color: c.color || "rose",
+                    starRank: c.starRank,
+                    baseStarRank: c.baseStarRank ?? c.starRank,
+                    level: c.level || 1,
+                    exp: c.exp || 0,
+                    maxExp: c.maxExp || BASE_LEVEL_ONE_MAX_EXP,
+                    heroStatus: isStarfallStory ? (isStarter ? "DEPLOYED" : "BENCHED") : undefined,
+                    awakenings: 0,
+                  },
+                  story.companions,
+                  isStarfallStory
+                );
+              })
             );
             const firstLoc = story.startingNodes?.[0]?.location || story.worldContext.locations[0]?.name || "Starting Point";
             const firstBg = (story.worldContext.locations.find((l) => l.name === firstLoc)?.bgImage) || story.coverImage || DEFAULT_BG;
@@ -1351,13 +1518,15 @@ export default function VisualNovelGame() {
               presentCompanions: [startingSpeaker],
             }));
           }
-          if (story.id === "sovereign-spire" || story.id === "port-solaris") {
+          const worldPreset = getWorldPresets(story.id);
+          if (worldPreset) {
             const isSolaris = story.id === "port-solaris";
-            const defOrigin = isSolaris ? PORT_SOLARIS_ORIGIN_PRESETS[0] : SOVEREIGN_ORIGIN_PRESETS[0];
-            const defConduit = isSolaris ? PORT_SOLARIS_CONDUIT_PRESETS[0] : SOVEREIGN_CONDUIT_PRESETS[0];
-            const defTone = isSolaris
-              ? "Sun-Drenched Coastal Rom-Com (Sparkling banter, sensory warmth, romantic tension)"
-              : "Grimdark & Atmospheric (Tense, visceral, sensory)";
+            const isStarfall = story.id === "starfall-labyrinth";
+            const defOrigin = worldPreset.origins[0];
+            const defConduit = worldPreset.conduits[0];
+            const defTone = worldPreset.defaultTone;
+            const initialStarterName =
+              story.startingNodes?.[0]?.speaker || story.companions?.[0]?.name || "Pia Hollis";
             setNarrationStyle(defTone);
             setSelectedWorldOriginPreset(defOrigin.id);
             setSelectedSovereignConduit(defConduit.id);
@@ -1394,6 +1563,16 @@ export default function VisualNovelGame() {
                         }),
                       factionStanding: prev.factionStanding || createInitialFactionStandings(),
                       equippedKeepsakes: prev.equippedKeepsakes || [],
+                    }
+                  : {}),
+                ...(isStarfall
+                  ? {
+                      labyrinthState:
+                        prev.labyrinthState ||
+                        createInitialLabyrinthState(defOrigin.id as StarfallOrigin, {
+                          startingHeroineName: initialStarterName,
+                        }),
+                      starRank: (defOrigin as StarfallOriginPreset).startingStarRank || 1,
                     }
                   : {}),
                 stats: {
@@ -1730,6 +1909,14 @@ export default function VisualNovelGame() {
   const [showMap, setShowMap] = useState(false);
   const [showFlowchartModal, setShowFlowchartModal] = useState(false);
   const [showMobileCommandSheet, setShowMobileCommandSheet] = useState(false);
+  const [showSummonModal, setShowSummonModal] = useState(false);
+  const [showBarracksModal, setShowBarracksModal] = useState(false);
+  const [showOocDrawer, setShowOocDrawer] = useState(false);
+  const [directorNotes, setDirectorNotes] = useState("");
+  const [starfallGameOver, setStarfallGameOver] = useState<{
+    causeOfDeath: string;
+    killerOrHazard?: string;
+  } | null>(null);
   const [visitedStoryNodes, setVisitedStoryNodes] = useState<VisitedStoryNode[]>([]);
   const [spotlightHeroineName, setSpotlightHeroineName] = useState<string | null>(null);
   const [selectedCharacterCardComp, setSelectedCharacterCardComp] = useState<Companion | StoryCompanion | null>(null);
@@ -1783,8 +1970,10 @@ export default function VisualNovelGame() {
   const activeConditionPills = useMemo(() => {
     const pills: { label: string; color: string; title: string }[] = [];
     const weaponLower = (player.gear?.weapon || "").toLowerCase();
-    const armorLower = (player.gear?.armor || "").toLowerCase();
-    const visualLower = (player.visualDescription || "").toLowerCase();
+    const armorLower = (player.gear?.armor || "").trim().toLowerCase();
+    const isExplicitlyUnclad =
+      isExplicitlyNudeOrUnclad(player.gear?.armor) ||
+      isExplicitlyNudeOrUnclad(player.visualDescription);
 
     if (!weaponLower || weaponLower.includes("none") || weaponLower.includes("unarmed") || weaponLower.includes("bare")) {
       pills.push({
@@ -1793,20 +1982,22 @@ export default function VisualNovelGame() {
         title: "No primary weapon equipped — relying on raw physique or innate claws/magic.",
       });
     }
-    if (
-      !armorLower ||
-      armorLower.includes("none") ||
-      armorLower.includes("unclad") ||
-      armorLower.includes("nude") ||
-      armorLower.includes("rags") ||
-      visualLower.includes("nude") ||
-      visualLower.includes("unclad") ||
-      visualLower.includes("without clothes")
-    ) {
+    if (isExplicitlyUnclad) {
       pills.push({
         label: "Unclad / Exposed",
         color: "border-rose-500/40 bg-rose-950/60 text-rose-300",
         title: "Lacking protective apparel — NPCs react to your exposed state and physical vulnerability.",
+      });
+    } else if (
+      !armorLower ||
+      armorLower === "none" ||
+      armorLower.includes("unarmored") ||
+      armorLower.includes("portrait attire")
+    ) {
+      pills.push({
+        label: "Unarmored",
+        color: "border-zinc-500/40 bg-zinc-900/70 text-zinc-300",
+        title: "Wearing profile outfit without protective combat armor.",
       });
     }
 
@@ -1953,10 +2144,65 @@ export default function VisualNovelGame() {
             : "border-emerald-500/40 bg-emerald-950/50 text-emerald-300",
         title: `${activeComp?.name || "Partner"} Heart-Rate Gauge: ${realBpm} BPM (${bpmZoneInfo.label}) — 40-68 Composed, 69-82 Guarded Deflection, 83-95 The Blush Zone, 96-100 Short-Circuit.`,
       });
+    } else if (currentStory?.id === "starfall-labyrinth") {
+      const ls = player.labyrinthState || createInitialLabyrinthState();
+      const inLobby = isStarfallLobbyLocation(gameState.location);
+      const curFloor = inLobby ? 0 : ls.currentFloor || 0;
+      const floorType = getFloorType(curFloor);
+      pills.push({
+        label: inLobby
+          ? "💠 Main Lobby • Star Gate Ready"
+          : `⚔ Floor ${curFloor}/100 (${getFloorTypeLabel(curFloor)})`,
+        color: inLobby
+          ? "border-indigo-400/60 bg-indigo-950/75 text-indigo-200"
+          : floorType === "GATE_BOSS"
+          ? "border-rose-500/60 bg-rose-950/80 text-rose-200 animate-pulse"
+          : floorType === "SAFE_ZONE"
+          ? "border-emerald-500/50 bg-emerald-950/60 text-emerald-200"
+          : "border-amber-500/50 bg-amber-950/60 text-amber-200",
+        title: inLobby
+          ? "Star Gate Plaza (Main Lobby) — Summoning Altar unlocked! Spend Star Shards to pull 1★–5★ allies before stepping onto Floor 1+."
+          : `Starfall Labyrinth Floor ${curFloor} (${getFloorTypeLabel(curFloor)}) — Highest Cleared: Floor ${ls.highestFloorCleared}/100. Summoning is locked until you return to Star Gate Plaza (Main Lobby).`,
+      });
+
+      const pStar = ls.protagonistStarRank || 1;
+      const pCap = getStarLevelCap(pStar);
+      const starDisplay = ls.isHiddenRarity && pStar === 1 ? "?★ (1★)" : `${pStar}★`;
+      pills.push({
+        label: `${starDisplay} • Lv.${player.level}/${pCap}`,
+        color:
+          player.level >= pCap
+            ? "border-amber-400/60 bg-amber-950/75 text-amber-200"
+            : "border-sky-500/45 bg-sky-950/60 text-sky-200",
+        title: `Covenant II Hard Star Level Cap: ${pStar}★ caps at Lv.${pCap} (1★=20, 2★=30, 3★=40, 4★=50, 5★=60). Break caps via Resonance Awakening or Gate Boss breakthroughs.`,
+      });
+
+      pills.push({
+        label: `💠 ${ls.starShards} Shards • Pity ${ls.pityCounter}/90`,
+        color: "border-cyan-500/45 bg-cyan-950/60 text-cyan-200",
+        title: `Star Shards: ${ls.starShards} (30 per 1x pull, 300 per 10x pull in Main Lobby) • 5★ Hard Pity Counter: ${ls.pityCounter}/90 • Memorial Wall Fallen: ${(ls.memorial || []).length}.`,
+      });
+
+      pills.push({
+        label: `🎖 Master Trust ${ls.masterTrust}%`,
+        color:
+          ls.masterTrust < 25
+            ? "border-rose-500/55 bg-rose-950/75 text-rose-200"
+            : "border-emerald-500/45 bg-emerald-950/55 text-emerald-200",
+        title: `Unseen Master ("Account #0419 — KRONOS") Trust: ${ls.masterTrust}% — High trust earns Supply Drops & Summon backing; low trust risks Synthesis Bench disposal.`,
+      });
+
+      if (curFloor > (ls.metaKnowledgeCeiling || 40)) {
+        pills.push({
+          label: `⚠ BEYOND MEMORY (F${curFloor} > F${ls.metaKnowledgeCeiling})`,
+          color: "border-red-500/70 bg-red-950/90 text-red-200 animate-pulse",
+          title: `Floor ${curFloor} exceeds your former Ranker ceiling (Floor ${ls.metaKnowledgeCeiling}). Past meta-knowledge no longer applies — scout blind!`,
+        });
+      }
     }
 
     return pills;
-  }, [player.gear, player.visualDescription, player.stats.hp, player.stats.maxHp, player.stats.mp, player.stats.maxMp, player.race, player.racialTraits, player.level, player.matriculationRank, player.semesterDebtQuota, player.conduit, player.patronWing, player.boardingHouse, party, gameState.speaker, currentStory?.id]);
+  }, [player.gear, player.visualDescription, player.stats.hp, player.stats.maxHp, player.stats.mp, player.stats.maxMp, player.race, player.racialTraits, player.level, player.matriculationRank, player.semesterDebtQuota, player.conduit, player.patronWing, player.boardingHouse, player.labyrinthState, party, gameState.speaker, gameState.location, currentStory?.id]);
 
   // Helper to determine active threshold cap for any companion
   const getCompanionCap = (compName?: string | null): number => {
@@ -2026,6 +2272,40 @@ export default function VisualNovelGame() {
   const dialogueFeedRef = useRef<HTMLDivElement | null>(null);
   const isResumingSaveRef = useRef(false);
 
+  // Self-heal corrupted choice arrays (e.g. from older saves or truncated JSON fragments)
+  useEffect(() => {
+    if (!choices || choices.length === 0) return;
+    const needsSanitize =
+      choices.length > 4 || choices.some((c) => !isValidTacticalChoice(c));
+    if (!needsSanitize) return;
+
+    const cleaned = sanitizeAndFilterChoices(choices);
+    if (cleaned.length >= 2) {
+      setChoices(cleaned);
+      return;
+    }
+
+    const activeSpeakerName = gameState?.speaker || "Narrator";
+    const isAlone =
+      party.filter((c) => c.isPresent).length === 0 &&
+      (!activeSpeakerName || activeSpeakerName === "Narrator");
+    const fallback = sanitizeAndFilterChoices(
+      buildPersonalityFallbackChoices({
+        personality: player?.personality,
+        personalityTraits: player?.personalityTraits,
+        playerRole: player?.role,
+        playerRace: player?.race,
+        activeSpeaker: activeSpeakerName,
+        location: gameState?.location || "this sector",
+        isProtagonistAlone: isAlone,
+        storyId: currentStory?.id,
+        genre: currentStory?.genre,
+        narrativeText: gameState?.dialogue,
+      })
+    );
+    setChoices(fallback);
+  }, [choices, player, gameState, party, currentStory]);
+
   // Editing and response regeneration state
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
@@ -2081,6 +2361,146 @@ export default function VisualNovelGame() {
   useEffect(() => { activeClashRef.current = activeClash; }, [activeClash]);
   const visitedNodesRef = useRef<VisitedStoryNode[]>(visitedStoryNodes);
   useEffect(() => { visitedNodesRef.current = visitedStoryNodes; }, [visitedStoryNodes]);
+
+  // Synchronize shared combat, tactical, floor, and quest EXP to living deployed/present companions
+  const applySharedSquadExp = useCallback(
+    (
+      protagonistExpGained: number,
+      opts?: { focalCompanionName?: string | null; skipStarfallRoster?: boolean }
+    ) => {
+      if (!protagonistExpGained || protagonistExpGained <= 0) return;
+      const isStarfall = currentStory?.id === "starfall-labyrinth";
+      const curParty = partyRef.current || [];
+      if (curParty.length === 0) return;
+
+      const curLs = playerRef.current?.labyrinthState;
+      const leveledUp: { name: string; newLevel: number; cap: number }[] = [];
+
+      // If advanceFloor already awarded floor EXP to deployed Starfall roster entries, just sync party from roster
+      if (isStarfall && opts?.skipStarfallRoster && curLs?.roster) {
+        const syncedParty = curParty.map((comp) => {
+          const rMatch = curLs.roster.find((r) =>
+            matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+          );
+          if (!rMatch) return comp;
+          const prevLvl = comp.level || 1;
+          const nextLvl = rMatch.level || 1;
+          if (nextLvl > prevLvl && rMatch.status !== "FALLEN") {
+            leveledUp.push({
+              name: comp.name,
+              newLevel: nextLvl,
+              cap: getStarLevelCap(rMatch.starRank),
+            });
+          }
+          return {
+            ...comp,
+            level: nextLvl,
+            exp: rMatch.exp || 0,
+            maxExp: rMatch.maxExp || getRequiredExpForLevel(nextLvl),
+          };
+        });
+        partyRef.current = syncedParty;
+        setParty(syncedParty);
+      } else {
+        let updatedRoster = curLs?.roster ? curLs.roster.map((r) => ({ ...r })) : null;
+        const nextParty = curParty.map((comp) => {
+          const rMatchIdx = updatedRoster
+            ? updatedRoster.findIndex((r) =>
+                matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+              )
+            : -1;
+          const rMatch = rMatchIdx >= 0 && updatedRoster ? updatedRoster[rMatchIdx] : null;
+          const isFallen = comp.heroStatus === "FALLEN" || rMatch?.status === "FALLEN";
+          const isDeployedOrPresent = isStarfall
+            ? rMatch
+              ? rMatch.status === "DEPLOYED"
+              : comp.isPresent
+            : comp.isPresent;
+
+          if (isFallen || !isDeployedOrPresent) {
+            const safeLvl = rMatch?.level || comp.level || 1;
+            return {
+              ...comp,
+              level: safeLvl,
+              exp: rMatch?.exp ?? comp.exp ?? 0,
+              maxExp: getRequiredExpForLevel(safeLvl),
+            };
+          }
+
+          const cap = isStarfall
+            ? getStarLevelCap(rMatch?.starRank || comp.starRank || 1)
+            : 60;
+          const isFocal = Boolean(
+            opts?.focalCompanionName &&
+              matchesHeroineName(comp.name, opts.focalCompanionName, comp.id)
+          );
+          const compRes = resolveCompanionExpGain({
+            level: rMatch?.level ?? comp.level ?? 1,
+            exp: rMatch?.exp ?? comp.exp ?? 0,
+            expGained: protagonistExpGained,
+            maxLevelCap: cap,
+            isFocalOrSynergy: isFocal,
+          });
+
+          if (compRes.levelsGained > 0) {
+            leveledUp.push({ name: comp.name, newLevel: compRes.level, cap });
+          }
+
+          if (rMatchIdx >= 0 && updatedRoster) {
+            updatedRoster[rMatchIdx] = {
+              ...updatedRoster[rMatchIdx],
+              level: compRes.level,
+              exp: compRes.exp,
+              maxExp: compRes.maxExp,
+            };
+          }
+
+          return {
+            ...comp,
+            encountered: true,
+            level: compRes.level,
+            exp: compRes.exp,
+            maxExp: compRes.maxExp,
+          };
+        });
+
+        partyRef.current = nextParty;
+        setParty(nextParty);
+
+        if (isStarfall && curLs && updatedRoster) {
+          const nextLs: LabyrinthState = {
+            ...curLs,
+            roster: updatedRoster,
+          };
+          const syncUpdated: PlayerProfile = {
+            ...playerRef.current,
+            labyrinthState: nextLs,
+          };
+          playerRef.current = syncUpdated;
+          setPlayer((prev) => ({
+            ...prev,
+            labyrinthState: nextLs,
+          }));
+        }
+      }
+
+      if (leveledUp.length > 0) {
+        pushNotification({
+          id: `squad_lvl_${Date.now()}`,
+          type: "quest_completed",
+          title:
+            leveledUp.length === 1
+              ? `SQUAD LEVEL UP: ${leveledUp[0].name.toUpperCase()} -> LV.${leveledUp[0].newLevel}`
+              : `SQUAD LEVEL UP (${leveledUp.length} ALLIES ADVANCED)!`,
+          subtitle: leveledUp
+            .map((u) => `${u.name} reached Lv.${u.newLevel}/${u.cap}`)
+            .join(" • "),
+          difficulty: "B",
+        });
+      }
+    },
+    [currentStory?.id]
+  );
 
   // Cross-World Individual Character Roster State & Handlers (Identity-only blueprints)
   const [characterRoster, setCharacterRoster] = useState<SavedCharacterBlueprint[]>([]);
@@ -2159,7 +2579,7 @@ export default function VisualNovelGame() {
         mp: 60,
         maxMp: 60,
         exp: 0,
-        maxExp: 100,
+        maxExp: BASE_LEVEL_ONE_MAX_EXP,
         str: 10,
         dex: 10,
         int: 10,
@@ -2189,7 +2609,7 @@ export default function VisualNovelGame() {
           mp: baseStats.mp ?? 60,
           maxMp: baseStats.maxMp ?? 60,
           exp: 0,
-          maxExp: 100,
+          maxExp: baseStats.maxExp ?? BASE_LEVEL_ONE_MAX_EXP,
           str: baseStats.str ?? 10,
           dex: baseStats.dex ?? 10,
           int: baseStats.int ?? 10,
@@ -2626,11 +3046,23 @@ export default function VisualNovelGame() {
       if (!res.ok) return;
       const data = await res.json();
       if (data.visualDescription || data.visualDna) {
+        const detectedAttire = resolvePortraitAttireLabel(
+          data.visualDna,
+          data.visualDescription,
+          ""
+        );
         setPlayer((prev) => {
+          const currentArmorLower = (prev.gear?.armor || "").trim().toLowerCase();
+          const shouldUpdateArmor =
+            Boolean(detectedAttire) &&
+            (currentArmorLower === "none" ||
+              currentArmorLower === "unarmored" ||
+              currentArmorLower === "portrait attire (unarmored)");
           const next = {
             ...prev,
             visualDna: data.visualDna || prev.visualDna,
             visualDescription: data.visualDescription || data.visualDna?.fullPromptAnchor || prev.visualDescription,
+            gear: shouldUpdateArmor ? { ...prev.gear, armor: detectedAttire } : prev.gear,
           };
           playerRef.current = next;
           performAutoSave({ player: next, playerAvatar: avatarDataUrl });
@@ -2850,13 +3282,16 @@ export default function VisualNovelGame() {
     });
   };
 
-  const handleSelectSovereignOriginPreset = (
-    preset: SovereignOriginPreset | PortSolarisOriginPreset
-  ) => {
+  const handleSelectSovereignOriginPreset = (preset: AnyWorldOriginPreset) => {
     soundEffects.playClick();
     setSelectedWorldOriginPreset(preset.id);
     setPlayer((prev) => {
       const isSolarisPreset = "outstandingDebt" in preset;
+      const isStarfallPreset = "startingStarShards" in preset;
+      const activeStarterName =
+        prologues[selectedPrologue]?.speaker ||
+        currentStory?.companions?.[0]?.name ||
+        "Pia Hollis";
       const next: PlayerProfile = {
         ...prev,
         worldOrigin: preset.name,
@@ -2874,15 +3309,21 @@ export default function VisualNovelGame() {
               }),
             }
           : {}),
+        ...(isStarfallPreset
+          ? {
+              labyrinthState: createInitialLabyrinthState(preset.id as StarfallOrigin, {
+                startingHeroineName: activeStarterName,
+              }),
+              starRank: (preset as StarfallOriginPreset).startingStarRank,
+            }
+          : {}),
       };
       playerRef.current = next;
       return next;
     });
   };
 
-  const handleSelectSovereignConduitPreset = (
-    preset: SovereignConduitPreset | PortSolarisConduitPreset
-  ) => {
+  const handleSelectSovereignConduitPreset = (preset: AnyWorldConduitPreset) => {
     soundEffects.playClick();
     setSelectedSovereignConduit(preset.id);
     const abNames = preset.startingAbilities.map((a) => a.name);
@@ -2917,8 +3358,8 @@ export default function VisualNovelGame() {
 
   const handleStartWithCanonWingLoadout = async () => {
     soundEffects.playClick();
-    const isSolaris = currentStory.id === "port-solaris";
-    const pool = isSolaris ? PORT_SOLARIS_CONDUIT_PRESETS : SOVEREIGN_CONDUIT_PRESETS;
+    const worldPreset = getWorldPresets(currentStory.id);
+    const pool = worldPreset ? worldPreset.conduits : SOVEREIGN_CONDUIT_PRESETS;
     const activeConduit =
       pool.find((c) => c.id === selectedSovereignConduit) || pool[0];
     const loadout = activeConduit.canonLoadout;
@@ -2933,20 +3374,20 @@ export default function VisualNovelGame() {
         name: loadout.weapon,
         type: "weapon",
         rarity: "rare",
-        description: isSolaris
-          ? `Signature ${activeConduit.wingLabel} tool of the trade tuned for ${activeConduit.conduit} showdowns.`
+        description: worldPreset
+          ? worldPreset.uiLabels.weaponDescription(activeConduit.wingLabel, activeConduit.conduit)
           : `Standard-issue ${activeConduit.wingLabel} armament tuned for ${activeConduit.conduit} conduit channeling.`,
-        effect: isSolaris ? "+15% Article 9 Showdown Efficiency" : "+15% Conduit Strike Efficiency",
+        effect: worldPreset ? worldPreset.uiLabels.weaponEffect : "+15% Conduit Strike Efficiency",
       },
       {
         id: `canon_arm_${activeConduit.id}`,
         name: loadout.armor,
         type: "armor",
         rarity: "uncommon",
-        description: isSolaris
-          ? `Tailored ${activeConduit.wingLabel} resort and boardwalk attire.`
+        description: worldPreset
+          ? worldPreset.uiLabels.armorDescription(activeConduit.wingLabel)
           : `Tailored ${activeConduit.wingLabel} initiate attire reinforced against Stratum I Astra-Miasma.`,
-        effect: isSolaris ? "+10% Composure & BPM Stability" : "+10% Calcification & Miasma Resistance",
+        effect: worldPreset ? worldPreset.uiLabels.armorEffect : "+10% Calcification & Miasma Resistance",
       },
       {
         id: `canon_rel_${activeConduit.id}`,
@@ -3558,11 +3999,39 @@ export default function VisualNovelGame() {
   };
 
   const getSpriteSrc = (speaker: string, key: string) => {
-    const normalizedKey = key === "injured" ? "hurt" : key;
+    const safeSpeaker = String(speaker || "");
+    const safeSpeakerLower = safeSpeaker.toLowerCase();
+    const rawNormalized = key === "injured" ? "hurt" : key || "neutral";
+    const matchingPartyHero = party.find(
+      (p) =>
+        Boolean(p?.name) &&
+        (p.name.toLowerCase().includes(safeSpeakerLower) ||
+          safeSpeakerLower.includes(p.name.toLowerCase()))
+    );
+    const matchingRosterHero = (player.labyrinthState?.roster || []).find((r) =>
+      matchesHeroineName(r.heroineName, safeSpeaker, r.heroineId)
+    );
+    const isActuallyWounded =
+      matchingPartyHero?.heroStatus === "WOUNDED" ||
+      matchingRosterHero?.status === "WOUNDED";
+    const normalizedKey =
+      currentStory.id === "starfall-labyrinth" &&
+      rawNormalized === "hurt" &&
+      !isActuallyWounded &&
+      !player.labyrinthState?.activeEncounter?.isActive
+        ? "flustered"
+        : rawNormalized;
+    const validStarfallExpr = ["neutral", "intrigued", "flustered", "smug", "combat_ready", "hurt"].includes(
+      normalizedKey
+    )
+      ? normalizedKey
+      : "neutral";
+
     const companion = currentStory.companions?.find(
       (c) =>
-        c.name.toLowerCase().includes(speaker.toLowerCase()) ||
-        speaker.toLowerCase().includes(c.name.toLowerCase())
+        Boolean(c?.name) &&
+        (c.name.toLowerCase().includes(safeSpeakerLower) ||
+          safeSpeakerLower.includes(c.name.toLowerCase()))
     );
     if (companion) {
       if (companion.expressions && companion.expressions[normalizedKey]) {
@@ -3576,85 +4045,124 @@ export default function VisualNovelGame() {
       }
     }
 
-    if (speaker.toLowerCase().includes("evelyn")) {
+    // Starfall Labyrinth 12-Heroine Expression Resolver (6 Core + 6 Google Drive OCs)
+    if (safeSpeakerLower) {
+      const sfMatch = Object.values(STARFALL_HEROINE_DOSSIERS).find((d) =>
+        matchesHeroineName(d.name, safeSpeaker, d.id)
+      );
+      if (sfMatch?.spriteSlug) {
+        return `/characters/starfall-labyrinth/${sfMatch.spriteSlug}/${validStarfallExpr}.png`;
+      }
+    }
+
+    if (safeSpeakerLower.includes("evelyn")) {
       return EVELYN_EXPRESSIONS[normalizedKey] || EVELYN_EXPRESSIONS.neutral || DEFAULT_FALLBACK_SPRITE;
     }
-    if (speaker.toLowerCase().includes("aria")) {
+    if (safeSpeakerLower.includes("aria")) {
       return ARIA_EXPRESSIONS[normalizedKey] || ARIA_EXPRESSIONS.neutral || DEFAULT_FALLBACK_SPRITE;
     }
-    if (speaker.toLowerCase().includes("serena")) {
+    if (safeSpeakerLower.includes("serena")) {
       return SERENA_EXPRESSIONS[normalizedKey] || SERENA_EXPRESSIONS.neutral || DEFAULT_FALLBACK_SPRITE;
     }
-    if (speaker.toLowerCase().includes("morgana")) {
+    if (safeSpeakerLower.includes("morgana")) {
       return MORGANA_EXPRESSIONS[normalizedKey] || MORGANA_EXPRESSIONS.neutral || DEFAULT_FALLBACK_SPRITE;
     }
-    if (speaker.toLowerCase().includes("perci")) {
+    if (safeSpeakerLower.includes("perci")) {
       return PERCI_EXPRESSIONS[normalizedKey] || PERCI_EXPRESSIONS.neutral || DEFAULT_FALLBACK_SPRITE;
     }
-    if (speaker.toLowerCase().includes("cassia")) {
+    if (safeSpeakerLower.includes("cassia")) {
       return "/characters/sovereign-spire/cassia_valen.png";
     }
-    if (speaker.toLowerCase().includes("beatrix")) {
+    if (safeSpeakerLower.includes("beatrix")) {
       return "/characters/sovereign-spire/beatrix_valorian.png";
     }
-    if (speaker.toLowerCase().includes("ysolde")) {
+    if (safeSpeakerLower.includes("ysolde")) {
       return "/characters/sovereign-spire/ysolde_kaelen.png";
     }
-    if (speaker.toLowerCase().includes("aurelia")) {
+    if (safeSpeakerLower.includes("aurelia")) {
       return "/characters/sovereign-spire/aurelia_solis.png";
     }
-    if (speaker.toLowerCase().includes("miri") || speaker.toLowerCase().includes("mireille")) {
+    if (safeSpeakerLower.includes("miri") || safeSpeakerLower.includes("mireille")) {
       return "/characters/sovereign-spire/miri_thorne.png";
     }
-    if (speaker.toLowerCase().includes("noelle")) {
+    if (safeSpeakerLower.includes("noelle")) {
       return "/characters/sovereign-spire/noelle_vesper.png";
     }
-    if (speaker.toLowerCase().includes("kestrel") || speaker.toLowerCase().includes("kes ")) {
+    if (safeSpeakerLower.includes("kestrel") || safeSpeakerLower.includes("kes ")) {
       return "/characters/sovereign-spire/kestrel_hollow.png";
     }
-    if (speaker.toLowerCase().includes("valeria")) {
+    if (safeSpeakerLower.includes("valeria")) {
       return "/characters/sovereign-spire/valeria_noctis.png";
     }
-    if (speaker.toLowerCase().includes("seraphina")) {
+    if (safeSpeakerLower.includes("seraphina")) {
       return "/characters/port-solaris/seraphina_vane.png";
     }
-    if (speaker.toLowerCase().includes("vivienne")) {
+    if (safeSpeakerLower.includes("vivienne")) {
       return "/characters/port-solaris/vivienne_laurent.png";
     }
-    if (speaker.toLowerCase().includes("mia")) {
+    if (safeSpeakerLower.includes("mia")) {
       return "/characters/port-solaris/mia_bellini.png";
     }
-    if (speaker.toLowerCase().includes("colette")) {
+    if (safeSpeakerLower.includes("colette")) {
       return "/characters/port-solaris/colette_moreau.png";
     }
-    if (speaker.toLowerCase().includes("pippa") || speaker.toLowerCase().includes("pip ")) {
+    if (safeSpeakerLower.includes("pippa") || safeSpeakerLower.includes("pip ")) {
       return "/characters/port-solaris/pippa_reyes.png";
     }
-    if (speaker.toLowerCase().includes("kaede")) {
+    if (safeSpeakerLower.includes("kaede")) {
       return "/characters/port-solaris/kaede_tachibana.png";
     }
-    if (speaker.toLowerCase().includes("roxy")) {
+    if (safeSpeakerLower.includes("roxy")) {
       return "/characters/port-solaris/roxy_vance.png";
     }
-    if (speaker.toLowerCase().includes("chloe")) {
+    if (safeSpeakerLower.includes("chloe")) {
       return "/characters/port-solaris/chloe_lin.png";
     }
-    if (speaker.toLowerCase().includes("nadia") || speaker.toLowerCase().includes("saint-clair")) {
+    if (safeSpeakerLower.includes("nadia") || safeSpeakerLower.includes("saint-clair")) {
       return "/characters/port-solaris/nadia_saint_clair.png";
     }
-    if (speaker.toLowerCase().includes("zuri") || speaker.toLowerCase().includes("delacroix")) {
+    if (safeSpeakerLower.includes("zuri") || safeSpeakerLower.includes("delacroix")) {
       return "/characters/port-solaris/zuri_delacroix.png";
     }
     return DEFAULT_FALLBACK_SPRITE;
   };
 
-  const getLocationBg = (locName: string): string => {
+  const getLocationBg = (locName: string, floorOverride?: number): string => {
     if (!locName) return currentStory.coverImage || DEFAULT_BG;
+    if (currentStory.id === "starfall-labyrinth") {
+      const lowerLoc = locName.toLowerCase();
+      if (lowerLoc.includes("iron barracks") || lowerLoc.includes("barracks")) {
+        return "/backgrounds/starfall-labyrinth/roster_barracks.jpg";
+      }
+      if (lowerLoc.includes("memorial")) {
+        return "/backgrounds/starfall-labyrinth/memorial_sanctum.jpg";
+      }
+      if (lowerLoc.includes("conduit chamber") || lowerLoc.includes("master's console")) {
+        return "/backgrounds/starfall-labyrinth/masters_console.jpg";
+      }
+      if (isStarfallLobbyLocation(locName)) {
+        if (typeof floorOverride === "number" && floorOverride > 0) {
+          return getStarfallFloorBackgroundUrl(floorOverride, locName);
+        }
+        return "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg";
+      }
+      const inferredFloor =
+        typeof floorOverride === "number" && floorOverride > 0
+          ? floorOverride
+          : inferFloorFromLocation(
+              locName,
+              playerRef.current?.labyrinthState?.currentFloor || 0
+            );
+      if (inferredFloor > 0) {
+        return getStarfallFloorBackgroundUrl(inferredFloor, locName);
+      }
+    }
     const match = currentStory.worldContext?.locations?.find(
       (l) =>
-        l.name.toLowerCase() === locName.toLowerCase() ||
-        locName.toLowerCase().includes(l.name.toLowerCase()) ||
-        l.name.toLowerCase().includes(locName.toLowerCase())
+        Boolean(l?.name) &&
+        (l.name.toLowerCase() === locName.toLowerCase() ||
+          locName.toLowerCase().includes(l.name.toLowerCase()) ||
+          l.name.toLowerCase().includes(locName.toLowerCase()))
     );
     if (match?.bgImage && match.bgImage.trim()) return match.bgImage.trim();
     if (LOCATION_BACKGROUNDS[locName]) return LOCATION_BACKGROUNDS[locName];
@@ -3687,8 +4195,14 @@ export default function VisualNovelGame() {
       quote: "Observing mortal arrival & forging bespoke dynamic prologue...",
     });
 
+    const basePlayer = playerRef.current || player;
+    const portraitAttire = resolvePortraitAttireLabel(
+      basePlayer.visualDna,
+      basePlayer.visualDescription,
+      "Portrait Attire (Unarmored)"
+    );
     const initialGear = customGear || (gearPreference === "none"
-      ? { weapon: "None", armor: "None", relic: "None" }
+      ? { weapon: "Unarmed", armor: portraitAttire, relic: "None" }
       : { weapon: "[System Pending]", armor: "[System Pending]", relic: "None" });
 
     const initialGearImages: Record<string, string> = { ...(player.gearImages || {}) };
@@ -3701,7 +4215,16 @@ export default function VisualNovelGame() {
       });
     }
 
-    const basePlayer = playerRef.current || player;
+    const syncedStarfallState =
+      currentStory.id === "starfall-labyrinth"
+        ? createInitialLabyrinthState(
+            (basePlayer.sovereignOrigin as StarfallOrigin) || "DISCARDED_EX_RANKER",
+            {
+              startingHeroineName: chosen.speaker,
+              seed: basePlayer.labyrinthState?.summonSeed,
+            }
+          )
+        : undefined;
     const finalStartingPlayer: PlayerProfile = {
       ...basePlayer,
       personality: player.personality || basePlayer.personality || "Stoic Pragmatist",
@@ -3713,6 +4236,7 @@ export default function VisualNovelGame() {
       gearImages: initialGearImages,
       inventory: ensureInventoryRelicConditions(customInventory ? [...(basePlayer.inventory || []), ...customInventory] : (basePlayer.inventory || [])),
       narrationStyle,
+      ...(syncedStarfallState ? { labyrinthState: syncedStarfallState } : {}),
     };
     setPlayer(finalStartingPlayer);
     playerRef.current = finalStartingPlayer;
@@ -3753,9 +4277,33 @@ export default function VisualNovelGame() {
       if (data._userStats) {
         setUserAuth(data._userStats);
       }
-      if (data.visual_description && typeof data.visual_description === "string") {
+      if (
+        (data.visual_description && typeof data.visual_description === "string") ||
+        data.portrait_attire ||
+        data.visual_dna
+      ) {
         setPlayer((prev) => {
-          const next = { ...prev, visualDescription: data.visual_description };
+          const resolvedDna = data.visual_dna || prev.visualDna;
+          const resolvedDesc =
+            data.visual_description && typeof data.visual_description === "string"
+              ? data.visual_description
+              : prev.visualDescription;
+          const resolvedAttire =
+            (typeof data.portrait_attire === "string" && data.portrait_attire.trim()) ||
+            resolvePortraitAttireLabel(resolvedDna, resolvedDesc, "");
+          const currentArmorLower = (prev.gear?.armor || "").trim().toLowerCase();
+          const shouldUpdateArmor =
+            Boolean(resolvedAttire) &&
+            (gearPreference === "none" ||
+              currentArmorLower === "none" ||
+              currentArmorLower === "unarmored" ||
+              currentArmorLower === "portrait attire (unarmored)");
+          const next = {
+            ...prev,
+            visualDescription: resolvedDesc,
+            visualDna: resolvedDna,
+            gear: shouldUpdateArmor ? { ...prev.gear, armor: resolvedAttire } : prev.gear,
+          };
           playerRef.current = next;
           return next;
         });
@@ -3804,7 +4352,9 @@ export default function VisualNovelGame() {
 
       const activeSpeaker = data.speaker || chosen.speaker;
       const initialAffection = typeof data.initial_affection === "number" ? data.initial_affection : 15;
-      const activeExpression = data.expression_key || chosen.expressionKey || "neutral";
+      const rawExpr = data.expression_key || chosen.expressionKey || "neutral";
+      const activeExpression =
+        rawExpr === "hurt" && !data.state_updates?.story_clash ? "flustered" : rawExpr;
       const initialSprite = getSpriteSrc(activeSpeaker, activeExpression);
       const rawDialogue = (data.dialogue || chosen.dialogue || "").trim();
       const formattedDialogue = rawDialogue.includes('"') ? rawDialogue : `"${rawDialogue}"`;
@@ -3832,6 +4382,9 @@ export default function VisualNovelGame() {
             encountered: isPresentInScene,
             affection: isPrimary ? initialAffection : comp.affection,
             expressionKey: isPrimary ? activeExpression : "neutral",
+            ...(currentStory.id === "starfall-labyrinth"
+              ? { heroStatus: isPresentInScene ? ("DEPLOYED" as HeroStatus) : ("BENCHED" as HeroStatus) }
+              : {}),
           };
         })
       );
@@ -3907,7 +4460,7 @@ export default function VisualNovelGame() {
             presentCompanions: initialPresentList,
           },
           party: initPartyState,
-          player: finalStartingPlayer,
+          player: playerRef.current || finalStartingPlayer,
           systemState: data.initial_quest
             ? {
                 plausibility: typeof data.plausibility === "number" ? data.plausibility : 80,
@@ -4351,10 +4904,16 @@ export default function VisualNovelGame() {
     }
 
     const loadedParty = data.party && data.party.length > 0
-      ? (data.party as any[]).map((c: any) => ({
-          ...c,
-          encountered: typeof c.encountered === "boolean" ? c.encountered : (c.isPresent || c.affection !== 50),
-        }))
+      ? (data.party as any[]).map((c: any) =>
+          hydrateCompanionMetadata(
+            {
+              ...c,
+              encountered: typeof c.encountered === "boolean" ? c.encountered : (c.isPresent || c.affection !== 50),
+            },
+            activeStoryForSave?.companions,
+            (data.storyId || activeStoryForSave?.id) === "starfall-labyrinth"
+          )
+        )
       : party;
 
     const loadedPresentComps = loadedParty.filter((c: any) => c.isPresent);
@@ -4385,11 +4944,14 @@ export default function VisualNovelGame() {
       unspentStatPoints: typeof loadedPlayer?.unspentStatPoints === "number" ? loadedPlayer.unspentStatPoints : 0,
     };
 
-    // Self-heal save slots affected by legacy uncalibrated S-rank quest EXP surges (e.g. Lv.15+ on early turns)
+    // Normalize maxExp to the steeper 1.35x RPG curve and self-heal any legacy corrupted S-rank quest surges
     const turnCount = Math.max(1, Math.floor((data.chatLog?.length || 0) / 2));
     const claimedQuestsCount = (data.systemState?.completedQuests || []).filter((q) => q && q.isClaimed).length;
-    const maxExpectedLevelForProgress = Math.max(4, Math.min(12, 1 + Math.ceil((turnCount * 22 + claimedQuestsCount * 110) / 180)));
-    if ((safeLoadedPlayer.level || 1) > maxExpectedLevelForProgress + 3) {
+    const maxExpectedLevelForProgress = Math.max(
+      6,
+      Math.min(20, 2 + Math.ceil((turnCount * 28 + claimedQuestsCount * 180) / 160))
+    );
+    if ((safeLoadedPlayer.level || 1) > maxExpectedLevelForProgress + 4) {
       const basePlayerAtLv1: PlayerProfile = {
         ...safeLoadedPlayer,
         level: 1,
@@ -4401,17 +4963,24 @@ export default function VisualNovelGame() {
           mp: 60,
           maxMp: 60,
           exp: 0,
-          maxExp: 100,
+          maxExp: BASE_LEVEL_ONE_MAX_EXP,
           str: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.str || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
           dex: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.dex || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
           int: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.int || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
         },
       };
-      const expectedTotalExp = turnCount * 20 + claimedQuestsCount * 95;
-      const healedProg = applyExpProgression(basePlayerAtLv1, expectedTotalExp);
+      const expectedTotalExp = claimedQuestsCount * 120 + Math.floor(turnCount * 8);
+      const healedProg = applyExpProgression(basePlayerAtLv1, expectedTotalExp, { storyIdOverride: data.storyId });
+      safeLoadedPlayer = healedProg.updatedPlayer;
+    } else {
+      const expectedMaxExp = getRequiredExpForLevel(safeLoadedPlayer.level || 1);
       safeLoadedPlayer = {
-        ...healedProg.updatedPlayer,
-        unspentStatPoints: healedProg.levelsGained * 2,
+        ...safeLoadedPlayer,
+        stats: {
+          ...safeLoadedPlayer.stats,
+          maxExp: expectedMaxExp,
+          exp: Math.min(expectedMaxExp - 1, Math.max(0, safeLoadedPlayer.stats?.exp || 0)),
+        },
       };
     }
 
@@ -4517,10 +5086,11 @@ export default function VisualNovelGame() {
           `[Empathy] Read ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
         ];
 
-    if (data.choices && Array.isArray(data.choices) && data.choices.length === 4) {
-      setChoices(data.choices);
+    const sanitizedSavedChoices = sanitizeAndFilterChoices(data.choices);
+    if (sanitizedSavedChoices.length >= 2) {
+      setChoices(sanitizedSavedChoices);
     } else {
-      setChoices(sceneDefaultChoices);
+      setChoices(sanitizeAndFilterChoices(sceneDefaultChoices));
     }
 
     // 2. Dynamically author fresh, highly contextual choices via LLM in the context of the loaded scene
@@ -4547,8 +5117,9 @@ export default function VisualNovelGame() {
     })
       .then((res) => res.json())
       .then((choiceData) => {
-        if (choiceData && Array.isArray(choiceData.choices) && choiceData.choices.length === 4) {
-          setChoices(choiceData.choices);
+        const filteredDynamicChoices = sanitizeAndFilterChoices(choiceData?.choices);
+        if (filteredDynamicChoices.length >= 2) {
+          setChoices(filteredDynamicChoices);
           // Persist the freshly generated choices into the saved slot in state
           setSavedSlots((prev) => {
             const currentSlot = prev[slotId];
@@ -4557,7 +5128,7 @@ export default function VisualNovelGame() {
               ...prev,
               [slotId]: {
                 ...currentSlot,
-                choices: choiceData.choices,
+                choices: filteredDynamicChoices,
               },
             };
           });
@@ -4799,6 +5370,244 @@ export default function VisualNovelGame() {
     await handleStartGame(player.gear, player.inventory);
   };
 
+  const handleSummonExecuted = (payload: {
+    count: 1 | 10;
+    results: SummonPullResult[];
+    newState: LabyrinthState;
+  }) => {
+    const { results, newState } = payload;
+    const nextPlayer: PlayerProfile = {
+      ...(playerRef.current || player),
+      labyrinthState: newState,
+    };
+    playerRef.current = nextPlayer;
+    setPlayer(nextPlayer);
+
+    const currentParty = partyRef.current || party;
+    const nextParty = currentParty.map((comp) => {
+      const rosterMatch = (newState.roster || []).find((r) =>
+        matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+      );
+      if (!rosterMatch) return comp;
+      const isDead = rosterMatch.status === "FALLEN";
+      const isDeployed = rosterMatch.status === "DEPLOYED" || rosterMatch.status === "WOUNDED";
+      return {
+        ...comp,
+        encountered: isDead ? comp.encountered : true,
+        isPresent: isDead ? false : isDeployed,
+        starRank: rosterMatch.starRank,
+        baseStarRank: rosterMatch.baseStarRank,
+        level: rosterMatch.level || comp.level || 1,
+        exp: rosterMatch.exp ?? comp.exp ?? 0,
+        maxExp: rosterMatch.maxExp || getRequiredExpForLevel(rosterMatch.level || 1),
+        heroStatus: rosterMatch.status,
+        formationSlot: rosterMatch.formationSlot,
+        combatStats: rosterMatch.combatStats,
+        currentHp: rosterMatch.currentHp,
+        currentMp: rosterMatch.currentMp,
+        awakenings: rosterMatch.awakenings,
+        fallenOnFloor: rosterMatch.fallenOnFloor,
+        fallenCause: rosterMatch.fallenCause,
+      };
+    });
+    partyRef.current = nextParty;
+    setParty(nextParty);
+
+    const deployedNames = nextParty
+      .filter((c) => c.isPresent && c.heroStatus !== "FALLEN")
+      .map((c) => c.name);
+
+    setGameState((prev) => {
+      const nextGs = {
+        ...prev,
+        presentCompanions: deployedNames.length > 0 ? deployedNames : prev.presentCompanions,
+      };
+      gameStateRef.current = nextGs;
+      return nextGs;
+    });
+
+    const newAllies = results.filter((r) => r.isNew);
+    const awakenedAllies = results.filter((r) => r.awakenedToRank);
+    if (newAllies.length > 0) {
+      pushNotification({
+        id: `summon_new_${Date.now()}`,
+        type: "quest_completed",
+        title: `STAR GATE SUMMON: ${newAllies.map((a) => `${a.heroineName} (${a.starRank}★)`).join(", ")}`,
+        subtitle: "New summoned ally materialized in Star Gate Plaza and joined your Roster!",
+        difficulty: newAllies.some((a) => a.starRank === 5) ? "S" : "A",
+      });
+    } else if (awakenedAllies.length > 0) {
+      pushNotification({
+        id: `summon_awaken_${Date.now()}`,
+        type: "system_alert",
+        title: "DUPLICATE RESONANCE AWAKENING!",
+        subtitle: awakenedAllies
+          .map((a) => `${a.heroineName} ascended to ${a.awakenedToRank}★ (Cap Lv.${getStarLevelCap(a.awakenedToRank!)})`)
+          .join(" • "),
+        difficulty: "A",
+      });
+    }
+
+    performAutoSave({
+      player: nextPlayer,
+      party: nextParty,
+    });
+  };
+
+  const handleNarrateSummonArrival = async (results: SummonPullResult[]) => {
+    setShowSummonModal(false);
+    const newlySummonedNames = Array.from(
+      new Set(results.filter((r) => r.isNew).map((r) => r.heroineName))
+    );
+    const newNamesWithStars = Array.from(
+      new Set(results.filter((r) => r.isNew).map((r) => `${r.heroineName} (${r.starRank}★)`))
+    );
+    const summaryText =
+      newNamesWithStars.length > 0
+        ? `Step forward to the Star Gate Summoning Altar in Star Gate Plaza and greet the newly materialized summon${newNamesWithStars.length > 1 ? "s" : ""}: ${newNamesWithStars.join(", ")}.`
+        : `Inspect the shimmering Star Gate Altar resonance after absorbing ${results.length} Star-Echo pull${results.length > 1 ? "s" : ""}.`;
+    await sendAction(summaryText, true, null, null, false, {
+      playerSnapshot: playerRef.current || player,
+      summonContext: {
+        results,
+        count: results.length,
+        newlySummonedNames,
+        pullSummary: summaryText,
+      },
+    });
+  };
+
+  const handleUpdateLabyrinthStateFromBarracks = useCallback(
+    (nextState: LabyrinthState) => {
+      const nextPlayer: PlayerProfile = {
+        ...(playerRef.current || player),
+        labyrinthState: nextState,
+      };
+      playerRef.current = nextPlayer;
+      setPlayer(nextPlayer);
+
+      const currentParty = partyRef.current || party;
+      const nextParty = currentParty.map((comp) => {
+        const rosterMatch = (nextState.roster || []).find((r) =>
+          matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+        );
+        if (!rosterMatch) return comp;
+        const isDead = rosterMatch.status === "FALLEN";
+        const isActiveInSquad =
+          !isDead &&
+          (rosterMatch.status === "DEPLOYED" || rosterMatch.status === "WOUNDED");
+        return {
+          ...comp,
+          isPresent: isActiveInSquad,
+          encountered: isDead ? comp.encountered : true,
+          starRank: rosterMatch.starRank,
+          baseStarRank: rosterMatch.baseStarRank,
+          level: rosterMatch.level || comp.level || 1,
+          exp: rosterMatch.exp ?? comp.exp ?? 0,
+          maxExp: rosterMatch.maxExp || getRequiredExpForLevel(rosterMatch.level || 1),
+          heroStatus: rosterMatch.status,
+          formationSlot: rosterMatch.formationSlot,
+          combatStats: rosterMatch.combatStats,
+          currentHp: rosterMatch.currentHp,
+          currentMp: rosterMatch.currentMp,
+          awakenings: rosterMatch.awakenings,
+        };
+      });
+      partyRef.current = nextParty;
+      setParty(nextParty);
+
+      const deployedNames = nextParty
+        .filter((c) => c.isPresent && c.heroStatus !== "FALLEN")
+        .map((c) => c.name);
+      setGameState((prev) => {
+        const nextGs = {
+          ...prev,
+          presentCompanions: deployedNames,
+        };
+        gameStateRef.current = nextGs;
+        return nextGs;
+      });
+
+      performAutoSave({
+        player: nextPlayer,
+        party: nextParty,
+      });
+    },
+    [party, player]
+  );
+
+  const handleToggleStarfallDeployment = (compName: string) => {
+    const curLs = (playerRef.current || player).labyrinthState;
+    if (!curLs) return;
+    const inLobbyOrSafe =
+      isStarfallLobbyLocation(gameState.location) ||
+      getFloorType(curLs.currentFloor || 0) === "SAFE_ZONE";
+    if (!inLobbyOrSafe) {
+      soundEffects.playSystemAlert();
+      pushNotification({
+        id: `deploy_lock_${Date.now()}`,
+        type: "system_alert",
+        title: "SQUAD DEPLOYMENT LOCKED IN COMBAT",
+        subtitle: "Return to Star Gate Plaza (Main Lobby) or a Safe Zone (Floor 5, 15, 25...) to swap Deployed & Benched heroes.",
+        difficulty: "C",
+      });
+      return;
+    }
+
+    const idx = (curLs.roster || []).findIndex((r) =>
+      matchesHeroineName(r.heroineName, compName, r.heroineId)
+    );
+    if (idx === -1) return;
+    const entry = curLs.roster[idx];
+    if (entry.status === "FALLEN") return;
+
+    const deployedCount = (curLs.roster || []).filter((r) => r.status === "DEPLOYED").length;
+    const nextStatus: HeroStatus = entry.status === "DEPLOYED" ? "BENCHED" : "DEPLOYED";
+    if (nextStatus === "DEPLOYED" && deployedCount >= MAX_DEPLOYED_PARTY) {
+      soundEffects.playSystemAlert();
+      pushNotification({
+        id: `deploy_cap_${Date.now()}`,
+        type: "system_alert",
+        title: `MAX DEPLOYED SQUAD REACHED (${MAX_DEPLOYED_PARTY})`,
+        subtitle: "Bench an active heroine first before deploying another into the 5-hero vanguard.",
+        difficulty: "C",
+      });
+      return;
+    }
+
+    soundEffects.playEquipChime();
+    const updatedRoster = curLs.roster.map((r, i) =>
+      i === idx ? { ...r, status: nextStatus } : r
+    );
+    const nextLs: LabyrinthState = { ...curLs, roster: updatedRoster };
+    const nextPlayer: PlayerProfile = {
+      ...(playerRef.current || player),
+      labyrinthState: nextLs,
+    };
+    playerRef.current = nextPlayer;
+    setPlayer(nextPlayer);
+
+    const nextParty = (partyRef.current || party).map((c) => {
+      if (!matchesHeroineName(c.name, compName, c.id)) return c;
+      return {
+        ...c,
+        isPresent: nextStatus === "DEPLOYED",
+        heroStatus: nextStatus,
+      };
+    });
+    partyRef.current = nextParty;
+    setParty(nextParty);
+
+    const deployedNames = nextParty
+      .filter((c) => c.isPresent && c.heroStatus !== "FALLEN")
+      .map((c) => c.name);
+    setGameState((prev) => ({
+      ...prev,
+      presentCompanions: deployedNames,
+    }));
+    performAutoSave({ player: nextPlayer, party: nextParty });
+  };
+
   const sendAction = async (
     rawAction: string, 
     isCustom: boolean = false, 
@@ -4809,6 +5618,12 @@ export default function VisualNovelGame() {
       playerSnapshot?: PlayerProfile;
       clashSnapshot?: ActiveStoryClashState | null;
       isClashResolutionTurn?: boolean;
+      summonContext?: {
+        results: SummonPullResult[];
+        count: number;
+        newlySummonedNames?: string[];
+        pullSummary?: string;
+      } | null;
     }
   ) => {
     if (!rawAction.trim() || isLoading) return;
@@ -4937,6 +5752,8 @@ export default function VisualNovelGame() {
           frictionState: frictionState || null,
           timelineScars: timelineScars || [],
           currentTurnNumber: chatBeforeTurn.length + 1,
+          summonContext: turnOverrides?.summonContext || null,
+          directorNotes: directorNotes.trim() || null,
         }),
       });
 
@@ -4953,29 +5770,72 @@ export default function VisualNovelGame() {
       if (data._userStats) {
         setUserAuth(data._userStats);
       }
-      if (data.visual_description && typeof data.visual_description === "string") {
+      if (
+        (data.visual_description && typeof data.visual_description === "string") ||
+        data.portrait_attire ||
+        data.visual_dna
+      ) {
         setPlayer((prev) => {
-          const next = { ...prev, visualDescription: data.visual_description };
+          const resolvedDna = data.visual_dna || prev.visualDna;
+          const resolvedDesc =
+            data.visual_description && typeof data.visual_description === "string"
+              ? data.visual_description
+              : prev.visualDescription;
+          const resolvedAttire =
+            (typeof data.portrait_attire === "string" && data.portrait_attire.trim()) ||
+            resolvePortraitAttireLabel(resolvedDna, resolvedDesc, "");
+          const currentArmorLower = (prev.gear?.armor || "").trim().toLowerCase();
+          const shouldUpdateArmor =
+            Boolean(resolvedAttire) &&
+            (currentArmorLower === "none" ||
+              currentArmorLower === "unarmored" ||
+              currentArmorLower === "portrait attire (unarmored)");
+          const next = {
+            ...prev,
+            visualDescription: resolvedDesc,
+            visualDna: resolvedDna,
+            gear: shouldUpdateArmor ? { ...prev.gear, armor: resolvedAttire } : prev.gear,
+          };
           playerRef.current = next;
           return next;
         });
       }
 
-      // 1. Determine presence
-      const currentPresentComps = party.filter((c) => c.isPresent);
+      // 1. Determine presence (strictly excluding permanently FALLEN Starfall heroines)
+      const starfallUpdates = data.starfall_updates || data.state_updates?.starfall_updates;
+      const incomingFallenNames = new Set<string>(
+        currentStory?.id === "starfall-labyrinth"
+          ? [
+              ...((playerRef.current?.labyrinthState?.memorial || []).map((m) => (m?.name || "").toLowerCase())),
+              ...((starfallUpdates?.labyrinthState?.memorial || []).map((m: any) => (m?.name || "").toLowerCase())),
+              ...((starfallUpdates?.casualtiesResolved || []).map((n: string) => (n || "").toLowerCase())),
+            ].filter(Boolean)
+          : []
+      );
+      const isNameFallen = (candidate?: string | null) => {
+        if (!candidate || incomingFallenNames.size === 0) return false;
+        return Array.from(incomingFallenNames).some((fn) => matchesHeroineName(candidate, fn));
+      };
+
+      const currentPresentComps = party.filter(
+        (c) => c.isPresent && c.heroStatus !== "FALLEN" && !isNameFallen(c.name)
+      );
       const isCurrentlyAlone = currentPresentComps.length === 0;
 
       // 2. Resolve present companions list from state updates
       const rawPresentList = data.state_updates?.present_companions;
-      const presentList: string[] = Array.isArray(rawPresentList)
+      const unfilteredPresentList: string[] = Array.isArray(rawPresentList)
         ? rawPresentList
         : (isCurrentlyAlone ? [] : currentPresentComps.map((c) => c.name));
+      const presentList: string[] = unfilteredPresentList.filter(
+        (pName) => typeof pName === "string" && !isNameFallen(pName)
+      );
 
       const isSceneAlone = presentList.length === 0;
 
-      // 3. Sanitize speakerName: PROHIBIT player.name as visual novel speaker
+      // 3. Sanitize speakerName: PROHIBIT player.name or FALLEN heroines as visual novel speaker
       let rawSpeaker = (data.speaker || gameState.speaker || (isSceneAlone ? "Narrator" : "Companion")).trim();
-      if (rawSpeaker.toLowerCase() === player.name.toLowerCase()) {
+      if (rawSpeaker.toLowerCase() === player.name.toLowerCase() || isNameFallen(rawSpeaker)) {
         rawSpeaker = isSceneAlone ? "Narrator" : (presentList[0] || currentPresentComps[0]?.name || "Narrator");
       }
       const speakerName = rawSpeaker;
@@ -4995,7 +5855,7 @@ export default function VisualNovelGame() {
       
       const nextExpression = data.state_updates?.expression_key || "neutral";
       const nextLocation = data.state_updates?.current_location || gameState.location;
-      const nextBg = getLocationBg(nextLocation);
+      let nextBg = getLocationBg(nextLocation);
 
       // 4. Affected companion and favor delta: absent heroines cannot gain/lose favor
       let rawAffected = data.state_updates?.affected_companion;
@@ -5084,10 +5944,11 @@ export default function VisualNovelGame() {
       const currentTurnNumber = Math.max(1, Math.floor(chatBeforeTurn.length / 2) + 1);
       const nextPartyState = party.map((comp) => {
         const compNameLower = (comp.name || "").toLowerCase();
-        const isCurrentSpeaker = compNameLower.includes((speakerName || "").toLowerCase());
-        const isAffected = affectedComp ? compNameLower.includes(affectedComp.toLowerCase()) : false;
-        const isPresent = presentList.some((p) => typeof p === "string" && compNameLower.includes(p.toLowerCase()));
-        const isNewlyMet = newlyMet.some((n) => typeof n === "string" && compNameLower.includes(n.toLowerCase()));
+        const compFellNow = comp.heroStatus === "FALLEN" || isNameFallen(comp.name);
+        const isCurrentSpeaker = !compFellNow && compNameLower.includes((speakerName || "").toLowerCase());
+        const isAffected = !compFellNow && affectedComp ? compNameLower.includes(affectedComp.toLowerCase()) : false;
+        const isPresent = !compFellNow && presentList.some((p) => typeof p === "string" && compNameLower.includes(p.toLowerCase()));
+        const isNewlyMet = !compFellNow && newlyMet.some((n) => typeof n === "string" && compNameLower.includes(n.toLowerCase()));
 
         const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
         const targetCap = getCompanionCap(comp.name);
@@ -5191,23 +6052,173 @@ export default function VisualNovelGame() {
         };
       });
 
-      setParty(nextPartyState);
+      let resolvedPartyState = nextPartyState;
+
+      if (currentStory?.id === "starfall-labyrinth") {
+        const baseLs: LabyrinthState =
+          starfallUpdates?.labyrinthState ||
+          starfallUpdates?.labyrinth_state ||
+          playerRef.current.labyrinthState ||
+          createInitialLabyrinthState();
+
+        // Sync Resonance Awakenings (+1★ at 25/50/75/90% affection) and FALLEN status
+        const awakenedNotices: { name: string; newRank: StarRank }[] = [];
+        const syncedLs = syncRosterWithParty(baseLs, nextPartyState as StoryCompanion[]);
+        const updatedRoster = (syncedLs.roster || []).map((r) => {
+          const matchingComp = nextPartyState.find((c) =>
+            matchesHeroineName(c.name, r.heroineName, c.id)
+          );
+          if (!matchingComp || r.status === "FALLEN") return r;
+          const awakened = applyAwakening(r, matchingComp.affection);
+          if (awakened.starRank > r.starRank) {
+            awakenedNotices.push({ name: r.heroineName, newRank: awakened.starRank });
+          }
+          return awakened;
+        });
+
+        // Promote protagonist Star Rank on major Labyrinth floor milestones
+        let nextProtagStar: StarRank = syncedLs.protagonistStarRank || 1;
+        const highestCleared = syncedLs.highestFloorCleared || 0;
+        const milestoneRank: StarRank =
+          highestCleared >= 75
+            ? 5
+            : highestCleared >= 50
+            ? 4
+            : highestCleared >= 25
+            ? 3
+            : highestCleared >= 10
+            ? 2
+            : 1;
+        if (milestoneRank > nextProtagStar) {
+          nextProtagStar = milestoneRank;
+          pushNotification({
+            id: `protag_star_up_${Date.now()}`,
+            type: "quest_completed",
+            title: `PROTAGONIST STAR ASCENSION (${nextProtagStar}★)!`,
+            subtitle: `Gate Breakthrough shattered your Covenant ceiling! New Level Cap: Lv.${getStarLevelCap(nextProtagStar)}.`,
+            difficulty: "S",
+          });
+        }
+
+        const finalLs: LabyrinthState = {
+          ...syncedLs,
+          protagonistStarRank: nextProtagStar,
+          roster: updatedRoster,
+        };
+
+        resolvedPartyState = nextPartyState.map((c) => {
+          const rMatch = updatedRoster.find((r) =>
+            matchesHeroineName(r.heroineName, c.name, r.heroineId)
+          );
+          if (!rMatch) return c;
+          const isDead = rMatch.status === "FALLEN";
+          const isDeployedInSquad =
+            !isDead && (rMatch.status === "DEPLOYED" || rMatch.status === "WOUNDED");
+          return {
+            ...c,
+            isPresent: isDead ? false : isDeployedInSquad || c.isPresent,
+            starRank: rMatch.starRank,
+            baseStarRank: rMatch.baseStarRank,
+            level: rMatch.level || c.level || 1,
+            exp: rMatch.exp ?? c.exp ?? 0,
+            maxExp: rMatch.maxExp || getRequiredExpForLevel(rMatch.level || 1),
+            heroStatus: rMatch.status,
+            formationSlot: rMatch.formationSlot,
+            combatStats: rMatch.combatStats,
+            currentHp: rMatch.currentHp,
+            currentMp: rMatch.currentMp,
+            awakenings: rMatch.awakenings,
+            fallenOnFloor: rMatch.fallenOnFloor,
+            fallenCause: rMatch.fallenCause,
+          };
+        });
+
+        nextBg = getLocationBg(nextLocation, finalLs.currentFloor);
+        const syncStarfallPlayer: PlayerProfile = {
+          ...playerRef.current,
+          labyrinthState: finalLs,
+          starRank: finalLs.protagonistStarRank,
+        };
+        playerRef.current = syncStarfallPlayer;
+        setPlayer((prev) => ({
+          ...prev,
+          labyrinthState: finalLs,
+          starRank: finalLs.protagonistStarRank,
+        }));
+
+        awakenedNotices.forEach((aw) => {
+          soundEffects.playQuestComplete();
+          pushNotification({
+            id: `starfall_awaken_${aw.name}_${Date.now()}`,
+            type: "quest_completed",
+            title: `RESONANCE AWAKENING: ${aw.name.toUpperCase()} (${aw.newRank}★)!`,
+            subtitle: `Bond resonance broke her rarity seal! Level cap raised to Lv.${getStarLevelCap(aw.newRank)}.`,
+            difficulty: "A",
+          });
+        });
+
+        if (Array.isArray(starfallUpdates?.casualtiesResolved) && starfallUpdates.casualtiesResolved.length > 0) {
+          soundEffects.playSystemAlert();
+          starfallUpdates.casualtiesResolved.forEach((fallenName: string) => {
+            const memRec = (finalLs.memorial || []).find((m) =>
+              matchesHeroineName(m.name, fallenName)
+            );
+            pushNotification({
+              id: `starfall_fallen_${fallenName}_${Date.now()}`,
+              type: "penalty_quest",
+              title: `✝ MEMORIAL WALL: ${fallenName.toUpperCase()} HAS FALLEN`,
+              subtitle: memRec
+                ? `Floor ${memRec.floor}: ${memRec.cause}. Covenant VI is absolute — she will never return.`
+                : `${fallenName} dissolved into Star Ash. Her name is etched onto the Memorial Wall forever.`,
+              difficulty: "Calamity",
+            });
+          });
+        }
+
+        if (starfallUpdates?.floorCleared) {
+          soundEffects.playQuestComplete();
+          if (starfallUpdates.clearedAll100) {
+            pushNotification({
+              id: `starfall_f100_${Date.now()}`,
+              type: "quest_completed",
+              title: "★ FLOOR 100 CLEARED — STARFALL SUMMIT LIBERATED! ★",
+              subtitle: `You defied Covenant fate, conquered The Administrator's Summit, and earned +${starfallUpdates.shardsAwarded || 45} Star Shards!`,
+              difficulty: "S",
+            });
+          } else {
+            pushNotification({
+              id: `starfall_floor_${starfallUpdates.clearedFloor}_${Date.now()}`,
+              type: "quest_completed",
+              title: `FLOOR ${starfallUpdates.clearedFloor} CLEARED (+${starfallUpdates.shardsAwarded || 15} 💠)`,
+              subtitle: starfallUpdates.beyondMemory
+                ? `Advancing into Uncharted Stratum (Floor ${finalLs.currentFloor} — Beyond Ranker Memory)!`
+                : `Squad advancing to Floor ${finalLs.currentFloor} (${getFloorTypeLabel(finalLs.currentFloor)}).`,
+              difficulty: starfallUpdates.isGateBoss ? "A" : "B",
+            });
+          }
+        }
+      }
+
+      partyRef.current = resolvedPartyState;
+      setParty(resolvedPartyState);
 
       if (portUpdates) {
-        setPlayer((prev) => {
-          const nextHouse =
-            portUpdates.boardingHouse ||
-            prev.boardingHouse ||
-            createInitialBoardingHouseState();
-          const revenueGoldBonus = Math.max(0, Math.round((portUpdates.dailyRevenueDelta || 0) * 0.25));
-          const updated: PlayerProfile = {
-            ...prev,
-            gold: (prev.gold || 0) + revenueGoldBonus,
-            boardingHouse: nextHouse,
-          };
-          playerRef.current = updated;
-          return updated;
-        });
+        const nextHouse =
+          portUpdates.boardingHouse ||
+          playerRef.current.boardingHouse ||
+          createInitialBoardingHouseState();
+        const revenueGoldBonus = Math.max(0, Math.round((portUpdates.dailyRevenueDelta || 0) * 0.25));
+        const syncPortPlayer: PlayerProfile = {
+          ...playerRef.current,
+          gold: (playerRef.current.gold || 0) + revenueGoldBonus,
+          boardingHouse: nextHouse,
+        };
+        playerRef.current = syncPortPlayer;
+        setPlayer((prev) => ({
+          ...prev,
+          gold: (prev.gold || 0) + revenueGoldBonus,
+          boardingHouse: portUpdates.boardingHouse || prev.boardingHouse || createInitialBoardingHouseState(),
+        }));
 
         if (portUpdates.starUpgrade && portUpdates.boardingHouse) {
           pushNotification({
@@ -5233,6 +6244,12 @@ export default function VisualNovelGame() {
       playerMsg.text = playerText;
       playerMsg.isPending = false;
 
+      const turnMaxExpCap =
+        starfallUpdates?.floorCleared ||
+        starfallUpdates?.floor_cleared ||
+        isClashTurn
+          ? 800
+          : 150;
       const isAmbientSpeaker = ["narrator", "system", "inner monologue"].some((s) => speakerName.toLowerCase().includes(s));
       const clampedVitalsPreview = clampTurnProgressionDeltas({
         expGained: data.player_progression?.exp_gained,
@@ -5240,6 +6257,7 @@ export default function VisualNovelGame() {
         mpChange: data.player_progression?.mp_change,
         maxHp: playerRef.current.stats.maxHp,
         maxMp: playerRef.current.stats.maxMp,
+        maxExpCap: turnMaxExpCap,
       });
       const rawHpDelta = clampedVitalsPreview.hpChange;
       const rawMpDelta = clampedVitalsPreview.mpChange;
@@ -5364,7 +6382,16 @@ export default function VisualNovelGame() {
           });
 
           // Check if any dropped equipment should auto-equip
-          const defaultGearNames = ["bare hands", "unarmed", "rags", "none", "[system pending]", ""];
+          const defaultGearNames = [
+            "bare hands",
+            "unarmed",
+            "unarmored",
+            "portrait attire (unarmored)",
+            "rags",
+            "none",
+            "[system pending]",
+            "",
+          ];
           initialHydratedDrops.forEach((drop) => {
             if (drop.type === "weapon" || drop.type === "armor" || drop.type === "relic") {
               const slot = drop.type as "weapon" | "armor" | "relic";
@@ -5547,29 +6574,49 @@ export default function VisualNovelGame() {
           mpChange: prog.mp_change,
           maxHp: playerRef.current.stats.maxHp,
           maxMp: playerRef.current.stats.maxMp,
+          maxExpCap: turnMaxExpCap,
         });
         const expGained = clampedProg.expGained;
-        triggerExpFeedback(expGained);
-        let newExp = playerRef.current.stats.exp + expGained;
-        let newLevel = playerRef.current.level;
-        let newMaxExp = playerRef.current.stats.maxExp;
-        let newMaxHp = playerRef.current.stats.maxHp;
-        let newMaxMp = playerRef.current.stats.maxMp;
-        let newStr = playerRef.current.stats.str;
-        let newDex = playerRef.current.stats.dex;
-        let newInt = playerRef.current.stats.int;
+        triggerExpFeedback(expGained, prog.exp_reason || null);
 
-        let levelsGained = 0;
-        while (newExp >= newMaxExp) {
-          levelsGained += 1;
-          newLevel += 1;
-          newExp = newExp - newMaxExp;
-          newMaxExp = newLevel * 100;
-          newMaxHp += 20;
-          newMaxMp += 10;
-          newStr += 2;
-          newDex += 2;
-          newInt += 2;
+        const starCap =
+          currentStory?.id === "starfall-labyrinth"
+            ? getStarLevelCap(playerRef.current.labyrinthState?.protagonistStarRank || 1)
+            : 60;
+
+        const expRes = resolveProtagonistExpGain({
+          level: playerRef.current.level,
+          exp: playerRef.current.stats.exp,
+          maxExp: playerRef.current.stats.maxExp,
+          hp: playerRef.current.stats.hp,
+          maxHp: playerRef.current.stats.maxHp,
+          mp: playerRef.current.stats.mp,
+          maxMp: playerRef.current.stats.maxMp,
+          str: playerRef.current.stats.str,
+          dex: playerRef.current.stats.dex,
+          int: playerRef.current.stats.int,
+          unspentStatPoints: playerRef.current.unspentStatPoints || 0,
+          expGained,
+          maxLevelCap: starCap,
+          restoreVitalsOnLevelUp: false,
+        });
+
+        const newLevel = expRes.level;
+        const newExp = expRes.exp;
+        const newMaxExp = expRes.maxExp;
+        const newMaxHp = expRes.maxHp;
+        const newMaxMp = expRes.maxMp;
+        const newStr = expRes.str;
+        const newDex = expRes.dex;
+        const newInt = expRes.int;
+        const levelsGained = expRes.levelsGained;
+
+        // Share earned combat/tactical/floor EXP with living deployed/present squadmates
+        if (expGained > 0) {
+          applySharedSquadExp(expGained, {
+            focalCompanionName: affectedComp,
+            skipStarfallRoster: Boolean(starfallUpdates?.floorCleared || starfallUpdates?.floor_cleared),
+          });
         }
 
         if (levelsGained > 0) {
@@ -5593,8 +6640,10 @@ export default function VisualNovelGame() {
         // When handleExecuteClashAction already resolved combat vitals for this turn, skip duplicate server HP/MP deltas
         const hpDeltaToApply = isClashTurn ? 0 : clampedProg.hpChange;
         const mpDeltaToApply = isClashTurn ? 0 : clampedProg.mpChange;
-        const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + hpDeltaToApply));
-        const resolvedMp = Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + mpDeltaToApply));
+        const levelUpHpBonus = levelsGained * 20;
+        const levelUpMpBonus = levelsGained * 10;
+        const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + levelUpHpBonus + hpDeltaToApply));
+        const resolvedMp = Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + levelUpMpBonus + mpDeltaToApply));
 
         if (hpDeltaToApply !== 0 || mpDeltaToApply !== 0) {
           if (hpDeltaToApply < 0) {
@@ -5643,7 +6692,7 @@ export default function VisualNovelGame() {
           abilities: updatedAbilities,
           abilityDetails: updatedAbilityDetails,
           inventory: finalTurnInventory,
-          unspentStatPoints: (playerRef.current.unspentStatPoints || 0) + (levelsGained > 0 ? levelsGained * 2 : 0),
+          unspentStatPoints: expRes.unspentStatPoints,
         };
 
         playerRef.current = nextPlayerState;
@@ -5976,24 +7025,33 @@ export default function VisualNovelGame() {
       }
 
       // NO-SAFEGUARD: Check for death event or fatal HP collapse
-      if (data.death_event?.is_fatal || (player.stats?.hp !== undefined && player.stats.hp <= 0)) {
+      const liveResolvedHp = playerRef.current?.stats?.hp ?? player.stats?.hp;
+      if (data.death_event?.is_fatal || (liveResolvedHp !== undefined && liveResolvedHp <= 0)) {
         soundEffects.playSystemAlert();
         const deathCause = data.death_event?.cause_of_death || "Physical core collapsed under fatal trauma.";
         const killer = data.death_event?.killer_or_hazard || "Overwhelming Hostile Force";
-        const evalResult = evaluateDeathAndRegression({
-          player,
-          causeOfDeath: deathCause,
-          location: nextLocation,
-          killerOrHazard: killer,
-          currentPlausibility: systemState.plausibility,
-          regressionCount: systemState.regressionCount || 0,
-          anchorNodeId: visitedStoryNodes[visitedStoryNodes.length - 1]?.id,
-        });
-        appendPersistentDeathRegression(storyId || "astra-chronicles", evalResult.deathRecord);
-        appendPersistentTimelineEcho(storyId || "astra-chronicles", evalResult.timelineEcho);
-        setTimelineEchoes((prev) => [evalResult.timelineEcho, ...prev]);
-        setDeathRegressionRecord(evalResult.deathRecord);
-        setShowDeathModal(true);
+        if (currentStory?.id === "starfall-labyrinth") {
+          // Covenant VI: No timeline regression in Starfall Labyrinth — fatal protagonist death is Game Over
+          setStarfallGameOver({
+            causeOfDeath: deathCause,
+            killerOrHazard: killer,
+          });
+        } else {
+          const evalResult = evaluateDeathAndRegression({
+            player: playerRef.current || player,
+            causeOfDeath: deathCause,
+            location: nextLocation,
+            killerOrHazard: killer,
+            currentPlausibility: systemState.plausibility,
+            regressionCount: systemState.regressionCount || 0,
+            anchorNodeId: visitedStoryNodes[visitedStoryNodes.length - 1]?.id,
+          });
+          appendPersistentDeathRegression(storyId || "astra-chronicles", evalResult.deathRecord);
+          appendPersistentTimelineEcho(storyId || "astra-chronicles", evalResult.timelineEcho);
+          setTimelineEchoes((prev) => [evalResult.timelineEcho, ...prev]);
+          setDeathRegressionRecord(evalResult.deathRecord);
+          setShowDeathModal(true);
+        }
       }
 
       // Record Visited Timeline Anchor for Flowchart & Timeline Echoes (Task 2 & Pillar 4)
@@ -6027,11 +7085,28 @@ export default function VisualNovelGame() {
 
       let resolvedChoices = choices;
       if (data.suggested_choices && Array.isArray(data.suggested_choices)) {
-        const validChoices = data.suggested_choices.filter(
-          (c: any) => typeof c === "string" && !c.includes("state_updates") && !c.includes("{")
-        );
-        setChoices(validChoices);
-        resolvedChoices = validChoices;
+        const filteredChoices = sanitizeAndFilterChoices(data.suggested_choices);
+        const finalTurnChoices =
+          filteredChoices.length >= 2
+            ? filteredChoices
+            : sanitizeAndFilterChoices(
+                buildPersonalityFallbackChoices({
+                  personality: playerRef.current?.personality,
+                  personalityTraits: playerRef.current?.personalityTraits,
+                  playerRole: playerRef.current?.role,
+                  playerRace: playerRef.current?.race,
+                  activeSpeaker: speakerName || "Narrator",
+                  location: nextLocation || "this sector",
+                  isProtagonistAlone:
+                    presentList.length === 0 &&
+                    (!speakerName || speakerName === "Narrator"),
+                  storyId: currentStory?.id,
+                  genre: currentStory?.genre,
+                  narrativeText: narrative,
+                })
+              );
+        setChoices(finalTurnChoices);
+        resolvedChoices = finalTurnChoices;
       }
 
       const snapshotPlayer = {
@@ -6056,7 +7131,7 @@ export default function VisualNovelGame() {
         location: nextLocation,
         visitedAt: new Date().toISOString(),
         choiceTaken: isCustom ? formattedPayload : (data.player_execution || formattedPayload),
-        affectionSnapshot: nextPartyState.reduce((acc, c) => ({ ...acc, [c.name]: c.affection }), {}),
+        affectionSnapshot: resolvedPartyState.reduce((acc, c) => ({ ...acc, [c.name]: c.affection }), {}),
         gameStateSnapshot: {
           gameState: {
             speaker: speakerName,
@@ -6066,7 +7141,7 @@ export default function VisualNovelGame() {
             mood: data.state_updates?.mood ?? gameState.mood,
             presentCompanions: presentList,
           },
-          party: nextPartyState,
+          party: partyRef.current?.length ? partyRef.current : resolvedPartyState,
           player: snapshotPlayer,
           systemState: systemState,
           memories: nextMemories,
@@ -6217,14 +7292,15 @@ export default function VisualNovelGame() {
         mood: data.state_updates?.mood ?? gameState.mood,
         presentCompanions: presentList,
       };
+      const finalPartySnapshot = partyRef.current?.length ? partyRef.current : resolvedPartyState;
       gameStateRef.current = nextGameStateSnapshot;
-      partyRef.current = nextPartyState;
+      partyRef.current = finalPartySnapshot;
       memoriesRef.current = nextMemories;
       choicesRef.current = resolvedChoices;
 
       performAutoSave({
         player: playerRef.current,
-        party: nextPartyState,
+        party: finalPartySnapshot,
         memories: nextMemories,
         chatLog: updatedChatLog,
         gameState: nextGameStateSnapshot,
@@ -6400,6 +7476,24 @@ export default function VisualNovelGame() {
           colorClass: "border-red-500/60 text-red-300",
         });
       }
+      const clashVictoryReward = result.isVictory
+        ? calculateClashVictoryExp({
+            threatRank: activeClash.threatRank,
+            enemyMaxHp: activeClash.enemyMaxHp,
+            playerLevel: playerRef.current.level,
+            enemyName: activeClash.enemyName,
+          })
+        : null;
+
+      if (clashVictoryReward) {
+        newPopups.push({
+          id: `clash_exp_${Date.now()}`,
+          text: `+${clashVictoryReward.expGained} EXP`,
+          subtext: `Rank ${activeClash.threatRank || "C"} Victory`,
+          colorClass: "border-amber-400 text-amber-200 shadow-[0_0_16px_rgba(245,158,11,0.55)]",
+        });
+      }
+
       setClashCombatPopups(newPopups);
       setTimeout(() => setClashCombatPopups([]), 2400);
 
@@ -6441,7 +7535,7 @@ export default function VisualNovelGame() {
           )
         : { updatedInventory: playerRef.current.inventory || [], newlyReadyItems: [] };
 
-      const updatedPlayerState: PlayerProfile = {
+      let updatedPlayerState: PlayerProfile = {
         ...playerRef.current,
         inventory: unsealAfterClash.updatedInventory,
         stats: {
@@ -6450,6 +7544,25 @@ export default function VisualNovelGame() {
           mp: mpFinal,
         },
       };
+
+      if (clashVictoryReward) {
+        triggerExpFeedback(clashVictoryReward.expGained, clashVictoryReward.reason);
+        const clashProg = applyExpProgression(updatedPlayerState, clashVictoryReward.expGained);
+        updatedPlayerState = clashProg.updatedPlayer;
+        applySharedSquadExp(clashVictoryReward.expGained, {
+          focalCompanionName: assistingComp?.name || null,
+        });
+
+        if (clashProg.levelsGained > 0) {
+          setAcquisitionAlert({
+            id: `level_clash_${Date.now()}`,
+            type: "level",
+            title: `LEVEL ADVANCEMENT (LV.${clashProg.newLevel})`,
+            subtitle: `+${clashProg.levelsGained * 20} HP • +${clashProg.levelsGained * 10} MP • +${clashProg.levelsGained * 2} Free Attribute Points • Core Restored`,
+          });
+        }
+      }
+
       playerRef.current = updatedPlayerState;
       setPlayer(updatedPlayerState);
       activeClashRef.current = result.updatedClashState.isActive ? result.updatedClashState : null;
@@ -6460,8 +7573,8 @@ export default function VisualNovelGame() {
         pushNotification({
           id: `clash_win_${Date.now()}`,
           type: "story_clash",
-          title: "SECTOR CLASH VICTORY",
-          subtitle: `${activeClash.enemyName} neutralized! Sector secured.`,
+          title: `SECTOR CLASH VICTORY (+${clashVictoryReward?.expGained || 0} EXP)`,
+          subtitle: `${activeClash.enemyName} neutralized! Sector secured and squad combat EXP awarded.`,
           difficulty: "S",
         });
       } else if (result.isRetreat) {
@@ -6741,13 +7854,14 @@ export default function VisualNovelGame() {
       });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.choices) && data.choices.length > 0) {
-          setChoices(data.choices.slice(0, 4));
+        const sanitizedReroll = sanitizeAndFilterChoices(data.choices);
+        if (sanitizedReroll.length > 0) {
+          setChoices(sanitizedReroll);
           pushNotification({
             id: `reroll_${Date.now()}`,
             type: "level",
             title: "TACTICAL VECTORS REFRESHED",
-            subtitle: "Synthesized 4 alternative protagonist choices for the current scene.",
+            subtitle: `Synthesized ${sanitizedReroll.length} alternative protagonist choices for the current scene.`,
           });
         }
       }
@@ -6917,14 +8031,15 @@ export default function VisualNovelGame() {
 
     setSystemState(nextSystemState);
 
-    // 3. Grant EXP rewards with live bar feedback & level-up checks
+    // 3. Grant EXP rewards with live bar feedback, squad EXP sharing & level-up checks
     let latestPlayer = { ...(playerRef.current || player) };
     if (expRewardToApply > 0) {
-      triggerExpFeedback(expRewardToApply);
+      triggerExpFeedback(expRewardToApply, `Quest Cleared: ${targetQuest.title}`);
       const { updatedPlayer, levelsGained, newLevel } = applyExpProgression(latestPlayer, expRewardToApply);
       latestPlayer = updatedPlayer;
       playerRef.current = updatedPlayer;
       setPlayer(updatedPlayer);
+      applySharedSquadExp(expRewardToApply);
 
       if (levelsGained > 0) {
         soundEffects.playQuestComplete();
@@ -7031,7 +8146,7 @@ export default function VisualNovelGame() {
     return activeReady || completedReady;
   }, [systemState]);
 
-  const presentComps = party.filter((c) => c.isPresent);
+  const presentComps = party.filter((c) => c.isPresent && c.heroStatus !== "FALLEN");
   const isProtagonistAlone = presentComps.length === 0;
   const isSpeakingHeroine = party.find((c) => c.name.toLowerCase().includes(gameState.speaker.toLowerCase()));
   const activeSpeakerComp = isSpeakingHeroine || (presentComps.length > 0 ? presentComps[0] : party[0]);
@@ -8117,6 +9232,7 @@ export default function VisualNovelGame() {
           isOpen={showWorldGuidebook}
           onClose={() => setShowWorldGuidebook(false)}
           story={currentStory}
+          labyrinthState={player.labyrinthState}
         />
         <ScreenTransitionOverlay {...screenTransition} />
       </div>
@@ -8271,12 +9387,16 @@ export default function VisualNovelGame() {
                         ? "Matriculation Origin"
                         : currentStory.id === "port-solaris"
                         ? "Proprietor Background"
+                        : currentStory.id === "starfall-labyrinth"
+                        ? "Summoned Origin"
                         : "World Origin",
                     sub:
                       currentStory.id === "sovereign-spire"
                         ? `Rank #${player.matriculationRank || 488}`
                         : currentStory.id === "port-solaris"
                         ? `0★ Probation • ${player.semesterDebtQuota || 1200} Crowns`
+                        : currentStory.id === "starfall-labyrinth"
+                        ? `${player.labyrinthState?.isHiddenRarity ? "?★" : `${player.labyrinthState?.protagonistStarRank || 1}★`} • ${player.labyrinthState?.starShards ?? 60} Shards`
                         : player.worldOrigin?.split("(")[0]?.trim() || "Native",
                   },
                   {
@@ -8287,9 +9407,11 @@ export default function VisualNovelGame() {
                         ? "Conduit & Wing"
                         : currentStory.id === "port-solaris"
                         ? "Flair & Faction"
+                        : currentStory.id === "starfall-labyrinth"
+                        ? "Squad Role & Kit"
                         : "Class & Arsenal",
                     sub:
-                      currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris"
+                      hasCustomWorldPresets(currentStory.id)
                         ? `${(player.conduit || "SOMATIC").replace(/_/g, " ")} • ${gearPreference.toUpperCase()}`
                         : player.role || "Choose Class",
                   },
@@ -8297,7 +9419,7 @@ export default function VisualNovelGame() {
                     id: "prologue" as const,
                     step: "04",
                     label:
-                      currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris"
+                      hasCustomWorldPresets(currentStory.id)
                         ? "Act I Prelude"
                         : "Starting Scenario",
                     sub: prologues[selectedPrologue]?.speaker || "Select Node",
@@ -8768,6 +9890,8 @@ export default function VisualNovelGame() {
                       ? "Matriculation Origin & Standing"
                       : currentStory.id === "port-solaris"
                       ? "Proprietor Background & Lease Stakes"
+                      : currentStory.id === "starfall-labyrinth"
+                      ? "Summoned Origin & Master Account"
                       : "World Origin"}{" "}
                     →
                   </span>
@@ -8791,6 +9915,8 @@ export default function VisualNovelGame() {
                           ? "Matriculation Origin & Blood-Ledger Standing"
                           : currentStory.id === "port-solaris"
                           ? "Proprietor Background & The Stray Anchor Lease Stakes"
+                          : currentStory.id === "starfall-labyrinth"
+                          ? "Summoned Origin & Master Account Standing"
                           : "World Origin & System Familiarity"}
                       </span>
                     </label>
@@ -8799,171 +9925,176 @@ export default function VisualNovelGame() {
                         ? "Select how you were enrolled into the Sovereign Spire. Each origin shapes your starting Matriculation Rank (#500–#1), semester Aether Core debt quota, faculty scrutiny, and which Heroines naturally trust or test you in Act I."
                         : currentStory.id === "port-solaris"
                         ? "Select how you inherited the deed and debt to The Stray Anchor in Driftwood Cove. Each background shapes your starting Solar Crowns, weekly rent quota, island reputation, and which Heroines naturally gravitate toward your boarding house."
+                        : currentStory.id === "starfall-labyrinth"
+                        ? "Select how your consciousness was pulled into Celestia Summons as a 1★ Lv.1 hero. Shapes your starting Star Shards (for Main Lobby summons), Unseen Master trust, meta-knowledge floor ceiling, and opening squad synergy."
                         : "Choose how you entered this world and how deeply you understand the System and its factions."}
                     </p>
                   </div>
-                  {(currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris") && (
+                  {hasCustomWorldPresets(currentStory.id) && (
                     <div className="flex items-center gap-1.5 self-start shrink-0">
                       <span className="text-xs font-mono px-3 py-1 rounded-xl bg-rose-500/15 border border-rose-500/35 text-rose-300 whitespace-nowrap font-bold">
                         {currentStory.id === "port-solaris"
                           ? `0★ Probation • ${player.semesterDebtQuota || 1200} Crowns Rent`
+                          : currentStory.id === "starfall-labyrinth"
+                          ? `1★ Cap Lv.20 • 💠 ${player.labyrinthState?.starShards ?? 60} Shards`
                           : `Rank #${player.matriculationRank || 488} • ${player.semesterDebtQuota || 400} Core Quota`}
                       </span>
                     </div>
                   )}
                 </div>
 
-                {currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris" ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {(currentStory.id === "port-solaris"
-                        ? PORT_SOLARIS_ORIGIN_PRESETS
-                        : SOVEREIGN_ORIGIN_PRESETS
-                      ).map((so) => {
-                        const isSelected =
-                          selectedWorldOriginPreset === so.id ||
-                          player.sovereignOrigin === so.id;
-                        return (
-                          <button
-                            key={so.id}
-                            type="button"
-                            onClick={() => handleSelectSovereignOriginPreset(so)}
-                            className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                              isSelected
-                                ? "bg-emerald-950/50 border-emerald-400 text-white shadow-xl ring-1 ring-emerald-400/40"
-                                : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
-                            }`}
-                          >
-                            <div className="space-y-2">
-                              <div className="space-y-1.5">
-                                <span className="text-xs sm:text-sm font-mono font-bold text-white flex items-center gap-1.5 leading-snug">
-                                  <span className="text-base shrink-0">{so.icon}</span>
-                                  <span>{so.shortLabel}</span>
-                                </span>
-                                <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded-lg bg-black/70 border border-rose-500/40 text-rose-300 font-bold">
-                                  {so.rankTierLabel}
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-zinc-300 leading-relaxed">
-                                {so.actOneStakes}
-                              </p>
-                            </div>
-                            <div className="flex items-center justify-between text-[10px] font-mono text-emerald-300 pt-2.5 border-t border-white/10">
-                              <span>
-                                {currentStory.id === "port-solaris"
-                                  ? `Rent: ${so.semesterDebtQuota} Crowns`
-                                  : `Quota: ${so.semesterDebtQuota} Cores`}
-                              </span>
-                              <span className="text-amber-300 font-bold">{so.startingCrowns} Crowns</span>
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
+                {(() => {
+                  const worldPreset = getWorldPresets(currentStory.id);
+                  if (!worldPreset) {
+                    return (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
+                        {WORLD_ORIGIN_PRESETS.map((o) => {
+                          const isSelected =
+                            selectedWorldOriginPreset === o.id ||
+                            (!selectedWorldOriginPreset && o.id === "native");
+                          return (
+                            <button
+                              key={o.id}
+                              type="button"
+                              onClick={() => handleSelectWorldOriginPreset(o)}
+                              className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
+                                isSelected
+                                  ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
+                                  : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                              }`}
+                              title={o.description}
+                            >
+                              <span className="text-base leading-none">{o.icon}</span>
+                              <span className="text-[10px] leading-tight whitespace-nowrap">{o.shortLabel}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
 
-                    {/* Detailed Impact Breakdown Card for Selected Origin */}
-                    {(() => {
-                      const originPool =
-                        currentStory.id === "port-solaris"
-                          ? PORT_SOLARIS_ORIGIN_PRESETS
-                          : SOVEREIGN_ORIGIN_PRESETS;
-                      const activeOrigin =
-                        originPool.find(
-                          (so) =>
-                            so.id === selectedWorldOriginPreset ||
-                            so.id === player.sovereignOrigin
-                        ) || originPool[0];
-                      return (
-                        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/35 via-zinc-950/95 to-rose-950/25 border border-emerald-500/35 space-y-3">
-                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">{activeOrigin.icon}</span>
-                              <div>
-                                <h3 className="text-xs sm:text-sm font-mono font-bold text-white">
-                                  How &ldquo;{activeOrigin.shortLabel}&rdquo; Shapes Your Opening Scenario
-                                </h3>
-                                <p className="text-[11px] font-mono text-emerald-300">
-                                  {currentStory.id === "port-solaris"
-                                    ? `${activeOrigin.rankTierLabel} • Weekly Rent Quota: ${activeOrigin.semesterDebtQuota} Solar Crowns • Starting Funds: ${activeOrigin.startingCrowns} Solar Crowns`
-                                    : `Starting Rank #${activeOrigin.startingRank} • Semester Debt Quota: ${activeOrigin.semesterDebtQuota} Aether Cores • ${activeOrigin.startingCrowns} Imperial Crowns`}
+                  const originPool = worldPreset.origins;
+                  const activeOrigin =
+                    originPool.find(
+                      (so) =>
+                        so.id === selectedWorldOriginPreset ||
+                        so.id === player.sovereignOrigin
+                    ) || originPool[0];
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {originPool.map((so) => {
+                          const isSelected =
+                            selectedWorldOriginPreset === so.id ||
+                            player.sovereignOrigin === so.id;
+                          return (
+                            <button
+                              key={so.id}
+                              type="button"
+                              onClick={() => handleSelectSovereignOriginPreset(so)}
+                              className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                                isSelected
+                                  ? "bg-emerald-950/50 border-emerald-400 text-white shadow-xl ring-1 ring-emerald-400/40"
+                                  : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
+                              }`}
+                            >
+                              <div className="space-y-2">
+                                <div className="space-y-1.5">
+                                  <span className="text-xs sm:text-sm font-mono font-bold text-white flex items-center gap-1.5 leading-snug">
+                                    <span className="text-base shrink-0">{so.icon}</span>
+                                    <span>{so.shortLabel}</span>
+                                  </span>
+                                  <span className="inline-block text-[10px] font-mono px-2 py-0.5 rounded-lg bg-black/70 border border-rose-500/40 text-rose-300 font-bold">
+                                    {so.rankTierLabel}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                  {so.actOneStakes}
                                 </p>
                               </div>
-                            </div>
-                          </div>
-
-                          <p className="text-xs text-zinc-200 font-sans leading-relaxed">
-                            {activeOrigin.defaultDetails}
-                          </p>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            <div className="p-3.5 rounded-xl bg-black/50 border border-rose-500/25 space-y-1.5">
-                              <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold block">
-                                Act I Political &amp; Rival Pressure
-                              </span>
-                              <p className="text-xs text-zinc-300 leading-relaxed">
-                                {activeOrigin.actOneStakes}
-                              </p>
-                            </div>
-                            <div className="p-3.5 rounded-xl bg-black/50 border border-emerald-500/25 space-y-2">
-                              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block">
-                                High-Resonance Heroines
-                              </span>
-                              <div className="flex flex-col gap-1.5">
-                                {activeOrigin.highResonanceHeroines.map((hName) => {
-                                  const hDossier =
-                                    SOVEREIGN_HEROINE_DOSSIERS[hName] ||
-                                    PORT_SOLARIS_HEROINE_DOSSIERS[hName];
-                                  return (
-                                    <div
-                                      key={hName}
-                                      className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-between gap-2"
-                                    >
-                                      <span className="text-[11px] font-mono text-emerald-200 font-bold shrink-0">
-                                        ★ {hName}
-                                      </span>
-                                      {hDossier && (
-                                        <span className="text-[10px] font-mono text-emerald-300/80 truncate">
-                                          {hDossier.epithet}
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                })}
+                              <div className="flex items-center justify-between text-[10px] font-mono text-emerald-300 pt-2.5 border-t border-white/10">
+                                <span>
+                                  {currentStory.id === "port-solaris"
+                                    ? `Rent: ${so.semesterDebtQuota} Crowns`
+                                    : currentStory.id === "starfall-labyrinth"
+                                    ? `Memory: F1–F${(so as StarfallOriginPreset).metaKnowledgeCeiling ?? 40}`
+                                    : `Quota: ${so.semesterDebtQuota} Cores`}
+                                </span>
+                                <span className="text-amber-300 font-bold">
+                                  {so.startingCrowns} {worldPreset.uiLabels.originFundsSuffix}
+                                </span>
                               </div>
-                              <p className="text-[10px] text-zinc-400 font-sans">
-                                Highlighted with an &ldquo;Origin Resonance&rdquo; badge on the Act I Prelude tab.
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Detailed Impact Breakdown Card for Selected Origin */}
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/35 via-zinc-950/95 to-rose-950/25 border border-emerald-500/35 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{activeOrigin.icon}</span>
+                            <div>
+                              <h3 className="text-xs sm:text-sm font-mono font-bold text-white">
+                                How &ldquo;{activeOrigin.shortLabel}&rdquo; Shapes Your Opening Scenario
+                              </h3>
+                              <p className="text-[11px] font-mono text-emerald-300">
+                                {worldPreset.uiLabels.originImpactSubtitle(activeOrigin)}
                               </p>
                             </div>
                           </div>
                         </div>
-                      );
-                    })()}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-1.5">
-                    {WORLD_ORIGIN_PRESETS.map((o) => {
-                      const isSelected =
-                        selectedWorldOriginPreset === o.id ||
-                        (!selectedWorldOriginPreset && o.id === "native");
-                      return (
-                        <button
-                          key={o.id}
-                          type="button"
-                          onClick={() => handleSelectWorldOriginPreset(o)}
-                          className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                            isSelected
-                              ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
-                              : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                          }`}
-                          title={o.description}
-                        >
-                          <span className="text-base leading-none">{o.icon}</span>
-                          <span className="text-[10px] leading-tight whitespace-nowrap">{o.shortLabel}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+
+                        <p className="text-xs text-zinc-200 font-sans leading-relaxed">
+                          {activeOrigin.defaultDetails}
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                          <div className="p-3.5 rounded-xl bg-black/50 border border-rose-500/25 space-y-1.5">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold block">
+                              Act I Political &amp; Rival Pressure
+                            </span>
+                            <p className="text-xs text-zinc-300 leading-relaxed">
+                              {activeOrigin.actOneStakes}
+                            </p>
+                          </div>
+                          <div className="p-3.5 rounded-xl bg-black/50 border border-emerald-500/25 space-y-2">
+                            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block">
+                              High-Resonance Heroines
+                            </span>
+                            <div className="flex flex-col gap-1.5">
+                              {activeOrigin.highResonanceHeroines.map((hName) => {
+                                const hDossier =
+                                  SOVEREIGN_HEROINE_DOSSIERS[hName] ||
+                                  PORT_SOLARIS_HEROINE_DOSSIERS[hName] ||
+                                  STARFALL_HEROINE_DOSSIERS[hName];
+                                return (
+                                  <div
+                                    key={hName}
+                                    className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-between gap-2"
+                                  >
+                                    <span className="text-[11px] font-mono text-emerald-200 font-bold shrink-0">
+                                      ★ {hName}
+                                    </span>
+                                    {hDossier && (
+                                      <span className="text-[10px] font-mono text-emerald-300/80 truncate">
+                                        {hDossier.epithet}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <p className="text-[10px] text-zinc-400 font-sans">
+                              Highlighted with an &ldquo;Origin Resonance&rdquo; badge on the Act I Prelude tab.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Editable Origin Backstory & Custom Overrides */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-white/10 items-start">
@@ -9027,6 +10158,8 @@ export default function VisualNovelGame() {
                       ? "Conduit, Wing & Relic Loadout"
                       : currentStory.id === "port-solaris"
                       ? "Flair Conduit, Faction & Keepsakes"
+                      : currentStory.id === "starfall-labyrinth"
+                      ? "1★ Squad Role & Deployment Kit"
                       : "Class & Arsenal"}{" "}
                     →
                   </span>
@@ -9040,90 +10173,88 @@ export default function VisualNovelGame() {
              ========================================================= */}
           {creationTab === "conduit" && (
             <div className="space-y-4 animate-in fade-in duration-200">
-              {currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris" ? (
-                <div className="bg-gradient-to-br from-amber-950/35 via-zinc-950/90 to-indigo-950/35 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div>
-                      <label className="text-sm font-mono text-amber-300 font-bold flex items-center gap-2">
-                        <Swords className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>
-                          {currentStory.id === "port-solaris"
-                            ? "Showdown Flair Conduit & Island Faction"
-                            : "Dual-Conduit & Patron Wing Doctrine"}
-                        </span>
-                      </label>
-                      <p className="text-xs text-zinc-400 font-sans mt-0.5 leading-relaxed">
-                        {currentStory.id === "port-solaris"
-                          ? "Choose your Article 9 Showdown style (Physical Tempo vs. Social Panache) and Island Faction alignment. Determines your café & turf skills and your signature Keepsake."
-                          : "Choose your Astra biological pathway and Patron Wing pledge. Determines how you fight in the Crucible, your starting techniques, and your socketed Vault Relic."}
-                      </p>
+              {(() => {
+                const worldPreset = getWorldPresets(currentStory.id);
+                if (!worldPreset) return null;
+                return (
+                  <div className="bg-gradient-to-br from-amber-950/35 via-zinc-950/90 to-indigo-950/35 border border-amber-500/30 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="text-sm font-mono text-amber-300 font-bold flex items-center gap-2">
+                          <Swords className="w-4 h-4 text-amber-400 shrink-0" />
+                          <span>
+                            {currentStory.id === "port-solaris"
+                              ? "Showdown Flair Conduit & Island Faction"
+                              : currentStory.id === "starfall-labyrinth"
+                              ? "1★ Squad Combat Role & Labyrinth Faction"
+                              : "Dual-Conduit & Patron Wing Doctrine"}
+                          </span>
+                        </label>
+                        <p className="text-xs text-zinc-400 font-sans mt-0.5 leading-relaxed">
+                          {worldPreset.uiLabels.conduitSectionDescription}
+                        </p>
+                      </div>
+                      <span className="text-xs font-mono px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-200 font-bold self-start shrink-0">
+                        {(player.conduit || "SOMATIC").replace(/_/g, " ")}
+                      </span>
                     </div>
-                    <span className="text-xs font-mono px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-200 font-bold self-start shrink-0">
-                      {(player.conduit || "SOMATIC").replace(/_/g, " ")}
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {(currentStory.id === "port-solaris"
-                      ? PORT_SOLARIS_CONDUIT_PRESETS
-                      : SOVEREIGN_CONDUIT_PRESETS
-                    ).map((preset) => {
-                      const isSelected = selectedSovereignConduit === preset.id;
-                      return (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => handleSelectSovereignConduitPreset(preset)}
-                          className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                            isSelected
-                              ? "bg-amber-950/50 border-amber-400 text-white shadow-xl ring-1 ring-amber-400/35"
-                              : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-amber-500/40"
-                          }`}
-                        >
-                          <div>
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-                                <span className="text-base">{preset.icon}</span>
-                                <span>{preset.shortLabel}</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {worldPreset.conduits.map((preset) => {
+                        const isSelected = selectedSovereignConduit === preset.id;
+                        return (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => handleSelectSovereignConduitPreset(preset)}
+                            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                              isSelected
+                                ? "bg-amber-950/50 border-amber-400 text-white shadow-xl ring-1 ring-amber-400/35"
+                                : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-amber-500/40"
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <span className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
+                                  <span className="text-base">{preset.icon}</span>
+                                  <span>{preset.shortLabel}</span>
+                                </span>
+                                <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-black/70 border border-amber-500/35 text-amber-300 shrink-0">
+                                  {preset.conduit.replace(/_/g, " ")} • {preset.wingLabel.replace("The ", "")}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                {preset.description}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-2 border-t border-white/10">
+                              <span className="text-amber-300 truncate">
+                                {worldPreset.uiLabels.relicOrKeepsakeLabel}: {preset.canonLoadout.relic}
                               </span>
-                              <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-black/70 border border-amber-500/35 text-amber-300 shrink-0">
-                                {preset.conduit.replace(/_/g, " ")} • {preset.wingLabel.replace("The ", "")}
+                              <span className="text-sky-300 font-bold shrink-0 ml-2">
+                                {preset.statSpread.str}/{preset.statSpread.dex}/{preset.statSpread.int}
                               </span>
                             </div>
-                            <p className="text-[11px] text-zinc-300 leading-relaxed">
-                              {preset.description}
-                            </p>
-                          </div>
-                          <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-2 border-t border-white/10">
-                            <span className="text-amber-300 truncate">
-                              {currentStory.id === "port-solaris" ? "Keepsake" : "Relic"}: {preset.canonLoadout.relic}
-                            </span>
-                            <span className="text-sky-300 font-bold shrink-0 ml-2">
-                              {preset.statSpread.str}/{preset.statSpread.dex}/{preset.statSpread.int}
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                );
+              })()}
 
               {/* Custom Class Title Override */}
               <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
                 <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
-                  {currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris"
+                  {hasCustomWorldPresets(currentStory.id)
                     ? "Active Specialty / Conduit Title (Editable)"
                     : "Custom Class / Archetype"}
                 </label>
                 <input
                   type="text"
                   placeholder={
-                    currentStory.id === "sovereign-spire"
-                      ? "e.g., Somatic Vanguard (Iron Chancellery)..."
-                      : currentStory.id === "port-solaris"
-                      ? "e.g., Head Chef & Mixology Duelist (Boardwalk Guild)..."
-                      : "e.g., Regressed Spellblade..."
+                    getWorldPresets(currentStory.id)?.uiLabels.rolePlaceholder ||
+                    "e.g., Regressed Spellblade..."
                   }
                   value={player.role}
                   onChange={(e) => setPlayer((prev) => ({ ...prev, role: e.target.value }))}
@@ -9135,11 +10266,8 @@ export default function VisualNovelGame() {
               <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
                 <div className="flex justify-between items-center mb-2.5">
                   <label className="text-xs font-mono text-zinc-300 font-bold">
-                    {currentStory.id === "sovereign-spire"
-                      ? "Dual-Conduit Attribute Allocation"
-                      : currentStory.id === "port-solaris"
-                      ? "Physical Tempo, Flair Reflex & Social Panache Allocation"
-                      : "Attribute Allocation"}
+                    {getWorldPresets(currentStory.id)?.uiLabels.attributeAllocationLabel ||
+                      "Attribute Allocation"}
                   </label>
                   <span className="text-xs font-mono font-bold text-sky-400">
                     Unspent Points: {statPoints}
@@ -9197,12 +10325,11 @@ export default function VisualNovelGame() {
               {/* Starting Loadout & Whisper Flaw Preview */}
               <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
                 <label className="text-xs font-mono text-zinc-300 font-bold block">
-                  {currentStory.id === "port-solaris"
-                    ? "Starting Tool of the Trade, Attire & Keepsake Loadout"
-                    : "Starting Armament & Relic Loadout"}
+                  {getWorldPresets(currentStory.id)?.uiLabels.loadoutSectionLabel ||
+                    "Starting Armament & Relic Loadout"}
                 </label>
-                <div className={`grid grid-cols-1 ${currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris" ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2`}>
-                  {(currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris") && (
+                <div className={`grid grid-cols-1 ${hasCustomWorldPresets(currentStory.id) ? "sm:grid-cols-3" : "sm:grid-cols-2"} gap-2`}>
+                  {hasCustomWorldPresets(currentStory.id) && (
                     <button
                       type="button"
                       onClick={() => setGearPreference("canon")}
@@ -9214,7 +10341,7 @@ export default function VisualNovelGame() {
                     >
                       <Swords className="w-3.5 h-3.5 text-indigo-400" />
                       <span>
-                        {currentStory.id === "port-solaris" ? "Canon Faction Loadout" : "Canon Wing Loadout"}
+                        {getWorldPresets(currentStory.id)?.uiLabels.canonLoadoutButtonLabel || "Canon Wing Loadout"}
                       </span>
                     </button>
                   )}
@@ -9244,11 +10371,10 @@ export default function VisualNovelGame() {
                   </button>
                 </div>
 
-                {(currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris") && gearPreference === "canon" && (() => {
-                  const conduitPool =
-                    currentStory.id === "port-solaris"
-                      ? PORT_SOLARIS_CONDUIT_PRESETS
-                      : SOVEREIGN_CONDUIT_PRESETS;
+                {(() => {
+                  const worldPreset = getWorldPresets(currentStory.id);
+                  if (!worldPreset || gearPreference !== "canon") return null;
+                  const conduitPool = worldPreset.conduits;
                   const activeConduit =
                     conduitPool.find((c) => c.id === selectedSovereignConduit) ||
                     conduitPool[0];
@@ -9263,11 +10389,11 @@ export default function VisualNovelGame() {
                         </span>
                       </div>
                       <p className="text-[11px] text-zinc-300 font-sans">
-                        <span className="text-indigo-300 font-mono font-bold">Attire:</span> {activeConduit.canonLoadout.armor} • <span className="text-purple-300 font-mono font-bold">Keepsake/Relic:</span> {activeConduit.canonLoadout.relic}
+                        <span className="text-indigo-300 font-mono font-bold">Attire:</span> {activeConduit.canonLoadout.armor} • <span className="text-purple-300 font-mono font-bold">{worldPreset.uiLabels.relicOrKeepsakeLabel}:</span> {activeConduit.canonLoadout.relic}
                       </p>
                       <p className="text-[11px] text-zinc-300 font-sans pt-1 border-t border-white/10">
                         <span className="text-rose-400 font-mono font-bold">
-                          {currentStory.id === "port-solaris" ? "Romantic Tag-Flaw:" : "Whisper Flaw:"}
+                          {worldPreset.uiLabels.flawLabel}
                         </span>{" "}
                         {activeConduit.canonLoadout.whisperFlaw}
                       </p>
@@ -9385,10 +10511,11 @@ export default function VisualNovelGame() {
           {creationTab === "prologue" && (
             <div className="space-y-4 animate-in fade-in duration-200">
               {/* Live Build Impact Banner: How Your Choices Shape the Opening Scene */}
-              {(currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris") && (() => {
-                const isSolaris = currentStory.id === "port-solaris";
-                const originPool = isSolaris ? PORT_SOLARIS_ORIGIN_PRESETS : SOVEREIGN_ORIGIN_PRESETS;
-                const conduitPool = isSolaris ? PORT_SOLARIS_CONDUIT_PRESETS : SOVEREIGN_CONDUIT_PRESETS;
+              {(() => {
+                const worldPreset = getWorldPresets(currentStory.id);
+                if (!worldPreset) return null;
+                const originPool = worldPreset.origins;
+                const conduitPool = worldPreset.conduits;
                 const activeOrigin =
                   originPool.find(
                     (so) =>
@@ -9400,13 +10527,13 @@ export default function VisualNovelGame() {
                   conduitPool[0];
                 const activeNode = prologues[selectedPrologue] || prologues[0];
                 const activeDossier = activeNode
-                  ? SOVEREIGN_HEROINE_DOSSIERS[activeNode.speaker] ||
-                    PORT_SOLARIS_HEROINE_DOSSIERS[activeNode.speaker]
+                  ? worldPreset.heroineDossiers[activeNode.speaker]
                   : undefined;
                 const isResonant = Boolean(
                   activeNode &&
                     (activeNode.id === "prologue_act1_seal_gate" ||
                       activeNode.id === "prologue_act1_article9_wager" ||
+                      activeNode.id === "prologue_starfall_synthesis_bench" ||
                       activeOrigin.highResonanceHeroines.includes(activeNode.speaker))
                 );
 
@@ -9442,7 +10569,7 @@ export default function VisualNovelGame() {
                       </div>
                       <div className="p-2.5 rounded-xl bg-black/50 border border-white/10">
                         <span className="text-[10px] font-mono text-rose-300 block font-bold">
-                          🤝 {isSolaris ? "Housemate / Partner:" : "Dyad Target:"} {activeNode?.speaker}
+                          🤝 {worldPreset.uiLabels.partnerTargetLabel} {activeNode?.speaker}
                         </span>
                         <p className="text-zinc-300 mt-0.5 leading-snug">
                           {activeDossier
@@ -9466,10 +10593,12 @@ export default function VisualNovelGame() {
                           ? "Act I Introduction Scenario & Dyad Partner"
                           : currentStory.id === "port-solaris"
                           ? "Act I Opening Scenario & Boarding House Heroine"
+                          : currentStory.id === "starfall-labyrinth"
+                          ? "Act I Star Gate Arrival & Starting Squadmate"
                           : "Select Starting Scenario & Companion"}
                       </span>
                     </label>
-                    {(currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris") && (
+                    {hasCustomWorldPresets(currentStory.id) && (
                       <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
                         Select a scenario below to read its full prelude setup, partner passive, and your 4 opening tactical choices.
                       </p>
@@ -9483,12 +10612,20 @@ export default function VisualNovelGame() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1.5">
                   {prologues.map((p, i) => {
                     const isSelected = selectedPrologue === i;
+                    const sfDossier =
+                      currentStory.id === "starfall-labyrinth"
+                        ? STARFALL_HEROINE_DOSSIERS[p.speaker]
+                        : undefined;
                     const dossier =
-                      SOVEREIGN_HEROINE_DOSSIERS[p.speaker] ||
-                      PORT_SOLARIS_HEROINE_DOSSIERS[p.speaker];
+                      currentStory.id === "port-solaris"
+                        ? PORT_SOLARIS_HEROINE_DOSSIERS[p.speaker]
+                        : currentStory.id === "sovereign-spire"
+                        ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
+                        : undefined;
                     const isColdOpen =
                       p.id === "prologue_act1_seal_gate" ||
-                      p.id === "prologue_act1_article9_wager";
+                      p.id === "prologue_act1_article9_wager" ||
+                      p.id === "prologue_starfall_synthesis_bench";
                     const isEntranceCeremony =
                       p.id === "prologue_entrance_ceremony" ||
                       p.id === "prologue_solaris_grand_audit";
@@ -9496,18 +10633,15 @@ export default function VisualNovelGame() {
                       Array.isArray(p.presentCompanions) && p.presentCompanions.length > 1
                         ? p.presentCompanions
                         : null;
-                    const originPool =
-                      currentStory.id === "port-solaris"
-                        ? PORT_SOLARIS_ORIGIN_PRESETS
-                        : SOVEREIGN_ORIGIN_PRESETS;
-                    const activeOriginPreset =
-                      currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris"
-                        ? originPool.find(
-                            (so) =>
-                              so.id === selectedWorldOriginPreset ||
-                              so.id === player.sovereignOrigin
-                          )
-                        : undefined;
+                    const activeWorldPreset = getWorldPresets(currentStory.id);
+                    const originPool = activeWorldPreset ? activeWorldPreset.origins : SOVEREIGN_ORIGIN_PRESETS;
+                    const activeOriginPreset = activeWorldPreset
+                      ? originPool.find(
+                          (so) =>
+                            so.id === selectedWorldOriginPreset ||
+                            so.id === player.sovereignOrigin
+                        )
+                      : undefined;
                     const isOriginResonant = Boolean(
                       activeOriginPreset &&
                         (isColdOpen ||
@@ -9585,9 +10719,11 @@ export default function VisualNovelGame() {
                                     Origin Resonance
                                   </span>
                                 )}
-                                {dossier && !isEntranceCeremony && (
+                                {(sfDossier || dossier) && !isEntranceCeremony && (
                                   <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/35 text-indigo-200">
-                                    {dossier.conduit.replace(/_/g, " ")}
+                                    {sfDossier
+                                      ? `${sfDossier.baseStarRank}★ ${sfDossier.combatRole.split("&")[0].trim()}`
+                                      : dossier!.conduit.replace(/_/g, " ")}
                                   </span>
                                 )}
                               </div>
@@ -9598,6 +10734,10 @@ export default function VisualNovelGame() {
                             {ensembleHeroines ? (
                               <p className="text-[10px] font-mono text-amber-300/95 mt-0.5">
                                 Present Heroines: {ensembleHeroines.join(" • ")}
+                              </p>
+                            ) : sfDossier ? (
+                              <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
+                                {sfDossier.epithet} • {sfDossier.combatRole} • Passive: {sfDossier.dyadPassiveName}
                               </p>
                             ) : (
                               dossier && (
@@ -9617,6 +10757,8 @@ export default function VisualNovelGame() {
                               ? currentStory.id === "port-solaris"
                                 ? "All 4 Island Factions Present • 30-Day Star Audit & Roommate Stampede"
                                 : "All 4 Patron Wings Present • High Sovereign Vane & Proctor Sallow Presiding"
+                              : sfDossier
+                              ? `Hook: ${sfDossier.actOneConflict}`
                               : dossier
                               ? `Hook: ${dossier.rivalBossTieIn}`
                               : `Companion: ${p.speaker}`}
@@ -9635,7 +10777,8 @@ export default function VisualNovelGame() {
                   const activeNode = prologues[selectedPrologue];
                   const activeDossier =
                     SOVEREIGN_HEROINE_DOSSIERS[activeNode.speaker] ||
-                    PORT_SOLARIS_HEROINE_DOSSIERS[activeNode.speaker];
+                    PORT_SOLARIS_HEROINE_DOSSIERS[activeNode.speaker] ||
+                    STARFALL_HEROINE_DOSSIERS[activeNode.speaker];
                   return (
                     <div className="p-4 rounded-2xl bg-zinc-950/95 border border-rose-500/35 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
@@ -9703,6 +10846,7 @@ export default function VisualNovelGame() {
                     }}
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-rose-500 focus:outline-none font-mono"
                   >
+                    <option>Tactical Dungeon Survival (Tense, strategic, grounded human grit)</option>
                     <option>Sun-Drenched Coastal Rom-Com (Sparkling banter, sensory warmth, romantic tension)</option>
                     <option>Grimdark & Atmospheric (Tense, visceral, sensory)</option>
                     <option>Light Novel High Fantasy (Dynamic pacing, witty banter, heroic)</option>
@@ -9748,7 +10892,7 @@ export default function VisualNovelGame() {
 
                 <div className="flex-1">
                   {gearPreference === "canon" &&
-                  (currentStory.id === "sovereign-spire" || currentStory.id === "port-solaris") ? (
+                  hasCustomWorldPresets(currentStory.id) ? (
                     <button
                       onClick={handleStartWithCanonWingLoadout}
                       className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-rose-600 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono text-xs sm:text-sm"
@@ -9756,6 +10900,8 @@ export default function VisualNovelGame() {
                       <Swords className="w-4 h-4" />{" "}
                       {currentStory.id === "port-solaris"
                         ? "Open The Stray Anchor (Equip Canon Faction Loadout) →"
+                        : currentStory.id === "starfall-labyrinth"
+                        ? "Materialize at Star Gate Plaza (Equip 1★ Squad Kit) →"
                         : "Enter The Sovereign Spire (Equip Canon Wing Loadout) →"}
                     </button>
                   ) : gearPreference === "system" ? (
@@ -9788,6 +10934,7 @@ export default function VisualNovelGame() {
           isOpen={showWorldGuidebook}
           onClose={() => setShowWorldGuidebook(false)}
           story={currentStory}
+          labyrinthState={player.labyrinthState}
         />
         <ScreenTransitionOverlay {...screenTransition} />
         <LlmProviderModal
@@ -10063,12 +11210,12 @@ export default function VisualNovelGame() {
         </div>
 
         {/* DESKTOP TOP HUD (>= sm) */}
-        <div className="hidden sm:flex items-center justify-between gap-2 w-full min-w-0">
+        <div className="hidden sm:flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 w-full min-w-0">
           {/* LEFT CLUSTER: Navigation, Player Anchor & LitRPG System */}
-          <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 shrink">
+          <div className="flex items-center gap-1.5 lg:gap-2 shrink-0 max-w-full flex-wrap">
             <button
               onClick={handleNavigateToCatalogue}
-              className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 sm:px-3 py-2 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 py-1.5 rounded-2xl border border-white/10 hover:border-white/30 shadow-lg text-xs text-zinc-300 transition-all cursor-pointer shrink-0"
               title="Return to Story Catalogue"
             >
               <ArrowLeft className="w-4 h-4 text-zinc-400" />
@@ -10078,7 +11225,7 @@ export default function VisualNovelGame() {
             {/* Character Identity & Status Card with Live Vitals Bars & Hit Feedback */}
             <button
               onClick={() => setShowPlayerSheet(true)}
-              className={`relative flex items-center gap-1.5 sm:gap-2 bg-black/85 hover:bg-black/95 backdrop-blur-md px-2 sm:px-2.5 py-1.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group min-w-0 max-w-[260px] md:max-w-[330px] xl:max-w-[400px] 2xl:max-w-[520px] ${
+              className={`relative flex items-center gap-1.5 sm:gap-2 bg-black/85 hover:bg-black/95 backdrop-blur-md p-1 pr-2.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group shrink-0 overflow-hidden max-w-[220px] lg:max-w-[250px] xl:max-w-[285px] ${
                 vitalsFeedback && vitalsFeedback.hpDelta < 0
                   ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
                   : vitalsFeedback && vitalsFeedback.hpDelta > 0
@@ -10126,7 +11273,7 @@ export default function VisualNovelGame() {
                   player.name.charAt(0)
                 )}
               </div>
-              <div className="text-left hidden sm:block min-w-0 max-w-[115px] md:max-w-[145px] xl:max-w-[175px]">
+              <div className="text-left hidden sm:block min-w-[64px] lg:min-w-[82px] max-w-[115px] shrink-0">
                 <p className="font-semibold leading-tight text-white group-hover:text-rose-300 transition-colors truncate">
                   {player.name}
                 </p>
@@ -10134,7 +11281,7 @@ export default function VisualNovelGame() {
                   Lv.{player.level} {player.race ? `${player.race} ` : ""}{player.role}
                 </p>
               </div>
-              <div className="flex flex-col gap-0.5 pl-1 min-w-[76px] sm:min-w-[92px] shrink-0">
+              <div className="flex flex-col gap-0.5 pl-1 min-w-[64px] sm:min-w-[74px] shrink-0">
                 <div className="space-y-0.5">
                   <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
                     <span className="flex items-center gap-1 text-rose-400 font-bold">
@@ -10184,7 +11331,10 @@ export default function VisualNovelGame() {
                       {player.stats.exp}/{player.stats.maxExp}
                     </span>
                     {expFeedback && (
-                      <span className="text-[9px] font-mono font-bold text-amber-300 animate-bounce drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]">
+                      <span
+                        className="text-[9px] font-mono font-bold text-amber-300 animate-bounce drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]"
+                        title={expFeedback.reason || "Earned Experience"}
+                      >
                         +{expFeedback.amount} EXP
                       </span>
                     )}
@@ -10210,25 +11360,14 @@ export default function VisualNovelGame() {
                   </div>
                 </div>
               </div>
-              {((player.unspentStatPoints || 0) > 0 || activeConditionPills.length > 0) && (
-                <div className="hidden 2xl:flex items-center gap-1 pl-2 border-l border-white/10 shrink-0">
-                  {(player.unspentStatPoints || 0) > 0 && (
-                    <span
-                      className="px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-300 text-[9px] font-mono font-bold animate-pulse"
-                      title="Click to allocate unspent Level-Up Attribute Points"
-                    >
-                      +{player.unspentStatPoints} PTS
-                    </span>
-                  )}
-                  {activeConditionPills.slice(0, 1).map((pill, pIdx) => (
-                    <span
-                      key={pIdx}
-                      title={pill.title}
-                      className={`px-1.5 py-0.5 rounded-md border text-[9px] font-mono font-medium whitespace-nowrap truncate max-w-[115px] ${pill.color}`}
-                    >
-                      {pill.label}
-                    </span>
-                  ))}
+              {(player.unspentStatPoints || 0) > 0 && (
+                <div className="hidden xl:flex items-center pl-1.5 border-l border-white/10 shrink-0">
+                  <span
+                    className="px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-300 text-[9px] font-mono font-bold animate-pulse"
+                    title="Click to allocate unspent Level-Up Attribute Points"
+                  >
+                    +{player.unspentStatPoints} PTS
+                  </span>
                 </div>
               )}
             </button>
@@ -10259,7 +11398,7 @@ export default function VisualNovelGame() {
                 soundEffects.playClick();
                 setShowSystemModal(true);
               }}
-              className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-2.5 py-2 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${
+              className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-2 lg:px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${
                 systemState.activeQuests.length > 0
                   ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
                   : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
@@ -10281,13 +11420,79 @@ export default function VisualNovelGame() {
                 </span>
               )}
             </button>
+
+            {/* STAR GATE SUMMON & IRON BARRACKS BUTTONS (Starfall Labyrinth Only) */}
+            {currentStory.id === "starfall-labyrinth" && (() => {
+              const inLobby = isStarfallLobbyLocation(gameState.location);
+              const shards = player.labyrinthState?.starShards ?? 0;
+              const deployedCount = (player.labyrinthState?.roster || []).filter(
+                (r) => r.status === "DEPLOYED" || r.status === "WOUNDED"
+              ).length;
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setShowSummonModal(true);
+                    }}
+                    className={`backdrop-blur-md px-2 lg:px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${
+                      inLobby
+                        ? "bg-indigo-950/90 hover:bg-indigo-900/95 border-indigo-400/70 text-indigo-100 shadow-[0_0_18px_rgba(99,102,241,0.35)] hover:border-amber-300"
+                        : "bg-black/80 hover:bg-black/95 border-white/15 text-zinc-400 hover:border-white/30"
+                    }`}
+                    title={
+                      inLobby
+                        ? `Open Star Gate Summoning Altar (${shards} Star Shards Available)`
+                        : "Star Gate Summoning is locked outside Star Gate Plaza (Main Lobby). Click to inspect Banner Codex."
+                    }
+                  >
+                    {inLobby ? (
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                    ) : (
+                      <Lock className="w-3.5 h-3.5 text-zinc-500" />
+                    )}
+                    <span className="text-[11px] font-mono font-bold tracking-wider hidden xl:inline">
+                      SUMMON
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full ${
+                        inLobby
+                          ? "bg-amber-500/25 border border-amber-300/60 text-amber-200"
+                          : "bg-zinc-800 text-zinc-400"
+                      }`}
+                    >
+                      💠 {shards}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setShowBarracksModal(true);
+                    }}
+                    className="bg-amber-950/85 hover:bg-amber-900/90 backdrop-blur-md px-2 lg:px-2.5 py-1.5 rounded-2xl border border-amber-500/50 hover:border-amber-300 text-amber-100 transition-all cursor-pointer flex items-center gap-1.5 shadow-lg shrink-0"
+                    title="Open Iron Barracks — Hero Star Stats, Skill Kits & Frontline/Reserve Formation"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-amber-300" />
+                    <span className="text-[11px] font-mono font-bold tracking-wider hidden xl:inline">
+                      BARRACKS
+                    </span>
+                    <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-200">
+                      {deployedCount}/{MAX_DEPLOYED_PARTY}
+                    </span>
+                  </button>
+                </>
+              );
+            })()}
           </div>
 
           {/* RIGHT CLUSTER: Auto-Save Pulse, LLM Engine Pill & Unified Glass Command Dock */}
-          <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             <LlmQuickPill
               config={llmConfig}
-              className="hidden md:flex"
+              className="hidden lg:flex"
               onClick={() => {
                 soundEffects.playClick();
                 setShowLlmModal(true);
@@ -10330,11 +11535,10 @@ export default function VisualNovelGame() {
                   soundEffects.playClick();
                   setShowWorldGuidebook(true);
                 }}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-amber-950/40 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-amber-950/40 text-amber-300 hover:text-amber-200 transition-all cursor-pointer flex items-center gap-1"
                 title="World Lore Guidebook (Characters, Locations, Stats & Keywords)"
               >
                 <BookOpen className="w-4 h-4 text-amber-400" />
-                <span className="hidden 2xl:inline text-[10px] font-mono font-bold">Guide</span>
               </button>
 
               {/* Interactive Flowchart Button (Task 2) */}
@@ -10343,21 +11547,19 @@ export default function VisualNovelGame() {
                   soundEffects.playClick();
                   setShowFlowchartModal(true);
                 }}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-400 hover:text-cyan-300 transition-all cursor-pointer flex items-center gap-1"
                 title="Interactive Flowchart & Timeline Anchors"
               >
                 <GitBranch className="w-4 h-4 text-cyan-400" />
-                <span className="hidden 2xl:inline text-[10px] font-mono">Flowchart</span>
               </button>
 
               {/* LitRPG Trials Link (Task 4) */}
               <button
                 onClick={handleNavigateToTrials}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1"
                 title="LitRPG Daily Roguelite Trials (Auto-saves story progress)"
               >
                 <Swords className="w-4 h-4 text-blue-400" />
-                <span className="hidden 2xl:inline text-[10px] font-mono">Trials</span>
               </button>
 
               {/* Share World & Seed (Task 5) */}
@@ -10366,11 +11568,10 @@ export default function VisualNovelGame() {
                   soundEffects.playClick();
                   setShowShareModal(true);
                 }}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-400 hover:text-purple-300 transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-purple-950/40 text-purple-400 hover:text-purple-300 transition-all cursor-pointer flex items-center gap-1"
                 title="Share Multiverse Setup & Card"
               >
                 <Share2 className="w-4 h-4 text-purple-400" />
-                <span className="hidden 2xl:inline text-[10px] font-mono">Share</span>
               </button>
 
               {/* Timeline Scars Inspector (Pitch A) */}
@@ -10381,11 +11582,11 @@ export default function VisualNovelGame() {
                     soundEffects.playClick();
                     setShowScarsModal(true);
                   }}
-                  className="p-2 sm:px-2 sm:py-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 transition-all cursor-pointer flex items-center gap-1 shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse"
-                  title="View Timeline Scars incurred from Causal Covenants"
+                  className="p-1.5 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/40 text-purple-300 transition-all cursor-pointer flex items-center gap-1 shadow-[0_0_12px_rgba(168,85,247,0.3)] animate-pulse"
+                  title={`View ${timelineScars.length} Timeline Scars incurred from Causal Covenants`}
                 >
                   <Zap className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="hidden 2xl:inline text-[10px] font-mono font-bold">{timelineScars.length} Scars</span>
+                  <span className="text-[10px] font-mono font-bold">{timelineScars.length}</span>
                 </button>
               )}
 
@@ -10393,11 +11594,10 @@ export default function VisualNovelGame() {
               <button
                 onClick={() => handleGenerateSceneCG(false)}
                 disabled={isGeneratingScene}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-rose-300 hover:text-rose-200 transition-all cursor-pointer flex items-center gap-1 group disabled:opacity-50"
+                className="p-1.5 rounded-xl hover:bg-rose-950/40 text-rose-300 hover:text-rose-200 transition-all cursor-pointer flex items-center gap-1 group disabled:opacity-50"
                 title="Generate Cinematic Scene CG (Nano Banana 2.1)"
               >
                 <Sparkles className="w-4 h-4 text-rose-400 group-hover:rotate-12 transition-transform" />
-                <span className="hidden 2xl:inline text-[11px] font-mono font-bold">Illustrate</span>
               </button>
 
               <div className="w-[1px] h-4 bg-white/10 mx-0.5" />
@@ -10405,7 +11605,7 @@ export default function VisualNovelGame() {
               {/* Party */}
               <button
                 onClick={() => setShowPartyDrawer(true)}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1"
                 title="Party Roster"
               >
                 <Users className="w-4 h-4 text-rose-400" />
@@ -10417,7 +11617,7 @@ export default function VisualNovelGame() {
               {/* Log / Memories */}
               <button
                 onClick={() => setShowChronicle(true)}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer flex items-center gap-1"
                 title="Chronicle Memories"
               >
                 <Scroll className="w-4 h-4 text-sky-400" />
@@ -10429,7 +11629,7 @@ export default function VisualNovelGame() {
               {/* Save Game */}
               <button
                 onClick={() => setShowSaveModal(true)}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-white/10 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-amber-400 hover:text-amber-300 transition-all cursor-pointer flex items-center gap-1"
                 title="Save or Load Game"
               >
                 <Save className="w-4 h-4" />
@@ -10442,7 +11642,7 @@ export default function VisualNovelGame() {
                   setShowNotificationHistory(true);
                   setUnreadNotificationCount(0);
                 }}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-rose-950/40 text-zinc-400 hover:text-white transition-all cursor-pointer relative flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-rose-950/40 text-zinc-400 hover:text-white transition-all cursor-pointer relative flex items-center gap-1"
                 title="Notification Archive & System Broadcasts"
               >
                 <Bell className="w-4 h-4 text-rose-400" />
@@ -10458,19 +11658,21 @@ export default function VisualNovelGame() {
               {/* Realm Access Key & Quota */}
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="p-2 sm:px-2 sm:py-1.5 rounded-xl hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer flex items-center gap-1"
+                className="p-1.5 rounded-xl hover:bg-purple-950/40 text-purple-300 hover:text-purple-200 transition-all cursor-pointer flex items-center gap-1"
                 title={userAuth ? `Active Realm Key: ${userAuth.name} (${userAuth.remainingTurns === -1 ? "∞" : `${userAuth.remainingTurns} turns remaining`})` : "Configure Access Key"}
               >
                 <Key className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden xl:inline text-[10px] font-mono">
-                  {userAuth ? (userAuth.remainingTurns === -1 ? "∞" : userAuth.remainingTurns) : "Key"}
-                </span>
+                {userAuth && (
+                  <span className="hidden xl:inline text-[10px] font-mono">
+                    {userAuth.remainingTurns === -1 ? "∞" : userAuth.remainingTurns}
+                  </span>
+                )}
               </button>
 
               {/* Audio Mute Toggle */}
               <button
                 onClick={handleToggleAudio}
-                className="p-2 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
                 title={isAudioMuted ? "Unmute Audio" : "Mute Audio"}
               >
                 {isAudioMuted ? <VolumeX className="w-4 h-4 text-zinc-500" /> : <Volume2 className="w-4 h-4 text-rose-400" />}
@@ -10687,11 +11889,21 @@ export default function VisualNovelGame() {
                 <Compass className="w-3 h-3 text-emerald-400/70 shrink-0 group-hover:text-emerald-200 transition-colors hidden sm:inline" />
               </button>
 
-              {isSpeakingHeroine && (
-                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2 py-1 rounded-lg border border-white/5 hidden md:inline-block shrink-0">
-                  {isSpeakingHeroine.expressionKey}
-                </span>
-              )}
+              {isSpeakingHeroine && (() => {
+                const rawExpr = isSpeakingHeroine.expressionKey || "neutral";
+                const resolvedExpr =
+                  currentStory.id === "starfall-labyrinth" &&
+                  rawExpr === "hurt" &&
+                  isSpeakingHeroine.heroStatus !== "WOUNDED" &&
+                  !player.labyrinthState?.activeEncounter?.isActive
+                    ? "flustered"
+                    : rawExpr;
+                return (
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2 py-1 rounded-lg border border-white/5 hidden md:inline-block shrink-0">
+                    {resolvedExpr}
+                  </span>
+                );
+              })()}
               {isProtagonistAlone && (
                 <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-1 rounded-lg border border-sky-500/20 hidden md:inline-block shrink-0">
                   Solitary Arc
@@ -10757,7 +11969,13 @@ export default function VisualNovelGame() {
                     const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
                     const thumbSrc = getSpriteSrc(comp.name, comp.expressionKey);
                     const solarisMeta = currentStory.id === "port-solaris" ? PORT_SOLARIS_HEROINE_DOSSIERS[comp.name] : undefined;
-                    const compBpm = (comp as any).heartRateBpm ?? (solarisMeta ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (comp.affection - 20) * 0.45)) : undefined);
+                    const compBpm =
+                      currentStory.id === "port-solaris"
+                        ? (comp as any).heartRateBpm ??
+                          (solarisMeta
+                            ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (comp.affection - 20) * 0.45))
+                            : undefined)
+                        : undefined;
 
                     return (
                       <div
@@ -10800,8 +12018,8 @@ export default function VisualNovelGame() {
                               ♥ {compBpm}
                             </span>
                           ) : (
-                            <span className="text-[8px] font-mono text-zinc-500 leading-none">
-                              {comp.affection}%
+                            <span className="text-[8px] font-mono text-rose-300/90 leading-none">
+                              {comp.starRank ? `${comp.starRank}★ • ` : ""}♥ {comp.affection}%
                             </span>
                           )}
                         </div>
@@ -11049,8 +12267,30 @@ export default function VisualNovelGame() {
           </div>
         </div>
 
+        {/* Starfall Labyrinth Turn-Based Tactical Combat HUD (Hidden 1d20 Checks + Party Hot-Swapping) */}
+        {currentStory.id === "starfall-labyrinth" &&
+          player.labyrinthState?.activeEncounter?.isActive && (
+            <div className="pointer-events-auto mb-1.5">
+              <StarfallTacticalCombatHud
+                encounter={player.labyrinthState.activeEncounter}
+                labyrinthState={player.labyrinthState}
+                protagonistName={player.name}
+                protagonistRole={player.role}
+                protagonistAbilities={player.abilityDetails}
+                protagonistHp={player.stats.hp}
+                protagonistMaxHp={player.stats.maxHp}
+                protagonistMp={player.stats.mp}
+                protagonistMaxMp={player.stats.maxMp}
+                partyMembers={party as StoryCompanion[]}
+                isSending={isLoading}
+                onExecuteCombatCommand={(cmd) => sendAction(cmd, true)}
+                onOpenBarracks={() => setShowBarracksModal(true)}
+              />
+            </div>
+          )}
+
         {/* Pitch C & Upgrade 2A: Integrated Sector Clash Tactical Combat Dock with Universal 6-Stance Matrix */}
-        {activeClash && activeClash.isActive && (
+        {currentStory.id !== "starfall-labyrinth" && activeClash && activeClash.isActive && (
           <SectorClashHud
             activeClash={activeClash}
             storyId={currentStory.id}
@@ -11083,7 +12323,9 @@ export default function VisualNovelGame() {
         )}
 
         {/* Pitch A: The Causal Covenant Reality Severance Trigger */}
-        {covenantCheck.available && (!activeClash || !activeClash.isActive) && (
+        {covenantCheck.available &&
+          (!activeClash || !activeClash.isActive) &&
+          !player.labyrinthState?.activeEncounter?.isActive && (
           <button
             type="button"
             onClick={() => {
@@ -11103,7 +12345,9 @@ export default function VisualNovelGame() {
           </button>
         )}
 
-        {choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive) && (
+        {choices.length > 0 &&
+          !isLoading &&
+          (!activeClash || !activeClash.isActive) && (
           <div className="pointer-events-auto flex flex-col gap-1 select-none shrink-0">
             {/* Choice Tray Control Header */}
             <div className="flex items-center justify-between px-1">
@@ -11230,6 +12474,78 @@ export default function VisualNovelGame() {
           </div>
         )}
 
+        {/* OOC.ai Stage Direction & Persistent Director Note Bar */}
+        <div className="pointer-events-auto flex flex-col gap-1 px-0.5">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowOocDrawer((v) => !v)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-[10px] font-mono transition-all cursor-pointer ${
+                directorNotes.trim()
+                  ? "bg-indigo-950/85 border-indigo-400/60 text-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.25)]"
+                  : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:text-indigo-200 hover:border-indigo-500/40"
+              }`}
+              title="Steer pacing, subtext, or scene mood out-of-character without breaking immersion (or type (OOC: ...) directly in your message)"
+            >
+              <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
+              <span>
+                {directorNotes.trim()
+                  ? "OOC Director Note Active"
+                  : "OOC Stage Direction"}
+              </span>
+              {showOocDrawer ? (
+                <ChevronDown className="w-2.5 h-2.5 opacity-70" />
+              ) : (
+                <ChevronUp className="w-2.5 h-2.5 opacity-70" />
+              )}
+            </button>
+            {currentStory.id === "starfall-labyrinth" &&
+              !player.labyrinthState?.activeEncounter?.isActive &&
+              isStarfallLobbyLocation(gameState.location) && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    sendAction(
+                      `Enter Floor ${Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)} with the deployed vanguard.`,
+                      true
+                    )
+                  }
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer disabled:opacity-50"
+                  title="Step directly through the Star Gate into your next Labyrinth floor"
+                >
+                  <span>
+                    ⚔ Deploy to Floor{" "}
+                    {Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)}
+                  </span>
+                </button>
+              )}
+          </div>
+          {showOocDrawer && (
+            <div className="flex items-center gap-2 bg-zinc-950/95 border border-indigo-500/40 rounded-xl px-3 py-1.5 shadow-lg">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300 shrink-0">
+                OOC:
+              </span>
+              <input
+                type="text"
+                value={directorNotes}
+                onChange={(e) => setDirectorNotes(e.target.value)}
+                placeholder='e.g. "Slow burn tension—have her notice my bandaged hand without mentioning it outright." (Or write (OOC: ...) inline)'
+                className="flex-1 bg-transparent text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
+              />
+              {directorNotes.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setDirectorNotes("")}
+                  className="text-[10px] font-mono text-zinc-400 hover:text-rose-300 cursor-pointer shrink-0"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         <ActionInputBar
           onSend={handleSendCustomAction}
           isLoading={isLoading}
@@ -11256,16 +12572,29 @@ export default function VisualNovelGame() {
       {renderCharacterPortraitViewerModal()}
 
       {(() => {
-        const liveCardComp = selectedCharacterCardComp
+        const rawCardComp = selectedCharacterCardComp
           ? party.find(
               (c) =>
                 (selectedCharacterCardComp.id && c.id === selectedCharacterCardComp.id) ||
                 c.name.toLowerCase() === selectedCharacterCardComp.name.toLowerCase()
             ) || selectedCharacterCardComp
           : null;
+        const liveCardComp = rawCardComp
+          ? hydrateCompanionMetadata(
+              rawCardComp,
+              currentStory?.companions,
+              currentStory.id === "starfall-labyrinth"
+            )
+          : null;
         const cardKnowledge = liveCardComp
           ? currentStory?.npcKnowledgeMap?.[liveCardComp.name.toLowerCase().trim()]
           : undefined;
+        const cardRosterEntry =
+          liveCardComp && currentStory.id === "starfall-labyrinth"
+            ? (player.labyrinthState?.roster || []).find((r) =>
+                matchesHeroineName(r.heroineName, liveCardComp.name, r.heroineId)
+              ) || null
+            : null;
         return (
           <CharacterCardModal
             companion={liveCardComp}
@@ -11275,6 +12604,7 @@ export default function VisualNovelGame() {
             liveBpm={(liveCardComp as any)?.heartRateBpm}
             shopRole={(liveCardComp as any)?.shopRole}
             roomNumber={(liveCardComp as any)?.assignedRoomNumber}
+            starfallRosterEntry={cardRosterEntry}
             npcKnowledge={cardKnowledge}
           />
         );
@@ -11311,7 +12641,7 @@ export default function VisualNovelGame() {
         timelineScarsCount={timelineScars.length}
         onOpenPlayerSheet={() => setShowPlayerSheet(true)}
         onOpenPartyDrawer={() => setShowPartyDrawer(true)}
-        partyCount={party.filter((p) => p.isPresent).length}
+        partyCount={party.filter((p) => p.isPresent && p.heroStatus !== "FALLEN").length}
         onOpenSystemModal={() => setShowSystemModal(true)}
         hasUnclaimedClearance={hasUnclaimedClearance}
         onOpenCodex={handleNavigateToCodex}
@@ -11335,6 +12665,9 @@ export default function VisualNovelGame() {
         locationName={gameState.location}
         onOpenAuthModal={() => setShowAuthModal(true)}
         userAuthName={userAuth ? userAuth.name.split(" ")[0] : undefined}
+        onOpenSummonModal={() => setShowSummonModal(true)}
+        isStarfallInLobby={isStarfallLobbyLocation(gameState.location)}
+        starShardsCount={player.labyrinthState?.starShards ?? 0}
       />
 
       {/* PARTY ROSTER DRAWER */}
@@ -11357,6 +12690,8 @@ export default function VisualNovelGame() {
                     ? "Housemates & Blush Matrix"
                     : currentStory.id === "sovereign-spire"
                     ? "Dyad Cohort & Resonance"
+                    : currentStory.id === "starfall-labyrinth"
+                    ? "Squad Roster & Memorial"
                     : "Party & Affection"}
                 </h2>
               </div>
@@ -11370,8 +12705,68 @@ export default function VisualNovelGame() {
                 ? "Boarding house tenants & island heroines across Port Solaris:"
                 : currentStory.id === "sovereign-spire"
                 ? "Cadet heroines & Dyad candidates of The Sovereign Spire:"
+                : currentStory.id === "starfall-labyrinth"
+                ? "Summoned allies in Account #0419 (Deploy up to 4 + Protagonist • Permadeath active on Floors):"
                 : "Companions traveling alongside you across Astra:"}
             </p>
+
+            {currentStory.id === "starfall-labyrinth" && (() => {
+              const ls = player.labyrinthState || createInitialLabyrinthState();
+              const inLobby = isStarfallLobbyLocation(gameState.location);
+              const deployedCount = (ls.roster || []).filter((r) => r.status === "DEPLOYED").length;
+              const fallenCount = (ls.memorial || []).length;
+              return (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-950/50 via-zinc-900/90 to-zinc-950 border border-indigo-500/40 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-mono font-bold text-indigo-200 uppercase tracking-wider">
+                      💠 Starfall Roster ({deployedCount}/{MAX_DEPLOYED_PARTY} Deployed)
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-200 font-bold">
+                      {inLobby ? "Main Lobby" : `Floor ${ls.currentFloor}/100`}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center font-mono">
+                    <div className="p-2 rounded-xl bg-black/50 border border-white/10">
+                      <span className="text-[9px] text-zinc-400 block">Star Shards</span>
+                      <span className="text-xs font-bold text-cyan-300">💠 {ls.starShards}</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/50 border border-white/10">
+                      <span className="text-[9px] text-zinc-400 block">5★ Pity</span>
+                      <span className="text-xs font-bold text-amber-300">{ls.pityCounter}/90</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/50 border border-white/10">
+                      <span className="text-[9px] text-zinc-400 block">Memorial</span>
+                      <span className="text-xs font-bold text-rose-300">✝ {fallenCount}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setShowPartyDrawer(false);
+                      setShowSummonModal(true);
+                    }}
+                    className={`w-full py-2 px-3 rounded-xl border text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                      inLobby
+                        ? "bg-indigo-600/30 hover:bg-indigo-600/45 border-indigo-400/70 text-indigo-100"
+                        : "bg-zinc-900/80 hover:bg-zinc-800 border-white/15 text-zinc-400"
+                    }`}
+                  >
+                    {inLobby ? (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Open Star Gate Summoning Altar (30 💠 / Pull)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>Summon Altar Locked on Floor {ls.currentFloor} (View Roster)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            })()}
 
             {currentStory.id === "port-solaris" && (() => {
               const bh = player.boardingHouse || createInitialBoardingHouseState();
@@ -11444,6 +12839,18 @@ export default function VisualNovelGame() {
                   currentStory.id === "sovereign-spire"
                     ? SOVEREIGN_HEROINE_DOSSIERS[comp.name]
                     : undefined;
+                const starfallMeta =
+                  currentStory.id === "starfall-labyrinth"
+                    ? STARFALL_HEROINE_DOSSIERS[comp.name]
+                    : undefined;
+                const starfallRosterEntry =
+                  currentStory.id === "starfall-labyrinth"
+                    ? (player.labyrinthState?.roster || []).find((r) =>
+                        matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+                      )
+                    : undefined;
+                const isFallenHero =
+                  comp.heroStatus === "FALLEN" || starfallRosterEntry?.status === "FALLEN";
                 const liveBpm = solarisMeta
                   ? Math.min(100, Math.max(40, Math.round((comp as any).heartRateBpm ?? solarisMeta.heartRateBpm)))
                   : undefined;
@@ -11482,13 +12889,21 @@ export default function VisualNovelGame() {
                             </span>
                           )}
                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded shrink-0 ${
-                            !comp.encountered 
+                            isFallenHero
+                              ? "bg-rose-950/90 text-rose-300 border border-rose-500/50 font-bold"
+                              : !comp.encountered 
                               ? "bg-zinc-800 text-zinc-500" 
                               : comp.isPresent 
                               ? "bg-emerald-500/20 text-emerald-300" 
                               : "bg-zinc-800 text-zinc-400"
                           }`}>
-                            {!comp.encountered ? "Unmet" : comp.isPresent ? "In Scene" : "Absent"}
+                            {isFallenHero
+                              ? `✝ Fallen (F${starfallRosterEntry?.fallenOnFloor || comp.fallenOnFloor || 1})`
+                              : !comp.encountered
+                              ? "Unmet"
+                              : comp.isPresent
+                              ? "Deployed"
+                              : "Benched"}
                           </span>
                         </div>
                       </div>
@@ -11567,6 +12982,34 @@ export default function VisualNovelGame() {
                           </span>
                         </div>
                       )}
+
+                      {comp.encountered && starfallMeta && (
+                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-amber-500/15 border border-amber-500/35 text-amber-200 font-bold">
+                            {"★".repeat(starfallRosterEntry?.starRank || comp.starRank || starfallMeta.baseStarRank)} • Lv.{starfallRosterEntry?.level || 1}/{getStarLevelCap(starfallRosterEntry?.starRank || comp.starRank || starfallMeta.baseStarRank)}
+                          </span>
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/15 border border-indigo-500/30 text-indigo-200">
+                            {starfallMeta.combatRole}
+                          </span>
+                          {!isFallenHero && starfallRosterEntry && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleStarfallDeployment(comp.name);
+                              }}
+                              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
+                                starfallRosterEntry.status === "DEPLOYED"
+                                  ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-200 font-bold"
+                                  : "bg-zinc-800 hover:bg-zinc-700 border-white/15 text-zinc-300"
+                              }`}
+                              title="Toggle Deployed / Benched squad status (Available in Main Lobby or Safe Zones)"
+                            >
+                              {starfallRosterEntry.status === "DEPLOYED" ? "✓ Deployed (Bench)" : "+ Deploy to Squad"}
+                            </button>
+                          )}
+                        </div>
+                      )}
                       
                       <div className="mt-2">
                         {comp.encountered ? (
@@ -11607,6 +13050,44 @@ export default function VisualNovelGame() {
                                       <span>Locked at {cap}%. Complete her Companion Quest to break through.</span>
                                     </div>
                                   )}
+                                  {!isFallenHero && (() => {
+                                    const compLvl = starfallRosterEntry?.level || comp.level || 1;
+                                    const compExp = starfallRosterEntry?.exp ?? comp.exp ?? 0;
+                                    const compMaxExp =
+                                      starfallRosterEntry?.maxExp ||
+                                      comp.maxExp ||
+                                      getRequiredExpForLevel(compLvl);
+                                    const compCap = starfallMeta
+                                      ? getStarLevelCap(
+                                          starfallRosterEntry?.starRank ||
+                                            comp.starRank ||
+                                            starfallMeta.baseStarRank
+                                        )
+                                      : 60;
+                                    const atLvlCap = compLvl >= compCap;
+                                    const expPct = atLvlCap
+                                      ? 100
+                                      : Math.max(0, Math.min(100, (compExp / Math.max(1, compMaxExp)) * 100));
+                                    return (
+                                      <div className="mt-2 pt-1.5 border-t border-white/5 space-y-1">
+                                        <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400">
+                                          <span className="flex items-center gap-1 text-amber-300/90 font-semibold">
+                                            <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                                            Lv.{compLvl}{starfallMeta ? `/${compCap}` : ""}
+                                          </span>
+                                          <span className="text-[9px] text-zinc-400">
+                                            {atLvlCap ? "MAX CAP" : `${compExp}/${compMaxExp} EXP`}
+                                          </span>
+                                        </div>
+                                        <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full rounded-full bg-gradient-to-r from-amber-500 to-yellow-300 transition-all duration-500"
+                                            style={{ width: `${expPct}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
                                 </>
                               );
                             })()}
@@ -11886,7 +13367,7 @@ export default function VisualNovelGame() {
                   <div className="flex items-center gap-2">
                     {expFeedback && (
                       <span className="text-[11px] font-mono font-bold text-amber-300 animate-bounce bg-amber-500/30 px-2 py-0.5 rounded-full border border-amber-400/50 shadow-[0_0_10px_rgba(245,158,11,0.6)]">
-                        +{expFeedback.amount} EXP
+                        +{expFeedback.amount} EXP{expFeedback.reason ? ` • ${expFeedback.reason}` : ""}
                       </span>
                     )}
                     <span className="font-mono text-amber-200">
@@ -12848,7 +14329,60 @@ export default function VisualNovelGame() {
         isOpen={showWorldGuidebook}
         onClose={() => setShowWorldGuidebook(false)}
         story={currentStory}
+        labyrinthState={player.labyrinthState}
       />
+      {/* Star Gate Summoning Altar Modal (Starfall Labyrinth) */}
+      {currentStory.id === "starfall-labyrinth" && (
+        <SummonModal
+          isOpen={showSummonModal}
+          onClose={() => setShowSummonModal(false)}
+          labyrinthState={player.labyrinthState || createInitialLabyrinthState()}
+          currentLocation={gameState.location}
+          storyCompanions={currentStory.companions}
+          isSendingTurn={isLoading}
+          onSummonExecuted={handleSummonExecuted}
+          onNarrateSummonArrival={handleNarrateSummonArrival}
+          onOpenBarracks={() => {
+            setShowSummonModal(false);
+            setShowBarracksModal(true);
+          }}
+        />
+      )}
+
+      {/* Iron Barracks — Hero Star Stats, Skill Kits & Vanguard/Reserve Formation Modal */}
+      {currentStory.id === "starfall-labyrinth" && (
+        <StarfallBarracksModal
+          isOpen={showBarracksModal}
+          onClose={() => setShowBarracksModal(false)}
+          labyrinthState={player.labyrinthState || createInitialLabyrinthState()}
+          protagonistName={player.name || "Summoned Hero"}
+          protagonistLevel={player.level || 1}
+          protagonistRole={player.role || "Field Tactician"}
+          partyMembers={party as StoryCompanion[]}
+          onUpdateLabyrinthState={handleUpdateLabyrinthStateFromBarracks}
+        />
+      )}
+
+      {/* Covenant VI Irreversible Game Over Modal (Starfall Labyrinth) */}
+      {currentStory.id === "starfall-labyrinth" && (
+        <GameOverModal
+          isOpen={starfallGameOver !== null}
+          playerName={player.name || "Summoned Hero"}
+          causeOfDeath={starfallGameOver?.causeOfDeath || "Fell inside the Starfall Labyrinth."}
+          killerOrHazard={starfallGameOver?.killerOrHazard}
+          currentFloor={player.labyrinthState?.currentFloor || 0}
+          highestFloorCleared={player.labyrinthState?.highestFloorCleared || 0}
+          memorial={player.labyrinthState?.memorial || []}
+          onOpenSaveModal={() => {
+            setStarfallGameOver(null);
+            setShowSaveModal(true);
+          }}
+          onReturnToMenu={() => {
+            setStarfallGameOver(null);
+            handleNavigateToCatalogue();
+          }}
+        />
+      )}
     </div>
   );
 }

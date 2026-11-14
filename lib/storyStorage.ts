@@ -3,6 +3,7 @@ import { ASTRA_CHRONICLES_STORY } from "./defaultStory";
 import sovereignSpireStory from "@/data/stories/sovereign-spire.json";
 import portSolarisStory from "@/data/stories/port-solaris.json";
 import neonEclipseStory from "@/data/stories/neon-eclipse.json";
+import starfallLabyrinthStory from "@/data/stories/starfall-labyrinth.json";
 
 const STORAGE_KEY = "astra_multi_story_catalog";
 const DB_NAME = "AstraStoryCatalogDB";
@@ -13,6 +14,7 @@ export const PRESET_STORIES: StoryContext[] = [
   ASTRA_CHRONICLES_STORY,
   sovereignSpireStory as unknown as StoryContext,
   portSolarisStory as unknown as StoryContext,
+  starfallLabyrinthStory as unknown as StoryContext,
   neonEclipseStory as unknown as StoryContext,
 ];
 

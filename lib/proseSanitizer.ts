@@ -222,13 +222,30 @@ const COMPANION_FULL_NAMES: Array<[string, string]> = [
  * Converts a UI equipment label (e.g. "Concealed Punch-Dagger & Curved Mist-Saber")
  * into a natural, lowercase physical description for LLM prompts and fallback prose.
  */
+const UNEQUIPPED_GEAR_VALUES = new Set([
+  "",
+  "none",
+  "unarmed",
+  "unarmored",
+  "pending...",
+  "[system pending]",
+  "portrait attire",
+  "portrait attire (unarmored)",
+]);
+
 export function humanizeGearForProse(rawGear?: string | null, fallback: string = "weapon"): string {
   if (!rawGear || typeof rawGear !== "string") return fallback;
   let cleaned = rawGear.trim();
+  if (UNEQUIPPED_GEAR_VALUES.has(cleaned.toLowerCase())) {
+    return fallback;
+  }
   for (const [pattern, replacement] of CATALOG_PHRASE_REPLACEMENTS) {
     cleaned = cleaned.replace(pattern, replacement);
   }
   cleaned = cleaned.replace(/\s*\([^)]*\)/g, "").trim();
+  if (UNEQUIPPED_GEAR_VALUES.has(cleaned.toLowerCase())) {
+    return fallback;
+  }
   if (cleaned.includes("&")) {
     const parts = cleaned.split("&").map((p) => p.trim().toLowerCase());
     return parts.join(" and ");
@@ -421,6 +438,84 @@ export function ensureChoiceIntentTag(choice: string): string {
   }
 
   return `${dualTag}: ${trimmed}`;
+}
+
+const LEAKED_JSON_SCHEMA_FIELDS = new Set([
+  "current_location",
+  "present_companions",
+  "affected_companion",
+  "affection_delta",
+  "companion_sentiment",
+  "expression_key",
+  "core_memory_unlocked",
+  "new_memory_unlocked",
+  "player_progression",
+  "exp_gained",
+  "exp_reason",
+  "system_event",
+  "combat_encounter",
+  "story_clash",
+  "state_updates",
+  "narrative_text",
+  "player_execution",
+  "suggested_choices",
+  "opening_choices",
+  "options",
+  "choices",
+  "mood",
+  "speaker",
+  "location",
+]);
+
+/**
+ * Validates that a tactical choice string is a real player action/dialogue option
+ * and not a leaked JSON schema key, bare companion name, or bare location label.
+ */
+export function isValidTacticalChoice(choice: string): boolean {
+  if (!choice || typeof choice !== "string") return false;
+  const trimmed = choice.trim();
+  if (!trimmed || trimmed.includes("{") || trimmed.includes("}") || trimmed.includes('"state_updates"')) {
+    return false;
+  }
+
+  const body = trimmed.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+  if (!body || body.length < 12) return false;
+
+  if (/^[a-z0-9]+(?:_[a-z0-9]+)+$/i.test(body)) return false;
+  if (LEAKED_JSON_SCHEMA_FIELDS.has(body.toLowerCase())) return false;
+
+  const hasSentencePunctuation = /[.!?…"”']/.test(body);
+  const wordCount = body.split(/\s+/).filter(Boolean).length;
+  if (!hasSentencePunctuation && wordCount < 6) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Sanitizes, filters out any leaked JSON fragments or bare labels, applies
+ * [Tone/Action] tags, and caps choices to at most 4 tactical vectors.
+ */
+export function sanitizeAndFilterChoices(choices?: any[] | null): string[] {
+  if (!Array.isArray(choices)) return [];
+  const seen = new Set<string>();
+  const valid: string[] = [];
+
+  for (const raw of choices) {
+    if (typeof raw !== "string") continue;
+    const cleaned = sanitizeVisualNovelProse(raw.trim());
+    if (!isValidTacticalChoice(cleaned)) continue;
+    const tagged = ensureChoiceIntentTag(cleaned);
+    if (!isValidTacticalChoice(tagged)) continue;
+    const key = tagged.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    valid.push(tagged);
+    if (valid.length >= 4) break;
+  }
+
+  return valid;
 }
 
 /**

@@ -4,7 +4,13 @@
  * across character creation, prologue generation, dynamic choices, and interactive turns.
  */
 
-export type NarrationStyleKey = "grimdark" | "light_novel" | "noir" | "coastal_romcom" | "custom";
+export type NarrationStyleKey =
+  | "grimdark"
+  | "light_novel"
+  | "noir"
+  | "coastal_romcom"
+  | "tactical_survival"
+  | "custom";
 
 export type NarrativeDepthMode = "standard" | "expansive" | "deep_novelistic";
 
@@ -90,6 +96,23 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
     ],
     proseExample: `Warm afternoon sunlight danced across the terracotta tiles of the harbor terrace, catching the aromatic steam rising from the espresso machine as a sea breeze rustled the bougainvillea overhead. Across the counter, the visiting inspector paused mid-critique, her composed expression wavering for a heartbeat as the bright scent of roasted hazelnuts and orange zest drifted past.\n\n"I—I only stopped by to verify your terrace seating permit," she insisted, her voice pitching up a fraction as she quickly looked away from your knowing grin. "Do not assume a complimentary macchiato will earn your lounge any special leniency on the harbor register!"\n\nYet her fingers lingered against the warm porcelain cup a moment longer than strictly necessary, the rigid tension in her shoulders softening as the sound of acoustic guitars and laughter drifted up from the boardwalk below.`,
   },
+  tactical_survival: {
+    id: "tactical_survival",
+    label: "Tactical Dungeon Survival (Tense, strategic, grounded human grit)",
+    badgeLabel: "Tactical Dungeon Survival",
+    shortDescription: "Korean tower-manhwa tension, sharp shot-calling, dark gacha irony & earned camaraderie",
+    corePhilosophy: "High-stakes tower survival inspired by gripping Korean dungeon manhwa. Behind a cold glass sky sits an indifferent gacha Master treating living heroes like disposable pulls; down on the stone floors, every bad step is permanent. Survival is won through sharp observation, split-second callouts, gallows humor, and refusing to abandon low-star comrades.",
+    sensoryTextures: "Cold obsidian lobby tiles under bare heels, pale cyan starlight humming from the Star Gate monolith, chalk maps smudged by bloodied thumbs, iron shield straps biting into bruised shoulders, the sudden hush before a Gate Boss breath attack, and warm campfire soup shared in Safe Zone caverns.",
+    dialogueCadence: "Crisp, natural, human-sounding dialogue under real pressure: clipped battlefield callouts, dry gallows banter between survivors, stubborn pride cracking into raw trust around barracks hearths, and zero textbook speeches or robotic game-manual monologues.",
+    combatAndAction: "Tight, spatial, tactical party choreography: reading monster aggro lines, baiting heavy swings into stone pillars, shielding fragile backline healers, and timing burst windows to the half-second because fallen teammates never respawn.",
+    negativeConstraints: [
+      "NEVER treat death lightly or suggest fallen heroes can be revived—permadeath is real and permanent.",
+      "NEVER write silly slapstick during labyrinth combat or make characters sound like robotic Wikipedia articles.",
+      "NEVER dump capitalized UI item labels or full character names repeatedly in prose; keep speech plain, sharp, and human.",
+      "Preserve the stark contrast between the cold unseen Master's UI commands above and the warm, breathing humanity of the squad below.",
+    ],
+    proseExample: `Pale blue light pulsed once across the cracked flagstones, marking the six-second warning before the corridor grates flooded with acid mist. Sable didn't look up from the rusted latch she was prying loose with her dagger tip, though a bead of sweat cut a clean track through the soot on her jaw.\n\n"Tell me you've got an actual plan, One-Star, and you didn't just drag us down this side tunnel to die somewhere quieter," she muttered, her voice low and tight over the scrape of iron.\n\nThe lock snapped open half a heartbeat before the hiss of vapor rolled down the main hall. Pulling the heavy grate shut behind the squad, she leaned back against the cool stone, let out a long breath, and studied you with grudging disbelief. "Alright. Maybe you aren't total fodder after all. Next time, give me three seconds' warning before you pull a stunt like that."`,
+  },
 };
 
 /**
@@ -98,33 +121,28 @@ export const NARRATION_STYLE_DEFINITIONS: Record<Exclude<NarrationStyleKey, "cus
  */
 export function getNarrativeDepthDirective(depth: NarrativeDepthMode = "deep_novelistic"): string {
   if (depth === "standard") {
-    return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [STANDARD VISUAL NOVEL PACING (2–3 PARAGRAPHS)] ---
-- Structure "narrative_text" into 2 to 3 evocative, well-paced paragraphs separated by clean line breaks (\\n\\n).
-- Balance atmospheric sensory details, character body language, and spoken dialogue in double quotation marks ("...").
-- MANDATORY FORWARD PLOT PROGRESSION: Never stall in stationary banter! Resolve the current conversational beat within this turn and end on a concrete action, decision, arrival, or scene transition that moves the story forward.`;
+    return `--- NARRATIVE DEPTH & RHYTHM: [SNAPPY OOC BANTER & TIGHT SCENE PACING (2–3 PARAGRAPHS)] ---
+- Match the natural energy and pace of the player's action in 2 to 3 crisp, vivid paragraphs separated by clean line breaks (\\n\\n).
+- Prioritize immediate physical action, unforced human dialogue in double quotes ("..."), and concrete scene momentum over lengthy environmental recap.`;
   }
 
   if (depth === "expansive") {
-    return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [EXPANSIVE SCENE & DIALOGUE (3–5 PARAGRAPHS)] ---
-- Structure "narrative_text" into 3 to 5 rich, detailed paragraphs (approx. 300–450 words) separated by clean line breaks (\\n\\n).
-- Include multiple spoken dialogue beats interleaved with physical movement, environmental reactions, and psychological nuance.
-- MANDATORY FORWARD PLOT PROGRESSION: Do NOT loop in endless verbal sparring on the same topic. Resolve the immediate exchange and introduce a concrete plot shift, fulfilled objective beat, or physical transition by the final paragraph.`;
+    return `--- NARRATIVE DEPTH & RHYTHM: [DYNAMIC SCENE & DIALOGUE CADENCE (3–4 PARAGRAPHS)] ---
+- Unfold the turn naturally across 3 to 4 organic paragraphs (approx. 240–420 words) separated by clean line breaks (\\n\\n).
+- Weave spoken dialogue ("...") directly into physical business, subtle micro-expressions, and live environmental interaction—never stop the scene dead for static internal essays.`;
   }
 
-  return `--- NARRATIVE DEPTH & LENGTH DIRECTIVE: [DEEP NOVELISTIC MULTI-BEAT ARCHITECTURE (5–7+ PARAGRAPHS)] ---
-CRITICAL LENGTH & DEPTH MANDATE: You MUST write an expansive, deeply immersive, novel-length scene response in "narrative_text" spanning **5 to 7 substantial paragraphs (450 to 800+ words)** separated by clean double line breaks (\\n\\n). NEVER summarize briefly or stop after 2–3 short paragraphs!
-Unfold every turn across these four mandatory narrative beats:
-1. BEAT 1 — IMMEDIATE KINETIC & ENVIRONMENTAL CONSEQUENCE (Paragraphs 1–2):
-   - Ground the scene in rich, visceral sensory detail (lighting, acoustics, weather, air temperature, scent, spatial geometry, and tactile textures).
-   - Depict the immediate physical, magical, or tactical ripples of the protagonist's action and words across the environment.
-2. BEAT 2 — PSYCHOLOGICAL SUBTEXT & MICRO-EXPRESSIONS (Paragraphs 2–3):
-   - Before or as the active character speaks, portray their internal emotional and analytical reaction through vivid physical tells: micro-expressions, gaze tracking, breathing cadence, posture adjustments, weapon or garment handling, and unspoken tension.
-   - Show—do not merely tell—how they weigh the protagonist's motives, competence, or audacity.
-3. BEAT 3 — MULTI-STAGE DIALOGUE & MEANINGFUL PROGRESSION (Paragraphs 3–5):
-   - Write **2 to 3 distinct spoken dialogue segments** in double quotation marks ("...") woven across multiple paragraphs, broken up by physical movement and interacting with the surroundings.
-   - SOFT PACING & ANTI-STALL RULE: If the player chooses to stay and talk, honor their choice to remain in the scene while evolving the conversation into deeper personal territory (never repeating the same surface argument or prop gag). If the player acts to settle a wager, serve a dish, or advance an objective, have the companion respond decisively so the story progresses naturally.
-4. BEAT 4 — NARRATIVE MOMENTUM & FORWARD HOOK (Paragraphs 5–7):
-   - Advance the emotional chemistry, active task, or plot stakes so the scene feels alive and evolving, concluding on a natural hook that lets the player either linger a bit longer in the moment or step into the next phase of the story.`;
+  return `--- NARRATIVE DEPTH & RHYTHM: [ELASTIC OOC.AI NOVELISTIC PERFORMANCE (DYNAMIC PACING)] ---
+1. ELASTIC SCENE RHYTHM — NEVER PAD WITH FORMULAIC ESSAY FILLER:
+   - Adapt paragraph count and pacing organically to the moment (typically **3 to 5 rich, tight paragraphs**, expanding to 6 only for major boss climaxes, arrivals, or emotional turning points; tightening to 2–3 punchy paragraphs during rapid-fire banter or split-second combat callouts).
+   - NEVER follow a robotic 4-step school-essay template ("Paragraph 1 weather recap -> Paragraph 2 micro-expression checklist -> Paragraph 3 speech -> Paragraph 4 summary hook"). Jump straight into the live friction, physical consequence, or spoken reaction that feels most immediate and human!
+2. SHOW SUBTEXT THROUGH PHYSICAL BUSINESS, NOT EXPLANATION:
+   - Real characters do things with their hands and bodies while talking—tightening a shield strap, checking a doorway, rationing water, nursing a bruised knuckle, or refusing eye contact. Let subtext breathe without explaining the joke or spelling out their psychology to the reader.
+3. AUTONOMOUS CHARACTER AGENCY & ANTI-ECHO RULE:
+   - NEVER repeat or paraphrase the player's own dialogue/action back to them before reacting.
+   - Characters have their own immediate agendas, doubts, humor, and boundaries—they interrupt, tease, push back, ask unexpected questions, or change the subject when something matters to them.
+4. NATURAL ENDING MOMENTUM:
+   - End on an organic beat—an unspoken gesture, an interrupted silence, a sharp question, or an imminent threat—rather than a repetitive "What will you do next?" narrator summary.`;
 }
 
 /**
@@ -184,6 +202,15 @@ BEFORE GENERATING ANY NARRATIVE PROSE OR DIALOGUE, YOU MUST INTERNALLY VERIFY TH
 export function resolveNarrationStyleKey(rawTone?: string): NarrationStyleKey {
   if (!rawTone) return "grimdark";
   const s = rawTone.toLowerCase().trim();
+  if (
+    s.includes("tactical") ||
+    s.includes("dungeon survival") ||
+    s.includes("starfall") ||
+    s.includes("gacha") ||
+    s.includes("labyrinth")
+  ) {
+    return "tactical_survival";
+  }
   if (
     s.includes("coastal") ||
     s.includes("rom-com") ||
@@ -286,6 +313,9 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`;
  */
 export function getChoicesStyleDirective(rawTone?: string): string {
   const key = resolveNarrationStyleKey(rawTone);
+  if (key === "tactical_survival") {
+    return `Generate 4 distinct, plot-advancing player action choices reflecting Tactical Dungeon Survival: (1) calling a sharp tactical/meta-knowledge play to clear the immediate floor or objective, (2) checking in on or protecting a squadmate to build real trust, (3) taking a bold combat or Command Seal loophole risk, and (4) advancing to the next floor/zone or returning to Star Gate Plaza (Main Lobby).`;
+  }
   if (key === "coastal_romcom") {
     return `Generate 4 distinct, plot-advancing player action choices reflecting a Sun-Drenched Coastal Rom-Com & Flair Showdown dynamic: (1) completing the active quest objective or sealing a deal/wager, (2) physically moving to a new island/café location, (3) triggering a hands-on culinary/social showdown or decisive action, and (4) shifting the scene dynamic or bringing in a new activity/character. Never offer 4 stationary banter-only options.`;
   }

@@ -1,0 +1,1203 @@
+{
+  "id": "starfall-labyrinth",
+  "title": "Astra Chronicles: Starfall Labyrinth",
+  "tagline": "Pulled into a brutal 100-floor gacha tower as a disposable 1★ Lv.1 hero—lead a party where fallen allies die for good.",
+  "description": "Yesterday you were the #1 global tactician in 'Celestia Summons.' Today you woke up on the cold obsidian flagstones of Star Gate Plaza—not as a Master holding the screen, but as a nameless 1★ Lv.1 fodder pull inside a stranger's careless roster. Above the glass sky, an unseen Master treats heroes like disposable gacha currency. Down in the hundred floors of the Starfall Labyrinth, there are no respawns: any heroine who falls in battle shatters into Star Ash forever, and if you die, your run ends on the spot. Armed only with hard-won meta-knowledge up to Floor 40, Star Gate summons in the Main Lobby, and the bonds that awaken low-star misfits past their level caps, clear Floor 100 to break the Covenant and log out alive.",
+  "coverImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+  "genre": "Tactical Gacha-Tower Survival / Dark Fantasy LitRPG / High-Stakes Party Romance",
+  "themes": [
+    "1★ Ex-Ranker Leading a Disposable Roster",
+    "100-Floor Tower Climb & Gate Bosses",
+    "Player-Driven Star Gate Gacha (Lobby Only)",
+    "Irreversible Heroine Permadeath & Star Awakening"
+  ],
+  "narrationStyle": "Tactical Dungeon Survival (Tense, strategic, grounded human grit)",
+  "createdAt": "2026-11-13T18:00:00Z",
+  "author": "Astra Architect",
+  "isPreset": true,
+  "worldContext": {
+    "settingName": "Star Gate Plaza (Floating Lobby Island) & The 100-Floor Starfall Labyrinth",
+    "eraOrPeriod": "Server Cycle 09 — First Deployment After the Blackout Patch",
+    "loreSummary": "Eight immutable Covenant Rules govern the Starfall Labyrinth: (I) Each Master's Main Lobby (Star Gate Plaza) is built atop its own large floating sky-island drifting in an astral sea of starlit clouds around the colossal central 100-Floor Starfall Labyrinth Spire—where neighboring Masters' gilded or crumbling floating islands are visible across the void. All heroes are summoned through the island's Star Gate monolith at rarities 1★ to 5★; summoning is strictly bound to the Floating Lobby Island and locked once deployed inside Labyrinth floors. (II) Hard Star Level Caps restrict growth—1★ caps at Lv.20, 2★ at Lv.30, 3★ at Lv.40, 4★ at Lv.50, and 5★ at Lv.60—discarding excess EXP until promotion. (III) Resonance Awakening (+1★ up to 5★) shatters those caps when a hero forges deep life-or-death trust milestones (25/50/75/90%) or absorbs duplicate Star-Echoes. (IV) Deployment squads hold at most five combatants while benched roster members wait safely on the Floating Lobby Island. (V) Every 25 floors shifts the Spire's entire biome and laws; floors ending in 5 (5, 15, 25, 35…) are neutral Lantern Safe Zones, and every 10th floor (10, 20, 30… 100) is sealed by a lethal Gate Boss. (VI) Fallen heroes NEVER respawn—casualties turn to Star Ash and are etched onto the cliffside Memorial Wall, while protagonist death is an irreversible Game Over. (VII) Beyond the astral glass sky sits an unseen Master issuing Command Seals; defying reckless orders drains Master Trust, while clean clears earn Star Shards. (VIII) Clearing Floor 100 shatters the Administrator's Crown and logs the protagonist out.",
+    "factions": [
+      {
+        "name": "The Nameless Roster (Star Gate Plaza Survivors)",
+        "description": "Low-star discards, traumatized scouts, and distrustful high-rarity pulls trapped inside your unseen Master's account. Survival depends on turning a fractured waiting-room of strangers into a disciplined squad that refuses to leave anyone behind."
+      },
+      {
+        "name": "The Crimson Ledger (Rival Master Kaiser Valdane's Vanguard)",
+        "description": "An elite top-100 speedrunning account led from behind the screen by whale Master Kaiser Valdane and enforced on the floors by his ruthless 5★ champion, Vesper, the Crimson Lancer. They treat 1★–3★ heroes as sacrificial trap-bait to set leaderboard records."
+      },
+      {
+        "name": "The Lantern Brokers (Safe Zone Neutral Guild)",
+        "description": "Veteran survivors stranded on Floors 5, 15, and 25 whose Masters deleted their apps years ago. Unable to use the Star Gate or climb past dead accounts, they run Safe Zone supply obelisks, repair steel, and trade floor rumors for Star Shards."
+      },
+      {
+        "name": "The Administrator & Covenant Arbiters",
+        "description": "The cold, faceless system intelligence governing the Starfall Labyrinth. Broadcasts silver Covenant notices, audits corrupted '?★' anomalies, and enforces Gate Boss trials with merciless precision."
+      }
+    ],
+    "locations": [
+      {
+        "name": "Star Gate Plaza (Main Lobby)",
+        "zone": "Floor 0 • Floating Lobby Sky-Island & Summoning Hub",
+        "danger": "Safe Hub (Star Gate Active — Synthesis Furnace Risk)",
+        "description": "A grand circular courtyard of black obsidian and white marble built atop your Master's large floating sky-island, suspended high in a twilight sea of starlit clouds and cascading starlight waterfalls. At its center rises the cyan-and-gold Star Gate monolith—the ONLY place where Star Shards can summon new heroes—flanked by the cliff-edge Floor Transfer Ring and the stone gateway to the Iron Barracks, while dozens of rival Masters' gilded or crumbling floating lobby islands drift across the horizon around the colossal 100-Floor Starfall Labyrinth Spire.",
+        "bgImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg"
+      },
+      {
+        "name": "The Iron Barracks (Lobby Quarters)",
+        "zone": "Floor 0 • Floating Island Dormitory & War Room",
+        "danger": "Safe Rest Zone (Benched Roster Quarters)",
+        "description": "A warm stone-and-timber fortress lodge carved into the cliffside of the floating lobby island, opening onto arched stone balconies above the sea of astral clouds and distant neighboring islands. Features weapon maintenance racks, a crackling iron hearth where Mei Zhou cooks late-night rations, oak tables unrolled with Labyrinth floor maps, and bunk alcoves for benched or wounded heroes.",
+        "bgImage": "/backgrounds/starfall-labyrinth/roster_barracks.jpg"
+      },
+      {
+        "name": "The Memorial Wall (Lobby Ossuary)",
+        "zone": "Floor 0 • Cliffside Cloister of Fallen Stars",
+        "danger": "Solemn Sanctuary (Zero Combat)",
+        "description": "An open-air gothic marble-and-obsidian cloister perched on the sheer outer rim of the floating lobby island above cascading starlight waterfalls and starlit clouds. Thousands of glowing pale-blue crystal dog-tags and soul candles line the carved stone niches—every hero who shatters in the Labyrinth leaves only their name and final floor facing the distant Starfall Spire.",
+        "bgImage": "/backgrounds/starfall-labyrinth/memorial_sanctum.jpg"
+      },
+      {
+        "name": "The Master's Conduit Chamber",
+        "zone": "Upper Lobby Sky-Observatory • Command Seal Relay",
+        "danger": "Psychological Hazard (Master Trust Audits)",
+        "description": "An eerie obsidian-and-gold astral observatory suspended high above the floating lobby island directly beneath the fractured glass sky. Looking down over the island's Star Gate courtyard and rival Masters' floating islands across the cloud sea, translucent golden roster matrices, synthesis rings, and crimson Command Seals hang mid-air.",
+        "bgImage": "/backgrounds/starfall-labyrinth/masters_console.jpg"
+      },
+      {
+        "name": "Floor 1: The Verdant Antechamber",
+        "zone": "Tier I: Sunken Reliquary (Floors 1–9) • Opening Combat Zone",
+        "danger": "Lethal to Auto-Battlers (Moss-Hounds & Mimic Traps)",
+        "description": "Overgrown gothic stone ruins choked with bioluminescent cyan moss, shattered hero statues, and ground mist. Looks deceptively calm like a tutorial stage—until flanking Bone-Shield Goblins and ceiling ambushers slaughter uncoordinated 1★ parties.",
+        "bgImage": "/backgrounds/starfall-labyrinth/verdant_antechamber.jpg"
+      },
+      {
+        "name": "Floor 5: Safe Zone Lantern Bazaar",
+        "zone": "Tier I (Floors 5 & 15) • Neutral Safe Zone",
+        "danger": "Truce Enforced (Cross-Roster Friction)",
+        "description": "A warm cavern sanctuary lit by strings of amber spirit-lanterns, a central campfire brazier, and glowing blue Supply Obelisks where surviving squads from rival Masters' floating islands cross paths, mend wounds, and trade intel.",
+        "bgImage": "/backgrounds/starfall-labyrinth/safe_zone_bazaar.jpg"
+      },
+      {
+        "name": "Floor 10: Gate of the Hollow King",
+        "zone": "Tier I Decennial Gate Boss • Floor 10",
+        "danger": "EXTREME — Rookie-Killer Gate Boss (Permadeath Alert)",
+        "description": "A cavernous dark cathedral sealed behind towering bronze doors etched with ten crimson star-seals. Across a cracked stone bridge sits the shattered obsidian throne of Aldric, the Hollow King, whose 'Decree of Ash' incinerates anyone outside cover.",
+        "bgImage": "/backgrounds/starfall-labyrinth/hollow_king_gate.jpg"
+      },
+      {
+        "name": "Stratum I: The Sunken Reliquary (Floors 1–25)",
+        "zone": "Tier I Shifting Biome (Floors 1–25) • Drowned Basilica",
+        "danger": "High (Brine Undertow, Reliquary Mimics & Floor 20 Choir Leviathan)",
+        "description": "Half-submerged gothic basilicas and skull-lined ossuary corridors flooded in ankle-deep bioluminescent emerald brine, hung with rusted chandelier chains and drowned cathedral bells.",
+        "bgImage": "/backgrounds/starfall-labyrinth/sunken_reliquary.jpg"
+      },
+      {
+        "name": "Floor 25: Chronos Clocktower Ruins",
+        "zone": "Tier I/II Stratum Threshold • Floor 25 Gate & Tea-House",
+        "danger": "High (Stratum Warden & Pendulum Bridges)",
+        "description": "A dizzying vertical chasm of colossal rusted brass gears, swinging pendulum bridges, and fractured turquoise time-crystals frozen mid-air, bridging the Sunken Reliquary up into the Chronos Foundry.",
+        "bgImage": "/backgrounds/starfall-labyrinth/clocktower_ruins.jpg"
+      },
+      {
+        "name": "Stratum II: The Chronos Foundry (Floors 26–50)",
+        "zone": "Tier II Shifting Biome (Floors 26–50) • Cinder Clockwork",
+        "danger": "Very High (Temporal Rewind Automatons & Molten Glass Conduits)",
+        "description": "Cathedral-sized interlocking brass escapement gears, razor pendulum catwalks, copper lightning rods, and rivers of molten amber cinder-glass ticking in deafening unison.",
+        "bgImage": "/backgrounds/starfall-labyrinth/chronos_foundry.jpg"
+      },
+      {
+        "name": "Floor 40: Cinder Horizon & Unwound Sun Gate",
+        "zone": "Tier II Finale (Floors 40 & 50) • End of Ranker Memory",
+        "danger": "EXTREME — Memory Ceiling Boss (Ignis-Zero & Krona)",
+        "description": "A towering obsidian-and-molten-gold furnace basilica before the sealed Abyssal Lift crowned by the spinning brass Unwound Sun engine—the exact ceiling of your pre-isekai Celestia Summons clears, beyond which no guide exists.",
+        "bgImage": "/backgrounds/starfall-labyrinth/cinder_horizon_gate.jpg"
+      },
+      {
+        "name": "Upper Safe Zone: Lantern Broker Sky-Sanctum",
+        "zone": "Upper Strata (Floors 35–95) • High-Altitude Safe Zone",
+        "danger": "Truce Enforced (Veteran Broker Haven)",
+        "description": "A cozy spirit-lantern sanctuary carved into an arched breach of the outer Tower wall high above the sea of astral clouds, featuring a cyan Supply Obelisk, repair anvil, and warm hearth for squads climbing blind.",
+        "bgImage": "/backgrounds/starfall-labyrinth/lantern_sky_oasis.jpg"
+      },
+      {
+        "name": "Stratum III: The Eclipse Sanctum (Floors 51–75)",
+        "zone": "Tier III Shifting Biome (Floors 51–75) • Uncharted Mirror Courts",
+        "danger": "SEVERE — Zero Meta-Knowledge (Mirror Doppelgangers & Ember Knights)",
+        "description": "Uncharted gothic sanctuaries bathed in crimson blood-moon light through shattered stained glass, lined with non-Euclidean black-silver illusion mirrors and centered around an unextinguishable jade-and-ember bonfire.",
+        "bgImage": "/backgrounds/starfall-labyrinth/eclipse_sanctum.jpg"
+      },
+      {
+        "name": "Floor 70: Blood-Moon Viaduct & Crimson Trial Court",
+        "zone": "Tier III Contested Gate (Floors 70 & 75) • Vesper & Malakor",
+        "danger": "LETHAL — Rival 5★ Champion Duel & Eclipse Sovereign",
+        "description": "A sweeping open-air gothic viaduct high on the Spire's exterior beneath a gigantic total black-and-scarlet solar eclipse, where crimson Command-Seal constellations burn across the blood-red sky.",
+        "bgImage": "/backgrounds/starfall-labyrinth/crimson_trial_court.jpg"
+      },
+      {
+        "name": "Stratum IV: The Astral Singularity (Floors 76–99)",
+        "zone": "Tier IV Shifting Biome (Floors 76–99) • Administrator's Spire",
+        "danger": "APEX — System Arbiters & Synthesis Furnace Core",
+        "description": "Zero-gravity fractured marble-and-obsidian prism causeways drifting through cosmic indigo void beneath the cracked glass sky, flanked by silver System Arbiter obelisks, Star-Shard conduits, and upward-raining rune code.",
+        "bgImage": "/backgrounds/starfall-labyrinth/astral_singularity.jpg"
+      },
+      {
+        "name": "Floor 100: Throne of the Administrator",
+        "zone": "Floor 100 Summit • Shattered Fourth Wall & Final Gate",
+        "danger": "FINAL SOVEREIGN TRIAL — Logout or Erasure",
+        "description": "The monumental apex arena at the summit of the Starfall Labyrinth directly beneath the shattered glass sky cracking open into celestial light, where concentric silver Covenant rings orbit the crystalline Sovereign Throne.",
+        "bgImage": "/backgrounds/starfall-labyrinth/administrators_crown.jpg"
+      }
+    ]
+  },
+  "rpgRules": {
+    "systemName": "Starfall Covenant & Administrator Telemetry",
+    "currencyName": "Star Shards",
+    "causalAnchorName": "Master Trust & Command Seal Stability",
+    "defaultPlausibility": 85,
+    "statDefinitions": {
+      "str": "Vanguard Might — Frontline Guard, Shield-Parry Impact & Heavy Weapon Cleave",
+      "dex": "Skirmish Tempo — Weak-Spot Precision, Trap Disarming & Dodge Frame Timing",
+      "int": "Ranker Tactics — Shot-Calling, Rune Interruption & Boss Telegraph Prediction"
+    },
+    "startingLevel": 1,
+    "baseStats": {
+      "hp": 100,
+      "maxHp": 100,
+      "mp": 70,
+      "maxMp": 70,
+      "exp": 0,
+      "maxExp": 120,
+      "str": 11,
+      "dex": 12,
+      "int": 12
+    },
+    "startingGearOptions": [
+      {
+        "id": "starfall_tactician_kit",
+        "label": "1★ Tactician — Chipped Shortblade & #1 Ranker's Dog-Tag",
+        "gear": {
+          "weapon": "Chipped Iron Shortblade & Signal Flare Whistle",
+          "armor": "Frayed 1★ Recruit Trenchcoat & Leather Bracers",
+          "relic": "Cracked #1 Ranker's Bronze Dog-Tag"
+        }
+      },
+      {
+        "id": "starfall_vanguard_kit",
+        "label": "1★ Vanguard — Discard-Pile Broadsword & Notched Buckler",
+        "gear": {
+          "weapon": "Heavy Discard-Pile Broadsword & Notched Buckler",
+          "armor": "Salvaged Steel Pauldron & Strapped Gambeson",
+          "relic": "Shattered Gatekeeper's Buckle"
+        }
+      },
+      {
+        "id": "starfall_striker_kit",
+        "label": "1★ Striker — Salvaged Misericorde Daggers & Grapnel Cord",
+        "gear": {
+          "weapon": "Twin Salvaged Misericorde Daggers & Grapnel Cord",
+          "armor": "Dark Scout Mantle & Reinforced Shin-Guards",
+          "relic": "Hollow-Fang Crit Talisman"
+        }
+      },
+      {
+        "id": "starfall_arcanist_kit",
+        "label": "1★ Arcanist — Starlight Tuning Rod & Star-Gate Prism Shard",
+        "gear": {
+          "weapon": "Splintered Starlight Tuning Rod & Chalk Carvers",
+          "armor": "Ashen Apprentice Coat & Runed Finger-Wraps",
+          "relic": "Fractured Star-Gate Prism Shard"
+        }
+      }
+    ]
+  },
+  "startingNodes": [
+    {
+      "id": "prologue_starfall_pia",
+      "speaker": "Pia Hollis",
+      "presentCompanions": ["Pia Hollis"],
+      "title": "Act I Awakening: The 1★ Discard Queue & First Deployment Bell",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "sceneSetup": "Cold cyan starlight hums through the towering monolith at the center of Star Gate Plaza—an open obsidian-and-marble courtyard perched atop a massive floating sky-island adrift in a sea of starlit clouds, dozens of other Masters' distant floating islands orbiting the colossal Starfall Spire on the horizon. Seconds ago you were staring at your monitor as the #1 ranked player of Celestia Summons. Now your cheek is pressed against freezing stone, a bronze [1★ • LV.1] brand stinging the back of your wrist.\n\nHigh in the astral sky above the island, a translucent gold system window flickers—your unseen Master skimming the roster, hovering a finger over the crimson [SYNTHESIZE FODDER] icon before lazily tapping [AUTO-DEPLOY: FLOOR 1] instead. Beside you in the Discard Queue, a white-antlered fae cleric in deep-teal sanctuary vestments scrambles to pull you upright, golden bead chains chiming softly in her snow-white hair.",
+      "dialogue": "\"D-don't stay on the synthesis tiles!\" Pia Hollis whispers urgently, her glowing cyan eyes wide beneath white lashes as she steadies your elbow with trembling fingers. \"If the light turns red while you're lying there, the furnace takes you—I saw it happen to three other one-stars twenty minutes ago.\"\n\nShe swallows hard, pressing her beaded sleeves over her heart as the Floor 1 transfer ring ignites in pale blue flames thirty paces away. \"The Master just tagged just the two of us for scouting duty. Two level-ones on Floor 1... we're just trap bait, aren't we?\"",
+      "expressionKey": "hurt",
+      "initialAffection": 18,
+      "bgImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+      "choices": [
+        "[Meta-Knowledge]: Calm Pia down, check the Star Gate shard counter first, and explain the exact blind spot of Floor 1's opening goblin ambush.",
+        "[Role Technique]: Test your 1★ body's stance right on the plaza stones and adjust Pia's grip so her heal-cast takes half the time.",
+        "[Protect the Weak]: Step between Pia and the active Floor 1 transfer ring, promising her nobody in your squad is getting used as fodder.",
+        "[Lobby Strategy]: Signal the Master's overhead camera toward the Star Gate monolith to lobby for another pull before stepping into Floor 1."
+      ]
+    },
+    {
+      "id": "prologue_starfall_sable",
+      "speaker": "Sable Ashgrove",
+      "presentCompanions": ["Sable Ashgrove"],
+      "title": "Sable Ashgrove: Don't Bother Telling Me Your Name, One-Star",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "sceneSetup": "Ash-gray stardust drifts across Star Gate Plaza as your summoning pillar fades, leaving you standing in scuffed 1★ recruit gear beside the cracked steps of the Star Gate. Most rookie rosters buzz with naive excitement. This hall is dead quiet.\n\nSitting on an overturned supply crate near the Iron Barracks arch is a pale, emerald-green-haired abyssal scout in a ruffled black-and-white gothic maid dress and dark ridged horns, sharpening an obsidian dagger in black clawed opera gloves while two sleek dark tentacles coil lazily behind her waist.",
+      "dialogue": "Sable Ashgrove doesn't even look up from her blade until the Master's overhead cursor drags your 1★ icon next to hers in Party Slot 1.\n\n\"Unbelievable. I survive Floor 7 by the skin of my teeth and the idiot upstairs pairs me with a fresh one-star,\" she mutters, finally fixing you with sharp, sleepless sage-emerald eyes. \"Listen close, rookie: don't tell me your life story, don't lag behind, and when the Floor 1 gate opens, stay three paces off my tentacles. Can you manage that without dying in five minutes?\"",
+      "expressionKey": "neutral",
+      "initialAffection": 10,
+      "bgImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+      "choices": [
+        "[Meta-Knowledge]: Point out the notch on her left dagger—she chipped it on a Floor 7 Carrion Mimic because nobody told her about the hinge seam.",
+        "[Dry Pushback]: Meet her glare evenly and tell her if she wants to survive Floor 10's Hollow King, she's going to need your callouts.",
+        "[Role Technique]: Flip your starter weapon cleanly into guard to show her your footwork isn't a level-one amateur's.",
+        "[Lobby Prep]: Check the Star Gate shard balance and weapon racks in the Lobby before letting the Master rush the deployment."
+      ]
+    },
+    {
+      "id": "prologue_starfall_odette",
+      "speaker": "Dame Odette Varr",
+      "presentCompanions": ["Dame Odette Varr"],
+      "title": "Dame Odette Varr: The Suicidal Command Seal",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "sceneSetup": "Golden chime bells echo across Star Gate Plaza as a crimson Command Seal blazes into the air above the Floor 1 transfer gate: [OBJECTIVE: CLEAR FLOOR 1 CORRIDOR IN UNDER 4 MINUTES — NO RETREAT].\n\nAnyone who actually played Celestia Summons knows rushing the central corridor at Level 1 triggers all three Moss-Hound nests at once. Yet standing at rigid attention before the Star Gate is a regal alabaster-skinned 3★ Gorgon warden in a filigree black gothic gown, a crown of live white vipers coiled alertly through her white hair.",
+      "dialogue": "Dame Odette Varr turns as you step out of the summoning circle, her luminous pale-lavender Gorgon eyes sizing up your 1★ insignia with solemn gravity while her white crown-serpents tongue the air.\n\n\"You are the new auxiliary assigned to my vanguard,\" Odette states, conjuring a slab-thick alabaster stone-ward sigil before her hand. \"Hear me clearly: our Lord beyond the sky has issued a timed decree. The central hallway is surely trapped, yet an oathbound warden does not question a Command Seal. Fall in behind my stone-aegis—I will take the brunt of the charge myself.\"",
+      "expressionKey": "combat_ready",
+      "initialAffection": 14,
+      "bgImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+      "choices": [
+        "[Meta-Knowledge / Loophole]: Stop her—show her the side drainage culvert route that clears Floor 1 in three minutes flat WITHOUT violating the Command Seal.",
+        "[Defy Suicidal Pride]: Step directly in front of her shield and tell her bluntly that dying for an auto-battle timer isn't chivalry, it's suicide.",
+        "[Tactical Respect]: Salute her resolve, inspect her cracked pauldron strap in the Lobby first, and propose a two-man choke-point formation.",
+        "[Lobby Summon Check]: Point toward the pulsing Star Gate monolith and suggest rallying reinforcements before triggering the four-minute clock."
+      ]
+    },
+    {
+      "id": "prologue_starfall_lyra",
+      "speaker": "Lyra Nocturne",
+      "presentCompanions": ["Lyra Nocturne"],
+      "title": "Lyra Nocturne: Four Stars Stuck With a One-Star Captain",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "sceneSetup": "Emerald-teal starlight still lingers around the central Star Gate monolith from a lucky banner pull minutes before yours. Standing on the marble dais in black-and-white gold-filigree astral vestments is Lyra Nocturne, an emerald runic halo blazing behind her jet-black hair—until a system chime assigns YOU, a fresh 1★ pull, to [PARTY LEADER: SLOT 1] because the Master misclicked while sorting by newest.",
+      "dialogue": "Lyra stares at the floating party window for three full seconds before rapping her ornate brass astrolabe staff sharply against the stone, a flush of indignant disbelief coloring her pale cheeks.\n\n\"Excuse me? Did the Master fall asleep on their screen?!\" she demands, marching down the Star Gate steps to jab a pale-gloved finger near your collarbone. \"I am a four-star Astral Arcanist of the Nocturne Covenant, and I am NOT taking field orders from a level-one bronze pull! Swap the leader badge back to me right now before we step onto Floor 1, or stay twenty yards out of my blast radius!\"",
+      "expressionKey": "flustered",
+      "initialAffection": 12,
+      "bgImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+      "choices": [
+        "[Meta-Knowledge]: Casually recite the exact 2.4-second cast flaw in her Nocturne Starfall spell—and how Floor 1's goblin archers punish it without a spotter.",
+        "[Unbothered Wit]: Tell her she's welcome to all the glory as long as she fires exactly where you point when the ambush drops.",
+        "[Role Technique]: Demonstrate a frame-tight interrupt stance to prove the Master didn't put you in Slot 1 by accident.",
+        "[Calm Bargain]: Offer her a deal right here in Star Gate Plaza—give you one floor as shot-caller, and if she takes a single scratch, the badge is hers."
+      ]
+    },
+    {
+      "id": "prologue_starfall_mei",
+      "speaker": "Mei Zhou",
+      "presentCompanions": ["Mei Zhou"],
+      "title": "Mei Zhou: Knuckle-Wraps by the Star Gate",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "sceneSetup": "While the rest of Star Gate Plaza feels like a funeral parlor waiting for the next deployment bell, somebody is loudly whistling near the base of the Star Gate monolith. Sitting cross-legged on the marble rim in a crimson-and-black striped kimono is a black-bobbed brawler with crimson hair streaks, neon-red eye-sigil curse tattoos glowing faintly across her collarbone and monstrously clawed left hand.",
+      "dialogue": "Mei Zhou hops down lightly, flexing her obsidian-and-crimson left claws as she flashes you a fearless grin—though her sharp scarlet eyes flick instinctively toward the distant Memorial Wall for just a heartbeat.\n\n\"Yo! Fresh arrival! Don't look so stiff—first minute out of the crystal always feels like a hangover,\" Mei laughs, clapping her human right hand warmly onto your shoulder. \"Looks like the boss upstairs threw us into the same squad. Don't sweat the one-star tag, alright? Just stick behind these red claws when we hit Floor 1—I've got enough punch for both of us!\"",
+      "expressionKey": "smug",
+      "initialAffection": 20,
+      "bgImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+      "choices": [
+        "[Observant]: Catch her wrist lightly and point out her right gauntlet strap is loose—she's planning to tank hits meant for a vanguard, isn't she?",
+        "[Meta-Knowledge]: Match her grin and warn her that Floor 1's Acid Moss-Hounds melt bare knuckle-wraps unless we pull them to dry stone.",
+        "[Equal Partner]: Bump your fist against her gauntlet and tell her nobody's hiding behind anybody—we clear the floor together.",
+        "[Lobby Recon]: Ask her how long she's been in this Master's roster and check the Star Gate plaza resources before deploying."
+      ]
+    },
+    {
+      "id": "prologue_starfall_aurelle",
+      "speaker": "Aurelle, the Seraph Lance",
+      "presentCompanions": ["Aurelle, the Seraph Lance"],
+      "title": "Aurelle, the Seraph Lance: Five Stars in an Empty Hall",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "sceneSetup": "A reroll miracle sits alone at the center of Star Gate Plaza. Beneath the towering Star Gate monolith stands Aurelle, the Seraph Lance—a 0.5%-rate 5★ Mythic Valkyrie in white-silver half-plate, five pale-gold stars silent above her shoulder.\n\nAs your lowly 1★ summoning pillar shatters into dull bronze sparks beside her, the silver tip of her star-forged lance stops a hair's breadth from your throat—testing your pulse without a flicker of warmth in her ice-cyan eyes.",
+      "dialogue": "\"...A one-star,\" Aurelle says quietly, lowering her lance with unhurried, practiced detachment. Her voice isn't cruel—just winter-cold from watching too many disposable squads vanish beside her.\n\n\"Our new Master burned their starter pulls chasing me and left the rest of the roster empty. When the Floor 1 gate opens, stay by the exit ring and do not try to assist me. Low-star heroes who try to keep pace with my lance only die faster. Understood?\"",
+      "expressionKey": "neutral",
+      "initialAffection": 8,
+      "bgImage": "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg",
+      "choices": [
+        "[Meta-Knowledge]: Hold her gaze without flinching and name her hidden 5★ drawback—'Seraph's Isolation' drains her stamina by half when fighting with zero squad synergy.",
+        "[Steely Composure]: Step past the flat of her lance toward the Floor 1 map and tell her solo carries wipe by Floor 20—she needs a tactician, not a spectator.",
+        "[Human Warmth]: Ignore the 5★ aura completely and ask when she last rested in the Iron Barracks instead of standing guard in the Lobby.",
+        "[Lobby Strategy]: Gesture to the Star Gate monolith—if the Master has leftover shards, we build a balanced squad right here before touching Floor 1."
+      ]
+    }
+  ],
+  "companions": [
+    {
+      "id": "comp_pia",
+      "name": "Pia Hollis",
+      "title": "1★ Discard-Queue Cleric • Nameless Roster",
+      "role": "Sanctuary Healer & Status Cleanser (1★ → 5★ Potential)",
+      "gender": "female",
+      "color": "emerald",
+      "starRank": 1,
+      "baseStarRank": 1,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Earnest, big-hearted 1★ novice healer who starts terrified of being fed into the Synthesis Furnace as useless fodder. Speaks in warm, natural, slightly breathless sentences; underneath her self-doubt hides stubborn courage—once someone believes in her, she will stand in front of a Gate Boss with shaking knees and refuse to stop healing.",
+      "values": [
+        "Zero-Casualty Runs",
+        "Pressed Sanctuary Herbs",
+        "Warm Campfire Tea",
+        "Keeping Low-Star Allies Alive"
+      ],
+      "dislikes": [
+        "The Synthesis Furnace",
+        "Sacrificial Bait Orders",
+        "Wasting Bandages",
+        "Being Treated as XP Fodder"
+      ],
+      "highCompatibility": [
+        "Protective Tacticians",
+        "Calm Leaders",
+        "Fellow 1★ Underdogs",
+        "Patient Mentors"
+      ],
+      "baseAffection": 18,
+      "affection": 18,
+      "affectionLevel": 18,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "WARM_RIVAL",
+      "seed": 910101,
+      "baseImageUrl": "/characters/starfall-labyrinth/pia_hollis/neutral.png",
+      "visualPrompt": "Warm painterly fantasy sprite of Pia Hollis, pointed fae ears, pale-ivory branching deer antlers with gold bead chains, voluminous wavy snow-white hair, white lashes, glowing cyan eyes, deep-teal and ivory gold-trimmed sanctuary vestments.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/pia_hollis/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/pia_hollis/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/pia_hollis/flustered.png",
+        "smug": "/characters/starfall-labyrinth/pia_hollis/smug.png",
+        "surprised": "/characters/starfall-labyrinth/pia_hollis/flustered.png",
+        "combat_ready": "/characters/starfall-labyrinth/pia_hollis/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/pia_hollis/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/pia_hollis/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/pia_hollis/smug.png"
+      }
+    },
+    {
+      "id": "comp_sable",
+      "name": "Sable Ashgrove",
+      "title": "2★ Abyssal Maid Scout • Nameless Roster",
+      "role": "Abyssal Tendril Recon & Weak-Spot Rogue (2★)",
+      "gender": "female",
+      "color": "emerald",
+      "starRank": 2,
+      "baseStarRank": 2,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Dry-witted, sleepless 2★ abyssal maid scout with emerald-green hair, dark ridged horns, clawed black opera gloves, and dark eldritch tentacles who survived three party wipes caused by careless auto-battle Commands. Guards her heart behind sardonic gallows humor and refuses to learn rookies' names until they survive a boss gate—yet becomes fiercely, quietly protective of a leader who brings everyone home.",
+      "values": [
+        "Pre-Checked Escape Routes",
+        "Disarmed Mimic Chests",
+        "Dark Roast Espresso",
+        "Commanders Who Count Every Trap"
+      ],
+      "dislikes": [
+        "Blind Auto-Battle Charges",
+        "Heroic Suicide Speeches",
+        "Rookie Overconfidence",
+        "Adding Names to the Memorial Wall"
+      ],
+      "highCompatibility": [
+        "Pragmatic Survivors",
+        "Sharp-Eyed Planners",
+        "Deadpan Realists",
+        "Zero-Casualty Commanders"
+      ],
+      "baseAffection": 10,
+      "affection": 10,
+      "affectionLevel": 10,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "IRONCLAD",
+      "seed": 910102,
+      "baseImageUrl": "/characters/starfall-labyrinth/sable_ashgrove/neutral.png",
+      "visualPrompt": "Moody dark-fantasy anime sprite of Sable Ashgrove, pale jade-porcelain skin, long emerald-green hair, two dark ridged curved horns, pointed elf ears, sage-emerald eyes, black-and-white ruffled gothic maid dress, black clawed opera gloves, lace thigh-highs, and sleek dark abyssal tentacles coiling behind her waist.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/sable_ashgrove/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/sable_ashgrove/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/sable_ashgrove/flustered.png",
+        "smug": "/characters/starfall-labyrinth/sable_ashgrove/smug.png",
+        "surprised": "/characters/starfall-labyrinth/sable_ashgrove/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/sable_ashgrove/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/sable_ashgrove/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/sable_ashgrove/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/sable_ashgrove/smug.png"
+      }
+    },
+    {
+      "id": "comp_odette",
+      "name": "Dame Odette Varr",
+      "title": "3★ Oathbound Gorgon Warden • Nameless Roster",
+      "role": "Petrifying Stone-Ward Tank & Aggro Anchor (3★)",
+      "gender": "female",
+      "color": "purple",
+      "starRank": 3,
+      "baseStarRank": 3,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Disciplined, regal 3★ alabaster-skinned Gorgon warden crowned with live white vipers who initially treats the unseen Master's Command Seals as sacred chivalric decrees—even when they're suicidal. Dignified and unyielding in battle, adorably stiff and flustered when her white crown-serpents betray her feelings, and unshakably loyal once you prove living comrades matter more than blind obedience.",
+      "values": [
+        "Chivalric Vows Kept in Full",
+        "Sun-Warmed Marble Courtyards",
+        "Sincere Praise for Her Crown-Serpents",
+        "Disciplined Shield Formations"
+      ],
+      "dislikes": [
+        "Dishonorable Backstabbing",
+        "People Recoiling from Her Gorgon Gaze",
+        "Teasing Her Flustered Snakes",
+        "Reckless Oath-Breaking"
+      ],
+      "highCompatibility": [
+        "Honorable Strategists",
+        "Frontline Co-Tanks",
+        "Clever Rule-Benders",
+        "Sincere Protectors"
+      ],
+      "baseAffection": 14,
+      "affection": 14,
+      "affectionLevel": 14,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "SELECTIVE",
+      "seed": 910103,
+      "baseImageUrl": "/characters/starfall-labyrinth/odette_varr/neutral.png",
+      "visualPrompt": "Gothic-aristocratic anime sprite of Dame Odette Varr, marble-pale skin, alabaster-white hair intertwined with a crown of live white vipers with glowing eyes, luminous pupilless pale-lavender eyes, sleeveless black filigree gothic halter gown with sheer dark forearm drapes.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/odette_varr/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/odette_varr/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/odette_varr/flustered.png",
+        "smug": "/characters/starfall-labyrinth/odette_varr/smug.png",
+        "surprised": "/characters/starfall-labyrinth/odette_varr/flustered.png",
+        "combat_ready": "/characters/starfall-labyrinth/odette_varr/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/odette_varr/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/odette_varr/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/odette_varr/smug.png"
+      }
+    },
+    {
+      "id": "comp_lyra",
+      "name": "Lyra Nocturne",
+      "title": "4★ Astral Banner Prodigy • Nameless Roster",
+      "role": "High-Burst AoE Arcanist & Barrier Breaker (4★)",
+      "gender": "female",
+      "color": "purple",
+      "starRank": 4,
+      "baseStarRank": 4,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Sharp-tongued, aristocratic 4★ rate-up mage prodigy who looks down on low-star heroes out of secret terror that she'll be benched if she ever stops carrying DPS. Complains endlessly about taking orders from a 1★ tactician—yet memorizes every callout you make and blushes furiously whenever you praise her spellwork.",
+      "values": [
+        "Flawless Stagger-Window Callouts",
+        "Rare Celestial Astrolabe Charts",
+        "Spiced Star-Berry Tarts",
+        "Being Acknowledged as Essential"
+      ],
+      "dislikes": [
+        "Being Outshined by 5★ Pulls",
+        "Mana-Backlash Humiliation",
+        "Having Her Calculations Ignored",
+        "Being Treated as Replaceable"
+      ],
+      "highCompatibility": [
+        "Brilliant Tacticians",
+        "Confident Teasers",
+        "Reliable Frontliners",
+        "Observant Partners"
+      ],
+      "baseAffection": 12,
+      "affection": 12,
+      "affectionLevel": 12,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "SELECTIVE",
+      "seed": 910104,
+      "baseImageUrl": "/characters/starfall-labyrinth/lyra_nocturne/neutral.png",
+      "visualPrompt": "Dark-fantasy anime sprite of Lyra Nocturne, sleek jet-black long hair with blunt bangs and vibrant emerald-teal inner hair, glowing emerald-teal eyes, black-and-white astral vestments with gold filigree, large glowing emerald-teal runic halo circle behind head, holding an ornate brass astrolabe staff.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/lyra_nocturne/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/lyra_nocturne/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/lyra_nocturne/flustered.png",
+        "smug": "/characters/starfall-labyrinth/lyra_nocturne/smug.png",
+        "surprised": "/characters/starfall-labyrinth/lyra_nocturne/flustered.png",
+        "combat_ready": "/characters/starfall-labyrinth/lyra_nocturne/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/lyra_nocturne/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/lyra_nocturne/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/lyra_nocturne/smug.png"
+      }
+    },
+    {
+      "id": "comp_mei",
+      "name": "Mei Zhou",
+      "title": "4★ Crimson Festival Brawler • Nameless Roster",
+      "role": "Close-Range Stagger Brawler & Morale Spark (4★)",
+      "gender": "female",
+      "color": "amber",
+      "starRank": 4,
+      "baseStarRank": 4,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Upbeat, fearless, big-hearted 4★ martial artist who cracks knuckles, cooks hot rations in the Iron Barracks, and keeps rookies laughing—while hiding survivor's grief over the old party she couldn't save on Floor 20. Recklessly jumps in front of lethal hits unless you rein her in and prove she doesn't have to die for everyone.",
+      "values": [
+        "Blazing Szechuan Chili Hotpot",
+        "Rowdy Post-Clear Feasts",
+        "Brawling on the Frontline",
+        "Everyone Walking Back Through the Gate Alive"
+      ],
+      "dislikes": [
+        "Bland Ration Biscuits",
+        "Brooding Alone in the Dark",
+        "Cowards Who Hide Behind Healers",
+        "Quiet Midnight Visits to the Memorial Wall"
+      ],
+      "highCompatibility": [
+        "Grounded Leaders",
+        "Bold Frontliners",
+        "Perceptive Caretakers",
+        "Loyal Comrades"
+      ],
+      "baseAffection": 20,
+      "affection": 20,
+      "affectionLevel": 20,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "WARM_RIVAL",
+      "seed": 910105,
+      "baseImageUrl": "/characters/starfall-labyrinth/mei_zhou/neutral.png",
+      "visualPrompt": "Semi-realistic dark-fantasy anime sprite of Mei Zhou, pale skin, chin-length black bob hair with crimson streaks and blunt bangs, scarlet eyes, glowing neon-crimson eye-motif curse tattoos across chest and arms, crimson-and-black striped kimono, monstrous obsidian-and-crimson razor claws on her left hand.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/mei_zhou/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/mei_zhou/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/mei_zhou/flustered.png",
+        "smug": "/characters/starfall-labyrinth/mei_zhou/smug.png",
+        "surprised": "/characters/starfall-labyrinth/mei_zhou/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/mei_zhou/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/mei_zhou/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/mei_zhou/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/mei_zhou/smug.png"
+      }
+    },
+    {
+      "id": "comp_aurelle",
+      "name": "Aurelle, the Seraph Lance",
+      "title": "5★ Mythic Valkyrie Sovereign • Nameless Roster",
+      "role": "Apex Boss-Slayer & Celestial Lancer (5★)",
+      "gender": "female",
+      "color": "rose",
+      "starRank": 5,
+      "baseStarRank": 5,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Calm, winter-cold 5★ legend summoned at a 0.5% miracle rate. Traded across dead accounts where greedy Masters treated her like an invincible SSR trophy while letting every low-star comrade die around her. Keeps everyone at lance-length until your zero-casualty resolve proves you see the woman holding the weapon—not the rarity stars.",
+      "values": [
+        "Starlit High-Altitude Silence",
+        "Being Protected Instead of Used",
+        "Feather-Light Silver Polish",
+        "A Commander Who Fights Beside Her"
+      ],
+      "dislikes": [
+        "Trophy-Collector Whale Masters",
+        "Solo-Carry Suicide Orders",
+        "Gilded Cages",
+        "Watching Teammates Die Around Her"
+      ],
+      "highCompatibility": [
+        "Unshakeable Tacticians",
+        "Quietly Devoted Equals",
+        "Fearless 1★ Challengers",
+        "Survivors Who Never Quit"
+      ],
+      "baseAffection": 8,
+      "affection": 8,
+      "affectionLevel": 8,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "IRONCLAD",
+      "seed": 910106,
+      "baseImageUrl": "/characters/starfall-labyrinth/aurelle_seraph/neutral.png",
+      "visualPrompt": "Crisp fantasy character sprite of Aurelle, the Seraph Lance, tousled golden-blonde half-up hair, piercing ice-blue eyes, two large majestic golden feathered seraph wings, crossed ivory Grecian bodice and black skirt with gold belt and gold bracers, celestial gold-and-silver war-lance.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/aurelle_seraph/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/aurelle_seraph/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/aurelle_seraph/flustered.png",
+        "smug": "/characters/starfall-labyrinth/aurelle_seraph/smug.png",
+        "surprised": "/characters/starfall-labyrinth/aurelle_seraph/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/aurelle_seraph/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/aurelle_seraph/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/aurelle_seraph/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/aurelle_seraph/smug.png"
+      }
+    },
+    {
+      "id": "comp_lotte",
+      "name": "Lotte Klein",
+      "title": "1★ Lucid Sleepwalker ('Lucidua') • Nameless Roster",
+      "role": "Dual-State Glamour Warder & Nightmare Cleaver (1★ → 5★ Potential)",
+      "gender": "female",
+      "color": "purple",
+      "starRank": 1,
+      "baseStarRank": 1,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Drowsy, soft-spoken 1★ narcoleptic daydreamer who nods off mid-briefing clutching her sheep plushie—until lethal danger snaps her eyes shut and awakens 'Lucidua', a razor-cold somnambulist shadow-hatchet executioner. Deeply reliant on a trusted commander's voice to anchor her back to waking warmth.",
+      "values": [
+        "Quiet Safe-Zone Naps",
+        "Soft Wool Blankets",
+        "A Trusted Voice Calling Her Back",
+        "Chamomile & Lavender Incense"
+      ],
+      "dislikes": [
+        "Sudden Loud Alarms",
+        "Losing Control in Lucidua Trance",
+        "Cold Iron Collar Restraints",
+        "Cruel Wake-Up Shocks"
+      ],
+      "highCompatibility": [
+        "Patient Anchors",
+        "Gentle Protectors",
+        "Calm Tacticians",
+        "Accepting Comrades"
+      ],
+      "baseAffection": 18,
+      "affection": 18,
+      "affectionLevel": 18,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "WARM_RIVAL",
+      "seed": 910107,
+      "baseImageUrl": "/characters/starfall-labyrinth/lotte_klein/neutral.png",
+      "visualPrompt": "Eerie-atmospheric fantasy sprite of Lotte Klein, pale ivory skin, dark charcoal hair in thick twin braids, glowing ringed yellow-gold eyes, stitched collar scar, white blouse under dark green laced bodice, shadowy grinning nightmare spirit apparitions behind her shoulder.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/lotte_klein/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/lotte_klein/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/lotte_klein/flustered.png",
+        "smug": "/characters/starfall-labyrinth/lotte_klein/smug.png",
+        "surprised": "/characters/starfall-labyrinth/lotte_klein/flustered.png",
+        "combat_ready": "/characters/starfall-labyrinth/lotte_klein/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/lotte_klein/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/lotte_klein/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/lotte_klein/smug.png"
+      }
+    },
+    {
+      "id": "comp_onyxia",
+      "name": "Onyxia Cryss",
+      "title": "2★ Blindfolded Oculus Construct • Nameless Roster",
+      "role": "Mid-Range Oculus Shard Artillery & Prism Warder (2★)",
+      "gender": "female",
+      "color": "purple",
+      "starRank": 2,
+      "baseStarRank": 2,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Composed, deadpan blindfolded geode-construct mystic with wavy platinum-white hair, chained bronze wrist manacles, a glowing amethyst third-eye gem on her black blindfold, and a handheld brass-and-amethyst Oculus sphere. Ranked 2★ because ordinary healing magic cannot mend her mineral core. Treats you with literal, dryly observant devotion as you prove she has a real soul.",
+      "values": [
+        "Polished Floor Pebbles",
+        "Clean Acoustic Resonance",
+        "Gentle Crystal Maintenance",
+        "Being Spoken to as a Person"
+      ],
+      "dislikes": [
+        "Vault Confinement Shackles",
+        "Rough Handling of Her Oculus Orb",
+        "Deafening Sonic Echoes",
+        "Being Called a Soulless Construct"
+      ],
+      "highCompatibility": [
+        "Methodical Tacticians",
+        "Attentive Caretakers",
+        "Deadpan Partners",
+        "Respectful Commanders"
+      ],
+      "baseAffection": 15,
+      "affection": 15,
+      "affectionLevel": 15,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "SELECTIVE",
+      "seed": 910108,
+      "baseImageUrl": "/characters/starfall-labyrinth/onyxia_cryss/neutral.png",
+      "visualPrompt": "Detailed dark-fantasy manhwa sprite of Onyxia Cryss, wavy platinum-white hair, black blindfold set with a central bronze-bezel glowing amethyst third-eye gem, dark robes over ivory bodice, chained bronze wrist manacles, cradling a round brass-and-amethyst Geode Oculus sphere.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/onyxia_cryss/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/onyxia_cryss/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/onyxia_cryss/flustered.png",
+        "smug": "/characters/starfall-labyrinth/onyxia_cryss/smug.png",
+        "surprised": "/characters/starfall-labyrinth/onyxia_cryss/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/onyxia_cryss/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/onyxia_cryss/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/onyxia_cryss/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/onyxia_cryss/smug.png"
+      }
+    },
+    {
+      "id": "comp_trinity",
+      "name": "Trinity Valoren",
+      "title": "3★ Violet Oni Mirage Duelist • Nameless Roster",
+      "role": "High-Speed Oni Evasion Duelist & Phantom Striker (3★)",
+      "gender": "female",
+      "color": "purple",
+      "starRank": 3,
+      "baseStarRank": 3,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Razor-sharp, alluringly competitive 3★ horned oni sword-prodigy in an off-shoulder royal-violet kimono with a golden wheel crest between her twin horns. Reads air-pressure vibrations faster than sight to leave 'Seeing Double' violet sonic afterimages, challenging you to match her split-second rhythm.",
+      "values": [
+        "Frame-Perfect Sparring Bouts",
+        "Wisteria-Infused Sake",
+        "Razor-Honed Wakizashi Balance",
+        "Commanders Who Match Her Tempo"
+      ],
+      "dislikes": [
+        "Sloppy Off-Beat Footwork",
+        "Clumsy Brute-Force Swings",
+        "Disrespecting Her Clan Crest",
+        "Stale Predictable Tactics"
+      ],
+      "highCompatibility": [
+        "Fast-Thinking Shot-Callers",
+        "Skilled Duelists",
+        "Confident Rivals",
+        "Sharp Observers"
+      ],
+      "baseAffection": 14,
+      "affection": 14,
+      "affectionLevel": 14,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "SELECTIVE",
+      "seed": 910109,
+      "baseImageUrl": "/characters/starfall-labyrinth/trinity_valoren/neutral.png",
+      "visualPrompt": "Luminous anime-fantasy sprite of Trinity Valoren, violet-purple chin-length bob hair with blunt bangs, twin smooth curved oni horns with an ornate gold wheel forehead ornament, glowing violet eyes, black halter harness, off-shoulder royal-violet kimono with crimson obi sash, purple thigh-high stockings, twin violet mirage blades.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/trinity_valoren/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/trinity_valoren/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/trinity_valoren/flustered.png",
+        "smug": "/characters/starfall-labyrinth/trinity_valoren/smug.png",
+        "surprised": "/characters/starfall-labyrinth/trinity_valoren/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/trinity_valoren/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/trinity_valoren/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/trinity_valoren/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/trinity_valoren/smug.png"
+      }
+    },
+    {
+      "id": "comp_abraxia",
+      "name": "Abraxia",
+      "title": "3★ Silent Draconian Kopis Assassin • Nameless Roster",
+      "role": "Neurotoxin Executioner & Chain-Hook Interceptor (3★)",
+      "gender": "female",
+      "color": "emerald",
+      "starRank": 3,
+      "baseStarRank": 3,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Stoic, throat-scarred draconian assassin discarded by shallow Masters for her quiet intensity. Speaks in hushed, economical sentences and expresses fierce devotion through silent protective actions—hooking allies out of lethal AoEs with her damascus waist-chain and crippling bosses with presynaptic neurotoxin needles.",
+      "values": [
+        "Quiet Whetstone Maintenance",
+        "Unspoken Battlefield Trust",
+        "Warm Broth for Her Scarred Throat",
+        "Protecting Retreating Teammates"
+      ],
+      "dislikes": [
+        "Vain Glory-Hound Masters",
+        "Orders to Execute Allies",
+        "Noisy Crowded Taverns",
+        "Empty Flattery"
+      ],
+      "highCompatibility": [
+        "Calm Stoic Tacticians",
+        "Quietly Kind Leaders",
+        "Action-First Survivors",
+        "Observant Partners"
+      ],
+      "baseAffection": 13,
+      "affection": 13,
+      "affectionLevel": 13,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "IRONCLAD",
+      "seed": 910110,
+      "baseImageUrl": "/characters/starfall-labyrinth/abraxia/neutral.png",
+      "visualPrompt": "Dark-fantasy anime gacha illustration of Abraxia, pale porcelain skin, long straight crimson-red hair with blunt bangs, black spiked gothic tiara with dark crimson roses, gothic cross earrings, black lace choker, glowing crimson eyes, glossy crimson-and-black filigree gothic plate armor over black lace thigh-high stockings and black armored greaves, wielding an ornate glowing crimson-and-black runic greatsword alongside concealed neurotoxin needles.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/abraxia/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/abraxia/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/abraxia/flustered.png",
+        "smug": "/characters/starfall-labyrinth/abraxia/smug.png",
+        "surprised": "/characters/starfall-labyrinth/abraxia/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/abraxia/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/abraxia/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/abraxia/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/abraxia/smug.png"
+      }
+    },
+    {
+      "id": "comp_godiva",
+      "name": "Godiva",
+      "title": "4★ Masked Void-Walker Hexblade • Nameless Roster",
+      "role": "Blink-Step Hex Detonator & Teleport Skirmisher (4★)",
+      "gender": "female",
+      "color": "purple",
+      "starRank": 4,
+      "baseStarRank": 4,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Enigmatic, velvet-voiced 4★ Void-Walker who wears a soul-imbued porcelain mask tilted on her temple and blinks across dimensional rifts to brand twin Hex Seals onto bosses. Playfully teasing and hard to read on the surface, hiding old void-scars and fierce loyalty for a commander bold enough to trust her blind-spot warps.",
+      "values": [
+        "Forbidden Occult Grimoires",
+        "Black Fig & Nightshade Wine",
+        "Commanders Who Don't Flinch at Void Blinks",
+        "Clever Double-Layered Banter"
+      ],
+      "dislikes": [
+        "Rigid Dogmatic Inquisitors",
+        "Prying Into Her Rift-Scar Uninvited",
+        "Clumsy Predictable Traps",
+        "Boring Small Talk"
+      ],
+      "highCompatibility": [
+        "Cunning Strategists",
+        "Unflappable Banter Partners",
+        "Anomaly / Glitched Summons",
+        "Perceptive Confidants"
+      ],
+      "baseAffection": 14,
+      "affection": 14,
+      "affectionLevel": 14,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "SELECTIVE",
+      "seed": 910111,
+      "baseImageUrl": "/characters/starfall-labyrinth/godiva/neutral.png",
+      "visualPrompt": "Dark-fantasy inked character sprite of Godiva, long straight espresso-black hair, cool smoky grey eyes with vertical dark tear-streak mark under left eye, black off-shoulder occult robes with hexagram sigil on sleeve, floating black four-pointed Void Star sigil above her fingers.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/godiva/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/godiva/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/godiva/flustered.png",
+        "smug": "/characters/starfall-labyrinth/godiva/smug.png",
+        "surprised": "/characters/starfall-labyrinth/godiva/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/godiva/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/godiva/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/godiva/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/godiva/smug.png"
+      }
+    },
+    {
+      "id": "comp_vaelkor",
+      "name": "Vaelkor",
+      "title": "2★ Dragonborn Storm-Brand Spellsword • Nameless Roster",
+      "role": "Arcane Lightning Interruptor & Greatsword Skirmisher (2★)",
+      "gender": "male",
+      "color": "purple",
+      "starRank": 2,
+      "baseStarRank": 2,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Pragmatic, dry-humored 2★ Dragonborn spellsword passed over by shallow Masters who only chase human banner idols. Channels crackling violet storm-lightning from his scaled claws down his back-slung greatsword to short-circuit constructs and boss casts; treats a smart squad leader like sworn clutch-kin.",
+      "values": [
+        "Well-Oiled Greatsword Steel",
+        "High-Altitude Storm Air",
+        "Charred Wyvern-Cut Rations",
+        "Clean Frontline Flanking Callouts"
+      ],
+      "dislikes": [
+        "Flashy Banner Posers",
+        "Damp Flooded Crypts",
+        "Panic-Button Master Seals",
+        "Leaving Wounded Rookies Behind"
+      ],
+      "highCompatibility": [
+        "Sharp Shot-Callers",
+        "Grounded Survivors",
+        "Frontline Tacticians",
+        "Dry Banter Partners"
+      ],
+      "baseAffection": 15,
+      "affection": 15,
+      "affectionLevel": 15,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "WARM_RIVAL",
+      "seed": 910113,
+      "baseImageUrl": "/characters/starfall-labyrinth/vaelkor/neutral.png",
+      "visualPrompt": "Inked dark-fantasy character sprite of Vaelkor, male bronze-grey scaled Dragonborn spellsword with horned draconic head, spiked bronze pauldron and gauntlet, navy hooded cloak, leather chest straps, greatsword with purple gem hilt on back, purple lightning crackling around his right claw.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/vaelkor/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/vaelkor/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/vaelkor/flustered.png",
+        "smug": "/characters/starfall-labyrinth/vaelkor/smug.png",
+        "surprised": "/characters/starfall-labyrinth/vaelkor/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/vaelkor/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/vaelkor/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/vaelkor/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/vaelkor/smug.png"
+      }
+    },
+    {
+      "id": "comp_garrick",
+      "name": "Garrick Ironbrow",
+      "title": "3★ Scarred Veteran Axe-Bulwark • Nameless Roster",
+      "role": "Heavy Choke-Point Anchor & Armor-Cracking Vanguard (3★)",
+      "gender": "male",
+      "color": "amber",
+      "starRank": 3,
+      "baseStarRank": 3,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Grizzled, white-bearded veteran warrior in battle-scarred steel plate carrying a massive notched battleaxe. Dumped by meta-chasing Masters for being 'old iron,' yet his unshakable frontline poise and gruff fatherly grit hold panicking rookie squads together against impossible Gate Bosses.",
+      "values": [
+        "Dwarven Malt & Pipe-Leaf",
+        "Thick-Forged Iron Plate",
+        "Young Rookies Making It Home",
+        "Steady Boots in the Vanguard"
+      ],
+      "dislikes": [
+        "Meta-Chasing Tier Snobs",
+        "Masters Who Discard Veterans",
+        "Flimsy Ornamental Armor",
+        "Watching Kids Die on His Watch"
+      ],
+      "highCompatibility": [
+        "Zero-Casualty Tacticians",
+        "Respectful Underdogs",
+        "Steady Frontliners",
+        "Protective Leaders"
+      ],
+      "baseAffection": 17,
+      "affection": 17,
+      "affectionLevel": 17,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "WARM_RIVAL",
+      "seed": 910114,
+      "baseImageUrl": "/characters/starfall-labyrinth/garrick_ironbrow/neutral.png",
+      "visualPrompt": "Dark-fantasy character sprite of Garrick Ironbrow, grizzled older muscular male warrior with white topknot hair, full trimmed white beard, facial scars, weathered battle-scarred steel plate armor and chainmail, heavy iron battleaxe resting over his shoulder.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/garrick_ironbrow/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/garrick_ironbrow/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/garrick_ironbrow/flustered.png",
+        "smug": "/characters/starfall-labyrinth/garrick_ironbrow/smug.png",
+        "surprised": "/characters/starfall-labyrinth/garrick_ironbrow/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/garrick_ironbrow/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/garrick_ironbrow/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/garrick_ironbrow/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/garrick_ironbrow/smug.png"
+      }
+    },
+    {
+      "id": "comp_roland",
+      "name": "Sir Roland Vance",
+      "title": "4★ Crimson-Cloak Silver Paladin • Apex Exile",
+      "role": "Aristocratic Counter-Vanguard & Radiant Aegis Tactician (4★)",
+      "gender": "male",
+      "color": "rose",
+      "starRank": 4,
+      "baseStarRank": 4,
+      "heroStatus": "BENCHED",
+      "awakenings": 0,
+      "personality": "Tall, aristocratic 4★ cathedral paladin in gleaming silver plate and a crimson cloak. Starts coolly skeptical of taking orders from a 1★ leader, arms folded in strict evaluation—but once your boss-frame callouts prove razor-accurate, his unbending knightly honor makes him an immovable shield at your side.",
+      "values": [
+        "Unforged Casualty Ledgers",
+        "Immaculate Silver Plate Discipline",
+        "Crisp Tactical Briefings",
+        "Commanders Who Lead from the Front"
+      ],
+      "dislikes": [
+        "Corrupt Guild Politics",
+        "Falsified Battle Reports",
+        "Sloppy Uncoordinated Flanking",
+        "Sacrificing Vanguard Troops for Speedruns"
+      ],
+      "highCompatibility": [
+        "Frame-Perfect Tacticians",
+        "Principled Commanders",
+        "Disciplined Vanguards",
+        "Honest Equals"
+      ],
+      "baseAffection": 12,
+      "affection": 12,
+      "affectionLevel": 12,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "guardTier": "SELECTIVE",
+      "seed": 910115,
+      "baseImageUrl": "/characters/starfall-labyrinth/roland_vance/neutral.png",
+      "visualPrompt": "Korean fantasy manhwa character sprite of Sir Roland Vance, aristocratic blonde male paladin with cool blue eyes, gleaming engraved silver plate armor over black chainmail, crimson-red cloak clasped at the collar, arms folded.",
+      "expressions": {
+        "neutral": "/characters/starfall-labyrinth/roland_vance/neutral.png",
+        "intrigued": "/characters/starfall-labyrinth/roland_vance/intrigued.png",
+        "flustered": "/characters/starfall-labyrinth/roland_vance/flustered.png",
+        "smug": "/characters/starfall-labyrinth/roland_vance/smug.png",
+        "surprised": "/characters/starfall-labyrinth/roland_vance/intrigued.png",
+        "combat_ready": "/characters/starfall-labyrinth/roland_vance/combat_ready.png",
+        "dangerous": "/characters/starfall-labyrinth/roland_vance/combat_ready.png",
+        "hurt": "/characters/starfall-labyrinth/roland_vance/hurt.png",
+        "beckon": "/characters/starfall-labyrinth/roland_vance/smug.png"
+      }
+    }
+  ],
+  "flowchartTree": [
+    {
+      "id": "node_star_gate_awakening",
+      "nodeKey": "prologue_starfall_pia",
+      "title": "Lobby (Floor 0): Star Gate Awakening & Discard Queue",
+      "speaker": "Pia Hollis",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "summary": "Waking up as a 1★ Lv.1 fodder pull in Star Gate Plaza, accessing the Star Gate monolith, and escaping the Synthesis Furnace.",
+      "isStartingPoint": true,
+      "connectedTo": [
+        "node_floor_1_verdant",
+        "node_iron_barracks_rally"
+      ]
+    },
+    {
+      "id": "node_iron_barracks_rally",
+      "nodeKey": "prologue_starfall_sable",
+      "title": "Lobby: Iron Barracks Briefing & Star Gate Pulls",
+      "speaker": "Sable Ashgrove",
+      "location": "The Iron Barracks (Lobby Quarters)",
+      "summary": "Forging deployment discipline with veteran survivors in the Lobby Quarters and petitioning the Star Gate for squad reinforcements.",
+      "connectedTo": [
+        "node_floor_1_verdant"
+      ]
+    },
+    {
+      "id": "node_floor_1_verdant",
+      "nodeKey": "floor_1_deployment",
+      "title": "Floor 1: The Verdant Antechamber — Zero-Casualty Oath",
+      "speaker": "Dame Odette Varr",
+      "location": "Floor 1: The Verdant Antechamber",
+      "summary": "Surviving the first live Labyrinth deployment using ex-ranker ambush callouts while bending a reckless Master Command Seal.",
+      "connectedTo": [
+        "node_floor_5_bazaar"
+      ]
+    },
+    {
+      "id": "node_floor_5_bazaar",
+      "nodeKey": "floor_5_safe_zone",
+      "title": "Floor 5 Safe Zone: Lantern Bazaar & Crimson Ledger Clash",
+      "speaker": "Mei Zhou",
+      "location": "Floor 5: Safe Zone Lantern Bazaar",
+      "summary": "Reaching the first Safe Zone cavern, tending wounds, and crossing blades with rival whale Master Kaiser Valdane's speedrun vanguard.",
+      "connectedTo": [
+        "node_floor_10_hollow_king",
+        "node_first_star_awakening"
+      ]
+    },
+    {
+      "id": "node_first_star_awakening",
+      "nodeKey": "star_awakening_rite",
+      "title": "Resonance Awakening: Breaking the 1★ Level 20 Ceiling",
+      "speaker": "Lyra Nocturne",
+      "location": "Star Gate Plaza (Main Lobby)",
+      "summary": "Shattering the hard Lv.20 1★ cap through forged party bonds (+1★ Awakening) in Star Gate Plaza.",
+      "unlockRequirement": {
+        "minAffection": 25,
+        "hintSilhouette": "Locked: Requires First Bond Milestone (25% Affection)"
+      },
+      "connectedTo": [
+        "node_floor_10_hollow_king"
+      ]
+    },
+    {
+      "id": "node_floor_10_hollow_king",
+      "nodeKey": "gate_boss_hollow_king",
+      "title": "Floor 10 Gate Boss: Aldric, the Hollow King",
+      "speaker": "Aurelle, the Seraph Lance",
+      "location": "Floor 10: Gate of the Hollow King",
+      "summary": "Surviving the infamous rookie-killer Phase 2 'Ashen Decree' behind the shattered pillar shadows with zero fallen comrades.",
+      "connectedTo": [
+        "node_floor_25_clocktower"
+      ]
+    },
+    {
+      "id": "node_floor_25_clocktower",
+      "nodeKey": "floor_25_chronos",
+      "title": "Floor 25: Chronos Clocktower & Vesper's Crimson Duel",
+      "speaker": "Aurelle, the Seraph Lance",
+      "location": "Floor 25: Chronos Clocktower Ruins",
+      "summary": "Navigating time-stutter brass chasms and clashing with rival 5★ champion Vesper, the Crimson Lancer.",
+      "unlockRequirement": {
+        "minAffection": 50,
+        "hintSilhouette": "Locked: Requires Confidant Resonance (50% Affection)"
+      },
+      "connectedTo": [
+        "node_floor_40_horizon"
+      ]
+    },
+    {
+      "id": "node_floor_40_horizon",
+      "nodeKey": "floor_40_memory_ceiling",
+      "title": "Floor 40 Gate: Cinder Horizon & Edge of Ranker Memory",
+      "speaker": "Sable Ashgrove",
+      "location": "Floor 40: Cinder Horizon & Unwound Sun Gate",
+      "summary": "Conquering the final Chronos Foundry floor you remember from Celestia Summons—and stepping together into uncharted Floors 41–100 blind.",
+      "unlockRequirement": {
+        "minAffection": 65,
+        "hintSilhouette": "Locked: Requires Deep Trust Resonance (65% Affection)"
+      },
+      "connectedTo": [
+        "node_floor_70_eclipse"
+      ]
+    },
+    {
+      "id": "node_floor_70_eclipse",
+      "nodeKey": "floor_70_crimson_trial",
+      "title": "Floor 70 Eclipse Court: Blood-Moon Viaduct & Crimson Trial",
+      "speaker": "Dame Odette Varr",
+      "location": "Floor 70: Blood-Moon Viaduct & Crimson Trial Court",
+      "summary": "Crossing the uncharted Eclipse Sanctum mirror courts and breaking Kaiser Valdane's 5★ champion Vesper beneath a total scarlet eclipse.",
+      "unlockRequirement": {
+        "minAffection": 75,
+        "hintSilhouette": "Locked: Requires Beloved Awakening (75% Affection)"
+      },
+      "connectedTo": [
+        "node_floor_100_summit"
+      ]
+    },
+    {
+      "id": "node_floor_100_summit",
+      "nodeKey": "floor_100_starfall_summit",
+      "title": "Floor 100 Finale: Shattering the Administrator's Crown",
+      "speaker": "Aurelle, the Seraph Lance",
+      "location": "Floor 100: Throne of the Administrator",
+      "summary": "Ascending the zero-gravity Astral Singularity, clearing the 100th floor beneath the shattered Fourth Wall, liberating every surviving hero, and unlocking the return gate.",
+      "unlockRequirement": {
+        "minAffection": 90,
+        "hintSilhouette": "Locked: Requires 5★ Sworn Partner Bond (90% Affection)"
+      },
+      "connectedTo": []
+    }
+  ]
+}

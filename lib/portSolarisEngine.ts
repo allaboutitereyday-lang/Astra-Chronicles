@@ -1638,7 +1638,7 @@ export function buildPortSolarisTurnDirective(params: {
   const speakerDossier =
     PORT_SOLARIS_HEROINE_DOSSIERS[activeSpeaker] ||
     Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
-      (d) => activeSpeaker && activeSpeaker.toLowerCase().includes(d.name.toLowerCase())
+      (d) => activeSpeaker && d?.name && String(activeSpeaker).toLowerCase().includes(String(d.name).toLowerCase())
     );
 
   const daysLeft = boardingHouseState?.daysUntilAudit ?? 30;

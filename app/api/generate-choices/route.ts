@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getChoicesStyleDirective, getNarrationProseDirective } from "@/lib/narrationStyles";
-import { sanitizeVisualNovelProse, ensureChoiceIntentTag } from "@/lib/proseSanitizer";
+import { sanitizeVisualNovelProse, ensureChoiceIntentTag, sanitizeAndFilterChoices } from "@/lib/proseSanitizer";
 import {
   buildDynamicChoiceDirective,
   buildPersonalityFallbackChoices,
@@ -276,9 +276,12 @@ Format Requirement:
         const content = data.choices?.[0]?.message?.content || "";
         const parsed = parseModelJsonLenient(content, sanitizedSpeaker);
         if (parsed && Array.isArray(parsed.choices) && parsed.choices.length > 0) {
-          dynamicChoices = parsed.choices.slice(0, 4);
-          recordUserTurn(activeUser.key, data.usage, model);
-          break;
+          const filtered = sanitizeAndFilterChoices(parsed.choices);
+          if (filtered.length >= 2) {
+            dynamicChoices = filtered;
+            recordUserTurn(activeUser.key, data.usage, model);
+            break;
+          }
         }
       } catch (err: any) {
         console.warn(`Choice generation fallback on model ${model}:`, err.message);
@@ -300,16 +303,24 @@ Format Requirement:
       });
     }
 
-    // Guarantee all choices conform strictly to [Tone/Action]: format and clean prose
-    const sanitizedChoices = dynamicChoices.map((c: string) => {
-      const match = c.trim().match(/^\[([A-Za-z0-9\s/]+)\](?::)?\s*(.+)$/);
-      if (match) {
-        const rawTag = match[1].trim();
-        const body = sanitizeVisualNovelProse(match[2].trim());
-        return ensureChoiceIntentTag(`[${rawTag}]: ${body}`);
-      }
-      return ensureChoiceIntentTag(sanitizeVisualNovelProse(c));
-    });
+    // Guarantee all choices conform strictly to <= 4 valid [Tone/Action]: vectors and clean prose
+    let sanitizedChoices = sanitizeAndFilterChoices(dynamicChoices);
+    if (sanitizedChoices.length < 2) {
+      sanitizedChoices = sanitizeAndFilterChoices(
+        buildPersonalityFallbackChoices({
+          personality: playerProfile?.personality,
+          personalityTraits: playerProfile?.personalityTraits,
+          playerRole: playerProfile?.role,
+          playerRace: playerProfile?.race,
+          activeSpeaker: sanitizedSpeaker || "Companion",
+          location: gameState?.location || "the area",
+          isProtagonistAlone,
+          storyId: storyContext?.id,
+          genre: storyContext?.genre,
+          narrativeText: gameState?.dialogue,
+        })
+      );
+    }
 
     return NextResponse.json({
       success: true,

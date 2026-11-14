@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { validateUserKey } from "@/lib/userAccess";
 import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { sanitizeVisualNovelProse, humanizeGearForProse, humanizeLocationForProse } from "@/lib/proseSanitizer";
+import { resolvePortraitAttireLabel } from "@/lib/visionEncoder";
 import {
   getPersonaVoiceProfile,
   buildProtagonistOriginAndIdentityDirective,
@@ -163,8 +164,13 @@ export async function POST(req: Request) {
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.2, Math.min(1.5, temperature)) : 0.8;
     const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.4, repetition_penalty)) : 1.12;
 
+    const portraitAttire = resolvePortraitAttireLabel(
+      playerProfile?.visualDna,
+      playerProfile?.visualDescription,
+      "traveler attire"
+    );
     const visibleWeapon = humanizeGearForProse(playerProfile?.gear?.weapon, "unarmed stance");
-    const visibleArmor = humanizeGearForProse(playerProfile?.gear?.armor, "traveler attire");
+    const visibleArmor = humanizeGearForProse(playerProfile?.gear?.armor, portraitAttire);
     const naturalLocation = humanizeLocationForProse(location);
     const playerFirstName = playerName.trim().split(/\s+/)[0] || playerName;
     const speakerFirstName = sanitizedSpeaker.trim().split(/\s+/)[0] || sanitizedSpeaker;

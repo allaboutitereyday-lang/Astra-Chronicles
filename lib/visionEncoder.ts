@@ -31,6 +31,103 @@ export const VISION_FALLBACK_CHAIN = [
 ];
 
 /**
+ * Returns true ONLY if text explicitly describes literal nudity / unclad state.
+ * Must NOT trigger on generic "bare skin" / "bare shoulders" / "none" / "unarmored".
+ */
+export function isExplicitlyNudeOrUnclad(text?: string | null): boolean {
+  if (!text || typeof text !== "string") return false;
+  return /\b(nude|naked|unclad|completely bare|without any clothes|without clothing|no clothes|completely unclad)\b/i.test(
+    text
+  );
+}
+
+function truncateCleanly(text: string, maxLen: number = 70): string {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= maxLen) return cleaned;
+  const slice = cleaned.slice(0, maxLen - 1);
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut = lastSpace > 24 ? slice.slice(0, lastSpace) : slice;
+  return `${cut.replace(/[,;:\s]+$/, "")}…`;
+}
+
+function formatAttireLabel(raw: string): string {
+  const cleaned = raw
+    .replace(/^(?:a|an)\s+/i, "")
+    .replace(/^(?:wearing|clad in|dressed in|attired in|sporting)\s+/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return "";
+  const capitalized = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  return truncateCleanly(capitalized, 70);
+}
+
+/**
+ * Resolves a concise, human-readable attire label from the character's uploaded
+ * portrait Visual DNA or Vision description, falling back gracefully when absent.
+ */
+export function resolvePortraitAttireLabel(
+  visualDna?: CharacterVisualDNA | null,
+  visualDescription?: string | null,
+  fallback: string = "Portrait Attire (Unarmored)"
+): string {
+  const isGenericAttireString = (val?: string | null): boolean => {
+    if (!val || typeof val !== "string") return true;
+    const lower = val.trim().toLowerCase();
+    if (!lower) return true;
+    if (
+      lower === "none" ||
+      lower === "unarmored" ||
+      lower === "coat" ||
+      lower === "pending..." ||
+      lower === "[system pending]" ||
+      lower === "n/a" ||
+      lower === "unknown" ||
+      lower.includes("dark leather coat over armor vest") ||
+      lower === "combat trousers" ||
+      lower === "dark combat trousers and boots" ||
+      lower.startsWith("portrait attire")
+    ) {
+      return true;
+    }
+    return isExplicitlyNudeOrUnclad(lower);
+  };
+
+  if (visualDna && !isFallbackVisualDescription(visualDna.fullPromptAnchor)) {
+    const upper = visualDna.primaryAttire?.upper?.trim() || "";
+    const lower = visualDna.primaryAttire?.lower?.trim() || "";
+    if (!isGenericAttireString(upper)) {
+      const includeLower =
+        !isGenericAttireString(lower) &&
+        upper.length + lower.length + 2 <= 70 &&
+        !upper.toLowerCase().includes(lower.toLowerCase());
+      const combined = includeLower ? `${upper}, ${lower}` : upper;
+      const formatted = formatAttireLabel(combined);
+      if (formatted && !isExplicitlyNudeOrUnclad(formatted)) {
+        return formatted;
+      }
+    }
+  }
+
+  if (
+    visualDescription &&
+    !isFallbackVisualDescription(visualDescription) &&
+    !isExplicitlyNudeOrUnclad(visualDescription)
+  ) {
+    const match = visualDescription.match(
+      /(?:wearing|clad in|dressed in|attired in|sporting)\s+([^.;\n]+)/i
+    );
+    if (match?.[1]) {
+      const formatted = formatAttireLabel(match[1]);
+      if (formatted && !isExplicitlyNudeOrUnclad(formatted)) {
+        return formatted;
+      }
+    }
+  }
+
+  return fallback;
+}
+
+/**
  * Returns true if the given visualDescription string is empty or was generated
  * by the procedural fallback rather than an actual Vision model inspection.
  */
@@ -91,7 +188,7 @@ CRITICAL VISUAL ACCURACY DIRECTIVE (LOOK CLOSELY AT THE IMAGE):
 1. Skin Tone & Complexion: Accurately describe their exact skin tone/complexion (e.g. deep brown skin, warm bronze, dark ebony, olive, pale porcelain, etc.) and any facial markings or scars.
 2. Hair Color, Texture & Style: Accurately identify their true hair color and hairstyle (e.g. black braided hair / locs adorned with silver and gold cuffs/beads, cropped dark hair, flowing locks, etc.). NEVER guess "silver" or "blonde" if the hair in the image is black or dark!
 3. Eyes & Expression: Describe their eye color, eyelid shape (e.g. relaxed hooded dark eyes, sharp gaze), and facial expression/demeanor.
-4. Attire & Accessories: Describe the exact clothing worn in the portrait in natural prose (e.g. crisp white collared shirt with a black tie, dark cloak or military coat draped over one shoulder, leather thigh-strap with throwing knives, armor, or note if unclad).
+4. Attire & Accessories: Describe the exact clothing, casual outfit, robes, uniform, or armor worn in the portrait in natural prose (e.g. crisp white collared shirt with a black tie, dark cloak draped over one shoulder, kimono, streetwear jacket). If the portrait is a close-up bust or headshot, describe the visible collar/top and infer natural matching attire rather than calling them unclad. Only state "unclad" if the character is literally nude.
 5. Non-Human Anatomy (if any): Note any visible ${protagonistRace} traits (ears, fangs, horns, scales, tail, glowing eyes).
 6. Output 2 to 3 vivid, natural sentences describing their appearance. Do not say "The image shows" or "In this portrait"; write direct narrative character description.`;
 
@@ -178,7 +275,7 @@ export function buildFallbackVisualDna(
   const eyeMatch = desc.match(/\b(dark|brown|obsidian|grey|gray|amber|gold|blue|azure|crimson|red|violet|purple|green|emerald)\s+eyes\b/i);
   const eyeColor = eyeMatch ? eyeMatch[1] : (desc.match(/\b(dark|brown|obsidian|grey|gray|amber|gold|blue|azure|crimson|red|violet|purple|green|emerald)\b/i)?.[1] || "sharp");
 
-  const isUnclad = desc.includes("nude") || desc.includes("unclad") || desc.includes("naked") || desc.includes("bare skin") || desc.includes("bare chest") || desc.includes("bare shoulders");
+  const isUnclad = isExplicitlyNudeOrUnclad(desc);
   const upperAttire = isUnclad ? "unclad, bare skin with no armor" : `${role} dark leather coat over armor vest`;
   const lowerAttire = isUnclad ? "unclad, bare legs with no garments" : "dark combat trousers and boots";
 
@@ -276,7 +373,7 @@ Inspect this character portrait of the protagonist:
 - Archetype / Class: ${protagonistRole}
 - Lineage / Race: ${protagonistRace}${traitsContext}
 
-Extract their exact, unambiguous Visual DNA. If the character in the portrait is unclad, nude, or lacking armor/clothing, explicitly record their attire as unclad/none and describe their bare skin.
+Extract their exact, unambiguous Visual DNA. Record the exact outfit, casual clothing, robes, uniform, or attire worn in the portrait under primaryAttire (even if they are unarmored or wearing everyday clothing). Only record attire as 'unclad' if the character in the portrait is literally nude with no clothing.
 Pay close attention to species and non-human anatomy (fur, fangs, wolf/cat/animal ears, horns, tails, scales, wings, digitigrade limbs, slit pupils, pointed ears).
 You MUST respond STRICTLY with a valid JSON object matching this schema:
 {

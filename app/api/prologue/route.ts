@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { getNarrationProseDirective, NarrativeDepthMode } from "@/lib/narrationStyles";
-import { describeProtagonistAvatar, isFallbackVisualDescription } from "@/lib/visionEncoder";
-import { sanitizeVisualNovelProse, sanitizeSpokenDialogue, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics, humanizeGearForProse, humanizeLocationForProse } from "@/lib/proseSanitizer";
+import {
+  describeProtagonistAvatar,
+  extractProtagonistVisualDna,
+  isExplicitlyNudeOrUnclad,
+  isFallbackVisualDescription,
+  resolvePortraitAttireLabel,
+} from "@/lib/visionEncoder";
+import { CharacterVisualDNA } from "@/types/story";
+import { sanitizeVisualNovelProse, sanitizeSpokenDialogue, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics, sanitizeAndFilterChoices, humanizeGearForProse, humanizeLocationForProse } from "@/lib/proseSanitizer";
 import { HEROINE_INTRODUCTION_DOSSIERS, HeroineIntroductionDossier } from "@/lib/heroineDossiers";
 import {
   createDefaultNpcKnowledgeMap,
@@ -18,6 +25,7 @@ import {
 } from "@/lib/personalityArchitect";
 import { SOVEREIGN_HEROINE_DOSSIERS, SOVEREIGN_ORIGIN_PRESETS } from "@/types/sovereign_spire";
 import { PORT_SOLARIS_HEROINE_DOSSIERS, PORT_SOLARIS_ORIGIN_PRESETS } from "@/types/port_solaris";
+import { STARFALL_HEROINE_DOSSIERS, STARFALL_ORIGIN_PRESETS } from "@/types/starfall_labyrinth";
 import { parseModelJsonLenient } from "@/lib/jsonSalvage";
 
 export const runtime = "nodejs";
@@ -104,11 +112,6 @@ export async function POST(req: Request) {
       ...(npcKnowledgeMap || {}),
     };
     const startingHeroineKnowledge = getCompanionKnowledge(initialKnowledgeMap, startingHeroine);
-    const knowledgeGatePrompt = buildKnowledgeGateDirective(
-      initialKnowledgeMap,
-      initialPresentHeroines,
-      playerProfile
-    );
 
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.1, Math.min(1.8, temperature)) : 0.75;
     const effectiveMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(4096, max_tokens)) : 3584;
@@ -160,23 +163,50 @@ export async function POST(req: Request) {
       playerProfile?.visualDescription && !isFallbackVisualDescription(playerProfile.visualDescription)
         ? playerProfile.visualDescription
         : null;
+    let visualDna: CharacterVisualDNA | null = playerProfile?.visualDna || null;
     if (playerAvatarBase64) {
       try {
-        const freshDesc = await describeProtagonistAvatar(
-          playerAvatarBase64,
-          playerProfile?.name || "The Protagonist",
-          playerProfile?.role || "Adventurer",
-          apiKey,
-          playerProfile?.race || "Human",
-          playerProfile?.racialTraits || []
-        );
+        const [freshDesc, freshDna] = await Promise.all([
+          describeProtagonistAvatar(
+            playerAvatarBase64,
+            playerProfile?.name || "The Protagonist",
+            playerProfile?.role || "Adventurer",
+            apiKey,
+            playerProfile?.race || "Human",
+            playerProfile?.racialTraits || []
+          ),
+          !visualDna
+            ? extractProtagonistVisualDna(
+                playerAvatarBase64,
+                playerProfile?.name || "The Protagonist",
+                playerProfile?.role || "Adventurer",
+                visualDescription,
+                apiKey,
+                playerProfile?.race || "Human",
+                playerProfile?.racialTraits || []
+              )
+            : Promise.resolve(visualDna),
+        ]);
         if (freshDesc) {
           visualDescription = freshDesc;
+        }
+        if (freshDna) {
+          visualDna = freshDna;
         }
       } catch (vErr: any) {
         console.warn("[Prologue API] Failed to encode avatar with vision:", vErr?.message);
       }
     }
+
+    const knowledgeGatePrompt = buildKnowledgeGateDirective(
+      initialKnowledgeMap,
+      initialPresentHeroines,
+      {
+        ...playerProfile,
+        visualDescription: visualDescription || playerProfile?.visualDescription,
+        visualDna: visualDna || playerProfile?.visualDna,
+      } as any
+    );
 
     const storyTitle = storyContext?.title || "Astra Chronicles";
     const settingName = storyContext?.worldContext?.settingName || "the Astra Continent";
@@ -247,6 +277,20 @@ export async function POST(req: Request) {
                   rewards: { exp: 95, gold: 120, title: "Anchor Proprietor" },
                   status: "active",
                 }
+              : storyContext?.id === "starfall-labyrinth" || storyTitle.toLowerCase().includes("starfall")
+              ? {
+                  id: "scenario_01_starfall",
+                  title: "Floor 1: Survive Your First Deployment",
+                  description: `Escape the Discard Queue in Star Gate Plaza with ${matchingComp?.name || startingHeroine}, prepare your 1★ deployment squad, and survive Floor 1 of the Starfall Labyrinth with zero casualties.`,
+                  type: "scenario",
+                  difficulty: "E",
+                  objectives: [
+                    { text: `Establish command trust with ${matchingComp?.name || startingHeroine} in Star Gate Plaza`, completed: false },
+                    { text: "Step into Floor 1: The Verdant Antechamber and survive the opening ambush with zero fallen comrades", completed: false },
+                  ],
+                  rewards: { exp: 95, gold: 30, title: "Zero-Casualty Shot-Caller" },
+                  status: "active",
+                }
               : {
                   id: "scenario_01",
                   title: `Scenario 1: Matriculation at ${matchingNode?.location || startingLocation}`,
@@ -300,16 +344,9 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
    - High compatibility: Kind wanderers, gentle protectors, rangers, empathetic souls.
    - Expressions: neutral, intrigued, flustered, smug, surprised, combat_ready, dangerous, hurt.`;
 
-    const isUncladOrNude = Boolean(
-      visualDescription &&
-      (visualDescription.toLowerCase().includes("nude") ||
-       visualDescription.toLowerCase().includes("unclad") ||
-       visualDescription.toLowerCase().includes("naked") ||
-       visualDescription.toLowerCase().includes("bare skin") ||
-       visualDescription.toLowerCase().includes("bare chest") ||
-       visualDescription.toLowerCase().includes("bare-chested") ||
-       visualDescription.toLowerCase().includes("without clothing"))
-    );
+    const isUncladOrNude =
+      isExplicitlyNudeOrUnclad(visualDescription) ||
+      isExplicitlyNudeOrUnclad(playerProfile?.gear?.armor);
 
     const personaVoice = getPersonaVoiceProfile(
       playerProfile.personality,
@@ -320,6 +357,7 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
 
     const isSovereignSpire = storyContext?.id === "sovereign-spire";
     const isPortSolaris = storyContext?.id === "port-solaris";
+    const isStarfall = storyContext?.id === "starfall-labyrinth";
     const sovereignOriginPreset = isSovereignSpire
       ? SOVEREIGN_ORIGIN_PRESETS.find(
           (o) =>
@@ -342,6 +380,18 @@ ${i + 1}. ${c.name} (${c.title || c.role}):
       : null;
     const portSolarisHeroineMeta = isPortSolaris
       ? PORT_SOLARIS_HEROINE_DOSSIERS[startingHeroine]
+      : null;
+
+    const starfallOriginPreset = isStarfall
+      ? STARFALL_ORIGIN_PRESETS.find(
+          (o) =>
+            o.id === playerProfile?.sovereignOrigin ||
+            (playerProfile?.worldOrigin &&
+              playerProfile.worldOrigin.toLowerCase().includes(o.shortLabel.toLowerCase()))
+        ) || STARFALL_ORIGIN_PRESETS[0]
+      : null;
+    const starfallHeroineMeta = isStarfall
+      ? STARFALL_HEROINE_DOSSIERS[startingHeroine]
       : null;
 
     const multiHeroineEnsembleDirective =
@@ -387,6 +437,24 @@ ${portSolarisHeroineMeta ? `- Primary Speaker Dossier (${portSolarisHeroineMeta.
      - Choice 2: [Social Panache / Tease] Turning the tables with smooth banter that pushes ${startingHeroine.split(" ")[0]}'s heart-rate into the Blush Zone.
      - Choice 3: [${portSolarisOriginPreset?.shortLabel || "Proprietor Leverage"}] Using your background and landlord authority at The Stray Anchor.
      - Choice 4: [Article 9 Wager] Proposing a bold, high-stakes public or boarding-house wager.`
+      : isStarfall
+      ? `
+--- STARFALL LABYRINTH: ACT I DISCARD-QUEUE AWAKENING & COVENANT DIRECTIVE ---
+- Protagonist Summon Origin: ${starfallOriginPreset?.name || playerProfile?.worldOrigin} (Rarity: ${starfallOriginPreset?.isHiddenRarity ? "?★ Corrupted" : "1★ Lv.1 Fodder"} | Meta-Knowledge Ceiling: Floor ${starfallOriginPreset?.metaKnowledgeCeiling || 40} | Starting Star Shards: ${starfallOriginPreset?.startingStarShards || 90} | Master Trust: ${starfallOriginPreset?.startingMasterTrust || 35}%)
+- Act I Stakes in Star Gate Plaza (Main Lobby): ${starfallOriginPreset?.actOneStakes || playerProfile?.worldOriginDetails}
+- Combat Role: ${playerProfile?.conduit || "TACTICIAN"} (${playerProfile?.role || "1★ Field Tactician"})
+${starfallHeroineMeta ? `- First Squadmate Dossier (${starfallHeroineMeta.name.split(" ")[0]} — "${starfallHeroineMeta.epithet}"): ${starfallHeroineMeta.baseStarRank}★ ${starfallHeroineMeta.combatRole} | Conflict: ${starfallHeroineMeta.actOneConflict} | Spoken Voice: ${starfallHeroineMeta.speechVoiceBrief}` : ""}${multiHeroineEnsembleDirective}
+- Selected Act I Scenario Seed: "${matchingNode?.title || heroineDossier.title}"
+  Scene Baseline: ${matchingNode?.sceneSetup || heroineDossier.environment}
+  Dialogue Baseline: "${matchingNode?.dialogue || heroineDossier.signatureOpeningDialogue}"
+- MANDATORY ACT I SHAPING (TACTICAL DUNGEON SURVIVAL & NATURAL HUMAN VOICE):
+  1. Ground the awakening in Star Gate Plaza (Main Lobby)—cold obsidian tiles, the towering cyan Star Gate monolith (the ONLY place where heroes can be summoned), the Synthesis Furnace dread, and the unseen Master's floating UI cursor overhead.
+  2. Make ${startingHeroine.split(" ")[0]}'s spoken dialogue sound completely natural, clear, and human (contractions, grounded speech, distinct personality—zero textbook jargon). Refer to her simply as "${startingHeroine.split(" ")[0]}" after initial introduction.
+  3. Shape the 4 "opening_choices" into crisp Starfall vectors using first names only:
+     - Choice 1: [Meta-Knowledge] Calling out a specific Floor 1 trap, monster tell, or spell quirk only an ex-ranker of Celestia Summons would know.
+     - Choice 2: [Role Technique] Demonstrating disciplined ${playerProfile?.conduit || "Tactician"} poise despite a Lv.1 1★ body.
+     - Choice 3: [Defy the Master] Finding a smart loophole around the unseen Master's careless deployment or protecting ${startingHeroine.split(" ")[0]} from fodder treatment.
+     - Choice 4: [Protect the Squad / Lobby Prep] Checking Star Gate Plaza resources or rallying ${startingHeroine.split(" ")[0]} before stepping into Floor 1.`
       : "";
 
     const openingChoiceDirective = buildDynamicChoiceDirective({
@@ -410,13 +478,28 @@ ${portSolarisHeroineMeta ? `- Primary Speaker Dossier (${portSolarisHeroineMeta.
       presentHeroineNames: initialPresentHeroines,
     });
 
-    const visibleWeaponText = playerProfile.gear?.weapon && !playerProfile.gear.weapon.includes("Pending")
-      ? humanizeGearForProse(playerProfile.gear.weapon, "unarmed hands")
-      : "unarmed hands";
+    const portraitAttireLabel = resolvePortraitAttireLabel(
+      visualDna,
+      visualDescription,
+      "their portrait attire"
+    );
 
-    const visibleArmorText = playerProfile.gear?.armor && !playerProfile.gear.armor.includes("Pending")
-      ? humanizeGearForProse(playerProfile.gear.armor, "basic attire")
-      : (isUncladOrNude ? "completely unclad / no clothing or armor" : "unarmored basic attire");
+    const rawWeapon = playerProfile.gear?.weapon || "";
+    const isUnarmedWeapon =
+      !rawWeapon || /^(none|unarmed|\[system pending\]|pending\.\.\.)$/i.test(rawWeapon.trim());
+    const visibleWeaponText = !isUnarmedWeapon
+      ? humanizeGearForProse(rawWeapon, "unarmed hands")
+      : "unarmed (no weapon drawn)";
+
+    const rawArmor = playerProfile.gear?.armor || "";
+    const isUnarmoredSlot =
+      !rawArmor ||
+      /^(none|unarmored|portrait attire.*|\[system pending\]|pending\.\.\.)$/i.test(rawArmor.trim());
+    const visibleArmorText = !isUnarmoredSlot
+      ? humanizeGearForProse(rawArmor, portraitAttireLabel)
+      : isUncladOrNude
+      ? "completely unclad / no clothing or armor"
+      : `${humanizeGearForProse(portraitAttireLabel, "their outfit from their portrait")} (unarmored — no combat armor equipped)`;
 
     const playerFirstName = (playerProfile?.name || "the newcomer").trim().split(/\s+/)[0] || "the newcomer";
     const heroineFirstName = (startingHeroine || "the heroine").trim().split(/\s+/)[0] || startingHeroine;
@@ -447,8 +530,10 @@ ${heroineDossier.baselineChoices.map((c) => `- ${c}`).join("\n")}
 1. Use the bespoke heroine dossier as the working baseline. Capture her specific atmospheric environment, sensory triggers (smells, weather, ambient lighting, acoustic textures), and psychological demeanor.
 2. In her opening reaction, ${heroineFirstName} MUST explicitly observe and remark on the newcomer's visible physical appearance, build, visible gear (${visibleWeaponText} / ${visibleArmorText}), and bearing—while strictly obeying the Diegetic Knowledge Gate below (she does NOT yet know the newcomer's name or internal LitRPG class title!).
    - NATURAL HUMAN PROSE MANDATE: Write like a human novelist. After introducing ${startingHeroine} once, refer to her simply as "${heroineFirstName}" (never repeat her full name in every paragraph or choice). Describe weapons, clothing, and locations naturally (e.g., "your curved blade", "that dark coat", "down in the pit")—NEVER paste capitalized UI equipment labels or map banners into narrative sentences or dialogue!
-   ${isUncladOrNude || visibleArmorText.toLowerCase().includes("unclad") || visibleArmorText.toLowerCase().includes("none")
-     ? `- MANDATORY NUDITY / UNARMORED DIRECTIVE: The newcomer is completely unclad, nude, or lacking armor/gear. ${heroineFirstName} MUST prominently and in-character acknowledge and react to this blatant lack of clothing (e.g. reacting with disdain, raised eyebrows, sarcasm, extreme fluster, or predatory amusement according to her persona).`
+   ${isUncladOrNude
+     ? `- MANDATORY NUDITY DIRECTIVE: The newcomer is explicitly unclad/nude. ${heroineFirstName} MUST prominently and in-character acknowledge and react to this blatant lack of clothing.`
+     : isUnarmoredSlot
+     ? `- UNARMORED PORTRAIT ATTIRE DIRECTIVE: The newcomer is unarmed and wearing their profile outfit (${visibleArmorText}) without heavy combat armor. ${heroineFirstName} should naturally note their actual clothing/attire from their portrait and the fact that they carry no heavy armor or drawn weapon—do NOT treat or describe them as nude or unclad!`
      : ""}
 
 ${knowledgeGatePrompt}
@@ -501,7 +586,7 @@ Respond strictly in valid JSON matching this schema:
   "mechanics": string, // Authoritative LitRPG system initialization readout (e.g. "[SYSTEM: Dimensional synchronization complete. Causal Plausibility: 80%.]")
   "initial_affection": number, // 5 to 25 based on compatibility evaluation
   "initial_mood": string, // Short descriptive mood tag (e.g. "Analytical & Guarded", "Predatory Amusement")
-  "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
+  "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon", // Note: use "hurt" strictly for physical battle wounds/bleeding in combat—never for emotional worry or anxiety (use "flustered", "surprised", or "intrigued" instead)
   "opening_choices": [string, string, string, string], // 4 tailored, distinct dialogue or action responses strictly formatted as "[Tone/Action]: Short summary of character action/dialogue"
   "initial_quest": {
     "id": "scenario_01",
@@ -532,7 +617,7 @@ World Origin & System Familiarity: ${playerProfile?.worldOrigin || "Born & Raise
 Internal Class (Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsClass ? playerProfile?.role : `[UNKNOWN TO ${(startingHeroine || "COMPANION").toUpperCase()} — Judge only visible gear]`}
 Chosen Personality Archetype: "${personaVoice.personaTitle}" (Traits: ${personaVoice.traitsList.join(", ")})
 Attributes: STR ${playerProfile?.stats?.str ?? 10} | DEX ${playerProfile?.stats?.dex ?? 10} | INT ${playerProfile?.stats?.int ?? 10}
-Visible Gear: ${playerProfile?.gear?.weapon || "Bare Hands"} / ${playerProfile?.gear?.armor || "Wanderer Attire"}
+Visible Gear: ${visibleWeaponText} / ${visibleArmorText}
 Starting Abilities: ${abilitiesDesc}
 Starting Location: ${startingLocation}
 Starting Heroine: ${startingHeroine}
@@ -793,29 +878,38 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
     responseData.mechanics = separatedPrologue.mechanics;
     responseData.npc_knowledge_map = initialKnowledgeMap;
     responseData.present_companions = initialPresentHeroines;
-    if (!Array.isArray(responseData.opening_choices) || responseData.opening_choices.length === 0) {
-      responseData.opening_choices = buildPersonalityFallbackChoices({
-        personality: playerProfile?.personality,
-        personalityTraits: playerProfile?.personalityTraits,
-        playerRole: playerProfile?.role,
-        playerRace: playerProfile?.race,
-        activeSpeaker: startingHeroine,
-        location: startingLocation,
-        isProtagonistAlone: false,
-        storyId: storyContext?.id,
-        genre: storyContext?.genre,
-        narrativeText: responseData.narrative,
-      });
+    const filteredOpeningChoices = sanitizeAndFilterChoices(responseData.opening_choices);
+    if (filteredOpeningChoices.length < 2) {
+      responseData.opening_choices = sanitizeAndFilterChoices(
+        buildPersonalityFallbackChoices({
+          personality: playerProfile?.personality,
+          personalityTraits: playerProfile?.personalityTraits,
+          playerRole: playerProfile?.role,
+          playerRace: playerProfile?.race,
+          activeSpeaker: startingHeroine,
+          location: startingLocation,
+          isProtagonistAlone: false,
+          storyId: storyContext?.id,
+          genre: storyContext?.genre,
+          narrativeText: responseData.narrative,
+        })
+      );
+    } else {
+      responseData.opening_choices = filteredOpeningChoices;
     }
-    responseData.opening_choices = responseData.opening_choices.map((c: string) =>
-      ensureChoiceIntentTag(sanitizeVisualNovelProse(c))
-    );
 
     responseData.plausibility = typeof responseData.plausibility === "number" ? responseData.plausibility : 80;
     responseData.plausibility_tier = responseData.plausibility >= 70 ? "Stable" : "Strained";
 
     if (visualDescription) {
       responseData.visual_description = visualDescription;
+    }
+    const resolvedPortraitAttire = resolvePortraitAttireLabel(visualDna, visualDescription, "");
+    if (resolvedPortraitAttire) {
+      responseData.portrait_attire = resolvedPortraitAttire;
+    }
+    if (visualDna) {
+      responseData.visual_dna = visualDna;
     }
 
     return NextResponse.json(responseData);

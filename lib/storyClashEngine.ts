@@ -16,6 +16,7 @@ import { generateProceduralMonsterSvg } from "./proceduralArt";
 import { generateEnemyIntent } from "./vitalsAndEncounters";
 import { PORT_SOLARIS_HEROINE_DOSSIERS } from "@/types/port_solaris";
 import { SOVEREIGN_HEROINE_DOSSIERS } from "@/types/sovereign_spire";
+import { STARFALL_HEROINE_DOSSIERS } from "@/types/starfall_labyrinth";
 
 /**
  * Initializes a new in-scene Story Clash / Hostile Encounter.
@@ -112,7 +113,7 @@ export function getStoryClashChoices(
   let synergyAction = arsenal.actions.synergy;
   let defenseAction = arsenal.actions.defense;
 
-  // Contextual companion synergy branding (Port Solaris, Sovereign Spire & Astra Continent)
+  // Contextual companion synergy branding (Port Solaris, Sovereign Spire, Starfall Labyrinth & Astra Continent)
   let synergyActionName = synergyAction.name;
   const solarisDossier = Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
     (d) => d.name.toLowerCase() === compName.toLowerCase() || compName.toLowerCase().includes(d.name.split(" ")[0].toLowerCase())
@@ -120,6 +121,13 @@ export function getStoryClashChoices(
   const sovereignDossier = Object.values(SOVEREIGN_HEROINE_DOSSIERS).find(
     (d) => d.name.toLowerCase() === compName.toLowerCase() || compName.toLowerCase().includes(d.name.split(" ")[0].toLowerCase())
   );
+  const starfallDossier = Object.values(STARFALL_HEROINE_DOSSIERS).find((d) => {
+    const lowerD = d.name.toLowerCase();
+    const lowerComp = compName.toLowerCase();
+    const parts = lowerD.replace(/,/g, "").split(/\s+/);
+    const keyToken = (parts[0] === "dame" || parts[0] === "sir") && parts[1] ? parts[1] : parts[0];
+    return lowerD === lowerComp || (lowerComp !== "lyra" && lowerComp.includes(keyToken));
+  });
 
   if (solarisDossier) {
     synergyActionName = `${solarisDossier.name.split(" ")[0]}'s ${solarisDossier.dyadPassiveName}`;
@@ -134,6 +142,17 @@ export function getStoryClashChoices(
       ...synergyAction,
       name: synergyActionName,
       description: sovereignDossier.dyadPassiveDescription,
+    };
+  } else if (starfallDossier) {
+    const cleanParts = starfallDossier.name.replace(/,/g, "").split(/\s+/);
+    const displayFirst = starfallDossier.name.startsWith("Dame ") || starfallDossier.name.startsWith("Sir ")
+      ? cleanParts.slice(0, 2).join(" ")
+      : cleanParts[0];
+    synergyActionName = `${displayFirst}'s ${starfallDossier.dyadPassiveName}`;
+    synergyAction = {
+      ...synergyAction,
+      name: synergyActionName,
+      description: starfallDossier.dyadPassiveDescription,
     };
   } else if (compName.toLowerCase().includes("perci")) {
     synergyActionName = "Perci's Foxfire Crossfire";
@@ -261,7 +280,7 @@ export function resolveClashTurn(
   actionType: "strike" | "burst" | "synergy" | "defense" | "flee",
   playerRole: string = "Voidstrider",
   companion?: { name: string } | StoryCompanion | null,
-  playerStats?: { hp: number; maxHp: number; mp: number; maxMp: number },
+  playerStats?: { hp: number; maxHp: number; mp: number; maxMp: number; str?: number; dex?: number; int?: number },
   activeStance: CombatStanceType = "neutral"
 ): ClashTurnResolution {
   const arsenal: ClassArsenal = getClassArsenal(playerRole);
@@ -326,21 +345,27 @@ export function resolveClashTurn(
       break;
   }
 
-  // 1. Apply Universal Stance Damage Multipliers
+  // 1. Apply Universal Stance Damage Multipliers & Stat Scaling
+  const bestStat = Math.max(playerStats?.str ?? 12, playerStats?.dex ?? 12, playerStats?.int ?? 12);
+  const statModifier = Math.floor((bestStat - 10) / 2);
+  const d20 = Math.floor(Math.random() * 20) + 1;
+  const d20Total = d20 + statModifier;
+
   let stanceDmgMult = stanceCfg.damageMultiplier || 1.0;
   if (activeStance === "flame") {
     stanceDmgMult = 1.25; // +25% Burn & Direct DMG
   } else if (activeStance === "phase") {
     stanceDmgMult = 1.15; // Armor Penetration
   }
-  damageDealt = Math.round(damageDealt * stanceDmgMult);
+  const statDmgScale = damageDealt > 0 ? 1 + Math.max(0, statModifier) * 0.04 : 1.0;
+  damageDealt = Math.round(damageDealt * stanceDmgMult * statDmgScale);
 
-  // 2. Critical Strike Check (Shadowstalker grants +30% Crit Rate)
+  // 2. Critical Strike Check (Shadowstalker grants +30% Crit Rate; natural 20 guarantees Crit)
   let isCrit = false;
   if (damageDealt > 0 && actionType !== "defense") {
     const baseCritRate = 0.12;
     const stanceCritBonus = activeStance === "shadow" ? 0.30 : 0;
-    if (Math.random() < baseCritRate + stanceCritBonus) {
+    if (d20 === 20 || Math.random() < baseCritRate + stanceCritBonus) {
       isCrit = true;
       damageDealt = Math.round(damageDealt * 1.5);
     }
@@ -402,9 +427,10 @@ export function resolveClashTurn(
       )
     : undefined;
 
+  const rollBreakdown = `[1d20(${d20})${statModifier >= 0 ? `+${statModifier}` : statModifier}=${d20Total}]`;
   const nextLog = [
     ...clashState.log,
-    `[Turn ${clashState.clashTurn}] ${tagBadges}: Deployed ${action.name} dealing ${damageDealt} DMG.${hpHealed > 0 ? ` Healed +${hpHealed} HP.` : ""} ${
+    `[Turn ${clashState.clashTurn}] ${rollBreakdown} ${tagBadges}: Deployed ${action.name} dealing ${damageDealt} DMG.${hpHealed > 0 ? ` Healed +${hpHealed} HP.` : ""} ${
       isVictory
         ? `VICTORY! ${clashState.enemyName} neutralized.`
         : isStaggered

@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { validateUserKey, recordUserTurn } from "@/lib/userAccess";
 import { evaluateRelicSynergies, buildSynergyPromptDirective } from "@/lib/relicSynergies";
 import { getNarrationProseDirective, NarrativeDepthMode } from "@/lib/narrationStyles";
-import { describeProtagonistAvatar, isFallbackVisualDescription } from "@/lib/visionEncoder";
-import { sanitizeVisualNovelProse, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics } from "@/lib/proseSanitizer";
+import {
+  describeProtagonistAvatar,
+  isExplicitlyNudeOrUnclad,
+  isFallbackVisualDescription,
+  resolvePortraitAttireLabel,
+} from "@/lib/visionEncoder";
+import { sanitizeVisualNovelProse, ensureChoiceIntentTag, sanitizeNarrativeAndMechanics, sanitizeAndFilterChoices } from "@/lib/proseSanitizer";
 import { generateCrossTalkBanterDirective, evaluateInterpersonalFriction } from "@/lib/companionFriction";
 import { executeCausalCovenant } from "@/lib/causalCovenant";
 import {
@@ -29,6 +34,7 @@ import {
   getHeroineResistanceProfile,
   calibrateQuestRankAndRewards,
   clampTurnProgressionDeltas,
+  evaluateEarnedTurnExp,
 } from "@/lib/progressionMechanics";
 import {
   buildDynamicChoiceDirective,
@@ -58,6 +64,38 @@ import {
   applyTurnScandalDecay,
 } from "@/lib/portSolarisEngine";
 import { PORT_SOLARIS_HEROINE_DOSSIERS } from "@/types/port_solaris";
+import {
+  buildStarfallTurnDirective,
+  createInitialLabyrinthState,
+  syncRosterWithParty,
+  resolveHeroCasualty,
+  advanceFloor,
+  adjustMasterTrust,
+  inferFloorFromLocation,
+  isStarfallLobbyLocation,
+  isStarfallDungeonLocation,
+  matchesHeroineName,
+  getFloorType,
+  healRosterAtSafeZoneOrLobby,
+} from "@/lib/starfallEngine";
+import {
+  getTowerThemeForFloor,
+  matchCuratedEnemyFromProse,
+} from "@/lib/starfallTowerThemes";
+import {
+  startFloorCombatEncounter,
+  resolveStarfallCombatTurn,
+  syncEncounterWithProseIfVicinity,
+  isActionEngagingHostile,
+  StarfallCombatResolutionResult,
+} from "@/lib/starfallCombatEngine";
+import {
+  executeOocTwoPassTurn,
+  shouldUseOocTwoPassEngine,
+  buildCleanConversationHistory,
+  parseOocInput,
+  extractOpenRouterErrorInfo,
+} from "@/lib/oocNarrativeEngine";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -129,6 +167,7 @@ export async function POST(req: Request) {
       timelineEchoes = [],
       activeStance = "neutral",
       giftItemContext = null, // { itemName: string, itemDescription: string, itemRarity: string, recipientCompanionName: string, reactionPrompt: string }
+      summonContext = null, // { newlySummonedNames: string[], pullSummary: string }
       targetEnvironment = "cloud",
       modelId,
       // System Evolution Fields (Pillars A, B, C)
@@ -142,6 +181,7 @@ export async function POST(req: Request) {
       repetition_penalty,
       narrativeDepth,
       npcKnowledgeMap = null,
+      directorNotes = null,
     } = body;
 
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.1, Math.min(1.8, temperature)) : 0.75;
@@ -200,15 +240,33 @@ export async function POST(req: Request) {
     const settingName = storyContext?.worldContext?.settingName || "the Astra Continent";
     const effectiveTone = narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
-    // Track physical presence of companions in the active scene
-    const physicallyPresentCompanions = (partyMembers || []).filter((c: any) => Boolean(c.isPresent));
+    // Track physical presence of companions in the active scene (strictly excluding FALLEN Starfall heroines)
+    const fallenMemorialSet = new Set(
+      (playerProfile?.labyrinthState?.memorial || []).map((m: any) =>
+        typeof m?.name === "string" ? m.name.trim().toLowerCase() : ""
+      )
+    );
+    const isHeroineFallen = (c: any) => {
+      if (!c) return false;
+      if (c.heroStatus === "FALLEN") return true;
+      const nm = typeof c.name === "string" ? c.name.trim().toLowerCase() : "";
+      return Boolean(nm && fallenMemorialSet.has(nm));
+    };
+
+    const physicallyPresentCompanions = (partyMembers || []).filter(
+      (c: any) => Boolean(c?.isPresent) && !isHeroineFallen(c)
+    );
     const isProtagonistAlone = physicallyPresentCompanions.length === 0;
     const presentHeroineNames = physicallyPresentCompanions.map((c: any) => c.name);
 
-    // Sanitize active speaker context to ensure protagonist is never passed as active speaker
+    // Sanitize active speaker context to ensure protagonist or FALLEN heroine is never passed as active speaker
     const safePlayerName = (playerProfile?.name || "Wanderer").trim();
     let sanitizedContextSpeaker = gameState?.speaker;
-    if (!sanitizedContextSpeaker || String(sanitizedContextSpeaker).trim().toLowerCase() === safePlayerName.toLowerCase()) {
+    if (
+      !sanitizedContextSpeaker ||
+      String(sanitizedContextSpeaker).trim().toLowerCase() === safePlayerName.toLowerCase() ||
+      fallenMemorialSet.has(String(sanitizedContextSpeaker).trim().toLowerCase())
+    ) {
       sanitizedContextSpeaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
     }
 
@@ -284,16 +342,18 @@ The user selected this choice/action vector: "${action}".
       }
     }
 
-    const isUncladOrNude = Boolean(
-      visualDescription &&
-      (visualDescription.toLowerCase().includes("nude") ||
-       visualDescription.toLowerCase().includes("unclad") ||
-       visualDescription.toLowerCase().includes("naked") ||
-       visualDescription.toLowerCase().includes("bare skin") ||
-       visualDescription.toLowerCase().includes("bare chest") ||
-       visualDescription.toLowerCase().includes("bare-chested") ||
-       visualDescription.toLowerCase().includes("without clothing"))
-    );
+    const isUncladOrNude =
+      isExplicitlyNudeOrUnclad(visualDescription) ||
+      isExplicitlyNudeOrUnclad(playerProfile?.gear?.armor);
+    const effectiveArmor =
+      !playerProfile.gear?.armor ||
+      /^(none|unarmored|portrait attire.*)$/i.test(playerProfile.gear.armor.trim())
+        ? resolvePortraitAttireLabel(
+            playerProfile.visualDna,
+            visualDescription,
+            "Portrait Attire (Unarmored)"
+          )
+        : playerProfile.gear.armor;
 
     const visualInspectionInstruction = visualDescription && isFirstEncounter
       ? `--- PROTAGONIST VISUAL APPEARANCE (FIRST ENCOUNTER OBSERVATION) ---
@@ -396,6 +456,18 @@ The protagonist (${playerProfile.name}) is presenting a gift to ${giftItemContex
 ${giftItemContext.recipientCompanionName} MUST react directly to receiving this specific gift in dialogue, acknowledging its value, expressing genuine emotional surprise, and adjusting her demeanor.`
       : "";
 
+    const starGateSummonDirective = summonContext
+      ? `--- STAR GATE SUMMONING ARRIVAL DIRECTIVE (MAIN LOBBY) ---
+The Star Gate monolith in Star Gate Plaza (Main Lobby) has just resonated with spent Star Shards:
+- Pull Summary: ${summonContext.pullSummary || "Star Gate Manifestation"}
+- Newly Manifested Heroines: ${(summonContext.newlySummonedNames || []).join(", ") || "Duplicate Star-Echo Resonance"}
+${
+  Array.isArray(summonContext.newlySummonedNames) && summonContext.newlySummonedNames.length > 0
+    ? `CRITICAL SCENE INSTRUCTION: Depict the blinding cyan-and-gold Star Gate pillar shattering in Star Gate Plaza as ${summonContext.newlySummonedNames.join(" and ")} step onto the obsidian stones for the first time! Set "speaker" to "${summonContext.newlySummonedNames[0]}" and have her react in-character to her new squad and 1★ tactician.`
+    : `CRITICAL SCENE INSTRUCTION: Depict the Star Gate crystal dissolving into luminous Star-Echo shards that resonate with your existing roster in Star Gate Plaza!`
+}`
+      : "";
+
     // Multiple Companion Interpersonal Dynamics & Cross-Talk Banter (Pitch B)
     const multiCompanionDirective = physicallyPresentCompanions.length > 1
       ? generateCrossTalkBanterDirective(physicallyPresentCompanions, frictionState, sanitizedContextSpeaker)
@@ -491,7 +563,10 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
     const knowledgeGateDirective = buildKnowledgeGateDirective(
       workingKnowledgeMap,
       presentHeroineNames,
-      playerProfile
+      {
+        ...playerProfile,
+        visualDescription: visualDescription || playerProfile?.visualDescription,
+      } as any
     );
     const playerVitals = evaluatePlayerVitalsCondition(
       playerProfile?.stats,
@@ -576,15 +651,152 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
     );
 
     const isPortSolarisStory = storyContext?.id === "port-solaris";
+    const isStarfallStory = storyContext?.id === "starfall-labyrinth";
     let portSolarisDirective = "";
+    let starfallDirective = "";
+    let starfallCombatTelemetryDirective = "";
+    let preTurnStarfallCombatResult: StarfallCombatResolutionResult | null = null;
+    let preTurnStarfallLabState: any = null;
+
+    if (isStarfallStory) {
+      let baseLabState = syncRosterWithParty(
+        playerProfile?.labyrinthState ||
+          createInitialLabyrinthState(playerProfile?.sovereignOrigin || "DISCARDED_EX_RANKER", {
+            startingHeroineName: presentHeroineNames[0] || sanitizedContextSpeaker,
+          }),
+        partyMembers || []
+      );
+
+      // Detect floor from current location or explicit player floor-entry action
+      const locFloor = inferFloorFromLocation(
+        gameState?.location,
+        baseLabState.currentFloor || 0
+      );
+      const rawActionStr = String(action || "");
+      const actionFloorMatch = rawActionStr.match(
+        /\b(?:enter|step\s+into|ascend\s+to|deploy\s+to|advance\s+to)\s+floor\s+(\d{1,3})\b/i
+      );
+      const implicitFloorEntry =
+        (baseLabState.currentFloor || 0) === 0 &&
+        (/\b(?:enter|step\s+(?:into|onto|through)|cross|activate|deploy|advance|charge\s+into|move\s+into|descend\s+into|begin\s+(?:the\s+)?ascent)\b.*\b(?:floor\s*1|first\s*floor|transfer\s*ring|star\s*gate|dungeon|labyrinth|tower|antechamber|reliquary|ossuary|sunken|verdant|portal|gate)\b/i.test(
+          rawActionStr
+        ) ||
+          /\bfloor\s*1\s+goblins\b/i.test(rawActionStr));
+      const explicitActionFloor = actionFloorMatch
+        ? Math.min(100, Math.max(0, parseInt(actionFloorMatch[1], 10)))
+        : implicitFloorEntry
+        ? Math.max(1, (baseLabState.highestFloorCleared || 0) + 1)
+        : null;
+      const effectivePreFloor =
+        explicitActionFloor !== null ? explicitActionFloor : locFloor;
+
+      if (effectivePreFloor !== baseLabState.currentFloor) {
+        baseLabState = {
+          ...baseLabState,
+          currentFloor: effectivePreFloor,
+        };
+        if (effectivePreFloor === 0 || getFloorType(effectivePreFloor) === "SAFE_ZONE") {
+          baseLabState = healRosterAtSafeZoneOrLobby(baseLabState);
+        }
+      }
+
+      const preFloorType = getFloorType(effectivePreFloor);
+      const isExplicitCombatTag = /\[COMBAT:[A-Z_]+/i.test(String(action || ""));
+
+      if (
+        effectivePreFloor > 0 &&
+        (preFloorType === "COMBAT" || preFloorType === "GATE_BOSS" || isExplicitCombatTag) &&
+        !summonContext &&
+        !giftItemContext
+      ) {
+        if (
+          baseLabState.activeEncounter &&
+          baseLabState.activeEncounter.isActive &&
+          baseLabState.activeEncounter.floor === effectivePreFloor &&
+          baseLabState.activeEncounter.status === "ongoing"
+        ) {
+          const engagesNow = isActionEngagingHostile(
+            String(action || ""),
+            baseLabState.activeEncounter.engagementPhase
+          );
+          if (engagesNow) {
+            // Resolve turn-based tactical combat + hidden 1d20 dice rolls + party swaps!
+            const affectionMap: Record<string, number> = {};
+            for (const pm of partyMembers || []) {
+              if (pm?.name) affectionMap[pm.name] = pm.affection || 0;
+            }
+            preTurnStarfallCombatResult = resolveStarfallCombatTurn({
+              labyrinthState: baseLabState,
+              rawPlayerAction: String(action || ""),
+              protagonistName: playerProfile?.name || "Tactician",
+              protagonistLevel: playerProfile?.level || 1,
+              protagonistStats: {
+                str: playerProfile?.stats?.str || 12,
+                dex: playerProfile?.stats?.dex || 14,
+                int: playerProfile?.stats?.int || 15,
+              },
+              protagonistHp: playerProfile?.stats?.hp ?? 100,
+              protagonistMaxHp: playerProfile?.stats?.maxHp ?? 100,
+              protagonistMp: playerProfile?.stats?.mp ?? 60,
+              protagonistMaxMp: playerProfile?.stats?.maxMp ?? 60,
+              companionAffections: affectionMap,
+              turnSeed: `${baseLabState.summonSeed || "sf"}:turn${currentTurnNumber}:${effectivePreFloor}`,
+            });
+            baseLabState = preTurnStarfallCombatResult.nextLabyrinthState;
+            starfallCombatTelemetryDirective = preTurnStarfallCombatResult.combatTelemetryBlock;
+          } else {
+            starfallCombatTelemetryDirective = `=== [HOSTILE IN VICINITY — STEALTH / RECONNAISSANCE PHASE — FLOOR ${effectivePreFloor}] ===
+- Curated Hostile Detected Nearby: ${baseLabState.activeEncounter.enemyName} (${baseLabState.activeEncounter.enemyTitle}, Tier: ${baseLabState.activeEncounter.enemyTier || "COMMON"})
+- Room Geometry: ${baseLabState.activeEncounter.layoutName} — ${baseLabState.activeEncounter.layoutGeometry}
+- Current Status: The party is scouting/positioning in the vicinity of ${baseLabState.activeEncounter.enemyName}; direct clash has NOT started yet. Keep tension high around ${baseLabState.activeEncounter.enemyName} specifically.`;
+          }
+        } else {
+          // Entering a new combat or boss floor — initialize themed encounter in vicinity (or engaged for Gate Bosses)!
+          baseLabState = startFloorCombatEncounter(
+            baseLabState,
+            effectivePreFloor,
+            `${baseLabState.summonSeed || "sf"}:init:${effectivePreFloor}:${currentTurnNumber}`
+          );
+          if (baseLabState.activeEncounter) {
+            starfallCombatTelemetryDirective = `=== [NEW FLOOR ENCOUNTER DETECTED — FLOOR ${effectivePreFloor}] ===
+- Phase: ${baseLabState.activeEncounter.engagementPhase === "vicinity" ? "HOSTILE IN VICINITY (Approach / Scouting)" : "GATE BOSS ENGAGED"}
+- Stratum Theme: ${baseLabState.activeEncounter.themeName} (${baseLabState.activeEncounter.environmentalLawName})
+- Room Geometry: ${baseLabState.activeEncounter.layoutName} — ${baseLabState.activeEncounter.layoutGeometry}
+- Interactive Terrain: ${baseLabState.activeEncounter.terrainTags.join(", ")}
+- Hostile Manifested: ${baseLabState.activeEncounter.enemyName} (${baseLabState.activeEncounter.enemyTitle}, Tier: ${baseLabState.activeEncounter.enemyTier || "COMMON"}) [HP ${baseLabState.activeEncounter.enemyHp}/${baseLabState.activeEncounter.enemyMaxHp} | Poise ${baseLabState.activeEncounter.enemyPoise}]
+- Opening Telegraph: [${baseLabState.activeEncounter.currentTelegraph.label}] — ${baseLabState.activeEncounter.currentTelegraph.telegraphText}${
+              baseLabState.activeEncounter.masterSealOrder
+                ? `\n- Intrusive Master Command Seal: ${baseLabState.activeEncounter.masterSealOrder.commandText}`
+                : ""
+            }`;
+          }
+        }
+      }
+
+      preTurnStarfallLabState = baseLabState;
+      starfallDirective = buildStarfallTurnDirective({
+        protagonistName: playerProfile?.name || "Tactician",
+        protagonistLevel: playerProfile?.level || 1,
+        labyrinthState: baseLabState,
+        currentLocation:
+          effectivePreFloor > 0 && isStarfallStory && locFloor === 0
+            ? `Floor ${effectivePreFloor} — ${baseLabState.activeEncounter?.layoutName || "Labyrinth Corridor"}`
+            : gameState?.location || "Star Gate Plaza (Main Lobby)",
+        activeSpeaker: sanitizedContextSpeaker,
+        deployedHeroines: presentHeroineNames,
+      });
+      if (starGateSummonDirective) {
+        starfallDirective += `\n\n${starGateSummonDirective}`;
+      }
+    }
     if (isPortSolarisStory) {
       const speakerPartyMember = (partyMembers || []).find((c: any) =>
-        c.name && sanitizedContextSpeaker && c.name.toLowerCase().includes(sanitizedContextSpeaker.toLowerCase())
+        c?.name && sanitizedContextSpeaker && String(c.name).toLowerCase().includes(String(sanitizedContextSpeaker).toLowerCase())
       );
       const speakerDossier =
         PORT_SOLARIS_HEROINE_DOSSIERS[sanitizedContextSpeaker] ||
         Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
-          (d) => sanitizedContextSpeaker && sanitizedContextSpeaker.toLowerCase().includes(d.name.toLowerCase())
+          (d) => sanitizedContextSpeaker && d?.name && String(sanitizedContextSpeaker).toLowerCase().includes(String(d.name).toLowerCase())
         );
       const currentBpm =
         speakerPartyMember?.heartRateBpm ??
@@ -620,7 +832,7 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
 
     const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
-${isPortSolarisStory ? portSolarisDirective + "\n\n" : ""}${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
+${isPortSolarisStory ? portSolarisDirective + "\n\n" : ""}${isStarfallStory ? starfallDirective + "\n\n" : ""}${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
 
 ${dynamicRomanceDirective}
 
@@ -650,6 +862,11 @@ ${companionDossiers}
    - "[Social Panache / Table-Turn]: Lean across the mahogany bar and cite Article 6 Clause 6B to call her bluff."
    - "[Heart-to-Heart / Attentive]: Pour two chilled glasses and ask what she's hiding behind her professional facade."
    - "[Article 9 Wager / Audacious]: Ring the brass ship's bell and challenge the inspector to a public Sunset Rambla taste-off."`
+       : isStarfallStory
+       ? `- "[Meta-Knowledge / Callout]: Pull the squad behind the cracked left pillar two seconds before the boss's breath sweep."
+   - "[Role Technique / Guard]: Intercept the flanking hound's lunge at a seventeen-degree shield angle to protect Pia."
+   - "[Command Loophole / Bold]: Satisfy the Master's rush timer via the side culvert without sacrificing anyone."
+   - "[Move / Return to Lobby]: Extract through the cleared floor ring back to Star Gate Plaza to regroup and summon."`
        : `- "[Combat/Aggressive]: Step forward and drive your broadsword toward the beast's exposed flank."
    - "[Arcana/Analytical]: Channel ether into your palm to decipher the fluctuating rune sequence."
    - "[Subterfuge/Cunning]: Slip into the perimeter shadows and pick the cargo vault lock."
@@ -707,6 +924,16 @@ DO NOT SAFEGUARD THE PROTAGONIST FROM EMBARRASSMENT OR FINANCIAL BLUNDERS:
    - However, if the player makes a foolish, arrogant, or sloppy move (serving burnt food, citing a fake Charter Article, wearing another girl's Keepsake on a date, or botching a VIP audit), apply real coastal consequences: sharp heroine pushback, Composure loss, Scandal Heat spikes in "The Solaris Siren", or audit fines.
 2. QUEST & WAGER FAILURES ARE CANON:
    - If an active quest or Article 9 wager objective is ruined by the player's blunders, mark the quest as "failed" in "system_updates.quest_updates" and narrate the comedic or financial fallout (e.g. washing dishes for a week, buying parfaits for the Breakers Union, or losing ground on the 30-day Star Audit).`
+    : isStarfallStory
+    ? `--- ABSOLUTE SYSTEM DIRECTIVE: STARFALL LABYRINTH PERMADEATH & FINAL GAME OVER ---
+REMOVE ALL ARTIFICIAL PLOT ARMOR — COVENANT VI IS IN EFFECT:
+1. DEPLOYED HEROINE PERMADEATH ("starfall_updates.hero_casualties"):
+   - Smart tactical play, meta-knowledge callouts, and protective formations KEEP YOUR SQUAD ALIVE.
+   - However, if the player executes a genuinely suicidal blunder inside a lethal combat floor or Gate Boss arena (ignoring a boss telegraph, using a wounded teammate as unshielded bait, or rushing a Gate Boss unprepared), DEPLOYED heroines CAN AND WILL DIE PERMANENTLY.
+   - When a deployed heroine dies in prose this turn, narrate her shattering into cold Star Ash with emotional weight and populate "starfall_updates.hero_casualties": [{ "name": "<Exact Heroine Name>", "cause": "<Short visceral cause>" }]. Never mark benched Lobby heroines as casualties.
+2. PROTAGONIST DEATH IS FINAL GAME OVER (NO REGRESSION):
+   - If ${playerProfile.name}'s own action is fatal or HP collapses under an unblocked boss strike, set "death_event": { "is_fatal": true, "cause_of_death": "<Brief visceral cause>", "killer_or_hazard": "<Entity or hazard name>" }.
+   - End "narrative_text" with: "[ADMINISTRATOR NOTICE: Unit vital signature extinguished. Star core shattered. Connection terminated.]" — NEVER mention regression or timeline rewinds!`
     : `--- ABSOLUTE SYSTEM DIRECTIVE: NO PLAYER SAFEGUARDING & REAL MORTAL CONSEQUENCES ---
 DO NOT SAFEGUARD THE PROTAGONIST. Remove all artificial plot armor:
 1. ALLOW REAL MISTAKES & SEVERE BLUNDERS:
@@ -767,13 +994,13 @@ MANDATORY SYSTEM DIRECTIVES (EVALUATE EVERY TURN):
    - PREVENT DUPLICATION: Do NOT assign or regenerate quests that are already active or listed in "Completed & Archived Scenarios".
    - STRICT QUEST RANKING BY ACTUAL DIFFICULTY & LENGTH OF COMPLETION ("system_updates.new_quest"):
      * NEVER randomly assign "S" or "A" rank to early or short quests! Rank every new quest strictly by its ACTUAL difficulty, current campaign stage (Player Level: ${playerProfile.level || 1}), and number of objectives (length of completion):
-       - "E" Rank (35–55 EXP): Short 1–2 objective routine tasks, introductions, recon, or minor prep.
-       - "D" Rank (60–90 EXP): 2 objective local tasks, minor social/kitchen wagers, or low-risk skirmishes.
-       - "C" Rank (95–140 EXP): Standard 2–3 objective multi-step scenarios, investigations, or sector trials. (Maximum normal rank at Player Level 1–3).
-       - "B" Rank (150–220 EXP): 3–4 objective high-stakes showdowns, boss clashes, or major milestone trials.
-       - "A" Rank (240–340 EXP): 4+ objective multi-sector arc finales (requires Player Level 4+).
-       - "S" Rank (360–480 EXP): Reserved EXCLUSIVELY for 4–5+ objective late-game campaign climaxes (requires Player Level 8+).
-     * NEVER output thousands of EXP or Gold in quest rewards or "player_progression.exp_gained" (per-turn exp_gained must be 15–35 EXP).
+       - "E" Rank (45–75 EXP): Short 1–2 objective routine tasks, introductions, recon, or minor prep.
+       - "D" Rank (85–135 EXP): 2 objective local tasks, minor social/kitchen wagers, or low-risk skirmishes.
+       - "C" Rank (150–230 EXP): Standard 2–3 objective multi-step scenarios, investigations, or sector trials. (Maximum normal rank at Player Level 1–3).
+       - "B" Rank (260–390 EXP): 3–4 objective high-stakes showdowns, boss clashes, or major milestone trials.
+       - "A" Rank (450–680 EXP): 4+ objective multi-sector arc finales (requires Player Level 4+).
+       - "S" Rank (750–1150 EXP): Reserved EXCLUSIVELY for 4–5+ objective late-game campaign climaxes (requires Player Level 8+).
+     * EARNED-ONLY EXP RULE ("player_progression.exp_gained"): Output 0 EXP for casual chat, romance banter, resting, shopping, or walking! Output 12–26 EXP ONLY for genuine tactical maneuvers, trap disarms, training, or active skill checks, and 24–48 EXP ONLY for live combat skirmishes or lethal hazards. NEVER output thousands of EXP.
 2. CAUSAL PLAUSIBILITY & FANTASY CAPABILITY BENCHMARK:
    - Evaluate strictly against ${playerProfile.name}'s Lineage (${playerProfile.race || "Human"}), Anatomical Traits (${(playerProfile.racialTraits || []).join(", ") || "Standard"}), Class (${playerProfile.role}), and Stats (STR ${playerProfile.stats.str}, DEX ${playerProfile.stats.dex}, INT ${playerProfile.stats.int}).
    - NEVER apply mundane human limits to non-human species (e.g. Beastkin/Lycan superhuman leaps, sprint bursts, scent tracking; Dragonborn scales/strength; Elven agility; Vampire speed) or fantasy class abilities.
@@ -793,7 +1020,7 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
   "state_updates": {
     "current_location": string,
     "mood": string,
-    "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon",
+    "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon", // Use "hurt" strictly for physical battle wounds/bleeding in combat—never for emotional worry or anxiety (use "flustered", "surprised", or "intrigued" instead)
     "affected_companion": string | null,
     "affection_delta": number,
     "companion_sentiment": string | null, // 1-2 vivid sentences reflecting how the active heroine currently feels about the protagonist specifically referencing his latest choice/action (including any unspoken physical attraction or cracks in her guard)
@@ -824,7 +1051,8 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
   },
   "mechanics": string | null, // Concise LitRPG system or tactical mechanics readout for this turn (e.g. "[SYSTEM: Stance Resonance Active • Causal Plausibility Stable]"), or null if none.
   "player_progression": {
-    "exp_gained": number, // Strictly 15 to 35 EXP per turn (NEVER output thousands of EXP)
+    "exp_gained": number, // EARNED-ONLY EXP: 0 for casual chat, flirting, resting, shopping, or walking; 12–26 for skill checks, trap disarms, or active techniques; 24–48 for live combat skirmishes
+    "exp_reason": string | null, // Short 2-5 word label when exp_gained > 0 (e.g. "Disarmed Spire Trap", "Ambush Counterplay"), or null when exp_gained is 0
     "hp_change": number, // Negative when taking damage in story (-5 to -30), positive when healed (+10 to +30)
     "mp_change": number, // Negative when casting spells/abilities (-8 to -20), positive when recovering (+10 to +20)
     "vitals_reason": string | null, // Short 2-5 word label explaining the HP/MP change (e.g. "Inquisition Bolt", "Dark Essence Scorch")
@@ -879,7 +1107,18 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
     "title": string,
     "summary": string,
     "foreshadow_key": string
-  } | null
+  } | null${
+    isStarfallStory
+      ? `,
+  "starfall_updates": {
+    "floor_cleared": boolean, // Set true ONLY when the squad decisively clears the active Labyrinth floor or defeats its Gate Boss this turn
+    "hero_casualties": [{ "name": string, "cause": string }], // Empty [] unless a DEPLOYED heroine genuinely perished in combat prose this turn
+    "star_shards_earned": number, // 0 on normal dialogue turns; 5-25 on combat victories, hidden caches, or Master rewards
+    "master_command": string | null, // Optional short Command Seal broadcast from the unseen Master if issued this turn, else null
+    "master_trust_delta": number // -15 to +15 based on clean clears (+trust) vs open defiance or sloppy losses (-trust)
+  } | null`
+      : ""
+  }
 }
 
 --- CURRENT CAMPAIGN STATE & DYNAMIC TURN CONTEXT ---
@@ -892,7 +1131,7 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
 - Racial Anatomy & Traits: ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? playerProfile.racialTraits.join(", ") : "Standard human physiology"}
 - Vitals & Pools: ${playerVitals.summaryLine}
 - Stats: STR ${playerProfile.stats.str} | DEX ${playerProfile.stats.dex} | INT ${playerProfile.stats.int}
-- Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${playerProfile.gear.armor} | Relic: ${playerProfile.gear.relic}
+- Loadout: Weapon: ${playerProfile.gear.weapon} | Armor: ${effectiveArmor} | Relic: ${playerProfile.gear.relic}
 - Active Stance: [${activeStance.toUpperCase()}]
 - Abilities: ${Array.isArray(playerProfile.abilities) && playerProfile.abilities.length > 0 ? playerProfile.abilities.join(", ") : "None unlocked"}
 - Active Location: ${gameState.location}
@@ -1053,16 +1292,104 @@ ${visualInspectionInstruction}`;
 
 >>> SELECTED CHOICE VECTOR TO EXECUTE & ANSWER NOW: "${action}" <<<`;
 
-    let responseData = null;
-    let lastError = null;
+    let responseData: any = null;
+    let lastError: any = null;
 
-    // Smart Hybrid routes structured Game Master turns and LitRPG state orchestration
-    // to Gemini 2.5 Flash (default) or DeepSeek V3.2 (when orchestrated-hybrid-deepseek is selected)
+    const persistentNotes =
+      typeof directorNotes === "string" && directorNotes.trim()
+        ? directorNotes.trim()
+        : playerProfile?.labyrinthState?.directorNotes || null;
+    const oocParsedForFallback = parseOocInput(action || "", persistentNotes);
+
+    // Primary Cloud Path: OOC.ai-Grade Two-Pass Engine
+    // Pass 1: Pure unescaped literary prose & autonomous subtext (Claude Sonnet 4.6 / DeepSeek V3.2 / chosen RP model)
+    // Pass 2: Fast structured JSON state & 4-choice extraction (Gemini 2.5 Flash)
     const normalizedRequestedModel = modelId ? (LEGACY_MODEL_MIGRATIONS[modelId] || modelId) : "";
+    if (
+      shouldUseOocTwoPassEngine({
+        isLocal,
+        apiKey,
+        modelId: normalizedRequestedModel,
+      }) &&
+      apiKey
+    ) {
+      try {
+        const specialDirectives = [
+          giftingDirective,
+          covenantExecutionDirective,
+          storyClashDirective,
+          multiCompanionDirective,
+          timelineEchoDirective,
+          timelineScarDirective,
+          synergyDirective,
+          antiRepetitionDirective,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
+
+        const twoPass = await executeOocTwoPassTurn({
+          apiKey,
+          userKey: activeUser.key,
+          requestedModelId: normalizedRequestedModel,
+          temperature: effectiveTemperature,
+          maxTokens: effectiveMaxTokens,
+          repetitionPenalty: effectiveRepetitionPenalty,
+          narrativeDepth: effectiveNarrativeDepth,
+          narrationTone: effectiveTone,
+          storyId: storyContext?.id,
+          storyTitle,
+          settingName,
+          location: gameState?.location || "Star Gate Plaza (Main Lobby)",
+          timeOfDay: gameState?.timeOfDay,
+          playerProfile,
+          presentCompanions: physicallyPresentCompanions,
+          activeSpeakerName: sanitizedContextSpeaker,
+          speakerAffection: companionAffection,
+          speakerKnowsPlayerName: activeSpeakerKnowledge.knowsName,
+          recentHistory: recentHistory || [],
+          rawAction: action || "",
+          isCustomAction: Boolean(isCustom),
+          persistentDirectorNotes: persistentNotes,
+          pendingObjectives,
+          worldSpecificDirective: isStarfallStory
+            ? starfallDirective
+            : isPortSolarisStory
+            ? portSolarisDirective
+            : "",
+          combatTelemetryDirective: starfallCombatTelemetryDirective,
+          specialEventDirective: specialDirectives,
+          knowledgeGateDirective,
+          earnedRomanceDirective: dynamicRomanceDirective,
+          turnNumber: currentTurnNumber,
+        });
+
+        responseData = twoPass.responseData;
+        const userStats =
+          !isLocal && authCheck.valid
+            ? recordUserTurn(activeUser.key, twoPass.usage, twoPass.creativeModelUsed)
+            : activeUser;
+        responseData._userStats = userStats;
+      } catch (twoPassErr: any) {
+        const errMsg = twoPassErr?.message || "";
+        if (/OpenRouter API \((?:401|402|403)\)/i.test(errMsg)) {
+          throw twoPassErr;
+        }
+        console.warn(
+          "OOC Two-Pass Engine encountered error, falling back to single-pass model chain:",
+          errMsg
+        );
+        lastError = twoPassErr;
+        responseData = null;
+      }
+    }
+
     const effectiveModelId =
-      normalizedRequestedModel === "orchestrated-hybrid" || !normalizedRequestedModel
+      normalizedRequestedModel === "orchestrated-hybrid" ||
+      normalizedRequestedModel === "ooc-two-pass-sonnet" ||
+      !normalizedRequestedModel
         ? "google/gemini-2.5-flash"
-        : normalizedRequestedModel === "orchestrated-hybrid-deepseek"
+        : normalizedRequestedModel === "orchestrated-hybrid-deepseek" ||
+          normalizedRequestedModel === "ooc-two-pass-deepseek"
         ? "deepseek/deepseek-v3.2"
         : normalizedRequestedModel;
 
@@ -1070,7 +1397,7 @@ ${visualInspectionInstruction}`;
       ? [effectiveModelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
       : (effectiveModelId ? [effectiveModelId, ...FALLBACK_MODELS.filter((m) => m !== effectiveModelId)] : FALLBACK_MODELS);
 
-    for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
+    for (let modelIdx = 0; !responseData && modelIdx < modelsToTry.length; modelIdx++) {
       const model = modelsToTry[modelIdx];
       try {
         const fetchUrl = isLocal
@@ -1086,27 +1413,21 @@ ${visualInspectionInstruction}`;
               "X-Title": "Astra Chronicles",
             };
 
-        // Construct model-appropriate messages payload (avoid image_url on text-only models)
-        const modelMessages: any[] = [{ role: "system", content: systemPrompt }];
+        const fallbackSysPromptWithOoc = oocParsedForFallback.combinedDirectorNotes
+          ? `${systemPrompt}\n\n${starfallCombatTelemetryDirective}\n\n[OOC DIRECTOR STAGE NOTES]: ${oocParsedForFallback.combinedDirectorNotes}`
+          : starfallCombatTelemetryDirective
+          ? `${systemPrompt}\n\n${starfallCombatTelemetryDirective}`
+          : systemPrompt;
 
-        if (recentHistory && Array.isArray(recentHistory)) {
-          const trimmedHistory = recentHistory.slice(-6);
-          trimmedHistory.forEach((turn: { speaker: string; text: string }, idx: number) => {
-            const isUserTurn = turn.speaker === playerProfile.name;
-            const isMostRecentTurn = idx >= trimmedHistory.length - 2;
-            const rawTurnText = (turn.text || "").trim();
-            const condensedText =
-              !isMostRecentTurn && rawTurnText.length > 550
-                ? `${rawTurnText.slice(0, 260)} ... ${rawTurnText.slice(-260)}`
-                : rawTurnText;
-
-            modelMessages.push({
-              role: isUserTurn ? "user" : "assistant",
-              content: isUserTurn
-                ? `${turn.speaker}: ${condensedText}`
-                : `[COMPLETED PRIOR TURN — DO NOT REPEAT OR SHUFFLE ANY QUOTES, BEATS, OR PROPS FROM THIS MESSAGE]:\n${turn.speaker}: ${condensedText}`,
-            });
-          });
+        // Construct model-appropriate messages payload with clean 14-turn conversation history
+        const modelMessages: any[] = [{ role: "system", content: fallbackSysPromptWithOoc }];
+        const cleanFallbackHistory = buildCleanConversationHistory(
+          recentHistory,
+          playerProfile.name,
+          14
+        );
+        for (const hMsg of cleanFallbackHistory) {
+          modelMessages.push(hMsg);
         }
 
         if (playerAvatarBase64 && isFirstEncounter && supportsVision(model)) {
@@ -1201,16 +1522,40 @@ ${visualInspectionInstruction}`;
               }),
             });
           } else {
-            console.warn(`Model ${model} on ${isLocal ? "local" : "cloud"} failed (${response.status}): ${firstErrText}`);
-            lastError = new Error(`Model ${model} returned HTTP ${response.status}`);
+            const { detail, isAccountAuthError } = extractOpenRouterErrorInfo(
+              response.status,
+              firstErrText
+            );
+            console.warn(
+              `Model ${model} on ${isLocal ? "local" : "cloud"} failed (${response.status}): ${detail}`
+            );
+            if (!isLocal && isAccountAuthError) {
+              lastError = new Error(`OpenRouter API (${response.status}): ${detail}`);
+              break;
+            }
+            lastError = new Error(
+              `Model ${model} returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`
+            );
             continue;
           }
         }
 
         if (!response.ok) {
           const errText = await response.text();
-          console.warn(`Model ${model} on ${isLocal ? "local" : "cloud"} failed (${response.status}): ${errText}`);
-          lastError = new Error(`Model ${model} returned HTTP ${response.status}`);
+          const { detail, isAccountAuthError } = extractOpenRouterErrorInfo(
+            response.status,
+            errText
+          );
+          console.warn(
+            `Model ${model} on ${isLocal ? "local" : "cloud"} failed (${response.status}): ${detail}`
+          );
+          if (!isLocal && isAccountAuthError) {
+            lastError = new Error(`OpenRouter API (${response.status}): ${detail}`);
+            break;
+          }
+          lastError = new Error(
+            `Model ${model} returned HTTP ${response.status}${detail ? `: ${detail}` : ""}`
+          );
           continue;
         }
 
@@ -1384,7 +1729,8 @@ ${visualInspectionInstruction}`;
     // Evaluate narrative damage/mana synchronization & fallback delta
     if (!responseData.player_progression) {
       responseData.player_progression = {
-        exp_gained: 20,
+        exp_gained: 0,
+        exp_reason: null,
         hp_change: 0,
         mp_change: 0,
         vitals_reason: null,
@@ -1463,7 +1809,8 @@ ${visualInspectionInstruction}`;
       (action || "").includes("[Combat Victory") ||
       (action || "").includes("[Subterfuge/Disengage]");
 
-    if (isClashJustEnded) {
+    // Starfall Labyrinth uses its own Turn-Based Tactical Combat Engine (`activeEncounter`), never generic SectorClashHud
+    if (isStarfallStory || isClashJustEnded) {
       responseData.state_updates.story_clash = null;
     } else {
       const resolvedEncounter = resolveHostileEncounterEscalation({
@@ -1480,25 +1827,48 @@ ${visualInspectionInstruction}`;
       }
     }
 
-    // Sanitize suggested choices and guarantee intent tags (with personality fallback if truncated)
+    // Earned-Only EXP Evaluator: 0 EXP for casual chat/banter/rest/walk;
+    // 12–26 EXP for tactical skill checks/maneuvers; 24–48 EXP for live combat skirmishes
+    const earnedTurnExp = evaluateEarnedTurnExp({
+      rawLlmExp: responseData.player_progression.exp_gained,
+      actionText: action || "",
+      storyText: cleanedProse,
+      mechanicsText: responseData.mechanics || null,
+      hpChange: responseData.player_progression.hp_change,
+      mpChange: responseData.player_progression.mp_change,
+      isOOC: Boolean(action && String(action).trim().startsWith("[OOC:")),
+      isClashResolutionTurn: isClashJustEnded,
+      isSummonGreetingTurn: Boolean(summonContext) || Boolean(giftItemContext),
+      storyClashEscalated: Boolean(responseData.state_updates?.story_clash?.isActive),
+    });
+    responseData.player_progression.exp_gained = earnedTurnExp.expGained;
+    responseData.player_progression.exp_reason =
+      earnedTurnExp.expGained > 0
+        ? (typeof responseData.player_progression.exp_reason === "string" &&
+            responseData.player_progression.exp_reason.trim()
+            ? responseData.player_progression.exp_reason.trim()
+            : earnedTurnExp.reason)
+        : null;
+
+    // Sanitize suggested choices, reject leaked JSON fragments, and guarantee <= 4 intent-tagged vectors
     if (Array.isArray(responseData.suggested_choices) && responseData.suggested_choices.length > 0) {
-      responseData.suggested_choices = responseData.suggested_choices
-        .filter((c: any) => typeof c === "string" && c.trim().length > 0)
-        .map((c: string) => ensureChoiceIntentTag(sanitizeVisualNovelProse(c)));
+      responseData.suggested_choices = sanitizeAndFilterChoices(responseData.suggested_choices);
     }
-    if (!Array.isArray(responseData.suggested_choices) || responseData.suggested_choices.length === 0) {
-      responseData.suggested_choices = buildPersonalityFallbackChoices({
-        personality: playerProfile?.personality,
-        personalityTraits: playerProfile?.personalityTraits,
-        playerRole: playerProfile?.role,
-        playerRace: playerProfile?.race,
-        activeSpeaker: responseData.speaker || sanitizedContextSpeaker,
-        location: responseData.state_updates?.current_location || gameState?.location || "this sector",
-        isProtagonistAlone,
-        storyId: storyContext?.id,
-        genre: storyContext?.genre,
-        narrativeText: cleanedProse,
-      });
+    if (!Array.isArray(responseData.suggested_choices) || responseData.suggested_choices.length < 2) {
+      responseData.suggested_choices = sanitizeAndFilterChoices(
+        buildPersonalityFallbackChoices({
+          personality: playerProfile?.personality,
+          personalityTraits: playerProfile?.personalityTraits,
+          playerRole: playerProfile?.role,
+          playerRace: playerProfile?.race,
+          activeSpeaker: responseData.speaker || sanitizedContextSpeaker,
+          location: responseData.state_updates?.current_location || gameState?.location || "this sector",
+          isProtagonistAlone,
+          storyId: storyContext?.id,
+          genre: storyContext?.genre,
+          narrativeText: cleanedProse,
+        })
+      );
     }
 
     // Fail-safe post-processing: enforce speaker attribution and solitude rules
@@ -1666,6 +2036,307 @@ ${visualInspectionInstruction}`;
         inspectionAlert,
       };
       responseData.port_solaris_updates = responseData.state_updates.port_solaris_updates;
+    }
+
+    // Starfall Labyrinth Post-Turn Telemetry, Tactical Combat, Floor & Permadeath Resolution (strictly outside retry loop)
+    if (isStarfallStory) {
+      let workingLabyrinth =
+        preTurnStarfallLabState ||
+        syncRosterWithParty(
+          playerProfile?.labyrinthState ||
+            createInitialLabyrinthState(playerProfile?.sovereignOrigin || "DISCARDED_EX_RANKER", {
+              startingHeroineName: presentHeroineNames[0] || sanitizedContextSpeaker,
+            }),
+          partyMembers || []
+        );
+
+      if (typeof persistentNotes === "string") {
+        workingLabyrinth = {
+          ...workingLabyrinth,
+          directorNotes: persistentNotes,
+        };
+      }
+
+      // Sync location floor if player stepped into a numbered floor or returned to Lobby
+      // (Unless emergency extraction just returned the party to Floor 0!)
+      const preTurnFloor = preTurnStarfallLabState?.currentFloor || 0;
+      const wasExtractedToLobby =
+        preTurnStarfallCombatResult?.encounter.status === "retreat";
+      const playerAskedToRetreatToLobby =
+        /\b(return|retreat|head\s+back|extract|go\s+back)\s+(?:to\s+)?(?:the\s+)?(?:star\s+gate\s+plaza|main\s+lobby|floating\s+lobby|lobby|barracks|memorial)\b/i.test(
+          String(action || "")
+        );
+      let updatedLoc = wasExtractedToLobby
+        ? "Star Gate Plaza (Main Lobby)"
+        : String(
+            responseData.state_updates?.current_location ||
+              gameState?.location ||
+              "Star Gate Plaza (Main Lobby)"
+          );
+      const rawLlmLoc = responseData.state_updates?.current_location;
+      if (
+        !wasExtractedToLobby &&
+        preTurnFloor > 0 &&
+        !playerAskedToRetreatToLobby &&
+        (!rawLlmLoc || isStarfallLobbyLocation(String(rawLlmLoc)) || isStarfallLobbyLocation(updatedLoc))
+      ) {
+        updatedLoc = `Floor ${preTurnFloor}: ${
+          preTurnFloor === 1
+            ? "The Verdant Antechamber"
+            : workingLabyrinth.activeEncounter?.layoutName || getTowerThemeForFloor(preTurnFloor).name
+        }`;
+        if (responseData.state_updates) {
+          responseData.state_updates.current_location = updatedLoc;
+        }
+      } else if (wasExtractedToLobby && responseData.state_updates) {
+        responseData.state_updates.current_location = "Star Gate Plaza (Main Lobby)";
+      }
+
+      let resolvedPostFloor = wasExtractedToLobby
+        ? 0
+        : inferFloorFromLocation(updatedLoc, workingLabyrinth.currentFloor || 0);
+      if (resolvedPostFloor === 0 && isStarfallDungeonLocation(updatedLoc)) {
+        resolvedPostFloor = Math.max(1, preTurnFloor);
+      }
+      if (resolvedPostFloor !== workingLabyrinth.currentFloor) {
+        workingLabyrinth = {
+          ...workingLabyrinth,
+          currentFloor: resolvedPostFloor,
+        };
+      }
+      if (resolvedPostFloor === 0 || getFloorType(resolvedPostFloor) === "SAFE_ZONE") {
+        workingLabyrinth = healRosterAtSafeZoneOrLobby(workingLabyrinth);
+      } else if (
+        resolvedPostFloor > 0 &&
+        !workingLabyrinth.activeEncounter?.isActive &&
+        (getFloorType(resolvedPostFloor) === "COMBAT" ||
+          getFloorType(resolvedPostFloor) === "GATE_BOSS")
+      ) {
+        const matchedFromProse = matchCuratedEnemyFromProse(resolvedPostFloor, cleanedProse);
+        workingLabyrinth = startFloorCombatEncounter(
+          workingLabyrinth,
+          resolvedPostFloor,
+          `${workingLabyrinth.summonSeed || "sf"}:post:${resolvedPostFloor}:${currentTurnNumber}`,
+          false,
+          {
+            preferredEnemyTemplate: matchedFromProse,
+            initialEngagementPhase: "vicinity",
+          }
+        );
+      }
+      workingLabyrinth = syncEncounterWithProseIfVicinity(workingLabyrinth, cleanedProse);
+
+      const rawSf =
+        responseData.starfall_updates && typeof responseData.starfall_updates === "object"
+          ? responseData.starfall_updates
+          : {};
+
+      const validatedCasualties: { name: string; cause: string }[] = [
+        ...(preTurnStarfallCombatResult?.newlyFallenHeroines || []),
+      ];
+      // Only accept LLM-reported casualties when NOT overridden by deterministic combat engine protection
+      if (
+        !preTurnStarfallCombatResult &&
+        Array.isArray(rawSf.hero_casualties) &&
+        workingLabyrinth.currentFloor > 0
+      ) {
+        for (const cas of rawSf.hero_casualties) {
+          const casName = typeof cas?.name === "string" ? cas.name.trim() : "";
+          const casCause =
+            typeof cas?.cause === "string" && cas.cause.trim()
+              ? cas.cause.trim()
+              : `Fell in battle on Floor ${workingLabyrinth.currentFloor}`;
+          if (!casName) continue;
+          const prevMemorialLen = (workingLabyrinth.memorial || []).length;
+          workingLabyrinth = resolveHeroCasualty(
+            workingLabyrinth,
+            casName,
+            casCause,
+            presentHeroineNames
+          );
+          if ((workingLabyrinth.memorial || []).length > prevMemorialLen) {
+            const latest = workingLabyrinth.memorial[workingLabyrinth.memorial.length - 1];
+            validatedCasualties.push({ name: latest.name, cause: latest.cause });
+          }
+        }
+      }
+
+      // Apply deterministic combat protagonist HP/MP deltas
+      if (preTurnStarfallCombatResult) {
+        responseData.player_progression.hp_change =
+          preTurnStarfallCombatResult.protagonistHpDelta;
+        responseData.player_progression.mp_change =
+          preTurnStarfallCombatResult.protagonistMpDelta;
+        if (preTurnStarfallCombatResult.protagonistHpDelta < 0) {
+          responseData.player_progression.vitals_reason = `Floor ${preTurnStarfallCombatResult.encounter.floor} Combat vs ${preTurnStarfallCombatResult.encounter.enemyName}`;
+        }
+      }
+
+      // Remove any newly fallen heroines from present_companions & speaker immediately
+      if (validatedCasualties.length > 0 && responseData.state_updates) {
+        if (Array.isArray(responseData.state_updates.present_companions)) {
+          responseData.state_updates.present_companions =
+            responseData.state_updates.present_companions.filter(
+              (n: any) =>
+                !validatedCasualties.some((vc) => matchesHeroineName(String(n || ""), vc.name))
+            );
+        }
+        if (
+          responseData.speaker &&
+          validatedCasualties.some((vc) => matchesHeroineName(String(responseData.speaker), vc.name))
+        ) {
+          responseData.speaker =
+            responseData.state_updates.present_companions?.[0] || "Narrator";
+        }
+      }
+
+      let floorAdvanceMeta: {
+        clearedFloor?: number;
+        isGateBoss?: boolean;
+        isThemeShift?: boolean;
+        beyondMemory?: boolean;
+        shardsAwarded?: number;
+        expAwarded?: number;
+        companionExpAwarded?: number;
+        clearedAll100?: boolean;
+      } | null = null;
+
+      const combatVictoryTriggered =
+        preTurnStarfallCombatResult?.encounter.status === "victory";
+      const shouldAdvanceFloor =
+        combatVictoryTriggered ||
+        (Boolean(rawSf.floor_cleared) &&
+          workingLabyrinth.currentFloor > 0 &&
+          !workingLabyrinth.activeEncounter?.isBoss);
+
+      if (shouldAdvanceFloor && workingLabyrinth.currentFloor > 0) {
+        if (workingLabyrinth.activeEncounter?.isActive) {
+          workingLabyrinth = {
+            ...workingLabyrinth,
+            activeEncounter: null,
+          };
+        }
+        const adv = advanceFloor(workingLabyrinth);
+        workingLabyrinth = adv.newState;
+        // Immediately spawn the next floor's encounter if the next floor is COMBAT or GATE_BOSS!
+        const nextFt = getFloorType(workingLabyrinth.currentFloor);
+        if (nextFt === "COMBAT" || nextFt === "GATE_BOSS") {
+          workingLabyrinth = startFloorCombatEncounter(
+            workingLabyrinth,
+            workingLabyrinth.currentFloor,
+            `${workingLabyrinth.summonSeed || "sf"}:next:${workingLabyrinth.currentFloor}:${currentTurnNumber}`
+          );
+        }
+        if (responseData.state_updates) {
+          responseData.state_updates.current_location = `Floor ${workingLabyrinth.currentFloor} — ${
+            workingLabyrinth.activeEncounter?.layoutName ||
+            (nextFt === "SAFE_ZONE" ? "Safe Zone Sanctuary" : "Labyrinth Threshold")
+          }`;
+        }
+        const combinedFloorExp = Math.max(
+          adv.expAwarded,
+          preTurnStarfallCombatResult?.expAwarded || 0
+        );
+        floorAdvanceMeta = {
+          clearedFloor: adv.clearedFloor,
+          isGateBoss: adv.isGateBoss,
+          isThemeShift: adv.isThemeShift,
+          beyondMemory: adv.beyondMemory,
+          shardsAwarded: adv.shardsAwarded,
+          expAwarded: combinedFloorExp,
+          companionExpAwarded: adv.companionExpAwarded,
+          clearedAll100: adv.clearedAll100,
+        };
+        responseData.player_progression.exp_gained = combinedFloorExp;
+        responseData.player_progression.exp_reason =
+          adv.clearedFloor % 10 === 0 || adv.clearedFloor % 25 === 0
+            ? `Boss Floor ${adv.clearedFloor} Cleared`
+            : `Floor ${adv.clearedFloor} Cleared`;
+      } else if (workingLabyrinth.currentFloor > 0) {
+        const proseKilledEnemy =
+          earnedTurnExp.tier === "ENEMY_KILL" ||
+          /\b(slain|killed|eliminated|dissolves?\s+into\s+(?:star\s+)?ash|shatters?\s+into\s+(?:star\s+)?ash|collapses?\s+dead|falls?\s+dead|corpse)\b/i.test(
+            cleanedProse
+          );
+        if (proseKilledEnemy) {
+          const killExp = Math.max(
+            responseData.player_progression.exp_gained || 0,
+            42 + workingLabyrinth.currentFloor * 3
+          );
+          responseData.player_progression.exp_gained = killExp;
+          responseData.player_progression.exp_reason = `Slain Hostile on Floor ${workingLabyrinth.currentFloor}`;
+        } else if (preTurnStarfallCombatResult) {
+          responseData.player_progression.exp_gained = Math.max(
+            responseData.player_progression.exp_gained || 0,
+            24 + workingLabyrinth.currentFloor * 2
+          );
+          responseData.player_progression.exp_reason =
+            responseData.player_progression.exp_reason ||
+            `Floor ${workingLabyrinth.currentFloor} Combat Exchange`;
+        }
+      }
+
+      const bonusShards = Math.max(
+        0,
+        Math.min(30, Math.round(Number(rawSf.star_shards_earned) || 0))
+      );
+      if (bonusShards > 0) {
+        workingLabyrinth = {
+          ...workingLabyrinth,
+          starShards: (workingLabyrinth.starShards || 0) + bonusShards,
+        };
+      }
+
+      const trustDelta = Math.max(
+        -15,
+        Math.min(15, Math.round(Number(rawSf.master_trust_delta) || 0))
+      );
+      if (trustDelta !== 0) {
+        workingLabyrinth = adjustMasterTrust(workingLabyrinth, trustDelta);
+      }
+
+      const masterCommand =
+        typeof rawSf.master_command === "string" && rawSf.master_command.trim()
+          ? rawSf.master_command.trim()
+          : null;
+
+      // Never allow timeline_echo_unlocked on fatal death in Starfall (no regression)
+      if (responseData.death_event?.is_fatal) {
+        responseData.timeline_echo_unlocked = null;
+      }
+
+      const resolvedStarfallPayload = {
+        floor_cleared: Boolean(floorAdvanceMeta),
+        floorCleared: Boolean(floorAdvanceMeta),
+        cleared_floor: floorAdvanceMeta?.clearedFloor ?? null,
+        clearedFloor: floorAdvanceMeta?.clearedFloor ?? null,
+        is_gate_boss_next: Boolean(floorAdvanceMeta?.isGateBoss),
+        isGateBoss: Boolean(floorAdvanceMeta?.isGateBoss),
+        beyond_memory:
+          floorAdvanceMeta?.beyondMemory ??
+          workingLabyrinth.currentFloor > (workingLabyrinth.metaKnowledgeCeiling || 40),
+        beyondMemory:
+          floorAdvanceMeta?.beyondMemory ??
+          workingLabyrinth.currentFloor > (workingLabyrinth.metaKnowledgeCeiling || 40),
+        cleared_all_100: Boolean(floorAdvanceMeta?.clearedAll100),
+        clearedAll100: Boolean(floorAdvanceMeta?.clearedAll100),
+        hero_casualties: validatedCasualties,
+        casualtiesResolved: validatedCasualties.map((vc) => vc.name),
+        star_shards_earned: bonusShards + (floorAdvanceMeta?.shardsAwarded || 0),
+        shardsAwarded: bonusShards + (floorAdvanceMeta?.shardsAwarded || 0),
+        exp_awarded: floorAdvanceMeta?.expAwarded || 0,
+        expAwarded: floorAdvanceMeta?.expAwarded || 0,
+        companion_exp_awarded: floorAdvanceMeta?.companionExpAwarded || 0,
+        companionExpAwarded: floorAdvanceMeta?.companionExpAwarded || 0,
+        master_command: masterCommand,
+        master_trust_delta: trustDelta,
+        labyrinth_state: workingLabyrinth,
+        labyrinthState: workingLabyrinth,
+      };
+
+      if (!responseData.state_updates) responseData.state_updates = {};
+      responseData.state_updates.starfall_updates = resolvedStarfallPayload;
+      responseData.starfall_updates = resolvedStarfallPayload;
     }
 
     if (visualDescription) {

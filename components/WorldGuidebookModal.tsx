@@ -35,6 +35,22 @@ import {
   PORT_SOLARIS_FLOORPLAN_CANON,
   PORT_SOLARIS_SIGNATURE_MENU,
 } from "@/types/port_solaris";
+import {
+  STARFALL_ORIGIN_PRESETS,
+  STARFALL_ROLE_PRESETS,
+  STARFALL_COVENANT_RULES,
+  STARFALL_FLOOR_CANON,
+  STARFALL_HEROINE_DOSSIERS,
+  STARFALL_ANTAGONIST_DOSSIERS,
+  LabyrinthState,
+} from "@/types/starfall_labyrinth";
+import {
+  STAR_LEVEL_CAPS,
+  SUMMON_RATES,
+  SUMMON_COST,
+  SUMMON_TEN_COST,
+  PITY_THRESHOLD,
+} from "@/lib/starfallEngine";
 import { AUDIT_MILESTONES, DEBT_STAR_THRESHOLDS } from "@/lib/portSolarisEngine";
 import { sanitizeImageUrl, DEFAULT_AVATAR, DEFAULT_BG } from "@/lib/imageUtils";
 import { soundEffects } from "@/lib/audioEngine";
@@ -44,6 +60,7 @@ interface WorldGuidebookModalProps {
   onClose: () => void;
   story: StoryContext;
   onPlayStory?: () => void;
+  labyrinthState?: LabyrinthState;
 }
 
 interface GlossaryEntry {
@@ -447,11 +464,63 @@ const PORT_SOLARIS_ANTAGONISTS = [
   },
 ];
 
+const STARFALL_LABYRINTH_GLOSSARY: GlossaryEntry[] = [
+  {
+    term: "Star Gate Monolith & Main Lobby Lock (Covenant I)",
+    category: "System Mechanics",
+    summary:
+      "Summons heroes at 1★–5★ rarities for 30 Star Shards per pull (300 for 10x) with hard 5★ pity at 90 pulls. Strictly accessible ONLY while standing in Star Gate Plaza (Main Lobby).",
+  },
+  {
+    term: "Hard Star Level Caps (Covenant II)",
+    category: "System Mechanics",
+    summary:
+      "Every hero's current Star Rank sets an absolute level ceiling: 1★ = Lv.20, 2★ = Lv.30, 3★ = Lv.40, 4★ = Lv.50, 5★ = Lv.60. Excess EXP dissipates until the hero Awakens.",
+  },
+  {
+    term: "Resonance Awakening (+1★ Promotion)",
+    category: "System Mechanics",
+    summary:
+      "Surviving floor trials to hit Heart Resonance milestones (25%, 50%, 75%, 90%) or absorbing duplicate Star Gate echoes promotes even a 1★ fodder hero by +1★ up to 5★.",
+  },
+  {
+    term: "Irreversible Permadeath & Memorial Wall (Covenant VI)",
+    category: "World & Lore",
+    summary:
+      "Deployed heroines who die in combat shatter into Star Ash permanently—removed from party, sprites, and choices, etched onto the Memorial Wall, and never revived even on duplicate gacha pulls. Protagonist death is immediate Game Over.",
+  },
+  {
+    term: "Unseen Master & Command Seals (Covenant VII)",
+    category: "Politics & Economy",
+    summary:
+      "An unseen mobile-game player controls the account's macro console. Complying with or outsmarting Command Seals manages Master Trust (0–100%) and earns Star Shards.",
+  },
+  {
+    term: "Meta-Knowledge Ceiling & Beyond Memory",
+    category: "World & Lore",
+    summary:
+      "As a former top player of 'Celestia Summons', you remember hidden springs, mimic traps, and Gate Boss phase patterns up to your origin's floor ceiling (Floor 40 default). Past that floor, you fight blind.",
+  },
+  {
+    term: "Safe Zones (5th Floors) & Gate Bosses (10th Floors)",
+    category: "Magic & Combat",
+    summary:
+      "Floors ending in 5 (5, 15, 25, 35…) host neutral Lantern Safe Zones for cross-roster trading and rest. Every 10th floor (10, 20, 30… 100) is locked behind a lethal Gate Boss.",
+  },
+  {
+    term: "Synthesis Furnace & Discard Queue",
+    category: "Politics & Economy",
+    summary:
+      "Careless Masters feed surplus 1★–2★ units into the Synthesis Furnace as XP fodder for high-rarity pulls—the fate you and Pia Hollis must escape on Day One.",
+  },
+];
+
 export function WorldGuidebookModal({
   isOpen,
   onClose,
   story,
   onPlayStory,
+  labyrinthState,
 }: WorldGuidebookModalProps) {
   const [activeTab, setActiveTab] = useState<
     "overview" | "characters" | "locations" | "mechanics"
@@ -461,12 +530,15 @@ export function WorldGuidebookModal({
 
   const isSovereignSpire = story.id === "sovereign-spire";
   const isPortSolaris = story.id === "port-solaris";
+  const isStarfall = story.id === "starfall-labyrinth";
 
   const glossaryItems = useMemo(() => {
     const base = isSovereignSpire
       ? SOVEREIGN_SPIRE_GLOSSARY
       : isPortSolaris
       ? PORT_SOLARIS_GLOSSARY
+      : isStarfall
+      ? STARFALL_LABYRINTH_GLOSSARY
       : ASTRA_CONTINENT_GLOSSARY;
     if (!searchQuery.trim()) return base;
     const q = searchQuery.toLowerCase();
@@ -476,15 +548,20 @@ export function WorldGuidebookModal({
         item.category.toLowerCase().includes(q) ||
         item.summary.toLowerCase().includes(q)
     );
-  }, [isSovereignSpire, isPortSolaris, searchQuery]);
+  }, [isSovereignSpire, isPortSolaris, isStarfall, searchQuery]);
 
   const filteredCompanions = useMemo(() => {
     const list = story.companions || [];
     return list.filter((comp) => {
       const dossier =
         SOVEREIGN_HEROINE_DOSSIERS[comp.name] || PORT_SOLARIS_HEROINE_DOSSIERS[comp.name];
+      const sfDossier = STARFALL_HEROINE_DOSSIERS[comp.name];
       if (selectedWingFilter !== "ALL") {
-        if (dossier && dossier.wing !== selectedWingFilter) return false;
+        if (isStarfall && sfDossier) {
+          if (`STAR_${sfDossier.baseStarRank}` !== selectedWingFilter) return false;
+        } else if (dossier && dossier.wing !== selectedWingFilter) {
+          return false;
+        }
       }
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
@@ -493,12 +570,12 @@ export function WorldGuidebookModal({
         (comp.title || "").toLowerCase().includes(q) ||
         (comp.role || "").toLowerCase().includes(q) ||
         (comp.personality || "").toLowerCase().includes(q) ||
-        (dossier?.actOneConflict || "").toLowerCase().includes(q) ||
-        (dossier?.epithet || "").toLowerCase().includes(q) ||
-        (dossier?.combatDoctrine || "").toLowerCase().includes(q)
+        (dossier?.actOneConflict || sfDossier?.actOneConflict || "").toLowerCase().includes(q) ||
+        (dossier?.epithet || sfDossier?.epithet || "").toLowerCase().includes(q) ||
+        (dossier?.combatDoctrine || sfDossier?.combatRole || "").toLowerCase().includes(q)
       );
     });
-  }, [story.companions, selectedWingFilter, searchQuery]);
+  }, [story.companions, selectedWingFilter, searchQuery, isStarfall]);
 
   const filteredLocations = useMemo(() => {
     const list = story.worldContext?.locations || [];
@@ -656,6 +733,8 @@ export function WorldGuidebookModal({
                       ? SOVEREIGN_SPIRE_GLOSSARY.length
                       : isPortSolaris
                       ? PORT_SOLARIS_GLOSSARY.length
+                      : isStarfall
+                      ? STARFALL_LABYRINTH_GLOSSARY.length
                       : ASTRA_CONTINENT_GLOSSARY.length,
                   },
                 ].map((tab) => {
@@ -979,6 +1058,12 @@ export function WorldGuidebookModal({
                           "Solaris Star Ledger (0★ to 5★): Establishments sitting at 0 Stars at the 30-day audit are bulldozed for the Vane-Valorian Marina.",
                           "Article 9 Turf Showdowns: All lease disputes, supplier feuds, and romantic rivalries are settled in public culinary, mixology, or beach showdowns.",
                           "Composure & The Blush Zone (BPM): 50–85% BPM triggers flustered expressions and bold romance options; 100% BPM triggers a Short-Circuit break.",
+                        ]
+                      : isStarfall
+                      ? [
+                          "Lobby-Only Star Gate (1★–5★): Spend 30 Star Shards per pull (90-pull 5★ pity) strictly inside Star Gate Plaza (Main Lobby).",
+                          "Hard Star Level Caps & Awakening: 1★ caps at Lv.20 up to 5★ Lv.60. Bond milestones (25/50/75/90%) awaken +1★.",
+                          "Irreversible Permadeath & Game Over: Fallen deployed heroines die forever on the Memorial Wall. Protagonist death is immediate Game Over.",
                         ]
                       : [
                           `System Authority: Governed by ${story.rpgRules?.systemName || "The Celestial System"} and ${story.rpgRules?.causalAnchorName || "Causal Plausibility"}.`,
@@ -1469,6 +1554,216 @@ export function WorldGuidebookModal({
                 </div>
               )}
 
+              {/* Starfall Labyrinth Specific: Covenant Rules 1-8, Star Caps, Summon Rates, Origins & Floor Canon */}
+              {isStarfall && (
+                <div className="space-y-4">
+                  {/* Star Level Caps & Star Gate Rates Strip */}
+                  <div className="bg-zinc-900/60 border border-indigo-500/30 rounded-2xl p-5 space-y-3.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                        <Crown className="w-4 h-4 text-amber-400" />
+                        Star Gate Rarities, Hard Level Caps &amp; Lobby-Only Summoning
+                      </h3>
+                      <span className="text-[10px] font-mono text-emerald-300">
+                        1x = {SUMMON_COST} 💠 • 10x = {SUMMON_TEN_COST} 💠 • Guaranteed 5★ Pity = {PITY_THRESHOLD} Pulls (Main Lobby Only)
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                      {([1, 2, 3, 4, 5] as const).map((star) => (
+                        <div
+                          key={star}
+                          className="p-3 rounded-xl bg-black/55 border border-white/10 space-y-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-mono font-black text-amber-300">
+                              {"★".repeat(star)}
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/20 border border-indigo-400/30 text-indigo-200">
+                              {(SUMMON_RATES[star] * 100).toFixed(star >= 4 ? 1 : 0)}%
+                            </span>
+                          </div>
+                          <p className="text-xs font-mono font-bold text-white">
+                            Cap: Lv.{STAR_LEVEL_CAPS[star]}
+                          </p>
+                          <p className="text-[10px] text-zinc-400 leading-snug">
+                            {star === 1
+                              ? "Discard Fodder"
+                              : star === 2
+                              ? "Scout / Vanguard"
+                              : star === 3
+                              ? "Rare Specialist"
+                              : star === 4
+                              ? "Rate-Up Elite"
+                              : "Mythic Sovereign"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Eight Covenant Laws */}
+                  <div className="bg-zinc-900/60 border border-rose-500/25 rounded-2xl p-5 space-y-3.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-rose-300 flex items-center gap-2">
+                        <Scale className="w-4 h-4 text-rose-400" />
+                        The Eight Covenant Laws of the Starfall Labyrinth
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Enforced by The Administrator across all 100 Floors
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {STARFALL_COVENANT_RULES.map((rule) => (
+                        <div
+                          key={rule.ruleNumber}
+                          className="p-3.5 rounded-xl bg-black/55 border border-white/10 space-y-1.5 flex flex-col justify-between"
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-mono font-bold text-white">
+                                <span className="text-rose-400 mr-1.5">{rule.clauseCode}:</span>
+                                {rule.title}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">
+                              {rule.canonSummary}
+                            </p>
+                          </div>
+                          <p className="text-[10px] font-mono text-emerald-300/90 pt-1.5 border-t border-white/10">
+                            ↳ Gameplay: {rule.gameplayEffect}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Three Playable Summoned Origins */}
+                  <div className="space-y-2.5">
+                    <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-emerald-400" />
+                      Playable Summoned Origins (Act I Starting Conditions)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                      {STARFALL_ORIGIN_PRESETS.map((origin) => (
+                        <div
+                          key={origin.id}
+                          className="p-4 rounded-2xl bg-zinc-900/75 border border-white/10 flex flex-col justify-between space-y-3"
+                        >
+                          <div className="space-y-2">
+                            <span className="text-xs font-mono font-bold text-white block">
+                              {origin.icon} {origin.name}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                              <span className="px-2 py-0.5 rounded-md bg-rose-500/15 border border-rose-500/30 text-rose-300">
+                                {origin.rankTierLabel}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/30 text-cyan-300">
+                                💠 {origin.startingStarShards} Shards
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                                Trust: {origin.startingMasterTrust}%
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">
+                              {origin.defaultDetails}
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-white/10 space-y-1">
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-400 block">
+                              High-Resonance Squadmates
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {origin.highResonanceHeroines.map((h) => (
+                                <span
+                                  key={h}
+                                  className="px-2 py-0.5 rounded-md bg-emerald-950/60 border border-emerald-500/30 text-[10px] font-mono text-emerald-200"
+                                >
+                                  ★ {h}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Floor Canon Table (Lobby -> Floor 100) */}
+                  <div className="bg-zinc-900/60 border border-sky-500/25 rounded-2xl p-5 space-y-3.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-sky-300 flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-sky-400" />
+                        Ranker&apos;s Floor Ledger (Lobby → Floor 40 Memory &amp; Beyond)
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Safe Zones every X5 floor • Lethal Gate Bosses every X0 floor
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {STARFALL_FLOOR_CANON.map((fl) => (
+                        <div
+                          key={fl.floorRange}
+                          className={`p-3.5 rounded-xl border space-y-1.5 flex flex-col justify-between ${
+                            fl.withinDefaultMemory
+                              ? "bg-black/55 border-white/10"
+                              : "bg-rose-950/25 border-rose-500/40"
+                          }`}
+                        >
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-300">
+                                {fl.floorRange}
+                              </span>
+                              <span
+                                className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${
+                                  fl.withinDefaultMemory
+                                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                                    : "bg-rose-500/20 border-rose-500/40 text-rose-200 font-bold"
+                                }`}
+                              >
+                                {fl.withinDefaultMemory ? "Known Memory" : "Beyond Memory"}
+                              </span>
+                            </div>
+                            <h4 className="text-xs font-mono font-bold text-white pt-0.5">
+                              {fl.stratumName}
+                            </h4>
+                            <p className="text-[10px] font-mono text-amber-300">
+                              {fl.floorTypeHighlight}
+                            </p>
+                            <p className="text-[11px] text-zinc-300 leading-snug pt-0.5">
+                              {fl.canonHazardsAndBoss}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Live Memorial Wall if active session has fallen comrades */}
+                  {labyrinthState && (labyrinthState.memorial || []).length > 0 && (
+                    <div className="bg-rose-950/25 border border-rose-500/40 rounded-2xl p-5 space-y-3">
+                      <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-rose-300">
+                        ✝ Active Memorial Wall ({labyrinthState.memorial.length} Fallen)
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                        {labyrinthState.memorial.map((m, idx) => (
+                          <div
+                            key={`${m.name}-${idx}`}
+                            className="p-3 rounded-xl bg-black/60 border border-rose-500/30 font-mono text-xs space-y-1"
+                          >
+                            <div className="flex items-center justify-between text-rose-200 font-bold">
+                              <span>✝ {m.name}</span>
+                              <span>Floor {m.floor}</span>
+                            </div>
+                            <p className="text-[11px] text-zinc-400">{m.cause}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Factions & Patron Wings */}
               <div className="space-y-3">
                 <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-white flex items-center gap-2">
@@ -1511,8 +1806,8 @@ export function WorldGuidebookModal({
              =============================================================== */}
           {activeTab === "characters" && (
             <div className="space-y-6 animate-in fade-in duration-150">
-              {/* Patron Wing / Island Faction Filter Pills */}
-              {(isSovereignSpire || isPortSolaris) && (
+              {/* Patron Wing / Island Faction / Star Rank Filter Pills */}
+              {(isSovereignSpire || isPortSolaris || isStarfall) && (
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
                   {(isPortSolaris
                     ? [
@@ -1521,6 +1816,15 @@ export function WorldGuidebookModal({
                         { id: "BOARDWALK_GUILD", label: "🥐 Boardwalk Guild" },
                         { id: "BREAKERS_UNION", label: "🏐 Breakers Union" },
                         { id: "DRIFTWOOD_SYNDICATE", label: "📸 Driftwood Syndicate" },
+                      ]
+                    : isStarfall
+                    ? [
+                        { id: "ALL", label: "All 6 Summonable Heroines" },
+                        { id: "STAR_5", label: "★★★★★ 5★ Mythic" },
+                        { id: "STAR_4", label: "★★★★ 4★ Elite" },
+                        { id: "STAR_3", label: "★★★ 3★ Vanguard" },
+                        { id: "STAR_2", label: "★★ 2★ Scout" },
+                        { id: "STAR_1", label: "★ 1★ Discard Cleric" },
                       ]
                     : [
                         { id: "ALL", label: "All 8 Heroines" },
@@ -1553,6 +1857,7 @@ export function WorldGuidebookModal({
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {filteredCompanions.map((comp) => {
                   const portSolarisDossier = PORT_SOLARIS_HEROINE_DOSSIERS[comp.name];
+                  const starfallDossier = STARFALL_HEROINE_DOSSIERS[comp.name];
                   const dossier =
                     SOVEREIGN_HEROINE_DOSSIERS[comp.name] || portSolarisDossier;
                   const portrait = sanitizeImageUrl(
@@ -1572,6 +1877,11 @@ export function WorldGuidebookModal({
                         />
                         <div className="min-w-0 flex-1 space-y-1.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
+                            {starfallDossier && (
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border bg-amber-500/20 border-amber-400/50 text-amber-200">
+                                {"★".repeat(starfallDossier.baseStarRank)} ({starfallDossier.baseStarRank}★ Base • Cap Lv.{STAR_LEVEL_CAPS[starfallDossier.baseStarRank]})
+                              </span>
+                            )}
                             {dossier && (
                               <span
                                 className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${wingBadgeColor(
@@ -1600,17 +1910,17 @@ export function WorldGuidebookModal({
                           <h4 className="text-base sm:text-lg font-bold font-mono text-white leading-tight">
                             {comp.name}{" "}
                             <span className="text-xs font-normal text-rose-300">
-                              • {dossier?.epithet || comp.title}
+                              • {starfallDossier?.epithet || dossier?.epithet || comp.title}
                             </span>
                           </h4>
 
                           <p className="text-[11px] font-mono text-amber-300">
-                            {dossier?.combatDoctrine || comp.role}
+                            {starfallDossier?.combatRole || dossier?.combatDoctrine || comp.role}
                           </p>
 
-                          {dossier?.actOneConflict ? (
+                          {(starfallDossier?.actOneConflict || dossier?.actOneConflict) ? (
                             <p className="text-xs text-zinc-300 leading-relaxed">
-                              {dossier.actOneConflict}
+                              {starfallDossier?.actOneConflict || dossier?.actOneConflict}
                             </p>
                           ) : (
                             comp.values &&
@@ -1640,6 +1950,27 @@ export function WorldGuidebookModal({
                           </p>
                         </div>
 
+                        {starfallDossier && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div className="p-2.5 rounded-xl bg-rose-950/30 border border-rose-500/30">
+                              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-rose-300 block">
+                                ★ Dyad Passive: {starfallDossier.dyadPassiveName}
+                              </span>
+                              <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug">
+                                {starfallDossier.dyadPassiveDescription}
+                              </p>
+                            </div>
+                            <div className="p-2.5 rounded-xl bg-indigo-950/30 border border-indigo-500/30">
+                              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-indigo-300 block">
+                                ✦ Resonance Archetype
+                              </span>
+                              <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug">
+                                {starfallDossier.archetype}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
                         {dossier && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                             <div className="p-2.5 rounded-xl bg-rose-950/30 border border-rose-500/30">
@@ -1665,6 +1996,41 @@ export function WorldGuidebookModal({
                   );
                 })}
               </div>
+
+              {/* Starfall Labyrinth Antagonists & Arbiters */}
+              {isStarfall && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                      <Swords className="w-4 h-4 text-rose-400" />
+                      Rival Whale Masters, Champions &amp; Labyrinth Arbiters
+                    </h3>
+                    <span className="text-[10px] font-mono text-zinc-400">
+                      Apex adversaries encountered across Safe Zones, Floor Races &amp; Anomaly Audits
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {STARFALL_ANTAGONIST_DOSSIERS.map((npc) => (
+                      <div
+                        key={npc.name}
+                        className="p-4 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2 flex flex-col justify-between"
+                      >
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-mono font-bold text-white">
+                            {npc.name}
+                          </h4>
+                          <p className="text-[10px] font-mono text-amber-300">
+                            {npc.role}
+                          </p>
+                          <p className="text-[11px] text-zinc-300 leading-relaxed pt-1">
+                            {npc.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Sovereign Spire / Port Solaris Rivals Dossier */}
               {(isSovereignSpire || isPortSolaris) && (
@@ -1887,17 +2253,24 @@ export function WorldGuidebookModal({
                 </div>
               </div>
 
-              {/* Sovereign Spire / Port Solaris Playable Conduit Pathways */}
-              {(isSovereignSpire || isPortSolaris) && (
+              {/* Sovereign Spire / Port Solaris / Starfall Playable Conduit & Role Pathways */}
+              {(isSovereignSpire || isPortSolaris || isStarfall) && (
                 <div className="space-y-3">
                   <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-2">
                     <Flame className="w-4 h-4 text-cyan-400" />
                     {isPortSolaris
                       ? "Playable Flair Conduits, Showdown Styles & Keepsake Loadouts"
+                      : isStarfall
+                      ? "Playable 1★ Combat Roles, Callout Techniques & Starting Relics"
                       : "Playable Astra Conduits, Techniques & Relic Loadouts"}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                    {(isPortSolaris ? PORT_SOLARIS_CONDUIT_PRESETS : SOVEREIGN_CONDUIT_PRESETS).map((preset) => (
+                    {(isPortSolaris
+                      ? PORT_SOLARIS_CONDUIT_PRESETS
+                      : isStarfall
+                      ? STARFALL_ROLE_PRESETS
+                      : SOVEREIGN_CONDUIT_PRESETS
+                    ).map((preset) => (
                       <div
                         key={preset.id}
                         className="p-4 rounded-2xl bg-zinc-900/80 border border-white/10 space-y-2.5"

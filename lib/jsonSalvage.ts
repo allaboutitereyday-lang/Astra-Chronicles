@@ -171,6 +171,9 @@ export function repairUnescapedInteriorQuotes(input: string): string {
   let inString = false;
   let stringRole: "key" | "objectValue" | "arrayElement" = "key";
   const stack: Array<"object" | "array"> = [];
+  const arrayKeyStack: string[] = [];
+  let currentKeyStart = -1;
+  let lastKey = "";
   let expectingKey = false;
   let i = 0;
   const len = input.length;
@@ -213,6 +216,10 @@ export function repairUnescapedInteriorQuotes(input: string): string {
 
         if (stringRole === "key") {
           isClosingQuote = /^\s*:/.test(rest);
+          if (isClosingQuote && currentKeyStart >= 0) {
+            lastKey = input.slice(currentKeyStart, i);
+            currentKeyStart = -1;
+          }
         } else if (stringRole === "objectValue") {
           // A string value inside a JSON object only closes before `}`, `,"next_key":`, `,}`, or EOF
           isClosingQuote =
@@ -221,11 +228,24 @@ export function repairUnescapedInteriorQuotes(input: string): string {
             /^\s*,\s*\}/.test(rest) ||
             /^\s*$/.test(rest);
         } else {
-          // Inside a JSON array of strings (e.g. suggested_choices)
-          isClosingQuote =
-            /^\s*\]/.test(rest) ||
-            /^\s*,\s*(?:"|\{|\[|\]|true|false|null|-?\d)/.test(rest) ||
-            /^\s*$/.test(rest);
+          const activeArrayKey = arrayKeyStack[arrayKeyStack.length - 1] || "";
+          const inChoiceArray = /^(?:suggested_choices|opening_choices|choices|options)$/i.test(
+            activeArrayKey
+          );
+          if (inChoiceArray) {
+            // Inside choice arrays, only close before `]`, next `[Tone/Action]` item, newline-separated array item, `,}` or EOF
+            isClosingQuote =
+              /^\s*\]/.test(rest) ||
+              /^\s*,\s*(?:"\[|\]|\})/.test(rest) ||
+              /^\s*,\s*\r?\n\s*"/.test(rest) ||
+              /^\s*$/.test(rest);
+          } else {
+            // Inside normal JSON arrays (e.g. present_companions, values)
+            isClosingQuote =
+              /^\s*\]/.test(rest) ||
+              /^\s*,\s*(?:"|\{|\[|\]|true|false|null|-?\d)/.test(rest) ||
+              /^\s*$/.test(rest);
+          }
         }
 
         if (isClosingQuote) {
@@ -284,6 +304,7 @@ export function repairUnescapedInteriorQuotes(input: string): string {
       }
       if (ch === "[") {
         stack.push("array");
+        arrayKeyStack.push(lastKey);
         expectingKey = false;
         out += ch;
         i += 1;
@@ -291,6 +312,7 @@ export function repairUnescapedInteriorQuotes(input: string): string {
       }
       if (ch === "]") {
         stack.pop();
+        arrayKeyStack.pop();
         expectingKey = false;
         out += ch;
         i += 1;
@@ -314,10 +336,13 @@ export function repairUnescapedInteriorQuotes(input: string): string {
         const top = stack[stack.length - 1];
         if (top === "object") {
           stringRole = expectingKey ? "key" : "objectValue";
+          currentKeyStart = expectingKey ? i + 1 : -1;
         } else if (top === "array") {
           stringRole = "arrayElement";
+          currentKeyStart = -1;
         } else {
           stringRole = "objectValue";
+          currentKeyStart = -1;
         }
         out += '"';
         i += 1;
@@ -329,6 +354,58 @@ export function repairUnescapedInteriorQuotes(input: string): string {
   }
 
   return out.replace(/,(\s*[}\]])/g, "$1");
+}
+
+const KNOWN_JSON_SCHEMA_KEYS = new Set([
+  "current_location",
+  "present_companions",
+  "affected_companion",
+  "affection_delta",
+  "companion_sentiment",
+  "expression_key",
+  "core_memory_unlocked",
+  "new_memory_unlocked",
+  "player_progression",
+  "exp_gained",
+  "exp_reason",
+  "system_event",
+  "combat_encounter",
+  "story_clash",
+  "state_updates",
+  "narrative_text",
+  "player_execution",
+  "suggested_choices",
+  "opening_choices",
+  "options",
+  "choices",
+  "mood",
+  "speaker",
+  "location",
+]);
+
+/**
+ * Rejects leaked JSON schema keys, companion names, and bare location names
+ * when recovering tactical choices from malformed LLM JSON.
+ */
+export function isLikelyChoiceString(raw: string): boolean {
+  if (!raw || typeof raw !== "string") return false;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.includes('"state_updates"') || trimmed.startsWith("{")) return false;
+
+  const hasIntentTag = trimmed.startsWith("[");
+  const body = trimmed.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+  if (!body || body.length < 12) return false;
+
+  if (/^[a-z0-9]+(?:_[a-z0-9]+)+$/i.test(body)) return false;
+  if (KNOWN_JSON_SCHEMA_KEYS.has(body.toLowerCase())) return false;
+
+  const hasSentencePunctuation = /[.!?…"”']/.test(body);
+  const wordCount = body.split(/\s+/).filter(Boolean).length;
+  if (!hasIntentTag && !hasSentencePunctuation && wordCount < 6) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -345,7 +422,7 @@ export function normalizeExtractedChoices(rawChoices: any): string[] {
           .replace(/\\'/g, "'")
           .replace(/\\"/g, '"')
           .trim();
-        if (cleaned.length > 4 && !cleaned.includes('"state_updates"') && !cleaned.startsWith("{")) {
+        if (isLikelyChoiceString(cleaned)) {
           result.push(cleaned);
         }
       } else if (item && typeof item === "object") {
@@ -361,16 +438,18 @@ export function normalizeExtractedChoices(rawChoices: any): string[] {
           "";
         if (typeof text === "string" && text.trim().length > 4) {
           const cleanText = text.replace(/\\'/g, "'").replace(/\\"/g, '"').trim();
-          if (tag && typeof tag === "string" && !cleanText.startsWith("[")) {
-            const cleanTag = tag.replace(/^\[|\]$/g, "").trim();
-            result.push(`[${cleanTag}]: ${cleanText}`);
-          } else {
-            result.push(cleanText);
+          const candidate =
+            tag && typeof tag === "string" && !cleanText.startsWith("[")
+              ? `[${tag.replace(/^\[|\]$/g, "").trim()}]: ${cleanText}`
+              : cleanText;
+          if (isLikelyChoiceString(candidate)) {
+            result.push(candidate);
           }
         }
       }
+      if (result.length >= 4) break;
     }
-    return result;
+    return result.slice(0, 4);
   }
 
   if (typeof rawChoices === "object") {
@@ -388,16 +467,25 @@ export function extractChoicesFromRawText(rawContent: string): string[] {
   if (!rawContent || typeof rawContent !== "string") return [];
 
   const keyRegex = /"(?:suggested_choices|opening_choices|choices|options)"\s*:\s*\[/g;
+  const subsequentSchemaKeyRegex =
+    /"(?:state_updates|player_progression|system_event|combat_encounter|story_clash|new_memory_unlocked|core_memory_unlocked|mechanics|system_announcement)"\s*:/;
   let keyMatch: RegExpExecArray | null;
 
   while ((keyMatch = keyRegex.exec(rawContent)) !== null) {
     const startIdx = keyMatch.index + keyMatch[0].length;
+    const tailSlice = rawContent.slice(startIdx);
+    const nextSchemaMatch = tailSlice.match(subsequentSchemaKeyRegex);
+    const searchLimit =
+      nextSchemaMatch && typeof nextSchemaMatch.index === "number"
+        ? startIdx + nextSchemaMatch.index
+        : rawContent.length;
+
     let inString = false;
     let escaped = false;
     let depth = 1;
-    let endIdx = rawContent.length;
+    let endIdx = searchLimit;
 
-    for (let i = startIdx; i < rawContent.length; i++) {
+    for (let i = startIdx; i < searchLimit; i++) {
       const ch = rawContent[i];
       if (inString) {
         if (escaped) {
@@ -427,12 +515,16 @@ export function extractChoicesFromRawText(rawContent: string): string[] {
       const repairedArray = repairJsonControlCharsAndEscapes(`[${arrayBody}]`);
       const parsed = JSON.parse(repairedArray);
       const normalized = normalizeExtractedChoices(parsed);
-      if (normalized.length > 0) return normalized;
+      if (normalized.length > 0) return normalized.slice(0, 4);
     } catch {
       const items: string[] = [];
       const itemRegex = /"((?:[^"\\]|\\[\s\S])*)"/g;
       let itemMatch: RegExpExecArray | null;
       while ((itemMatch = itemRegex.exec(arrayBody)) !== null) {
+        const afterMatch = arrayBody.slice(itemMatch.index + itemMatch[0].length);
+        // Ignore JSON object keys inside leaked nested blocks
+        if (/^\s*:/.test(afterMatch)) continue;
+
         const val = itemMatch[1]
           .replace(/\\n/g, " ")
           .replace(/\\r/g, " ")
@@ -440,11 +532,12 @@ export function extractChoicesFromRawText(rawContent: string): string[] {
           .replace(/\\"/g, '"')
           .replace(/\\\\/g, "\\")
           .trim();
-        if (val.length > 8 && !val.includes('"state_updates"')) {
+        if (isLikelyChoiceString(val)) {
           items.push(val);
+          if (items.length >= 4) break;
         }
       }
-      if (items.length > 0) return items;
+      if (items.length > 0) return items.slice(0, 4);
     }
   }
 

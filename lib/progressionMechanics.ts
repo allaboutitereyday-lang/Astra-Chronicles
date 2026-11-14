@@ -1343,6 +1343,357 @@ const HEROINE_RESISTANCE_CATALOG: Record<string, HeroineResistanceProfile> = {
       },
     ],
   },
+  // STARFALL LABYRINTH 15-HERO ROSTER
+  "pia hollis": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Open Trust • Fae Cleric",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 20,
+    whatEarnsAffection:
+      "Protecting low-star allies from being sacrificed as fodder, calming her trembling nerves during floor clears, and standing beside her against the Synthesis Furnace.",
+    armorCrackTell:
+      "Her snow-white hair and antler bead chains sway as she grips her sanctuary sleeves, blinking back tears of disbelief that someone actually chose to protect a 1★ novice.",
+    initialSentiment:
+      "Fragile Hope — She watches your bronze 1★ mark with anxious gratitude, half-afraid to believe you won't leave her on the synthesis tiles.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "pia_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(synthesis|furnace|fodder|bait|one[- ]star|antler|sanctuary)\b/i,
+      },
+      {
+        memoryId: "pia_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(saint'?s\s+mercy|five[- ]star|purify|blessing|healing\s+light)\b/i,
+      },
+    ],
+  },
+  "lotte klein": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Dream Anchor • Dual-State Medium",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 22,
+    whatEarnsAffection:
+      "Standing watch while she rests, keeping calm around her grinning nightmare spirit, and calling her safely back when Lucidua takes over.",
+    armorCrackTell:
+      "Her sleepy golden eyes blink awake in soft surprise as she tugs at her sleeve cuff, quietly resting her weight closer against your shoulder.",
+    initialSentiment:
+      "Drowsy Caution — She yawns apologetically behind her dark braids, worried her slumbering Lucidua half might frighten or endanger a new commander.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "lotte_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(nap|blanket|brazier|lullaby|chamomile|sleepy|nightmare\s+spirit)\b/i,
+      },
+      {
+        memoryId: "lotte_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(lucidua|trance|wake\s+up|voice|collar\s+scar|shadow\s+hatchet)\b/i,
+      },
+    ],
+  },
+  "sable ashgrove": {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • Scarred Survivor",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.5,
+    guardedThreshold: 40,
+    whatEarnsAffection:
+      "Checking trap seams before charging, calling clean disengage routes, and proving through surviving multiple bosses that you won't become another name on the Memorial Wall.",
+    armorCrackTell:
+      "Her dry, sardonic stare drops for a fraction of a second as one of her abyssal tentacles instinctively coils behind your heel to steady your footing.",
+    initialSentiment:
+      "Cynical Distance — She expects you to get chewed up like the last three squads she outlived, refusing even to learn your name until you survive a real ambush.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "sable_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(apron\s+pocket|dog[- ]?tag|fallen\s+squad|memorial\s+wall|survivor|name)\b/i,
+      },
+      {
+        memoryId: "sable_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(tentacle|tendril|mimic|escape\s+route|espresso|trap\s+seam)\b/i,
+      },
+    ],
+  },
+  "onyxia cryss": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Geode Construct",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 30,
+    whatEarnsAffection:
+      "Treating her as a living person rather than disposable dungeon hardware, caring for her mineral core between battles, and valuing the small keepsakes she gathers.",
+    armorCrackTell:
+      "The amethyst gem centered on her blindfold brightens by two measured lumens while her chained brass Oculus slows into a quiet, attentive orbit.",
+    initialSentiment:
+      "Measured Observation — She reports oculus telemetry in calm, literal cadences, uncertain whether you see her as a tool or a comrade.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "onyxia_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(pebble|stone|geode|amethyst|keepsake|polish|crystal)\b/i,
+      },
+      {
+        memoryId: "onyxia_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(shackle|manacle|oculus|third[- ]eye|blindfold|mineral\s+core)\b/i,
+      },
+    ],
+  },
+  vaelkor: {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Draconic Trust • pragmatic Spellsword",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 22,
+    whatEarnsAffection:
+      "Calling crisp flank timings, judging squad members by battlefield execution rather than banner rarity, and backing him up on the frontline without hesitation.",
+    armorCrackTell:
+      "A low rumble vibrates across his scaled throat as violet static softens around his gauntlet—offering you a brief, genuine nod of clutch-kin respect.",
+    initialSentiment:
+      "Pragmatic Appraisal — He sizes up your 1★ frame with dry draconic humor, waiting to see if your tactical calls hit harder than your rarity suggests.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "vaelkor_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(flank|sky[- ]bastion|choke[- ]point|greatsword|scales|clutch[- ]kin)\b/i,
+      },
+      {
+        memoryId: "vaelkor_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(night\s+watch|storm[- ]gland|violet\s+lightning|wyvern|dragonborn)\b/i,
+      },
+    ],
+  },
+  "dame odette varr": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Gorgon Knight",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 32,
+    whatEarnsAffection:
+      "Honoring her knightly resolve while finding clever tactical loopholes around reckless Master Command Seals, and never flinching from her white crown-serpents.",
+    armorCrackTell:
+      "Her composed marble expression stiffens as a faint blush touches her cheeks—while the white vipers in her crown curl timidly toward your hand, betraying her fluster.",
+    initialSentiment:
+      "Formal Knightly Reserve — She holds strict vanguard posture beside your rank, bound by sacred oath even while quietly baffled by your unorthodox loopholes.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "odette_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(serpent|viper|snake|gorgon|crown|petrify|fluster)\b/i,
+      },
+      {
+        memoryId: "odette_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(command\s+seal|loophole|chivalry|oath|stone[- ]ward|aesthul)\b/i,
+      },
+    ],
+  },
+  "trinity valoren": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Oni Duelist",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 30,
+    whatEarnsAffection:
+      "Matching her split-second combat tempo, reading boss tells without stalling, and earning her respect through fearless sparring and sharp intuition.",
+    armorCrackTell:
+      "The violet afterimages behind her flicker as she pauses mid-step, tilting her horned silhouette with an intrigued, playful smirk.",
+    initialSentiment:
+      "Rhythmic Intrigue — She measures every breath and footstep through her horns, teasingly testing whether a 1★ tactician can keep pace with an oni prodigy.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "trinity_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(spar|tempo|horn|vibration|mirage|seeing\s+double|footwork)\b/i,
+      },
+      {
+        memoryId: "trinity_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(wheel[- ]crest|oni\s+clan|sword\s+school|wisteria|wakizashi)\b/i,
+      },
+    ],
+  },
+  abraxia: {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • Silent Executioner",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.5,
+    guardedThreshold: 38,
+    whatEarnsAffection:
+      "Trusting her wordless protection, refusing to issue dishonorable sacrificial orders, and noticing the quiet care she shows behind her scarred silence.",
+    armorCrackTell:
+      "Her gloved fingers pause halfway through wrapping her runeblade grip as her crimson eyes soften by a fraction of a degree, quietly shifting half a pace closer to your flank.",
+    initialSentiment:
+      "Watchful Silence — She speaks only when blades are drawn, gauging whether you are another shallow Master or a commander worth guarding without words.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "abraxia_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(scar|throat|whetstone|watch|broth|guard|silent)\b/i,
+      },
+      {
+        memoryId: "abraxia_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(damascus\s+chain|needle|neurotoxin|runeblade|kopis)\b/i,
+      },
+    ],
+  },
+  "garrick ironbrow": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Veteran Grit • Old-Guard Bulwark",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 22,
+    whatEarnsAffection:
+      "Keeping young teammates alive on tough floors, holding steady shield discipline instead of chasing flashy tier lists, and respecting hard-won soldier wisdom.",
+    armorCrackTell:
+      "He huffs into his white beard to hide a flicker of pride, resting his notched great-axe on his shoulder with unmistakable fatherly approval.",
+    initialSentiment:
+      "Gruff Fatherly Vigilance — He keeps his boots planted between danger and the rookies, already silently rooting for a smart 1★ kid to beat the odds.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "garrick_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(apprentice|floor\s+35|malt|pipe|rookie|barracks\s+fire)\b/i,
+      },
+      {
+        memoryId: "garrick_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(old\s+iron|battleaxe|threshold\s+boss|choke[- ]point|bastion)\b/i,
+      },
+    ],
+  },
+  "lyra nocturne": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Banner Prodigy",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 32,
+    whatEarnsAffection:
+      "Calling flawless stagger windows for her spells, saving her from mana-backlash with pre-cast foresight, and reassuring her she will never be benched.",
+    armorCrackTell:
+      "Her sharp, aristocratic composure stammers into a crimson blush as she snaps her astrolabe staff upright, fiercely insisting she didn't need your callout.",
+    initialSentiment:
+      "Indignant Perfectionism — She resents taking orders from a 1★ unit, yet watches your every boss prediction with startled, grudging fascination.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "lyra_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(backlash|miscast|stagger\s+window|astrolabe|cast\s+bar|emerald\s+halo)\b/i,
+      },
+      {
+        memoryId: "lyra_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(bench|replace|four[- ]star|star[- ]berry|constellation|nocturne)\b/i,
+      },
+    ],
+  },
+  "mei zhou": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Big-Sister Spark • Cursed Brawler",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 20,
+    whatEarnsAffection:
+      "Sharing hot rations after a brutal climb, refusing to let her shoulder lethal blows alone, and standing beside her during quiet nights at the Memorial Wall.",
+    armorCrackTell:
+      "Her fearless grin pauses as her scarlet eyes trace your face—slowly exhaling the tension around her cursed crimson claw-arm.",
+    initialSentiment:
+      "Fierce Warmth — She claps you on the shoulder with loud confidence, determined to keep morale bright so nobody else has to end up on a stone slab.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "mei_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(memorial\s+wall|hotpot|chili|rations|midnight|former\s+guild)\b/i,
+      },
+      {
+        memoryId: "mei_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(blood[- ]curse|floor\s+20|crimson\s+claw|eye[- ]sigil|tattoo)\b/i,
+      },
+    ],
+  },
+  godiva: {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Void-Walker",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 30,
+    whatEarnsAffection:
+      "Meeting her cryptic banter without blinking, trusting her dimensional blinks in combat, and never prying clumsily into the tear-scar beneath her eye.",
+    armorCrackTell:
+      "The floating Void Star over her fingers stills for a silent beat as her smoky gaze narrows in genuine intrigue—her velvet teasing turning unexpectedly candid.",
+    initialSentiment:
+      "Cryptic Amusement — She circles just beyond reach through tiny spatial rifts, weighing whether a 1★ Anomaly actually understands the dark.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "godiva_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(mask|tear[- ]?scar|rift\s+scar|void\s+hex|nightshade|grimoire)\b/i,
+      },
+      {
+        memoryId: "godiva_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(triple\s+arcane\s+blink|void\s+star|dimensional\s+rift|horizon)\b/i,
+      },
+    ],
+  },
+  "sir roland vance": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Exiled Paladin",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.65,
+    guardedThreshold: 34,
+    whatEarnsAffection:
+      "Delivering crisp, accountable battlefield callouts with zero casualties, leading from the front, and honoring truth over gilded guild politics.",
+    armorCrackTell:
+      "He slowly unfolds his plated arms and dips his chin by half an inch—no trace of aristocratic skepticism left in his cool blue eyes.",
+    initialSentiment:
+      "Skeptical Scrutiny — He evaluates every tactical call like an inspection drill, demanding proof before yielding an inch of cathedral steel to a 1★ captain.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "roland_mem_1",
+        unlockAffection: 35,
+        keywords: /\b(apex\s+concord|exile|casualty\s+ledger|guild\s+politics|cathedral)\b/i,
+      },
+      {
+        memoryId: "roland_mem_2",
+        unlockAffection: 65,
+        keywords: /\b(riposte|crimson\s+cloak|silver\s+plate|parry|sovereign\s+judgment)\b/i,
+      },
+    ],
+  },
+  "aurelle, the seraph lance": {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • 5★ Lonely Legend",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.5,
+    guardedThreshold: 42,
+    whatEarnsAffection:
+      "Refusing to treat her as an invincible SSR trophy carry, stepping beside her into danger despite the star gap, and insisting she live as a comrade rather than a weapon.",
+    armorCrackTell:
+      "Her ice-blue eyes widen for a silent heartbeat as her golden seraph wings lower slightly—unable to process a 1★ commander willingly bleeding to shield a five-star.",
+    initialSentiment:
+      "Frozen Detachment — Traded through too many dead accounts, she expects you to hide behind her lance until you prove you value her life as much as the squad's.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "aurelle_mem_1",
+        unlockAffection: 40,
+        keywords: /\b(trophy|solo\s+carry|shield\s+her|stand\s+beside|five[- ]star|isolation)\b/i,
+      },
+      {
+        memoryId: "aurelle_mem_2",
+        unlockAffection: 70,
+        keywords: /\b(seraph\s+wing|longinus|island\s+edge|star\s+gate\s+plaza|freedom)\b/i,
+      },
+    ],
+  },
 };
 
 export function getHeroineResistanceProfile(
@@ -1658,6 +2009,11 @@ export function synthesizeDynamicCompanionSentiment(params: {
   }
 
   // If an action occurred this turn without an explicit LLM sentiment field, synthesize a dynamic update
+  const isMale =
+    companion.gender?.toLowerCase() === "male" ||
+    /\b(vaelkor|garrick|roland)\b/i.test(companion.name || "");
+  const subj = isMale ? "he" : "she";
+  const poss = isMale ? "his" : "her";
   if (actionText && actionText.trim().length > 0) {
     const cleanAction = actionText
       .replace(/^\[[^\]]+\]:\s*/, "")
@@ -1665,16 +2021,16 @@ export function synthesizeDynamicCompanionSentiment(params: {
       .slice(0, 90);
 
     if (appliedDelta < 0) {
-      return `${tierPrefix} — Bristling after your recent choice ("${cleanAction}"); her defenses have tightened and she expects you to prove your competence and sincerity.`;
+      return `${tierPrefix} — Bristling after your recent choice ("${cleanAction}"); ${poss} defenses have tightened and ${subj} expects you to prove your competence and sincerity.`;
     }
     if (aff < 25) {
-      return `${tierPrefix} — Scrutinizing your move ("${cleanAction}") with critical standards; she acknowledges basic competence where due, but remains skeptical and far from convinced.`;
+      return `${tierPrefix} — Scrutinizing your move ("${cleanAction}") with critical standards; ${subj} acknowledges basic competence where due, but remains skeptical and far from convinced.`;
     }
     if (isArmorCracked && aff < 50) {
-      return `${tierPrefix} — Outwardly maintaining her composed standards after your move ("${cleanAction}"), though a brief flicker of grudging respect and intrigue slipped past her guard.`;
+      return `${tierPrefix} — Outwardly maintaining ${poss} composed standards after your move ("${cleanAction}"), though a brief flicker of grudging respect and intrigue slipped past ${poss} guard.`;
     }
     if (appliedDelta > 0) {
-      return `${tierPrefix} — Impressed by how you handled things ("${cleanAction}"); her respect for your judgment is steadily building.`;
+      return `${tierPrefix} — Impressed by how you handled things ("${cleanAction}"); ${poss} respect for your judgment is steadily building.`;
     }
   }
 
@@ -1937,17 +2293,233 @@ ${armorCrackInstruction}
 
 const QUEST_DIFFICULTY_ORDER: QuestDifficulty[] = ["E", "D", "C", "B", "A", "S", "Calamity"];
 
+export const BASE_LEVEL_ONE_MAX_EXP = 120;
+export const EXP_CURVE_GROWTH_RATE = 1.35;
+export const COMPANION_SHARED_EXP_RATIO = 0.85;
+
+/**
+ * Slower, steeper RPG experience curve (~1.35x per level, rounded to clean multiples of 10).
+ * Lv.1->2 = 120, Lv.2->3 = 160, Lv.3->4 = 220, Lv.4->5 = 300, Lv.5->6 = 400, Lv.9->10 = 1330, etc.
+ */
+export function getRequiredExpForLevel(level: number): number {
+  const safeLevel = Math.max(1, Math.floor(level || 1));
+  if (safeLevel <= 1) return BASE_LEVEL_ONE_MAX_EXP;
+  const raw = BASE_LEVEL_ONE_MAX_EXP * Math.pow(EXP_CURVE_GROWTH_RATE, safeLevel - 1);
+  return Math.max(BASE_LEVEL_ONE_MAX_EXP, Math.round(raw / 10) * 10);
+}
+
+/**
+ * Total cumulative EXP required to reach `targetLevel` starting from Level 1 (0 EXP).
+ */
+export function getTotalCumulativeExpForLevel(targetLevel: number): number {
+  const safeTarget = Math.max(1, Math.floor(targetLevel || 1));
+  let total = 0;
+  for (let lvl = 1; lvl < safeTarget; lvl++) {
+    total += getRequiredExpForLevel(lvl);
+  }
+  return total;
+}
+
+/**
+ * Unified protagonist EXP & Level-Up progression resolver used across Narrative Turns,
+ * Tactical Story Clashes, Labyrinth Floor Clears, System Quest Claims, and Save Normalization.
+ */
+export function resolveProtagonistExpGain(params: {
+  level: number;
+  exp: number;
+  maxExp?: number;
+  hp: number;
+  maxHp: number;
+  mp: number;
+  maxMp: number;
+  str: number;
+  dex: number;
+  int: number;
+  unspentStatPoints?: number;
+  expGained: number;
+  maxLevelCap?: number;
+  restoreVitalsOnLevelUp?: boolean;
+}): {
+  level: number;
+  exp: number;
+  maxExp: number;
+  hp: number;
+  maxHp: number;
+  mp: number;
+  maxMp: number;
+  str: number;
+  dex: number;
+  int: number;
+  unspentStatPoints: number;
+  levelsGained: number;
+  hitLevelCap: boolean;
+} {
+  const cap =
+    typeof params.maxLevelCap === "number" && params.maxLevelCap >= 1
+      ? Math.floor(params.maxLevelCap)
+      : 60;
+
+  let workingLevel = Math.max(1, Math.min(cap, Math.floor(params.level || 1)));
+  let workingMaxExp = getRequiredExpForLevel(workingLevel);
+  let workingMaxHp = Math.max(1, Math.round(params.maxHp || 100));
+  let workingMaxMp = Math.max(1, Math.round(params.maxMp || 60));
+  let workingHp = Math.max(0, Math.min(workingMaxHp, Math.round(params.hp ?? workingMaxHp)));
+  let workingMp = Math.max(0, Math.min(workingMaxMp, Math.round(params.mp ?? workingMaxMp)));
+  let workingStr = Math.round(params.str || 10);
+  let workingDex = Math.round(params.dex || 10);
+  let workingInt = Math.round(params.int || 10);
+  let workingUnspent = Math.max(0, Math.round(params.unspentStatPoints || 0));
+
+  const deltaExp = Math.max(0, Math.round(params.expGained || 0));
+
+  if (workingLevel >= cap) {
+    return {
+      level: cap,
+      exp: 0,
+      maxExp: getRequiredExpForLevel(cap),
+      hp: workingHp,
+      maxHp: workingMaxHp,
+      mp: workingMp,
+      maxMp: workingMaxMp,
+      str: workingStr,
+      dex: workingDex,
+      int: workingInt,
+      unspentStatPoints: workingUnspent,
+      levelsGained: 0,
+      hitLevelCap: true,
+    };
+  }
+
+  let workingExp = Math.max(0, Math.round(params.exp || 0)) + deltaExp;
+  let levelsGained = 0;
+
+  while (workingExp >= workingMaxExp && workingLevel < cap) {
+    workingExp -= workingMaxExp;
+    workingLevel += 1;
+    levelsGained += 1;
+    workingMaxExp = getRequiredExpForLevel(workingLevel);
+    workingMaxHp += 20;
+    workingMaxMp += 10;
+    workingStr += 2;
+    workingDex += 2;
+    workingInt += 2;
+    workingUnspent += 2;
+
+    if (params.restoreVitalsOnLevelUp !== false) {
+      workingHp = workingMaxHp;
+      workingMp = workingMaxMp;
+    }
+  }
+
+  let hitLevelCap = false;
+  if (workingLevel >= cap) {
+    workingLevel = cap;
+    workingExp = 0;
+    workingMaxExp = getRequiredExpForLevel(cap);
+    hitLevelCap = true;
+  }
+
+  return {
+    level: workingLevel,
+    exp: workingExp,
+    maxExp: workingMaxExp,
+    hp: workingHp,
+    maxHp: workingMaxHp,
+    mp: workingMp,
+    maxMp: workingMaxMp,
+    str: workingStr,
+    dex: workingDex,
+    int: workingInt,
+    unspentStatPoints: workingUnspent,
+    levelsGained,
+    hitLevelCap,
+  };
+}
+
+/**
+ * Unified companion / squadmate EXP progression resolver using the same 1.35x curve
+ * and respecting hard Star / Campaign level caps.
+ */
+export function resolveCompanionExpGain(params: {
+  level?: number;
+  exp?: number;
+  expGained: number;
+  maxLevelCap?: number;
+  isFocalOrSynergy?: boolean;
+  shareRatio?: number;
+}): {
+  level: number;
+  exp: number;
+  maxExp: number;
+  sharedExp: number;
+  levelsGained: number;
+  hitLevelCap: boolean;
+} {
+  const cap =
+    typeof params.maxLevelCap === "number" && params.maxLevelCap >= 1
+      ? Math.floor(params.maxLevelCap)
+      : 60;
+  let curLevel = Math.max(1, Math.min(cap, Math.floor(params.level || 1)));
+  let curMaxExp = getRequiredExpForLevel(curLevel);
+
+  const rawGain = Math.max(0, Math.round(params.expGained || 0));
+  const ratio = params.isFocalOrSynergy
+    ? 1.0
+    : typeof params.shareRatio === "number"
+    ? params.shareRatio
+    : COMPANION_SHARED_EXP_RATIO;
+  const sharedExp = rawGain > 0 ? Math.max(1, Math.round(rawGain * ratio)) : 0;
+
+  if (curLevel >= cap || sharedExp <= 0) {
+    return {
+      level: curLevel,
+      exp: curLevel >= cap ? 0 : Math.min(curMaxExp - 1, Math.max(0, Math.round(params.exp || 0))),
+      maxExp: curMaxExp,
+      sharedExp: curLevel >= cap ? 0 : sharedExp,
+      levelsGained: 0,
+      hitLevelCap: curLevel >= cap,
+    };
+  }
+
+  let curExp = Math.max(0, Math.round(params.exp || 0)) + sharedExp;
+  let levelsGained = 0;
+
+  while (curExp >= curMaxExp && curLevel < cap) {
+    curExp -= curMaxExp;
+    curLevel += 1;
+    levelsGained += 1;
+    curMaxExp = getRequiredExpForLevel(curLevel);
+  }
+
+  let hitLevelCap = false;
+  if (curLevel >= cap) {
+    curLevel = cap;
+    curExp = 0;
+    curMaxExp = getRequiredExpForLevel(cap);
+    hitLevelCap = true;
+  }
+
+  return {
+    level: curLevel,
+    exp: curExp,
+    maxExp: curMaxExp,
+    sharedExp,
+    levelsGained,
+    hitLevelCap,
+  };
+}
+
 export const QUEST_REWARD_BRACKETS: Record<
   QuestDifficulty,
   { minExp: number; maxExp: number; baseExp: number; expPerObjective: number; minGold: number; maxGold: number; baseGold: number }
 > = {
-  E: { minExp: 35, maxExp: 55, baseExp: 35, expPerObjective: 8, minGold: 25, maxGold: 60, baseGold: 30 },
-  D: { minExp: 60, maxExp: 90, baseExp: 55, expPerObjective: 12, minGold: 60, maxGold: 120, baseGold: 75 },
-  C: { minExp: 95, maxExp: 140, baseExp: 85, expPerObjective: 16, minGold: 120, maxGold: 220, baseGold: 140 },
-  B: { minExp: 150, maxExp: 220, baseExp: 135, expPerObjective: 22, minGold: 250, maxGold: 400, baseGold: 280 },
-  A: { minExp: 240, maxExp: 340, baseExp: 210, expPerObjective: 30, minGold: 450, maxGold: 700, baseGold: 500 },
-  S: { minExp: 360, maxExp: 480, baseExp: 320, expPerObjective: 38, minGold: 750, maxGold: 1200, baseGold: 850 },
-  Calamity: { minExp: 450, maxExp: 550, baseExp: 450, expPerObjective: 25, minGold: 1000, maxGold: 1500, baseGold: 1200 },
+  E: { minExp: 45, maxExp: 75, baseExp: 45, expPerObjective: 10, minGold: 25, maxGold: 60, baseGold: 30 },
+  D: { minExp: 85, maxExp: 135, baseExp: 80, expPerObjective: 16, minGold: 60, maxGold: 120, baseGold: 75 },
+  C: { minExp: 150, maxExp: 230, baseExp: 135, expPerObjective: 24, minGold: 120, maxGold: 220, baseGold: 140 },
+  B: { minExp: 260, maxExp: 390, baseExp: 230, expPerObjective: 35, minGold: 250, maxGold: 400, baseGold: 280 },
+  A: { minExp: 450, maxExp: 680, baseExp: 400, expPerObjective: 55, minGold: 450, maxGold: 700, baseGold: 500 },
+  S: { minExp: 750, maxExp: 1150, baseExp: 680, expPerObjective: 85, minGold: 750, maxGold: 1200, baseGold: 850 },
+  Calamity: { minExp: 1200, maxExp: 1800, baseExp: 1150, expPerObjective: 110, minGold: 1000, maxGold: 1500, baseGold: 1200 },
 };
 
 /**
@@ -2138,10 +2710,207 @@ export function calibrateQuestRankAndRewards(
   };
 }
 
+export type EarnedExpTier =
+  | "IDLE_OR_SOCIAL"
+  | "TACTICAL_CHECK"
+  | "COMBAT_SKIRMISH"
+  | "ENEMY_KILL"
+  | "CLASH_VICTORY"
+  | "FLOOR_CLEAR"
+  | "DELEGATED";
+
+/**
+ * Earned-Only EXP Evaluator for narrative turns.
+ * - Returns 0 EXP for casual chat, flirting, resting, shopping, lobby summons, or walking between rooms.
+ * - Awards 12–26 EXP for genuine tactical risks, skill checks, trap disarms, training, or active spell/flair exertion.
+ * - Awards 24–48 EXP for live combat skirmishes, ambushes, or lethal hazard counterplay in prose.
+ * - Awards 35–120 EXP when a hostile enemy or pack is deterministically slain in prose/mechanics.
+ */
+export function evaluateEarnedTurnExp(params: {
+  rawLlmExp?: number;
+  actionText?: string | null;
+  storyText?: string | null;
+  mechanicsText?: string | null;
+  hpChange?: number;
+  mpChange?: number;
+  isOOC?: boolean;
+  isClashResolutionTurn?: boolean;
+  isSummonGreetingTurn?: boolean;
+  storyClashEscalated?: boolean;
+  floorCleared?: boolean;
+}): {
+  expGained: number;
+  tier: EarnedExpTier;
+  reason: string | null;
+} {
+  const action = (params.actionText || "").trim();
+  const story = (params.storyText || "").trim();
+  const mechanics = (params.mechanicsText || "").trim();
+  const hpDelta = Number(params.hpChange || 0);
+  const mpDelta = Number(params.mpChange || 0);
+
+  // Delegated or OOC turns: EXP is already handled by Clash Victory / Floor Clear or must be 0
+  if (
+    params.isOOC ||
+    action.startsWith("[OOC:") ||
+    params.isClashResolutionTurn ||
+    params.isSummonGreetingTurn ||
+    params.floorCleared
+  ) {
+    return { expGained: 0, tier: "DELEGATED", reason: null };
+  }
+
+  const actionLower = action.toLowerCase();
+  const combinedLower = `${actionLower} ${story.toLowerCase()}`;
+  const storyAndMechanicsLower = `${story.toLowerCase()} ${mechanics.toLowerCase()}`;
+
+  const hasEnemyKillInStory =
+    /\b(slain|killed|eliminated|neutralized|defeated|finishing\s+blow|dissolves?\s+into\s+(?:star\s+)?ash|shatters?\s+into\s+(?:star\s+)?ash|crumbles?\s+into\s+(?:star\s+)?ash|collapses?\s+(?:dead|lifeless|motionless|in\s+a\s+heap|to\s+the\s+stone)|falls?\s+(?:dead|lifeless|limp)|corpse\s+(?:hits|slumps|thuds|topples)|skull\s+(?:cracks|shatters|caves|splits)|throat\s+(?:slit|severed|pierced|torn)|pack\s+is\s+wiped|hostile\s+down|target\s+eliminated|enemy\s+felled|drops?\s+dead|breathes?\s+its\s+last)\b/i.test(
+      storyAndMechanicsLower
+    );
+
+  // 1. Check for active Combat / Lethal Hazard Skirmish / Enemy Kill in narrative
+  const hasActionCombatIntent =
+    /\b(attack|strike|slash|stab|parry|block|ambush|lunge|cleave|shoot|fire at|cast .* at|execute|grapple|intercept|sever|shatter|shield bash|engage|defend against|counterattack|counter-attack|focus fire|kill|slay|finish|flank|assault|charge|blitz|crush|impale|decapitate|pierce|snipe|blast|smite|drop|take down|eliminate|neutralize|unleash|detonate)\b/i.test(
+      actionLower
+    ) || /\[(combat|tactics|arcana)\b/i.test(actionLower);
+
+  // Explicit idle / casual social / rest / lobby patterns when no hazard or check occurred
+  const isExplicitlyIdleOrRest =
+    /\b(sleep|take a nap|rest at|sit down and chat|order a drink|sip coffee|sip espresso|check the menu|browse the stalls|go to bed|call it a night|greet the newly materialized|casual chat|small talk|relax on)\b/i.test(
+      actionLower
+    ) &&
+    hpDelta >= 0 &&
+    mpDelta >= 0 &&
+    !params.storyClashEscalated &&
+    !hasEnemyKillInStory &&
+    !hasActionCombatIntent;
+
+  if (isExplicitlyIdleOrRest) {
+    return { expGained: 0, tier: "IDLE_OR_SOCIAL", reason: null };
+  }
+
+  if (hasEnemyKillInStory) {
+    const raw = Number(params.rawLlmExp);
+    const killExp =
+      !isNaN(raw) && raw >= 35 && raw <= 120 ? Math.round(raw) : 45;
+    return {
+      expGained: killExp,
+      tier: "ENEMY_KILL",
+      reason: "Hostile Slain in Combat",
+    };
+  }
+
+  const hasLethalStoryExchange =
+    /\b(blade\s+bites|claws\s+rake|fangs\s+sink|blood\s+sprays|parries\s+the\s+blow|dodges\s+the\s+cleave|mana-core\s+shatters|monster\s+roars|ambush\s+springs|crossbow\s+bolt|arcane\s+blast|lunges\s+for|weapon\s+clashes|steel\s+rings|goblin|shaman|mimic|revenant|hound|construct|spear\s+thrust|shield\s+bash|poise\s+break|staggered|critical\s+hit|vital\s+strike|black\s+ichor|star\s+ash)\b/i.test(
+      combinedLower
+    );
+
+  if (
+    params.storyClashEscalated ||
+    hpDelta <= -8 ||
+    (hasActionCombatIntent && (hasLethalStoryExchange || hpDelta < 0 || mpDelta <= -8))
+  ) {
+    const raw = Number(params.rawLlmExp);
+    const baseSkirmish =
+      !isNaN(raw) && raw >= 24 && raw <= 48
+        ? Math.round(raw)
+        : hpDelta <= -15 || params.storyClashEscalated
+        ? 38
+        : 28;
+    return {
+      expGained: baseSkirmish,
+      tier: "COMBAT_SKIRMISH",
+      reason: params.storyClashEscalated ? "Hostile Ambush Engaged" : "Combat Skirmish",
+    };
+  }
+
+  // 2. Check for Tactical Maneuver, Skill Check, Trap Disarm, Training, or Active Wager Round
+  const hasMechanicsCheck =
+    /\b(dc\s*\d+|roll|skill check|check passed|check succeeded|tactical advantage|weak[- ]spot|telegraph|disarm|stealth check|persuasion check|perception check)\b/i.test(
+      mechanics
+    );
+  const hasTacticalAction =
+    /\b(disarm|lockpick|scout|infiltrate|sneak|track|decipher|interrogate|negotiate terms|wager|showdown|spar|train|drill|rig a trap|analyze telegraph|anchor .* rune|channel|purify|stabilize|bandage|triage|fortify)\b/i.test(
+      actionLower
+    );
+
+  if (hasMechanicsCheck || hasTacticalAction || mpDelta <= -6 || (hpDelta < 0 && hpDelta > -8)) {
+    const raw = Number(params.rawLlmExp);
+    const baseTactical =
+      !isNaN(raw) && raw >= 12 && raw <= 26
+        ? Math.round(raw)
+        : hasMechanicsCheck && mpDelta < 0
+        ? 22
+        : 16;
+    const reason = hasMechanicsCheck
+      ? "Skill Check Breakthrough"
+      : mpDelta <= -6
+      ? "Arcane / Flair Technique"
+      : "Tactical Maneuver";
+    return {
+      expGained: baseTactical,
+      tier: "TACTICAL_CHECK",
+      reason,
+    };
+  }
+
+  // 3. Default: Pure conversation, romance banter, exploration stroll, or observation = 0 EXP
+  return {
+    expGained: 0,
+    tier: "IDLE_OR_SOCIAL",
+    reason: null,
+  };
+}
+
+/**
+ * Calculates deterministic EXP earned from winning an active Story Clash encounter,
+ * scaled by enemy Threat Rank, Enemy Max HP, and relative Player Level (anti-overfarming).
+ */
+export function calculateClashVictoryExp(params: {
+  threatRank?: QuestDifficulty | string | null;
+  enemyMaxHp?: number;
+  playerLevel?: number;
+  enemyName?: string;
+}): {
+  expGained: number;
+  reason: string;
+} {
+  const rank = (params.threatRank || "C") as QuestDifficulty;
+  const baseByRank: Record<string, { exp: number; expectedLevel: number }> = {
+    E: { exp: 50, expectedLevel: 1 },
+    D: { exp: 85, expectedLevel: 3 },
+    C: { exp: 135, expectedLevel: 5 },
+    B: { exp: 215, expectedLevel: 9 },
+    A: { exp: 330, expectedLevel: 14 },
+    S: { exp: 500, expectedLevel: 20 },
+    Calamity: { exp: 750, expectedLevel: 28 },
+  };
+
+  const entry = baseByRank[rank] || baseByRank.C;
+  const maxHpBonus = Math.min(45, Math.max(0, Math.round(((params.enemyMaxHp || 100) - 80) * 0.2)));
+  const pLevel = Math.max(1, params.playerLevel || 1);
+  const levelDiff = entry.expectedLevel - pLevel;
+
+  // Underdog bonus up to 1.25x against higher-tier threats; diminishing returns down to 0.35x when overleveled
+  const levelScale =
+    levelDiff >= 0
+      ? Math.min(1.25, 1 + levelDiff * 0.05)
+      : Math.max(0.35, 1 + levelDiff * 0.08);
+
+  const expGained = Math.max(15, Math.round((entry.exp + maxHpBonus) * levelScale));
+  const cleanName = (params.enemyName || "Adversary").trim();
+  return {
+    expGained,
+    reason: `Defeated ${cleanName} (Rank ${rank})`,
+  };
+}
+
 /**
  * Strictly clamps per-turn EXP, HP, and MP deltas so LLM hallucinations
  * (e.g., outputting 30,000 HP or 25,000 EXP on a single narrative turn)
  * can never corrupt player vitals, UI badges, or level progression.
+ * Allows 0 EXP on casual/non-combat turns!
  */
 export function clampTurnProgressionDeltas(params: {
   expGained?: number;
@@ -2149,16 +2918,21 @@ export function clampTurnProgressionDeltas(params: {
   mpChange?: number;
   maxHp?: number;
   maxMp?: number;
+  maxExpCap?: number;
 }): {
   expGained: number;
   hpChange: number;
   mpChange: number;
 } {
+  const maxCap =
+    typeof params.maxExpCap === "number" && params.maxExpCap >= 60
+      ? Math.round(params.maxExpCap)
+      : 120;
   const rawExp = Number(params.expGained);
   const expGained =
-    !isNaN(rawExp) && rawExp > 0
-      ? Math.max(5, Math.min(45, Math.round(rawExp)))
-      : 20;
+    !isNaN(rawExp) && rawExp >= 0
+      ? Math.max(0, Math.min(maxCap, Math.round(rawExp)))
+      : 0;
 
   const maxAllowedHpDelta = Math.min(50, Math.max(35, Math.round((params.maxHp ?? 100) * 0.45)));
   const rawHp = Number(params.hpChange || 0);

@@ -4,6 +4,7 @@
 
 import { TimelineEcho, TimelineScar, CausalCovenantState, CompanionFrictionState, ActiveStoryClashState } from "@/types/story";
 import { DeathRegressionRecord, PenaltyScenarioState } from "@/types/system";
+import { getRequiredExpForLevel } from "@/lib/progressionMechanics";
 
 export interface SaveSlotPayload {
   slotId: number;
@@ -64,10 +65,11 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
   }
 
   const p = raw.player;
+  const safeLevel = typeof p.level === "number" && p.level >= 1 ? Math.floor(p.level) : 1;
   const rawStats = p.stats && typeof p.stats === "object" ? p.stats : {};
   const maxHp = typeof rawStats.maxHp === "number" && rawStats.maxHp > 0 ? rawStats.maxHp : 100;
   const maxMp = typeof rawStats.maxMp === "number" && rawStats.maxMp > 0 ? rawStats.maxMp : 60;
-  const maxExp = typeof rawStats.maxExp === "number" && rawStats.maxExp > 0 ? rawStats.maxExp : 100;
+  const maxExp = getRequiredExpForLevel(safeLevel);
 
   const normalizedPlayer = {
     ...p,

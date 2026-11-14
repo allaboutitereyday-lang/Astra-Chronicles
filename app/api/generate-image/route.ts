@@ -5,6 +5,15 @@ import {
   generateProceduralMonsterSvg,
   generateProceduralCompanionAvatarSvg,
 } from "@/lib/proceduralArt";
+import {
+  GACHA_QUALITY_PREFIX,
+  GACHA_NEGATIVE_PROMPT,
+  isComfyUiOnline,
+  uploadReferenceToComfyUi,
+  generateComfyCharacterSprite,
+} from "@/lib/comfyUiClient";
+import fs from "fs";
+import path from "path";
 
 export const runtime = "nodejs";
 
@@ -412,12 +421,83 @@ export async function POST(req: Request) {
       characterName.toLowerCase().includes(h) || (baseImageUrl && baseImageUrl.toLowerCase().includes(h))
     );
 
-    if (matchedCanon) {
+    const starfallSlugMap: Record<string, string> = {
+      "pia": "pia_hollis",
+      "lotte": "lotte_klein",
+      "lucidua": "lotte_klein",
+      "sable": "sable_ashgrove",
+      "onyxia": "onyxia_cryss",
+      "odette": "odette_varr",
+      "trinity": "trinity_valoren",
+      "abraxia": "abraxia",
+      "lyra": "lyra_nocturne",
+      "mei": "mei_zhou",
+      "godiva": "godiva",
+      "aurelle": "aurelle_seraph",
+      "ta'shair": "tashair_vice",
+      "tashair": "tashair_vice",
+      "shair": "tashair_vice",
+    };
+    const lowerChar = characterName.toLowerCase();
+    const matchedStarfallSlug = Object.entries(starfallSlugMap).find(([k]) =>
+      lowerChar.includes(k)
+    )?.[1];
+
+    if (!body.forceComfyRegenerate && matchedCanon) {
       const expr = expressionKey === "hurt" ? "hurt" : (expressionKey || "neutral");
       generatedImageUrl = `/characters/${matchedCanon}/${matchedCanon}_${expr}.png`;
-    } else if (!generatedImageUrl) {
-      // 1. Attempt AI Generation for custom character if API key is present
-      if (apiKey) {
+    } else if (!body.forceComfyRegenerate && matchedStarfallSlug) {
+      const validStarfallExprs = ["neutral", "intrigued", "flustered", "smug", "combat_ready", "hurt"];
+      const expr = validStarfallExprs.includes(expressionKey) ? expressionKey : "neutral";
+      generatedImageUrl = `/characters/starfall-labyrinth/${matchedStarfallSlug}/${expr}.png`;
+    } else if (body.forceComfyRegenerate || mode === "comfy_sprite" || (!generatedImageUrl && body.useComfyUi !== false)) {
+      // 1. Primary Local ComfyUI Gacha Character Pipeline (illustriousXL_v01 + IPAdapter + RMBG-2.0)
+      const comfyAvailable = await isComfyUiOnline();
+      if (comfyAvailable) {
+        try {
+          let refFilename: string | undefined;
+          if (baseImageUrl && typeof baseImageUrl === "string") {
+            if (baseImageUrl.startsWith("data:image/")) {
+              const b64Part = baseImageUrl.split(",")[1];
+              if (b64Part) {
+                refFilename = await uploadReferenceToComfyUi(
+                  Buffer.from(b64Part, "base64"),
+                  `live_ref_${lockedSeed}.png`
+                );
+              }
+            } else if (baseImageUrl.startsWith("/")) {
+              const diskPath = path.join(process.cwd(), "public", baseImageUrl.replace(/^\//, ""));
+              if (fs.existsSync(diskPath)) {
+                refFilename = await uploadReferenceToComfyUi(
+                  fs.readFileSync(diskPath),
+                  `live_ref_${path.basename(diskPath)}`
+                );
+              }
+            }
+          }
+
+          const genderTag = gender === "male" ? "1boy, solo, handsome anime man" : "1girl, solo";
+          const comfyPositive = `${GACHA_QUALITY_PREFIX.replace("1girl", genderTag)}, ${
+            prompt || `${baseVisualAnchor}${characterName}, ${body.role || "gacha adventurer"}`
+          }, ${activeModifier}`;
+
+          const spriteOut = await generateComfyCharacterSprite({
+            positivePrompt: comfyPositive,
+            negativePrompt: GACHA_NEGATIVE_PROMPT,
+            seed: lockedSeed,
+            referenceImageFilename: refFilename,
+            filenamePrefix: `live_character/${characterName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_${expressionKey}`,
+          });
+
+          generatedImageUrl = `data:image/png;base64,${spriteOut.alphaImageBuffer.toString("base64")}`;
+          controlNetPipelineMetadata.model = "illustriousXL_v01 + RMBG-2.0 (Local ComfyUI)";
+        } catch (comfyErr: any) {
+          console.warn("[ComfyUI Live Sprite] Falling back to OpenRouter:", comfyErr?.message || comfyErr);
+        }
+      }
+
+      // 2. Fallback to OpenRouter Image Engine if ComfyUI is offline or busy
+      if (!generatedImageUrl && apiKey) {
         const charPrompt = fullVisualPrompt || `Masterpiece anime visual novel character sprite portrait of ${characterName}, ${gender}, ${body.role || "Companion"}, highly detailed anime concept art, expressive face, clean solid background.`;
         const aiResult = await queryImageEngine(apiKey, charPrompt);
         if (aiResult?.imageUrl) {
@@ -425,7 +505,7 @@ export async function POST(req: Request) {
         }
       }
 
-      // 2. Procedural companion vector avatar fallback
+      // 3. Procedural companion vector avatar fallback
       if (!generatedImageUrl) {
         generatedImageUrl = generateProceduralCompanionAvatarSvg({
           name: characterName,

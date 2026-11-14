@@ -648,25 +648,70 @@ export function resolveHostileEncounterEscalation(params: {
 
   if (explicitCombatEruption) {
     const lower = storyText.toLowerCase();
+    const locLower = location.toLowerCase();
+    const isStarfallEncounter =
+      locLower.includes("floor ") ||
+      locLower.includes("verdant antechamber") ||
+      locLower.includes("hollow king") ||
+      locLower.includes("clocktower") ||
+      genre.toLowerCase().includes("gacha-tower");
+    const floorMatch = location.match(/\bfloor\s+(\d{1,3})\b/i);
+    const floorNum = floorMatch ? parseInt(floorMatch[1], 10) : 1;
+
     let inferredName = "Ambushing Adversary";
     let inferredArchetype = "Hostile Ambush";
     let inferredDesc = `A lethal threat that lunged from the shadows of ${location}.`;
 
-    if (lower.includes("hound")) {
+    if (isStarfallEncounter && floorNum > 0 && floorNum % 10 === 0) {
+      inferredName =
+        floorNum === 10
+          ? "Aldric, the Hollow King"
+          : floorNum === 20
+          ? "Charybdis, the Choir Leviathan"
+          : floorNum === 30
+          ? "Orpheon, Warden of Stopped Hours"
+          : `Floor ${floorNum} Gate Boss Sovereign`;
+      inferredArchetype = "Decennial Gate Boss";
+      inferredDesc = `The lethal Gate Boss sealing Floor ${floorNum} of the Starfall Labyrinth—one missed telegraph means permanent death.`;
+    } else if (isStarfallEncounter && (lower.includes("mimic") || lower.includes("chest"))) {
+      inferredName = "Carrion Labyrinth Mimic";
+      inferredArchetype = "Ambush Predator";
+      inferredDesc = "An iron-ribbed dungeon mimic disguised as a supply chest, notorious for wiping greedy auto-battle squads.";
+    } else if (isStarfallEncounter && (lower.includes("goblin") || lower.includes("hound") || lower.includes("moss"))) {
+      inferredName = "Verdant Moss-Hound & Bone-Goblin Pack";
+      inferredArchetype = "Labyrinth Pack";
+      inferredDesc = "Venom-jawed ruin hounds and shield-bearing goblins coordinating a corridor pincer.";
+    } else if (lower.includes("hound")) {
       inferredName = "Inquisition Hound-Pack";
       inferredArchetype = "Beast Pack";
       inferredDesc = "Armor-plated hunting beasts wreathed in smoldering inquisitorial runes, bred to tear through warded steel.";
-    } else if (lower.includes("sentinel") || lower.includes("construct") || lower.includes("golem")) {
-      inferredName = "Runic Breach Sentinel";
+    } else if (lower.includes("sentinel") || lower.includes("construct") || lower.includes("golem") || lower.includes("automaton")) {
+      inferredName = isStarfallEncounter ? "Time-Stutter Clockwork Automaton" : "Runic Breach Sentinel";
       inferredArchetype = "Arcane Construct";
-      inferredDesc = "An ancient stone-and-aether automaton awakened by unauthorized presence in the sector.";
+      inferredDesc = "An ancient brass-and-aether automaton awakened by unauthorized presence in the sector.";
     } else if (lower.includes("assassin") || lower.includes("stalker") || lower.includes("shade") || lower.includes("wraith")) {
       inferredName = "Umbral Rift-Stalker";
       inferredArchetype = "Void Assassin";
       inferredDesc = "A phase-shifting predator condensed from fractured aether and malice.";
     }
 
-    const rank: QuestDifficulty = "B";
+    const rank: QuestDifficulty =
+      isStarfallEncounter && floorNum > 0 && floorNum % 10 === 0
+        ? floorNum >= 30
+          ? "S"
+          : "A"
+        : isStarfallEncounter && floorNum <= 5
+        ? "C"
+        : "B";
+    const scaledHp =
+      isStarfallEncounter && floorNum > 0
+        ? Math.min(240, 75 + floorNum * 4 + (floorNum % 10 === 0 ? 45 : 0))
+        : 85;
+    const scaledAtk =
+      isStarfallEncounter && floorNum > 0
+        ? Math.min(34, 13 + Math.floor(floorNum / 4) + (floorNum % 10 === 0 ? 6 : 0))
+        : 16;
+
     const fallbackSvg = generateProceduralMonsterSvg({
       name: inferredName,
       rank,
@@ -677,23 +722,23 @@ export function resolveHostileEncounterEscalation(params: {
     return {
       isActive: true,
       enemyName: inferredName,
-      enemyHp: 85,
-      enemyMaxHp: 85,
+      enemyHp: scaledHp,
+      enemyMaxHp: scaledHp,
       enemyDesc: inferredDesc,
-      enemyAttackPower: 16,
+      enemyAttackPower: scaledAtk,
       enemyImageUrl: fallbackSvg,
       enemyVisualPrompt: `Epic anime visual novel monster portrait of "${inferredName}". ${inferredDesc}. Set in ${location}, dramatic combat lighting, glowing runes, ${genre} masterpiece.`,
       threatRank: rank,
       enemyArchetype: inferredArchetype,
-      enemyIntent: generateEnemyIntent(inferredName, 16, 1, rank),
+      enemyIntent: generateEnemyIntent(inferredName, scaledAtk, 1, rank),
       isRandomEncounter: true,
       clashTurn: 1,
       maxClashTurns: 6,
-      tacticalObjective: `Break the ${inferredName}'s offensive before they overwhelm your perimeter.`,
+      tacticalObjective: `Break ${inferredName}'s offensive before anyone in your deployed party falls.`,
       status: "ongoing",
       companionAssistingName: assistingCompanionName,
       log: [
-        `[HOSTILE ENCOUNTER ESCALATED]: ${inferredName} (Rank ${rank} • 85/85 HP) springs a lethal attack in ${location}!`,
+        `[HOSTILE ENCOUNTER ESCALATED]: ${inferredName} (Rank ${rank} • ${scaledHp}/${scaledHp} HP) springs a lethal attack in ${location}!`,
       ],
     };
   }

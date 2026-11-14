@@ -328,7 +328,7 @@ export function assembleFullStoryContext(
         mp: 60,
         maxMp: 60,
         exp: 0,
-        maxExp: 100,
+        maxExp: 120,
         str: 10,
         dex: 10,
         int: 10,

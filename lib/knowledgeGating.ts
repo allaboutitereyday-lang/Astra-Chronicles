@@ -3,6 +3,8 @@
 // or Regressor/System origin in spoken dialogue before learning them diegetically in the story.
 
 import { CompanionKnowledgeState, NpcKnowledgeMap } from "@/types/story";
+import { resolvePortraitAttireLabel } from "@/lib/visionEncoder";
+import { humanizeGearForProse } from "@/lib/proseSanitizer";
 
 const CANONICAL_COMPANIONS = [
   "Evelyn Abbandonato",
@@ -299,8 +301,13 @@ export function buildKnowledgeGateDirective(
 ): string {
   const playerName = playerProfile?.name || "the protagonist";
   const playerRole = playerProfile?.role || "Wanderer";
-  const visibleWeapon = playerProfile?.gear?.weapon || "unarmed stance";
-  const visibleArmor = playerProfile?.gear?.armor || "traveler attire";
+  const portraitAttire = resolvePortraitAttireLabel(
+    (playerProfile as any)?.visualDna,
+    (playerProfile as any)?.visualDescription,
+    "portrait attire"
+  );
+  const visibleWeapon = humanizeGearForProse(playerProfile?.gear?.weapon, "unarmed stance");
+  const visibleArmor = humanizeGearForProse(playerProfile?.gear?.armor, portraitAttire);
 
   if (!presentCompanionNames || presentCompanionNames.length === 0) {
     return `--- PROTAGONIST IDENTITY CONTEXT (SOLO SCENE) ---

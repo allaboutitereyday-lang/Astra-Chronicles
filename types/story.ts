@@ -12,6 +12,16 @@ import {
   KeepsakeItem,
   ShopRole,
 } from "./port_solaris";
+import {
+  LabyrinthState,
+  StarRank,
+  HeroStatus,
+  FormationSlot,
+  HeroCombatStats,
+  StarfallRole,
+  StarfallOrigin,
+  StarfallFaction,
+} from "./starfall_labyrinth";
 
 export type {
   TimelineScar,
@@ -23,6 +33,14 @@ export type {
   IslandFaction,
   KeepsakeItem,
   ShopRole,
+  LabyrinthState,
+  StarRank,
+  HeroStatus,
+  FormationSlot,
+  HeroCombatStats,
+  StarfallRole,
+  StarfallOrigin,
+  StarfallFaction,
 };
 
 export type CompanionExpressionKey =
@@ -129,6 +147,23 @@ export interface StoryCompanion {
   trustProgress?: number; // Sub-point accumulator (0.0 to 1.0) for IRONCLAD/SELECTIVE heroines
   guardTier?: HeroineGuardTier;
   armorCrackCount?: number; // Number of times genuine charisma/attraction cracked her composed facade
+
+  // Starfall Labyrinth Roster & Permadeath Fields
+  starRank?: StarRank;
+  baseStarRank?: StarRank;
+  heroStatus?: HeroStatus;
+  formationSlot?: FormationSlot;
+  combatStats?: HeroCombatStats;
+  currentHp?: number;
+  currentMp?: number;
+  awakenings?: number;
+  fallenOnFloor?: number;
+  fallenCause?: string;
+
+  // Shared Squad Level & EXP Progression
+  level?: number;
+  exp?: number;
+  maxExp?: number;
 
   // Visual AI & Consistency Pipeline Fields (ControlNet & IPAdapter)
   seed: number;
@@ -383,6 +418,10 @@ export interface PlayerProfile {
   boardingHouse?: BoardingHouseState;
   factionStanding?: Record<IslandFaction, number>;
   equippedKeepsakes?: KeepsakeItem[];
+
+  // Starfall Labyrinth Core State
+  labyrinthState?: LabyrinthState;
+  starRank?: StarRank;
 }
 
 export interface VisitedStoryNode {

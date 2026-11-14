@@ -43,6 +43,9 @@ export interface MobileCommandSheetProps {
   onOpenCodex: () => void;
   onOpenGuidebook?: () => void;
   onOpenMap?: () => void;
+  onOpenSummonModal?: () => void;
+  isStarfallInLobby?: boolean;
+  starShardsCount?: number;
   locationName?: string;
   // Progression & Multiverse
   onNavigateToTrials: () => void;
@@ -79,6 +82,9 @@ export function MobileCommandSheet({
   onOpenCodex,
   onOpenGuidebook,
   onOpenMap,
+  onOpenSummonModal,
+  isStarfallInLobby,
+  starShardsCount,
   locationName,
   onNavigateToTrials,
   onOpenShareModal,
@@ -99,6 +105,7 @@ export function MobileCommandSheet({
 
   const isPortSolaris = storyId === "port-solaris";
   const isSovereignSpire = storyId === "sovereign-spire";
+  const isStarfall = storyId === "starfall-labyrinth";
 
   const handleAction = (cb: () => void) => {
     onClose();
@@ -129,6 +136,8 @@ export function MobileCommandSheet({
                     ? "STRAY ANCHOR DOCK"
                     : isSovereignSpire
                     ? "SPIRE COMMAND DOCK"
+                    : isStarfall
+                    ? "STARFALL COMMAND DOCK"
                     : "COMMAND DOCK"}
                 </h2>
                 <span className="text-[9px] font-mono text-zinc-400 block mt-0.5">
@@ -136,6 +145,8 @@ export function MobileCommandSheet({
                     ? "Port Solaris • Star Ledger & Housemates"
                     : isSovereignSpire
                     ? "Sovereign Spire • Blood-Ledger & Dyads"
+                    : isStarfall
+                    ? "Starfall Labyrinth • Star Gate & Roster"
                     : "Astra Chronicles • System & Party"}
                 </span>
               </div>
@@ -330,6 +341,32 @@ export function MobileCommandSheet({
                     </span>
                     <span className="text-[10px] text-zinc-400 font-mono block truncate">
                       {isPortSolaris ? "10 Heroines & Rules" : "Lore, Cast & Terms"}
+                    </span>
+                  </div>
+                </button>
+              )}
+
+              {isStarfall && onOpenSummonModal && (
+                <button
+                  type="button"
+                  onClick={() => handleAction(onOpenSummonModal)}
+                  className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer text-left group shadow-sm col-span-2 ${
+                    isStarfallInLobby
+                      ? "bg-indigo-950/60 border-indigo-400/50 hover:border-amber-400"
+                      : "bg-zinc-900/80 border-white/10 opacity-75"
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-indigo-900/70 border border-indigo-400/50 flex items-center justify-center text-amber-300 group-hover:scale-105 transition-transform shrink-0">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-bold text-zinc-100 block truncate">
+                      Star Gate Summon ({starShardsCount ?? 0} 💠)
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono block truncate">
+                      {isStarfallInLobby
+                        ? "Main Lobby Connected — Ready to Pull"
+                        : "Locked Outside Star Gate Plaza (Main Lobby)"}
                     </span>
                   </div>
                 </button>

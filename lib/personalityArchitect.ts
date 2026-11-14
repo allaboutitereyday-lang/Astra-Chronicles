@@ -386,6 +386,26 @@ export interface DynamicChoiceContext {
 
 function resolveDefaultNextLocations(currentLoc: string, storyId?: string, role?: string): [string, string] {
   const combined = `${storyId || ""} ${currentLoc || ""} ${role || ""}`.toLowerCase();
+  const isStarfall =
+    combined.includes("starfall") ||
+    combined.includes("star gate") ||
+    combined.includes("iron barracks") ||
+    combined.includes("memorial wall") ||
+    combined.includes("hollow king");
+
+  if (isStarfall) {
+    if (combined.includes("star gate") || combined.includes("main lobby")) {
+      return ["Floor 1: The Verdant Antechamber", "The Iron Barracks (Lobby Quarters)"];
+    }
+    if (combined.includes("barracks") || combined.includes("memorial")) {
+      return ["Star Gate Plaza (Main Lobby)", "Floor 1: The Verdant Antechamber"];
+    }
+    if (combined.includes("floor 1")) {
+      return ["Floor 5: Safe Zone Lantern Bazaar", "Star Gate Plaza (Main Lobby)"];
+    }
+    return ["Star Gate Plaza (Main Lobby)", "the next Labyrinth floor"];
+  }
+
   const isPortSolaris =
     combined.includes("port-solaris") ||
     combined.includes("stray anchor") ||
@@ -606,6 +626,21 @@ export function buildPersonalityFallbackChoices(params: {
     combinedContext.includes("plate");
 
   const [nextLoc1, nextLoc2] = resolveDefaultNextLocations(params.location || "", params.storyId, params.playerRole);
+
+  const isStarfallLabyrinth =
+    combinedContext.includes("starfall-labyrinth") ||
+    combinedContext.includes("star gate plaza") ||
+    combinedContext.includes("hollow king") ||
+    combinedContext.includes("gacha-tower");
+
+  if (isStarfallLabyrinth && !params.isProtagonistAlone) {
+    return [
+      `[Meta-Knowledge / Callout]: 'Watch the spacing, ${speaker}—follow my three-second mark and nobody takes a scratch.' Map out the safest formation in ${loc}.`,
+      `[${traitTag}/Trust]: 'Take a breath, ${speaker}. You aren't disposable fodder in my squad.' Check her gear straps and hold her gaze steadily.`,
+      `[${roleTag}/Tactics]: 'Let's turn the Master's reckless order to our advantage right here.' Step forward with disciplined ${rolePhrase} timing.`,
+      `[Move/Deployment]: 'Gear's set—walk with me toward ${nextLoc1} and keep tight formation.' Motion for ${speaker} to move out from ${loc}.`,
+    ];
+  }
 
   if (isPortSolarisOrSocial && !params.isProtagonistAlone) {
     if (isCulinaryScene) {

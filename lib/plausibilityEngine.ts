@@ -9,6 +9,8 @@
  * limits to non-human or superhuman fantasy characters.
  */
 
+import { resolvePortraitAttireLabel } from "@/lib/visionEncoder";
+
 export interface PlausibilityCharacterContext {
   name?: string;
   role?: string;
@@ -113,8 +115,17 @@ export function buildPlausibilityCapabilityEnvelope(
   const abilities = Array.isArray(playerProfile?.abilities) && playerProfile.abilities.length > 0
     ? playerProfile.abilities.join(", ")
     : "Innate Class & Stance Arts";
+  const resolvedArmor =
+    !playerProfile?.gear?.armor ||
+    /^(none|unarmored|portrait attire.*)$/i.test(playerProfile.gear.armor.trim())
+      ? resolvePortraitAttireLabel(
+          (playerProfile as any)?.visualDna,
+          (playerProfile as any)?.visualDescription,
+          "Portrait Attire (Unarmored)"
+        )
+      : playerProfile.gear.armor;
   const gearSummary = playerProfile?.gear
-    ? `Weapon: ${playerProfile.gear.weapon || "Unarmed"} | Armor: ${playerProfile.gear.armor || "None"} | Relic: ${playerProfile.gear.relic || "None"}`
+    ? `Weapon: ${playerProfile.gear.weapon || "Unarmed"} | Armor: ${resolvedArmor} | Relic: ${playerProfile.gear.relic || "None"}`
     : "Standard Loadout";
 
   const lineageProfile = getLineageCapabilityProfile(race, playerProfile?.racialTraits);

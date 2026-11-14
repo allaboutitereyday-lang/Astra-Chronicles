@@ -24,27 +24,27 @@ export const NARRATIVE_DEPTH_OPTIONS: Array<{
 }> = [
   {
     id: "deep_novelistic",
-    label: "Deep Novelistic (5–7+ Paragraphs)",
-    badge: "Maximum Depth",
-    description: "Multi-beat literary scenes with deep sensory grounding, psychological subtext, physical micro-tells, and multi-stage spoken dialogue.",
+    label: "Elastic OOC Novelistic (Dynamic Rhythm)",
+    badge: "OOC.ai Pro",
+    description: "Adaptive OOC.ai scene rhythm: punchy exchanges for rapid banter/combat, expanding organically for emotional turning points with autonomous NPC subtext.",
   },
   {
     id: "expansive",
-    label: "Expansive (3–5 Paragraphs)",
-    badge: "Rich Pacing",
-    description: "Detailed environmental choreography, multi-sentence character reactions, and extended conversational interplay.",
+    label: "Expansive (3–4 Paragraphs)",
+    badge: "Balanced",
+    description: "Crisp environmental blocking, grounded human contractions, and natural back-and-forth character interplay.",
   },
   {
     id: "standard",
-    label: "Standard (2–3 Paragraphs)",
-    badge: "Classic VN",
-    description: "Concise visual novel pacing with focused scene descriptions and direct dialogue exchanges.",
+    label: "Snappy Banter (2–3 Paragraphs)",
+    badge: "Fast VN",
+    description: "Rapid-fire visual novel pacing focused on immediate action and direct spoken dialogue.",
   },
 ];
 
 export const DEFAULT_LLM_CONFIG: LlmConfig = {
   targetEnvironment: "cloud",
-  modelId: "orchestrated-hybrid",
+  modelId: "ooc-two-pass-sonnet",
   temperature: 0.85,
   max_tokens: 3584,
   repetition_penalty: 1.1,
@@ -64,7 +64,12 @@ export function normalizeLegacyModelId(modelId?: string | null): string {
 }
 
 export function isHybridModelId(modelId?: string | null): boolean {
-  return modelId === "orchestrated-hybrid" || modelId === "orchestrated-hybrid-deepseek";
+  return (
+    modelId === "orchestrated-hybrid" ||
+    modelId === "orchestrated-hybrid-deepseek" ||
+    modelId === "ooc-two-pass-sonnet" ||
+    modelId === "ooc-two-pass-deepseek"
+  );
 }
 
 export function getStoredLlmConfig(): LlmConfig {
@@ -136,11 +141,25 @@ export const LOCAL_MODELS = [
 
 export const CLOUD_MODELS = [
   {
+    id: "ooc-two-pass-sonnet",
+    name: "OOC Two-Pass Pro (Claude Sonnet 4.6 Prose + Gemini Flash State)",
+    shortName: "OOC Pro (Sonnet 4.6)",
+    description: "True OOC.ai Architecture: Pass 1 generates pure unescaped literary prose & autonomous character subtext on Claude Sonnet 4.6; Pass 2 extracts LitRPG state & choices on Gemini 2.5 Flash.",
+    badge: "OOC.ai Recommended",
+  },
+  {
+    id: "ooc-two-pass-deepseek",
+    name: "OOC Two-Pass Uncensored (DeepSeek V3.2 Prose + Gemini Flash State)",
+    shortName: "OOC Uncensored (V3.2)",
+    description: "Uncensored Two-Pass Engine: Pure plain-text tactical survival & sharp character banter via DeepSeek V3.2 (671B), paired with deterministic Gemini 2.5 Flash JSON state tracking.",
+    badge: "Two-Pass • V3.2",
+  },
+  {
     id: "orchestrated-hybrid",
-    name: "Smart Hybrid (Gemini 2.5 Flash + Euryale 70B)",
-    shortName: "Smart Hybrid (Gemini)",
-    description: "OOC.ai-Style Multi-Model Orchestration: Gemini 2.5 Flash (1M context & native vision) orchestrates fast visual-novel turns, LitRPG systems & dynamic choices, paired with Euryale 70B for flagship roleplay.",
-    badge: "Recommended",
+    name: "Smart Hybrid (Claude / Gemini + Euryale Fallback)",
+    shortName: "Smart Hybrid",
+    description: "Multi-Model Orchestration combining 16-turn unmutilated conversation memory, conditional lore pruning, and fast visual-novel state tracking.",
+    badge: "Hybrid",
   },
   {
     id: "orchestrated-hybrid-deepseek",
@@ -598,7 +617,7 @@ export function LlmQuickPill({ config, onClick, className = "" }: LlmQuickPillPr
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-1.5 rounded-2xl border transition-all cursor-pointer shadow-lg text-xs font-mono backdrop-blur-md ${
+      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-xl border transition-all cursor-pointer shadow-lg text-xs font-mono backdrop-blur-md shrink-0 max-w-[130px] xl:max-w-[160px] 2xl:max-w-[185px] overflow-hidden ${
         isHybrid
           ? "bg-gradient-to-r from-rose-950/60 to-cyan-950/60 border-rose-500/50 hover:border-rose-400 text-white shadow-rose-950/30"
           : "bg-cyan-950/40 hover:bg-cyan-900/50 border-cyan-500/40 hover:border-cyan-500/70 text-cyan-300"
@@ -610,8 +629,8 @@ export function LlmQuickPill({ config, onClick, className = "" }: LlmQuickPillPr
       ) : (
         <Cloud className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
       )}
-      <span className="font-semibold text-[11px]">
-        <span className="text-zinc-400">AI:</span>{" "}
+      <span className="font-semibold text-[11px] truncate">
+        <span className="text-zinc-400 hidden 2xl:inline">AI: </span>
         <span className="text-white">{displayName}</span>
       </span>
     </button>

@@ -16,8 +16,21 @@ import {
   AlertCircle,
   Layers,
   Award,
+  Star,
+  Skull,
+  Shield,
 } from "lucide-react";
 import { StoryCompanion, CompanionCoreMemory, HeroineGuardTier } from "@/types/story";
+import {
+  STARFALL_HEROINE_DOSSIERS,
+  HeroRosterEntry,
+  StarRank,
+} from "@/types/starfall_labyrinth";
+import {
+  getStarLevelCap,
+  matchesHeroineName,
+  computeHeroCombatStats,
+} from "@/lib/starfallEngine";
 import {
   PORT_SOLARIS_HEROINE_DOSSIERS,
   HeroineProfile,
@@ -33,6 +46,7 @@ import {
 import {
   getHeroineResistanceProfile,
   synthesizeDynamicCompanionSentiment,
+  getRequiredExpForLevel,
 } from "@/lib/progressionMechanics";
 import { soundEffects } from "@/lib/audioEngine";
 
@@ -41,6 +55,7 @@ export interface CharacterCardCompanion {
   name: string;
   title?: string;
   role?: string;
+  gender?: "female" | "male" | "non-binary";
   personality?: string;
   values?: string[];
   dislikes?: string[];
@@ -68,7 +83,25 @@ export interface CharacterCardModalProps {
   roomNumber?: number;
   npcKnowledge?: { knowsName?: boolean; knowsClass?: boolean; knowsOrigin?: boolean };
   onSelectRole?: (role: ShopRole) => void;
+  starfallRosterEntry?: HeroRosterEntry | null;
 }
+
+export const STARFALL_PORTRAITS: Record<string, string> = {
+  "pia hollis": "/characters/starfall-labyrinth/pia_hollis/neutral.png",
+  "lotte klein": "/characters/starfall-labyrinth/lotte_klein/neutral.png",
+  "sable ashgrove": "/characters/starfall-labyrinth/sable_ashgrove/neutral.png",
+  "onyxia cryss": "/characters/starfall-labyrinth/onyxia_cryss/neutral.png",
+  "vaelkor": "/characters/starfall-labyrinth/vaelkor/neutral.png",
+  "dame odette varr": "/characters/starfall-labyrinth/odette_varr/neutral.png",
+  "trinity valoren": "/characters/starfall-labyrinth/trinity_valoren/neutral.png",
+  "abraxia": "/characters/starfall-labyrinth/abraxia/neutral.png",
+  "garrick ironbrow": "/characters/starfall-labyrinth/garrick_ironbrow/neutral.png",
+  "lyra nocturne": "/characters/starfall-labyrinth/lyra_nocturne/neutral.png",
+  "mei zhou": "/characters/starfall-labyrinth/mei_zhou/neutral.png",
+  "godiva": "/characters/starfall-labyrinth/godiva/neutral.png",
+  "sir roland vance": "/characters/starfall-labyrinth/roland_vance/neutral.png",
+  "aurelle, the seraph lance": "/characters/starfall-labyrinth/aurelle_seraph/neutral.png",
+};
 
 // Canonical transparent key art for Port Solaris heroines
 export const PORT_SOLARIS_PORTRAITS: Record<string, string> = {
@@ -387,7 +420,8 @@ export function resolveCharacterCardRole(
 
 export function getCharacterCardSentiment(
   affection: number,
-  companion?: Partial<CharacterCardCompanion | StoryCompanion> | null
+  companion?: Partial<CharacterCardCompanion | StoryCompanion> | null,
+  isStarfall: boolean = false
 ): string {
   if (companion && (companion.currentSentiment || companion.name)) {
     return synthesizeDynamicCompanionSentiment({
@@ -398,16 +432,36 @@ export function getCharacterCardSentiment(
       llmSentiment: companion.currentSentiment,
     });
   }
-  if (affection < 25) {
-    return "Guarded & Observant. She maintains a professional perimeter, treating you with cautious skepticism while watching how you handle island pressures.";
-  } else if (affection < 45) {
-    return "Curious & Warming. She frequently lingers at your counter or door, finding excuses to engage in playful banter and test your composure.";
-  } else if (affection < 70) {
-    return "Fond & Trusting. Her heart rate elevates noticeably in your presence. She confides private vulnerabilities and values your comfort over high-society prestige.";
-  } else if (affection < 90) {
-    return "Infatuated & Protective. Deep emotional resonance. She blushes at unexpected eye contact, fiercely defends The Stray Anchor, and views you as her irreplaceable partner.";
+  const isMale =
+    (companion?.gender || "").toLowerCase() === "male" ||
+    /\b(vaelkor|garrick|roland)\b/i.test(companion?.name || "");
+  const Subj = isMale ? "He" : "She";
+  const poss = isMale ? "his" : "her";
+  const obj = isMale ? "him" : "her";
+
+  if (isStarfall) {
+    if (affection < 25) {
+      return `Guarded & Observant. ${Subj} maintains a strict tactical perimeter, testing whether a 1★ commander can survive Labyrinth attrition.`;
+    } else if (affection < 45) {
+      return `Tactical Respect. ${Subj} watches your floor callouts closely, loosening ${poss} guard whenever you keep the squad alive.`;
+    } else if (affection < 70) {
+      return `Trusted Vanguard Bond. ${Subj} relies on your positioning in lethal boss phases and confides the scars beneath ${poss} armor.`;
+    } else if (affection < 90) {
+      return `Sworn Resonance. Deep battlefield devotion. ${Subj} refuses to let any Command Seal separate your flanks and watches every blind spot around you.`;
+    }
+    return `Unshakeable Starfall Dyad. Absolute life-and-death trust forged across the Spire—standing behind you against the Administrator without hesitation.`;
   }
-  return "Devoted Dyad Harmony. Unshakeable coastal devotion. She holds nothing back, completely short-circuiting into radiant affection whenever your hands touch.";
+
+  if (affection < 25) {
+    return `Guarded & Observant. ${Subj} maintains a professional perimeter, treating you with cautious skepticism while watching how you handle island pressures.`;
+  } else if (affection < 45) {
+    return `Curious & Warming. ${Subj} frequently lingers at your counter or door, finding excuses to engage in playful banter and test your composure.`;
+  } else if (affection < 70) {
+    return `Fond & Trusting. ${isMale ? "His" : "Her"} heart rate elevates noticeably in your presence. ${Subj} confides private vulnerabilities and values your comfort over high-society prestige.`;
+  } else if (affection < 90) {
+    return `Infatuated & Protective. Deep emotional resonance. ${Subj} softens at unexpected eye contact, fiercely defends The Stray Anchor, and views you as ${poss} irreplaceable partner.`;
+  }
+  return `Devoted Dyad Harmony. Unshakeable coastal devotion. ${Subj} holds nothing back toward ${obj === "him" ? "you" : "you"}, completely melting into radiant affection whenever your hands touch.`;
 }
 
 export function isCharacterCardSecretUnlocked(affection: number, intimacyRank: number = 1): boolean {
@@ -426,8 +480,10 @@ export function CharacterCardModal({
   roomNumber: propRoomNumber,
   npcKnowledge,
   onSelectRole,
+  starfallRosterEntry,
 }: CharacterCardModalProps) {
   const [activeTab, setActiveTab] = useState<ActiveModalTab>("overview");
+  const isStarfall = storyId === "starfall-labyrinth";
 
   // Handle ESC key dismiss
   const handleKeyDown = useCallback(
@@ -446,9 +502,9 @@ export function CharacterCardModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, handleKeyDown]);
 
-  const compNameLower = companion?.name.toLowerCase() || "";
+  const compNameLower = (companion?.name || "").toLowerCase();
   const dossier = useMemo(() => {
-    if (!companion) return null;
+    if (!companion || isStarfall) return null;
     return (
       PORT_SOLARIS_HEROINE_DOSSIERS[companion.name] ||
       Object.values(PORT_SOLARIS_HEROINE_DOSSIERS).find(
@@ -456,11 +512,54 @@ export function CharacterCardModal({
       ) ||
       null
     );
-  }, [companion, compNameLower]);
+  }, [companion, compNameLower, isStarfall]);
+
+  const starfallDossier = useMemo(() => {
+    if (!companion) return null;
+    return (
+      STARFALL_HEROINE_DOSSIERS[companion.name] ||
+      Object.values(STARFALL_HEROINE_DOSSIERS).find((d) =>
+        matchesHeroineName(d.name, companion.name, companion.id)
+      ) ||
+      null
+    );
+  }, [companion]);
 
   if (!isOpen || !companion) return null;
 
   const compAffection = typeof companion.affection === "number" ? companion.affection : 15;
+  const effectiveStarRank: StarRank = (
+    starfallRosterEntry?.starRank ||
+    (companion as StoryCompanion).starRank ||
+    starfallDossier?.baseStarRank ||
+    1
+  ) as StarRank;
+  const effectiveBaseStarRank: StarRank = (
+    starfallRosterEntry?.baseStarRank ||
+    (companion as StoryCompanion).baseStarRank ||
+    starfallDossier?.baseStarRank ||
+    1
+  ) as StarRank;
+  const effectiveRosterLevel =
+    starfallRosterEntry?.level || (companion as StoryCompanion).level || 1;
+  const effectiveRosterExp =
+    starfallRosterEntry?.exp ?? (companion as StoryCompanion).exp ?? 0;
+  const effectiveRosterMaxExp =
+    starfallRosterEntry?.maxExp ||
+    (companion as StoryCompanion).maxExp ||
+    getRequiredExpForLevel(effectiveRosterLevel);
+  const effectiveStarCap = isStarfall ? getStarLevelCap(effectiveStarRank) : 60;
+  const effectiveAwakenings =
+    starfallRosterEntry?.awakenings ?? (companion as StoryCompanion).awakenings ?? 0;
+  const effectiveHeroStatus =
+    starfallRosterEntry?.status ||
+    (companion as StoryCompanion).heroStatus ||
+    (companion.isPresent ? "DEPLOYED" : "BENCHED");
+  const isFallenHero = effectiveHeroStatus === "FALLEN";
+  const fallenFloor =
+    starfallRosterEntry?.fallenOnFloor || (companion as StoryCompanion).fallenOnFloor;
+  const fallenCause =
+    starfallRosterEntry?.fallenCause || (companion as StoryCompanion).fallenCause;
 
   // Resolve dynamic live BPM
   const { resolvedBpm } = resolveCharacterCardBpm(companion, propLiveBpm);
@@ -480,17 +579,42 @@ export function CharacterCardModal({
 
   // Resolve high-res portrait art
   const portraitSrc =
+    STARFALL_PORTRAITS[compNameLower] ||
     PORT_SOLARIS_PORTRAITS[compNameLower] ||
     companion.baseImageUrl ||
     "/characters/default.png";
 
-  // Rom-Com Secret & Knowledge Gating
-  const secretData = PORT_SOLARIS_SECRETS[compNameLower];
-  const isSecretUnlocked = isCharacterCardSecretUnlocked(compAffection, dossier?.intimacyRank ?? 1);
-  const resistanceProfile = getHeroineResistanceProfile(companion as Partial<StoryCompanion>);
+  // Resolve gender-aware pronouns & enriched companion data
+  const resolvedGender = (
+    companion.gender ||
+    starfallDossier?.gender ||
+    "female"
+  ).toLowerCase();
+  const isMale = resolvedGender === "male";
+  const possPronoun = isMale ? "his" : "her";
+  const PossPronoun = isMale ? "His" : "Her";
+
+  // Rom-Com / Labyrinth Secret & Knowledge Gating
+  const secretData = !isStarfall ? PORT_SOLARIS_SECRETS[compNameLower] : undefined;
+  const isSecretUnlocked = isCharacterCardSecretUnlocked(
+    compAffection,
+    !isStarfall ? dossier?.intimacyRank ?? 1 : 1
+  );
+  const resistanceProfile = getHeroineResistanceProfile({
+    ...companion,
+    gender: (companion.gender || starfallDossier?.gender) as StoryCompanion["gender"],
+  } as Partial<StoryCompanion>);
 
   // Dynamic Sentiment Synthesis (reflects live player choices & heroine guard state)
-  const getDynamicSentiment = () => getCharacterCardSentiment(compAffection, companion);
+  const getDynamicSentiment = () =>
+    getCharacterCardSentiment(
+      compAffection,
+      {
+        ...companion,
+        gender: (companion.gender || starfallDossier?.gender) as StoryCompanion["gender"],
+      },
+      isStarfall
+    );
 
   // Faction Styling
   const factionName: IslandFaction = dossier?.faction || "BOARDWALK_GUILD";
@@ -549,7 +673,15 @@ export function CharacterCardModal({
           {/* Ambient Faction / Blush Aura */}
           <div
             className={`absolute -top-12 -left-12 w-64 h-64 rounded-full blur-3xl opacity-35 pointer-events-none transition-all duration-700 ${
-              resolvedBpm >= 96
+              isStarfall
+                ? compAffection >= 80
+                  ? "bg-rose-500 animate-pulse"
+                  : compAffection >= 50
+                  ? "bg-amber-500"
+                  : effectiveStarRank >= 5
+                  ? "bg-indigo-500"
+                  : "bg-cyan-500"
+                : resolvedBpm >= 96
                 ? "bg-rose-500 animate-pulse"
                 : resolvedBpm >= 83
                 ? "bg-pink-500"
@@ -564,7 +696,9 @@ export function CharacterCardModal({
             <img
               src={portraitSrc}
               alt={companion.name}
-              className="w-full h-full object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)]"
+              className={`w-full h-full object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)] ${
+                isFallenHero ? "grayscale opacity-65" : ""
+              }`}
               onError={(e) => {
                 e.currentTarget.onerror = null;
                 e.currentTarget.src = "/characters/default.png";
@@ -574,47 +708,116 @@ export function CharacterCardModal({
 
           {/* Telemetry Overlays at Base of Portrait */}
           <div className="relative z-10 w-full space-y-2 mt-2">
-            {/* Live BPM Badge */}
-            <div
-              className={`w-full py-1.5 px-3 rounded-2xl border text-center font-mono flex items-center justify-between gap-2 shadow-lg backdrop-blur-md transition-all ${
-                resolvedBpm >= 96
-                  ? "bg-amber-950/90 border-amber-400 text-amber-200 animate-bounce"
-                  : resolvedBpm >= 83
-                  ? "bg-pink-950/85 border-pink-400/70 text-pink-200 animate-pulse"
-                  : resolvedBpm >= 69
-                  ? "bg-amber-950/75 border-amber-500/50 text-amber-200"
-                  : "bg-cyan-950/70 border-cyan-500/40 text-cyan-200"
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <Heart className={`w-4 h-4 fill-current ${resolvedBpm >= 83 ? "animate-pulse" : ""}`} />
-                <span className="text-xs font-black tracking-tight">{resolvedBpm} BPM</span>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">
-                {bpmState.label}
-              </span>
-            </div>
-
-            {/* Café Shop Role & Upstairs Room Badges */}
-            <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
-              <div className="bg-black/70 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
-                <Coffee className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <div className="truncate">
-                  <span className="text-[8px] text-zinc-500 uppercase block leading-none">Café Role</span>
-                  <span className="font-bold text-amber-200 truncate block">{resolvedRole}</span>
-                </div>
-              </div>
-
-              <div className="bg-black/70 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
-                <Home className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                <div className="truncate">
-                  <span className="text-[8px] text-zinc-500 uppercase block leading-none">Upstairs Room</span>
-                  <span className="font-bold text-sky-200 truncate block">
-                    {dossier?.isBoardingHouseTenant ? `Room ${resolvedRoomNum}` : "Island Resident"}
+            {isStarfall ? (
+              <>
+                <div
+                  className={`w-full py-1.5 px-3 rounded-2xl border text-center font-mono flex items-center justify-between gap-2 shadow-lg backdrop-blur-md transition-all ${
+                    isFallenHero
+                      ? "bg-rose-950/90 border-rose-500/70 text-rose-200"
+                      : effectiveStarRank >= 5
+                      ? "bg-amber-950/90 border-amber-400 text-amber-200"
+                      : effectiveStarRank >= 4
+                      ? "bg-purple-950/85 border-purple-400/70 text-purple-200"
+                      : "bg-indigo-950/80 border-indigo-400/50 text-indigo-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {isFallenHero ? (
+                      <Skull className="w-4 h-4 text-rose-400" />
+                    ) : (
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    )}
+                    <span className="text-xs font-black tracking-tight">
+                      {"★".repeat(effectiveStarRank)} ({effectiveStarRank}★)
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">
+                    {isFallenHero
+                      ? `FALLEN${fallenFloor ? ` • FLOOR ${fallenFloor}` : ""}`
+                      : `Lv.${effectiveRosterLevel} / ${effectiveStarCap}`}
                   </span>
                 </div>
-              </div>
-            </div>
+
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                  <div className="bg-black/70 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
+                    <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-[8px] text-zinc-500 uppercase block leading-none">
+                        Roster Status
+                      </span>
+                      <span
+                        className={`font-bold truncate block ${
+                          isFallenHero
+                            ? "text-rose-300"
+                            : effectiveHeroStatus === "DEPLOYED"
+                            ? "text-emerald-300"
+                            : "text-zinc-300"
+                        }`}
+                      >
+                        {effectiveHeroStatus}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-black/70 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-[8px] text-zinc-500 uppercase block leading-none">
+                        Awakenings
+                      </span>
+                      <span className="font-bold text-indigo-200 truncate block">
+                        {"◆".repeat(effectiveAwakenings)}
+                        {"◇".repeat(Math.max(0, 4 - effectiveAwakenings))} ({effectiveAwakenings}/4)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Live BPM Badge */}
+                <div
+                  className={`w-full py-1.5 px-3 rounded-2xl border text-center font-mono flex items-center justify-between gap-2 shadow-lg backdrop-blur-md transition-all ${
+                    resolvedBpm >= 96
+                      ? "bg-amber-950/90 border-amber-400 text-amber-200 animate-bounce"
+                      : resolvedBpm >= 83
+                      ? "bg-pink-950/85 border-pink-400/70 text-pink-200 animate-pulse"
+                      : resolvedBpm >= 69
+                      ? "bg-amber-950/75 border-amber-500/50 text-amber-200"
+                      : "bg-cyan-950/70 border-cyan-500/40 text-cyan-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Heart className={`w-4 h-4 fill-current ${resolvedBpm >= 83 ? "animate-pulse" : ""}`} />
+                    <span className="text-xs font-black tracking-tight">{resolvedBpm} BPM</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">
+                    {bpmState.label}
+                  </span>
+                </div>
+
+                {/* Café Shop Role & Upstairs Room Badges */}
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                  <div className="bg-black/70 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
+                    <Coffee className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-[8px] text-zinc-500 uppercase block leading-none">Café Role</span>
+                      <span className="font-bold text-amber-200 truncate block">{resolvedRole}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-black/70 border border-white/10 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
+                    <Home className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-[8px] text-zinc-500 uppercase block leading-none">Upstairs Room</span>
+                      <span className="font-bold text-sky-200 truncate block">
+                        {dossier?.isBoardingHouseTenant ? `Room ${resolvedRoomNum}` : "Island Resident"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
@@ -626,15 +829,30 @@ export function CharacterCardModal({
               <h2 className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
                 {companion.name}
               </h2>
-              <span
-                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${factionMeta.bg} ${factionMeta.border} ${factionMeta.text}`}
-              >
-                {factionMeta.label}
-              </span>
+              {isStarfall ? (
+                <>
+                  <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border bg-amber-950/80 border-amber-400/60 text-amber-200">
+                    {effectiveStarRank}★ Summoned Hero (Base {effectiveBaseStarRank}★)
+                  </span>
+                  {isFallenHero && (
+                    <span className="text-[10px] font-mono font-black px-2.5 py-0.5 rounded-full border bg-rose-950 border-rose-500/70 text-rose-200">
+                      ✝ MEMORIAL WALL — FLOOR {fallenFloor || "?"}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${factionMeta.bg} ${factionMeta.border} ${factionMeta.text}`}
+                >
+                  {factionMeta.label}
+                </span>
+              )}
             </div>
             <p className="text-xs sm:text-sm font-mono text-zinc-400 mt-1 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-              <span>{dossier?.epithet || companion.title || "Island Companion"}</span>
+              <span>
+                {starfallDossier?.epithet || dossier?.epithet || companion.title || "Summoned Companion"}
+              </span>
             </p>
           </div>
 
@@ -644,7 +862,15 @@ export function CharacterCardModal({
               [
                 { id: "overview", label: "Overview & Dyad", icon: <Layers className="w-3.5 h-3.5 shrink-0" /> },
                 { id: "dossier", label: "Dossier & Quirks", icon: <Info className="w-3.5 h-3.5 shrink-0" /> },
-                { id: "role", label: "Stray Anchor Role", icon: <Coffee className="w-3.5 h-3.5 shrink-0" /> },
+                {
+                  id: "role",
+                  label: isStarfall ? "Star Rank & Cap" : "Stray Anchor Role",
+                  icon: isStarfall ? (
+                    <Star className="w-3.5 h-3.5 shrink-0" />
+                  ) : (
+                    <Coffee className="w-3.5 h-3.5 shrink-0" />
+                  ),
+                },
                 { id: "memories", label: "Core Memories", icon: <Award className="w-3.5 h-3.5 shrink-0" /> },
               ] as const
             ).map((tab) => {
@@ -709,7 +935,7 @@ export function CharacterCardModal({
                     compAffection < resistanceProfile.guardedThreshold && (
                       <div className="flex items-center justify-between gap-2 text-[10px] px-2.5 py-1.5 rounded-xl bg-black/40 border border-rose-500/20">
                         <span className="text-rose-200/90 font-medium">
-                          ✦ Cracks in Her Armor:{" "}
+                          ✦ Cracks in {PossPronoun} Armor:{" "}
                           <strong className="text-rose-300">{companion.armorCrackCount || 0}</strong>
                         </span>
                         <span className="text-zinc-400 font-mono">
@@ -726,33 +952,90 @@ export function CharacterCardModal({
                     </p>
                   </div>
                   <p className="text-[10px] text-zinc-400 leading-relaxed">
-                    <strong className="text-zinc-300">How to Earn Her Heart:</strong> {resistanceProfile.whatEarnsAffection}
+                    <strong className="text-zinc-300">
+                      {isStarfall ? `How to Earn ${PossPronoun} Trust:` : `How to Earn ${PossPronoun} Heart:`}
+                    </strong>{" "}
+                    {resistanceProfile.whatEarnsAffection}
                   </p>
                 </div>
 
+                {/* Squad Combat Level & Synced Experience */}
+                {!isFallenHero && (
+                  <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-amber-500/20 space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-amber-200 font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+                        Squad Combat Level • Lv.{effectiveRosterLevel}
+                        {isStarfall ? `/${effectiveStarCap}` : ""}
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-amber-300">
+                        {effectiveRosterLevel >= effectiveStarCap
+                          ? `MAX CAP (Lv.${effectiveStarCap})`
+                          : `${effectiveRosterExp} / ${effectiveRosterMaxExp} EXP`}
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-200 transition-all duration-500 rounded-full"
+                        style={{
+                          width: `${
+                            effectiveRosterLevel >= effectiveStarCap
+                              ? 100
+                              : Math.max(
+                                  0,
+                                  Math.min(
+                                    100,
+                                    (effectiveRosterExp / Math.max(1, effectiveRosterMaxExp)) * 100
+                                  )
+                                )
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-zinc-400 leading-relaxed">
+                      Earns synced EXP alongside you during active combat clashes, tactical breakthroughs, dungeon floor clears, and quest completions while deployed in your squad.
+                    </p>
+                  </div>
+                )}
+
+                {isFallenHero && (
+                  <div className="p-3.5 rounded-2xl bg-rose-950/60 border border-rose-500/50 space-y-1.5">
+                    <div className="flex items-center gap-2 text-rose-200 font-bold">
+                      <Skull className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>
+                        Memorial Record — Permanently Fallen on Floor {fallenFloor || "?"}
+                      </span>
+                    </div>
+                    <p className="text-rose-200/85 text-[11px] leading-relaxed">
+                      {fallenCause ||
+                        "Shattered into Star Ash in the Starfall Labyrinth. Per Covenant VI, fallen heroes never return."}
+                    </p>
+                  </div>
+                )}
+
                 {/* Dyad Passive Ability Card */}
-                {dossier && (
+                {(dossier || starfallDossier) && (
                   <div className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/40 via-zinc-900/60 to-zinc-900/80 border border-amber-500/30 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <Crown className="w-4 h-4 text-amber-400 shrink-0" />
                       <span className="font-bold text-amber-200 uppercase tracking-wide">
-                        Dyad Passive: {dossier.dyadPassiveName}
+                        Dyad Passive: {(starfallDossier || dossier)?.dyadPassiveName}
                       </span>
                     </div>
                     <p className="text-zinc-300 text-[11px] leading-relaxed">
-                      {dossier.dyadPassiveDescription}
+                      {(starfallDossier || dossier)?.dyadPassiveDescription}
                     </p>
                   </div>
                 )}
 
                 {/* Conflict & Arc Premise */}
-                {dossier && (
+                {(dossier || starfallDossier) && (
                   <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-1.5">
                     <span className="text-zinc-400 uppercase text-[10px] tracking-wider block font-bold">
-                      Act I Island Arc & Conflict
+                      {isStarfall ? "Act I Labyrinth Arc & Survival Conflict" : "Act I Island Arc & Conflict"}
                     </span>
                     <p className="text-zinc-300 text-[11px] leading-relaxed">
-                      {dossier.actOneConflict}
+                      {(starfallDossier || dossier)?.actOneConflict}
                     </p>
                   </div>
                 )}
@@ -782,7 +1065,9 @@ export function CharacterCardModal({
                           : "bg-zinc-900 border-white/5 text-zinc-500"
                       }`}
                     >
-                      <span className="font-bold block">Conduit Flair</span>
+                      <span className="font-bold block">
+                        {isStarfall ? "Combat Class" : "Conduit Flair"}
+                      </span>
                       <span>{npcKnowledge?.knowsClass ? "Recognized" : "Guarded"}</span>
                     </div>
 
@@ -793,7 +1078,9 @@ export function CharacterCardModal({
                           : "bg-zinc-900 border-white/5 text-zinc-500"
                       }`}
                     >
-                      <span className="font-bold block">Origin Truth</span>
+                      <span className="font-bold block">
+                        {isStarfall ? "Ex-Ranker Origin" : "Origin Truth"}
+                      </span>
                       <span>{npcKnowledge?.knowsOrigin ? "Disclosed" : "Masked"}</span>
                     </div>
                   </div>
@@ -810,9 +1097,27 @@ export function CharacterCardModal({
                     Persona & Demeanor
                   </span>
                   <p className="text-zinc-200 text-[11px] leading-relaxed">
-                    {companion.personality || dossier?.archetype || "A key figure on Port Solaris."}
+                    {companion.personality ||
+                      starfallDossier?.personality ||
+                      starfallDossier?.actOneConflict ||
+                      dossier?.archetype ||
+                      (isStarfall
+                        ? "A summoned hero fighting to survive the Starfall Labyrinth."
+                        : "A key figure on Port Solaris.")}
                   </p>
                 </div>
+
+                {/* Starfall Chronicle Quote & Voice Brief */}
+                {isStarfall && starfallDossier && (
+                  <div className="p-3.5 rounded-2xl bg-indigo-950/25 border border-indigo-500/25 space-y-2">
+                    <span className="text-indigo-300 uppercase text-[10px] tracking-wider block font-bold">
+                      Star Gate Summon Record
+                    </span>
+                    <p className="text-zinc-200 italic text-[11px] leading-relaxed">
+                      &ldquo;{starfallDossier.summonQuote}&rdquo;
+                    </p>
+                  </div>
+                )}
 
                 {/* Likes / Values vs. Dislikes */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -821,7 +1126,13 @@ export function CharacterCardModal({
                       <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Values & Likes
                     </span>
                     <div className="flex flex-wrap gap-1">
-                      {(companion.values || ["Honesty", "Warm Comfort Food", "Island Loyalty"]).map((v, i) => (
+                      {((companion.values && companion.values.length > 0
+                        ? companion.values
+                        : starfallDossier?.values) ||
+                        (isStarfall
+                          ? ["Tactical Competence", "Squad Survival", "Honest Command"]
+                          : ["Honesty", "Warm Comfort Food", "Island Loyalty"])
+                      ).map((v, i) => (
                         <span
                           key={i}
                           className="px-2 py-0.5 rounded-md bg-emerald-900/60 text-emerald-200 text-[10px]"
@@ -834,10 +1145,16 @@ export function CharacterCardModal({
 
                   <div className="p-3 rounded-2xl bg-rose-950/30 border border-rose-500/30 space-y-1.5">
                     <span className="text-rose-300 font-bold uppercase text-[10px] flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Dislikes & Pet Peeves
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Dislikes & Triggers
                     </span>
                     <div className="flex flex-wrap gap-1">
-                      {(companion.dislikes || ["Arrogance", "Unearned Privilege", "Sloppy Recipes"]).map((d, i) => (
+                      {((companion.dislikes && companion.dislikes.length > 0
+                        ? companion.dislikes
+                        : starfallDossier?.dislikes) ||
+                        (isStarfall
+                          ? ["Reckless Command Seals", "Sacrificial Bait Orders", "Betrayal"]
+                          : ["Arrogance", "Unearned Privilege", "Sloppy Recipes"])
+                      ).map((d, i) => (
                         <span
                           key={i}
                           className="px-2 py-0.5 rounded-md bg-rose-900/60 text-rose-200 text-[10px]"
@@ -849,7 +1166,7 @@ export function CharacterCardModal({
                   </div>
                 </div>
 
-                {/* ROM-COM WEAKNESS & SHADOW SECRET (GATED) */}
+                {/* ROM-COM / LABYRINTH SECRET (GATED) */}
                 <div
                   className={`p-4 rounded-2xl border transition-all ${
                     isSecretUnlocked
@@ -862,12 +1179,14 @@ export function CharacterCardModal({
                       {isSecretUnlocked ? (
                         <>
                           <Unlock className="w-4 h-4 text-emerald-400" />
-                          Rom-Com Secret Unlocked: Rom-Com Weakness
+                          {isStarfall
+                            ? "Labyrinth Dossier Unlocked: Hidden Trauma & Secret"
+                            : "Rom-Com Secret Unlocked: Rom-Com Weakness"}
                         </>
                       ) : (
                         <>
                           <Lock className="w-4 h-4 text-amber-400" />
-                          Rom-Com Secret Locked
+                          {isStarfall ? "Labyrinth Secret Locked" : "Rom-Com Secret Locked"}
                         </>
                       )}
                     </span>
@@ -876,24 +1195,28 @@ export function CharacterCardModal({
                     </span>
                   </div>
 
-                  {isSecretUnlocked && secretData ? (
+                  {isSecretUnlocked && (secretData || starfallDossier) ? (
                     <div className="space-y-1.5 text-[11px] leading-relaxed text-zinc-200">
                       <p className="text-zinc-400 font-semibold">
-                        Public Persona: {secretData.publicFace}
+                        Public Persona: {secretData?.publicFace || starfallDossier?.archetype}
                       </p>
                       <p className="text-rose-200 font-bold">
-                        Secret Vulnerability: {secretData.secret}
+                        Secret Vulnerability: {secretData?.secret || starfallDossier?.traumaAndSecret}
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-1.5 text-[11px] text-zinc-400">
                       <p>
                         {secretData?.publicFace ||
+                          starfallDossier?.archetype ||
                           "A guarded secret known only to those who share genuine intimacy."}
                       </p>
                       <div className="p-2 rounded-xl bg-black/40 border border-amber-500/20 text-amber-300 text-[10px] flex items-center gap-1.5">
                         <Lock className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                        <span>{secretData?.unlockHint || "Reach 50% Affection or Intimacy Rank 2 to unlock."}</span>
+                        <span>
+                          {secretData?.unlockHint ||
+                            `Reach 50% Affection to unlock ${possPronoun} hidden past.`}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -901,10 +1224,182 @@ export function CharacterCardModal({
               </div>
             )}
 
-            {/* TAB 3: STRAY ANCHOR ROLE & ROOM */}
+            {/* TAB 3: STRAY ANCHOR ROLE OR STARFALL ROSTER PROGRESSION */}
             {activeTab === "role" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Café Shop Role Card */}
+                {isStarfall ? (
+                  <>
+                    <div className="p-4 rounded-2xl bg-zinc-900/70 border border-amber-500/30 space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                          <div>
+                            <h4 className="font-bold text-white text-sm">
+                              Star Rank: {"★".repeat(effectiveStarRank)} ({effectiveStarRank}★ • Base {effectiveBaseStarRank}★)
+                            </h4>
+                            <span className="text-[10px] text-zinc-400">
+                              {starfallDossier?.combatRole || companion.role || "Labyrinth Combatant"}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-200 font-bold">
+                          Level {effectiveRosterLevel} / Cap {effectiveStarCap}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-zinc-300 leading-relaxed">
+                        Per Covenant II, a {effectiveStarRank}★ hero has a hard biological ceiling of{" "}
+                        <strong className="text-amber-300">Level {effectiveStarCap}</strong> (1★=20, 2★=30, 3★=40, 4★=50, 5★=60). Reaching Heart Resonance milestones (25%, 50%, 75%, 90%) or absorbing duplicate Star Gate echoes triggers{" "}
+                        <strong className="text-indigo-300">Resonance Awakening (+1★)</strong>, raising {possPronoun} cap by +10 up to 5★ (Lv.60).
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-white text-xs">
+                          Resonance Awakening Nodes ({effectiveAwakenings} / 4)
+                        </span>
+                        <span className="text-[10px] text-indigo-300">
+                          Milestones: 25% • 50% • 75% • 90%
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 text-center text-[10px]">
+                        {[25, 50, 75, 90].map((ms, idx) => {
+                          const unlocked = effectiveAwakenings > idx || compAffection >= ms;
+                          return (
+                            <div
+                              key={ms}
+                              className={`p-2 rounded-xl border ${
+                                unlocked
+                                  ? "bg-indigo-950/70 border-indigo-400/60 text-indigo-200 font-bold"
+                                  : "bg-black/40 border-white/10 text-zinc-500"
+                              }`}
+                            >
+                              <span className="block text-xs">{unlocked ? "◆" : "◇"}</span>
+                              <span>{ms}% Bond</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* STAR-SCALED COMBAT STATS + ASCENSION PREVIEW */}
+                    {(() => {
+                      const curStats =
+                        starfallRosterEntry?.combatStats ||
+                        computeHeroCombatStats({
+                          heroineName: companion.name,
+                          starRank: effectiveStarRank,
+                          level: effectiveRosterLevel,
+                          awakenings: effectiveAwakenings,
+                          isWounded: effectiveHeroStatus === "WOUNDED",
+                        });
+                      const nextRank =
+                        effectiveStarRank < 5
+                          ? ((effectiveStarRank + 1) as StarRank)
+                          : null;
+                      const nextStats = nextRank
+                        ? computeHeroCombatStats({
+                            heroineName: companion.name,
+                            starRank: nextRank,
+                            level: effectiveRosterLevel,
+                            awakenings: Math.min(4, effectiveAwakenings + 1),
+                            isWounded: false,
+                          })
+                        : null;
+
+                      const statRows = [
+                        { label: "Max HP", cur: curStats.maxHp, nxt: nextStats?.maxHp },
+                        { label: "Max MP", cur: curStats.maxMp, nxt: nextStats?.maxMp },
+                        { label: "ATK", cur: curStats.atk, nxt: nextStats?.atk },
+                        { label: "DEF", cur: curStats.def, nxt: nextStats?.def },
+                        { label: "SPD", cur: curStats.spd, nxt: nextStats?.spd },
+                        { label: "CRIT", cur: `${curStats.critRate}%`, nxt: nextStats ? `${nextStats.critRate}%` : undefined },
+                        { label: "EVA", cur: `${curStats.evasion}%`, nxt: nextStats ? `${nextStats.evasion}%` : undefined },
+                      ];
+
+                      return (
+                        <div className="p-4 rounded-2xl bg-zinc-900/70 border border-indigo-500/30 space-y-3">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <span className="font-bold text-white text-xs">
+                              Combat Telemetry &amp; Star Ascension Scaling
+                            </span>
+                            {nextRank ? (
+                              <span className="text-[10px] font-mono text-amber-300">
+                                Preview: {effectiveStarRank}★ → {nextRank}★ (Cap Lv.{getStarLevelCap(nextRank)})
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-amber-300 font-bold">
+                                MAX 5★ SOVEREIGN CAP REACHED
+                              </span>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-mono">
+                            {statRows.map((st) => (
+                              <div
+                                key={st.label}
+                                className="p-2 rounded-xl bg-black/50 border border-white/10 flex flex-col"
+                              >
+                                <span className="text-[9px] text-zinc-400 uppercase">
+                                  {st.label}
+                                </span>
+                                <span className="font-bold text-white">
+                                  {st.cur}
+                                  {st.nxt !== undefined && (
+                                    <span className="text-emerald-300 text-[10px] ml-1">
+                                      → {st.nxt}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* 4-MOVE OC SKILL KIT */}
+                    {starfallDossier?.skillKit && (
+                      <div className="p-4 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2.5">
+                        <span className="font-bold text-white text-xs block">
+                          Signature Tactical &amp; Swap Kit
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                          {[
+                            { slot: "Basic", move: starfallDossier.skillKit.basicAttack },
+                            { slot: "Active Skill", move: starfallDossier.skillKit.activeSkill },
+                            { slot: "Tag-Swap Assist", move: starfallDossier.skillKit.tagAssistSkill },
+                            {
+                              slot:
+                                compAffection >= 50 || effectiveAwakenings >= 2
+                                  ? "Bond Special (Unlocked)"
+                                  : "Bond Special (50% Bond)",
+                              move: starfallDossier.skillKit.bondSpecial,
+                            },
+                          ].map(({ slot, move }) => (
+                            <div
+                              key={move.id}
+                              className="p-2.5 rounded-xl bg-black/50 border border-white/10 space-y-1"
+                            >
+                              <div className="flex items-center justify-between gap-1 font-mono">
+                                <span className="font-bold text-indigo-200 text-[11px] truncate">
+                                  {move.name}
+                                </span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/5 text-zinc-300 shrink-0">
+                                  {slot}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-zinc-400 leading-snug">
+                                {move.description}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Café Shop Role Card */}
                 <div className="p-4 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -957,6 +1452,8 @@ export function CharacterCardModal({
                     </p>
                   )}
                 </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -964,8 +1461,9 @@ export function CharacterCardModal({
             {activeTab === "memories" && (
               <div className="space-y-4 animate-in fade-in duration-200">
                 <p className="text-zinc-400 text-[11px]">
-                  Pivotal romantic memories, cracks in her armor, and heartfelt breakthroughs forged by your choices and
-                  actions throughout the story.
+                  Pivotal {isStarfall ? "battlefield and personal" : "romantic"} memories, cracks in{" "}
+                  {possPronoun} armor, and heartfelt breakthroughs forged by your choices and actions throughout the
+                  story.
                 </p>
 
                 {/* SECTION A: PLAYER-FORGED DYNAMIC STORY MEMORIES */}
@@ -1017,18 +1515,25 @@ export function CharacterCardModal({
                   )}
                 </div>
 
-                {/* SECTION B: SIGNATURE HEROINE CORE MEMORIES */}
+                {/* SECTION B: SIGNATURE HERO / HEROINE CORE MEMORIES */}
                 <div className="space-y-2.5 pt-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
                     <Award className="w-3.5 h-3.5 text-amber-400" />
-                    Signature Heroine Core Memories
+                    Signature {isMale ? "Hero" : "Heroine"} Core Memories
                   </span>
 
                   {(() => {
+                    const starfallSigIds =
+                      isStarfall && starfallDossier?.signatureMemories
+                        ? starfallDossier.signatureMemories.map((m) => m.id)
+                        : [];
                     const canonicalIds = Array.from(
                       new Set([
-                        ...(dossier?.unlockedCoreMemories || []),
-                        ...(Array.isArray(companion.unlockedCoreMemories) ? companion.unlockedCoreMemories : []),
+                        ...starfallSigIds,
+                        ...(!isStarfall ? dossier?.unlockedCoreMemories || [] : []),
+                        ...(Array.isArray(companion.unlockedCoreMemories)
+                          ? companion.unlockedCoreMemories
+                          : []),
                       ])
                     );
 
@@ -1036,16 +1541,22 @@ export function CharacterCardModal({
                       return (
                         <div className="p-5 rounded-2xl bg-zinc-900/40 border border-white/5 text-center text-zinc-500">
                           <BookOpen className="w-5 h-5 mx-auto mb-1.5 opacity-50" />
-                          <span>Spend time with {companion.name} to uncover her signature core memories!</span>
+                          <span>
+                            Spend time with {companion.name} to uncover {possPronoun} signature core memories!
+                          </span>
                         </div>
                       );
                     }
 
                     return canonicalIds.map((memId, idx) => {
-                      const memMeta = CORE_MEMORY_CATALOG[memId] || {
-                        title: memId.replace(/_/g, " ").toUpperCase(),
-                        hint: "An unforgettable moment on Port Solaris.",
-                      };
+                      const sfMeta = starfallDossier?.signatureMemories?.find((m) => m.id === memId);
+                      const memMeta = sfMeta ||
+                        CORE_MEMORY_CATALOG[memId] || {
+                          title: memId.replace(/_/g, " ").toUpperCase(),
+                          hint: isStarfall
+                            ? "A pivotal shared memory forged inside the Starfall Labyrinth."
+                            : "An unforgettable moment on Port Solaris.",
+                        };
 
                       const requiredAffection = idx === 0 ? 50 : 75;
                       const isDynamicallyUnlockedByStory =
@@ -1053,8 +1564,11 @@ export function CharacterCardModal({
                         companion.unlockedCoreMemories.includes(memId);
                       const isUnlockedByRankOrAffection =
                         idx === 0
-                          ? isCharacterCardSecretUnlocked(compAffection, dossier?.intimacyRank ?? 1)
-                          : compAffection >= 75 || (dossier?.intimacyRank ?? 1) >= 4;
+                          ? isCharacterCardSecretUnlocked(
+                              compAffection,
+                              !isStarfall ? dossier?.intimacyRank ?? 1 : 1
+                            )
+                          : compAffection >= 75 || (!isStarfall && (dossier?.intimacyRank ?? 1) >= 4);
                       const isMemUnlocked = isDynamicallyUnlockedByStory || isUnlockedByRankOrAffection;
 
                       return (
