@@ -36,6 +36,7 @@ import { soundEffects } from "@/lib/audioEngine";
 import { loadGameSlot, saveGameSlot, SaveSlotPayload } from "@/lib/saveStorage";
 import { saveCodexLoot, saveCodexScene, getAllCodexScenes } from "@/lib/codexStorage";
 import { InventoryItem, PlayerProfile, AbilityDetail, StoryCompanion, TrialModifier } from "@/types/story";
+import type { HeroRosterEntry } from "@/types/starfall_labyrinth";
 import { evaluateRelicSynergies } from "@/lib/relicSynergies";
 import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 import { getClassArsenal, ClassArsenal, ClassTacticalAction } from "@/lib/trialsClassArsenals";
@@ -51,7 +52,14 @@ import {
   getSectorModifiersForRun,
   getRandomSectorModifier,
   getDiscoveredCompanions,
+  resolveProtagonistExpGain,
+  resolveCompanionExpGain,
 } from "@/lib/progressionMechanics";
+import {
+  getStarLevelCap,
+  hydrateRosterEntryStats,
+  matchesHeroineName,
+} from "@/lib/starfallEngine";
 import {
   generateStorySectors,
   generateStoryLootTable,
@@ -902,28 +910,123 @@ function LitRPGTrialsContent() {
           hp: 100, maxHp: 100, mp: 60, maxMp: 60, exp: 0, maxExp: 100, str: 10, dex: 10, int: 10
         };
 
-        // Calculate Level Up & EXP advancement
-        let newExp = (currentStats.exp || 0) + trialExpGained;
-        let newLevel = currentPlayer.level || 1;
-        let newMaxExp = currentStats.maxExp || (newLevel * 100);
-        let newMaxHp = currentStats.maxHp || 100;
-        let newMaxMp = currentStats.maxMp || 60;
-        let newStr = currentStats.str || 10;
-        let newDex = currentStats.dex || 10;
-        let newInt = currentStats.int || 10;
-        let levelsGained = 0;
+        // Calculate Level Up & EXP advancement using unified 1.35x RPG curve & level caps
+        const isStarfallSave =
+          slot0.storyId === "starfall-labyrinth" || Boolean(currentPlayer.labyrinthState);
+        const maxLevelCap = isStarfallSave
+          ? getStarLevelCap(
+              currentPlayer.labyrinthState?.protagonistStarRank ||
+                currentPlayer.starRank ||
+                1
+            )
+          : 60;
 
-        while (newExp >= newMaxExp) {
-          newExp -= newMaxExp;
-          newLevel += 1;
-          levelsGained += 1;
-          newMaxExp = newLevel * 100;
-          newMaxHp += 20;
-          newMaxMp += 10;
-          newStr += 2;
-          newDex += 2;
-          newInt += 2;
+        const expRes = resolveProtagonistExpGain({
+          level: currentPlayer.level || 1,
+          exp: currentStats.exp || 0,
+          maxExp: currentStats.maxExp,
+          hp: currentStats.hp ?? 100,
+          maxHp: currentStats.maxHp || 100,
+          mp: currentStats.mp ?? 60,
+          maxMp: currentStats.maxMp || 60,
+          str: currentStats.str || 10,
+          dex: currentStats.dex || 10,
+          int: currentStats.int || 10,
+          unspentStatPoints: currentPlayer.unspentStatPoints || 0,
+          expGained: trialExpGained,
+          maxLevelCap,
+          restoreVitalsOnLevelUp: false,
+        });
+
+        const newExp = expRes.exp;
+        const newLevel = expRes.level;
+        const newMaxExp = expRes.maxExp;
+        const newMaxHp = expRes.maxHp;
+        const newMaxMp = expRes.maxMp;
+        const newStr = expRes.str;
+        const newDex = expRes.dex;
+        const newInt = expRes.int;
+        const levelsGained = expRes.levelsGained;
+
+        // Award shared EXP to active Co-Op companion (and Starfall roster entry if present)
+        let updatedLabyrinthState = currentPlayer.labyrinthState;
+        if (
+          activeCompanion &&
+          trialExpGained > 0 &&
+          updatedLabyrinthState &&
+          Array.isArray(updatedLabyrinthState.roster)
+        ) {
+          updatedLabyrinthState = {
+            ...updatedLabyrinthState,
+            roster: updatedLabyrinthState.roster.map((entry: HeroRosterEntry) => {
+              if (
+                entry.status === "FALLEN" ||
+                !(
+                  matchesHeroineName(entry.heroineName, activeCompanion.name, entry.heroineId) ||
+                  entry.heroineId === activeCompanion.id
+                )
+              ) {
+                return entry;
+              }
+              const compExpRes = resolveCompanionExpGain({
+                level: entry.level || 1,
+                exp: entry.exp || 0,
+                expGained: trialExpGained,
+                maxLevelCap: getStarLevelCap(entry.starRank || 1),
+                isFocalOrSynergy: true,
+              });
+              return hydrateRosterEntryStats({
+                ...entry,
+                level: compExpRes.level,
+                exp: compExpRes.exp,
+                maxExp: compExpRes.maxExp,
+              });
+            }),
+          };
         }
+
+        const updatedParty =
+          activeCompanion && trialExpGained > 0 && Array.isArray(slot0.party)
+            ? slot0.party.map((comp: StoryCompanion) => {
+                if (
+                  comp.heroStatus === "FALLEN" ||
+                  !(
+                    comp.id === activeCompanion.id ||
+                    matchesHeroineName(comp.name, activeCompanion.name, comp.id)
+                  )
+                ) {
+                  return comp;
+                }
+                const rosterMatch = updatedLabyrinthState?.roster?.find((r: HeroRosterEntry) =>
+                  matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+                );
+                if (rosterMatch) {
+                  return {
+                    ...comp,
+                    level: rosterMatch.level,
+                    exp: rosterMatch.exp,
+                    maxExp: rosterMatch.maxExp,
+                    combatStats: rosterMatch.combatStats,
+                    currentHp: rosterMatch.currentHp,
+                    currentMp: rosterMatch.currentMp,
+                  };
+                }
+                const compCap = isStarfallSave ? getStarLevelCap(comp.starRank || 1) : 60;
+                const compExpRes = resolveCompanionExpGain({
+                  level: comp.level || 1,
+                  exp: comp.exp || 0,
+                  expGained: trialExpGained,
+                  maxLevelCap: compCap,
+                  isFocalOrSynergy: true,
+                });
+                return {
+                  ...comp,
+                  level: compExpRes.level,
+                  exp: compExpRes.exp,
+                  maxExp: compExpRes.maxExp,
+                };
+              })
+            : slot0.party;
 
         // Merge newly acquired trial loot into inventory
         const existingInventory: InventoryItem[] = Array.isArray(currentPlayer.inventory) ? currentPlayer.inventory : [];
@@ -952,9 +1055,15 @@ function LitRPGTrialsContent() {
           }
         }
 
-        // Calculate final HP & MP
-        const finalHp = Math.max(15, Math.min(newMaxHp, playerHp > 0 ? playerHp : Math.floor(newMaxHp * 0.5)));
-        const finalMp = Math.max(10, Math.min(newMaxMp, playerMp > 0 ? playerMp : Math.floor(newMaxMp * 0.5)));
+        // Calculate final HP & MP (restore full vitals on level-up)
+        const finalHp =
+          levelsGained > 0
+            ? newMaxHp
+            : Math.max(15, Math.min(newMaxHp, playerHp > 0 ? playerHp : Math.floor(newMaxHp * 0.5)));
+        const finalMp =
+          levelsGained > 0
+            ? newMaxMp
+            : Math.max(10, Math.min(newMaxMp, playerMp > 0 ? playerMp : Math.floor(newMaxMp * 0.5)));
 
         const updatedGearImages = { ...(currentPlayer.gearImages || {}) };
         mergedInventory.forEach((item) => {
@@ -967,6 +1076,8 @@ function LitRPGTrialsContent() {
         const updatedPlayer: PlayerProfile = {
           ...currentPlayer,
           level: newLevel,
+          unspentStatPoints: expRes.unspentStatPoints,
+          ...(updatedLabyrinthState ? { labyrinthState: updatedLabyrinthState } : {}),
           inventory: mergedInventory,
           gearImages: updatedGearImages,
           stats: {
@@ -988,6 +1099,7 @@ function LitRPGTrialsContent() {
           ...slot0,
           savedAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
           player: updatedPlayer,
+          party: updatedParty,
           activeTrialCompanionId: activeCompanion?.id,
           activeStance,
         };

@@ -7,6 +7,8 @@
  * - Quarter-Tower Threshold Sanctums (F25, F75) & Sovereign Gate Bosses (F10..F100)
  */
 
+import type { StarfallEnemyUnit } from "@/types/starfall_labyrinth";
+
 export type TowerThemeId =
   | "SUNKEN_RELIQUARY"
   | "CHRONOS_FOUNDRY"
@@ -1677,5 +1679,209 @@ export function generateScaledFloorEnemy(
       maxPoise: Math.round(chosenEnemy.maxPoise * (bossTemplate ? 1 : 1 + stratumOffset * 0.02)),
     },
     isThresholdFloor,
+  };
+}
+
+/**
+ * Returns how many encounter waves a floor holds before advancing upward.
+ * - Safe Zones & Lobby: 0 waves
+ * - Gate / Threshold Boss Floors (F10, F20, F25, etc.): 2 waves (Wave 1 Vanguard Pack -> Wave 2 Sovereign Boss)
+ * - Anomaly Event Floors (F7, F14, F21, etc.): 2 waves (Wave 1 Anomaly Vanguard -> Wave 2 Anomaly Guardian)
+ * - Standard Combat Floors: 3 waves (Wave 1 Recon Pack -> Wave 2 Ambush Pack -> Wave 3 Exit Guardian Pack)
+ */
+export function getTotalWavesForFloor(floor: number): number {
+  const f = Math.floor(floor || 0);
+  if (f <= 0) return 0;
+  const isBoss = f % 10 === 0 || f === 25 || f === 50 || f === 75 || f === 100;
+  if (isBoss) return 2;
+  const isSafe = f % 10 === 5;
+  if (isSafe) return 0;
+  if (f % 7 === 0) return 2;
+  return 3;
+}
+
+/**
+ * Deterministically builds a 2–3 unit enemy pack (or Boss + Retinue) for a given floor & wave.
+ */
+export function generateScaledFloorEnemyPack(
+  floor: number,
+  seed: string = "starfall",
+  waveNumber: number = 1,
+  preferredEnemyTemplate?: TowerEnemyTemplate | null
+): {
+  theme: TowerThemeDefinition;
+  layout: FloorLayoutTemplate;
+  enemy: TowerEnemyTemplate;
+  enemyTier: StarfallEnemyTier;
+  scaledStats: {
+    maxHp: number;
+    atk: number;
+    def: number;
+    spd: number;
+    maxPoise: number;
+  };
+  isThresholdFloor: boolean;
+  floorWave: number;
+  floorTotalWaves: number;
+  enemyUnits: StarfallEnemyUnit[];
+} {
+  const clampedFloor = Math.max(1, Math.min(100, Math.floor(floor || 1)));
+  const theme = getTowerThemeForFloor(clampedFloor);
+  const layout = getFloorLayout(clampedFloor, seed);
+
+  const bossTemplate = theme.bossByFloor[clampedFloor];
+  const isThresholdFloor =
+    clampedFloor === 25 || clampedFloor === 50 || clampedFloor === 75 || clampedFloor === 100;
+
+  const rawTotalWaves = getTotalWavesForFloor(clampedFloor);
+  const floorTotalWaves = rawTotalWaves > 0 ? rawTotalWaves : 3;
+  const floorWave = Math.max(1, Math.min(floorTotalWaves, Math.floor(waveNumber || 1)));
+
+  const commons = theme.regularEnemies.filter((e) => (e.tier || "COMMON") === "COMMON");
+  const elites = theme.regularEnemies.filter((e) => e.tier === "ELITE");
+  const safeCommons = commons.length > 0 ? commons : theme.regularEnemies;
+  const safeElites = elites.length > 0 ? elites : safeCommons;
+
+  const pickFromPool = (pool: TowerEnemyTemplate[], salt: string, excludeId?: string): TowerEnemyTemplate => {
+    const filtered = excludeId && pool.length > 1 ? pool.filter((p) => p.id !== excludeId) : pool;
+    const activePool = filtered.length > 0 ? filtered : pool;
+    const idx = hashThemeSeed(`${seed}:f${clampedFloor}:w${floorWave}:${salt}`) % activePool.length;
+    return activePool[idx] || theme.regularEnemies[0];
+  };
+
+  let pickedTemplates: TowerEnemyTemplate[] = [];
+
+  if (bossTemplate && floorWave >= floorTotalWaves) {
+    // Final wave of a Boss floor: Sovereign Boss (+ 1 Common Retinue Guard on non-threshold F10/20/30...)
+    if (!isThresholdFloor && safeCommons.length > 0) {
+      pickedTemplates = [bossTemplate, pickFromPool(safeCommons, "boss_escort", bossTemplate.id)];
+    } else {
+      pickedTemplates = [bossTemplate];
+    }
+  } else if (bossTemplate && floorWave === 1) {
+    // Boss floor Wave 1: Gate Antechamber Vanguard Pack (1 Elite + 1 Common)
+    const gateCaptain = pickFromPool(safeElites, "gate_captain");
+    const gateEscort = pickFromPool(safeCommons, "gate_escort", gateCaptain.id);
+    pickedTemplates = [gateCaptain, gateEscort];
+  } else {
+    // Standard COMBAT Floor: 3 multi-enemy waves (2–3 monsters each)
+    if (floorWave === 1) {
+      // Wave 1: 2 Common enemies (outer corridor scout pack)
+      const lead =
+        preferredEnemyTemplate && !preferredEnemyTemplate.isBoss
+          ? preferredEnemyTemplate
+          : pickFromPool(safeCommons, "w1_lead");
+      const wing = pickFromPool(safeCommons, "w1_wing", lead.id);
+      pickedTemplates = [lead, wing];
+    } else if (floorWave === 2) {
+      // Wave 2: 2–3 enemies (ambush pack: Floors 1-2 have 2 commons; Floors 3+ have 3 units)
+      const lead =
+        preferredEnemyTemplate && !preferredEnemyTemplate.isBoss
+          ? preferredEnemyTemplate
+          : clampedFloor >= 5 && safeElites.length > 0 && hashThemeSeed(`${seed}:w2elite:${clampedFloor}`) % 100 < 35
+          ? pickFromPool(safeElites, "w2_lead")
+          : pickFromPool(safeCommons, "w2_lead");
+      const second = pickFromPool(safeCommons, "w2_second", lead.id);
+      if (clampedFloor >= 3) {
+        const third = pickFromPool(safeCommons, "w2_third", second.id);
+        pickedTemplates = [lead, second, third];
+      } else {
+        pickedTemplates = [lead, second];
+      }
+    } else {
+      // Wave 3 (Floor Exit Guardian Pack): Elite Leader + 1-2 Escorts (Floor 1 uses stronger 2-common pack + optional third at higher floors)
+      const lead =
+        preferredEnemyTemplate && !preferredEnemyTemplate.isBoss
+          ? preferredEnemyTemplate
+          : clampedFloor === 1
+          ? pickFromPool(safeElites, "w3_f1_elite")
+          : pickFromPool(safeElites, "w3_boss_pack");
+      const escort1 = pickFromPool(safeCommons, "w3_escort1", lead.id);
+      if (clampedFloor >= 4) {
+        const escort2 = pickFromPool(safeCommons, "w3_escort2", escort1.id);
+        pickedTemplates = [lead, escort1, escort2];
+      } else {
+        pickedTemplates = [lead, escort1];
+      }
+    }
+  }
+
+  const packSize = pickedTemplates.length;
+  const stratumOffset = clampedFloor - theme.minFloor; // 0..24
+
+  // Count name occurrences so duplicate species in one pack receive distinct α / β / γ designations
+  const nameCounts: Record<string, number> = {};
+  for (const tpl of pickedTemplates) {
+    nameCounts[tpl.name] = (nameCounts[tpl.name] || 0) + 1;
+  }
+  const suffixIndex: Record<string, number> = {};
+  const greekGlyphs = ["α", "β", "γ", "δ"];
+
+  const enemyUnits: StarfallEnemyUnit[] = pickedTemplates.map((tpl, idx) => {
+    const isThisBoss = Boolean(tpl.isBoss || (bossTemplate && tpl.id === bossTemplate.id));
+    const unitTier: StarfallEnemyTier = isThisBoss ? "BOSS" : tpl.tier || "COMMON";
+
+    // Scale per-unit HP/ATK so a 2–3 enemy pack feels tactile & lethal without becoming an endless sponge
+    const hpPackFactor =
+      packSize <= 1 ? 1.0 : isThisBoss ? 0.96 : packSize === 2 ? 0.68 : 0.56;
+    const atkPackFactor =
+      packSize <= 1 ? 1.0 : isThisBoss ? 0.95 : packSize === 2 ? 0.85 : 0.78;
+
+    const scaleFactor = (isThisBoss ? 1.0 : 1 + stratumOffset * 0.045) * hpPackFactor;
+    const atkScale = (isThisBoss ? 1.0 : 1 + stratumOffset * 0.045) * atkPackFactor;
+    const defScale = isThisBoss ? 1.0 : 1 + stratumOffset * 0.035;
+    const poisePackFactor = packSize <= 1 || isThisBoss ? 1.0 : packSize === 2 ? 0.82 : 0.72;
+
+    const countForName = nameCounts[tpl.name] || 1;
+    let displayName = tpl.name;
+    if (countForName > 1) {
+      const occ = suffixIndex[tpl.name] || 0;
+      suffixIndex[tpl.name] = occ + 1;
+      displayName = `${tpl.name} ${greekGlyphs[occ] || occ + 1}`;
+    }
+
+    const firstIntent = tpl.intents[idx % tpl.intents.length] || tpl.intents[0];
+
+    return {
+      unitId: `u_${clampedFloor}_w${floorWave}_${idx}_${tpl.id}`,
+      templateId: tpl.id,
+      name: displayName,
+      title: tpl.title,
+      tier: unitTier,
+      hp: Math.max(25, Math.round(tpl.baseHp * scaleFactor)),
+      maxHp: Math.max(25, Math.round(tpl.baseHp * scaleFactor)),
+      atk: Math.max(8, Math.round(tpl.baseAtk * atkScale)),
+      def: Math.max(4, Math.round(tpl.baseDef * defScale)),
+      spd: Math.round(tpl.baseSpd * (1 + stratumOffset * 0.015)),
+      poise: Math.max(25, Math.round(tpl.maxPoise * (isThisBoss ? 1 : 1 + stratumOffset * 0.02) * poisePackFactor)),
+      maxPoise: Math.max(25, Math.round(tpl.maxPoise * (isThisBoss ? 1 : 1 + stratumOffset * 0.02) * poisePackFactor)),
+      isBroken: false,
+      brokenTurnsRemaining: 0,
+      weaknesses: [...tpl.weaknesses],
+      resistances: [...(tpl.resistances || [])],
+      currentTelegraph: firstIntent,
+    };
+  });
+
+  const leadUnit = enemyUnits[0];
+  const leadTemplate = pickedTemplates[0];
+  const totalPackHp = enemyUnits.reduce((acc, u) => acc + u.maxHp, 0);
+
+  return {
+    theme,
+    layout,
+    enemy: leadTemplate,
+    enemyTier: leadUnit.tier,
+    scaledStats: {
+      maxHp: totalPackHp,
+      atk: leadUnit.atk,
+      def: leadUnit.def,
+      spd: leadUnit.spd,
+      maxPoise: leadUnit.maxPoise,
+    },
+    isThresholdFloor,
+    floorWave,
+    floorTotalWaves,
+    enemyUnits,
   };
 }

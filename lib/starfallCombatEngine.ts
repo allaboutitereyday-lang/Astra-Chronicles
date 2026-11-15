@@ -26,12 +26,15 @@ import {
   StarfallCombatState,
   StarfallConditionType,
   StarfallDiceRollRecord,
+  StarfallEnemyUnit,
   StarfallMasterSealOrder,
   StarRank,
 } from "@/types/starfall_labyrinth";
 import {
   EnemyIntentTemplate,
   generateScaledFloorEnemy,
+  generateScaledFloorEnemyPack,
+  getTotalWavesForFloor,
   getTowerThemeForFloor,
   matchCuratedEnemyFromProse,
   TacticalWeaknessTag,
@@ -63,6 +66,7 @@ export type StarfallCombatActionType =
 
 export interface ParsedStarfallCombatCommand {
   actionType: StarfallCombatActionType;
+  targetUnitId?: string;
   actorHeroineName?: string;
   swapInHeroineName?: string;
   swapOutHeroineName?: string;
@@ -163,6 +167,75 @@ function buildMasterSealForEncounter(
 }
 
 /**
+ * Ensures aggregate top-level combat encounter fields stay synchronized with `enemyUnits`
+ * (and seamlessly hydrates legacy single-enemy saved encounters).
+ */
+export function syncEncounterAggregateWithUnits(
+  enc: StarfallCombatState
+): StarfallCombatState {
+  if (!enc.enemyUnits || enc.enemyUnits.length === 0) {
+    const legacyUnit: StarfallEnemyUnit = {
+      unitId: `u_legacy_${enc.enemyId || "hostile"}`,
+      templateId: enc.enemyId || "hostile",
+      name: enc.enemyName || "Labyrinth Hostile",
+      title: enc.enemyTitle || "Floor Guardian",
+      tier: enc.enemyTier || (enc.isBoss ? "BOSS" : "COMMON"),
+      hp: Math.max(0, enc.enemyHp ?? 0),
+      maxHp: Math.max(1, enc.enemyMaxHp ?? 100),
+      atk: enc.enemyAtk ?? 20,
+      def: enc.enemyDef ?? 12,
+      spd: enc.enemySpd ?? 15,
+      poise: Math.max(0, enc.enemyPoise ?? 0),
+      maxPoise: Math.max(1, enc.enemyMaxPoise ?? 60),
+      isBroken: Boolean(enc.isEnemyBroken),
+      brokenTurnsRemaining: enc.brokenTurnsRemaining ?? 0,
+      weaknesses: [...(enc.enemyWeaknesses || [])],
+      resistances: [...(enc.enemyResistances || [])],
+      currentTelegraph: enc.currentTelegraph,
+    };
+    enc.enemyUnits = [legacyUnit];
+    enc.activeTargetUnitId = legacyUnit.unitId;
+  }
+
+  const units = enc.enemyUnits;
+  enc.enemyHp = units.reduce((sum, u) => sum + Math.max(0, u.hp), 0);
+  enc.enemyMaxHp = units.reduce((sum, u) => sum + Math.max(1, u.maxHp), 0);
+
+  const activeUnit =
+    units.find((u) => u.unitId === enc.activeTargetUnitId && u.hp > 0) ||
+    units.find((u) => u.hp > 0) ||
+    units[0];
+
+  if (activeUnit) {
+    enc.activeTargetUnitId = activeUnit.unitId;
+    enc.enemyId = activeUnit.templateId;
+    enc.enemyName = activeUnit.name;
+    enc.enemyTitle = activeUnit.title;
+    enc.enemyTier = activeUnit.tier;
+    enc.enemyAtk = activeUnit.atk;
+    enc.enemyDef = activeUnit.def;
+    enc.enemySpd = activeUnit.spd;
+    enc.enemyPoise = Math.max(0, activeUnit.poise);
+    enc.enemyMaxPoise = Math.max(1, activeUnit.maxPoise);
+    enc.isEnemyBroken = activeUnit.isBroken;
+    enc.brokenTurnsRemaining = activeUnit.brokenTurnsRemaining;
+    enc.enemyWeaknesses = [...activeUnit.weaknesses];
+    enc.enemyResistances = [...(activeUnit.resistances || [])];
+    enc.currentTelegraph = activeUnit.currentTelegraph;
+    enc.isBoss = units.some((u) => u.tier === "BOSS") || enc.isBoss;
+  }
+
+  if (enc.floorTotalWaves == null) {
+    enc.floorTotalWaves = getTotalWavesForFloor(enc.floor) || 1;
+  }
+  if (enc.floorWave == null) {
+    enc.floorWave = 1;
+  }
+
+  return enc;
+}
+
+/**
  * Starts a fresh turn-based floor combat encounter when entering a COMBAT or GATE_BOSS floor.
  */
 export function startFloorCombatEncounter(
@@ -173,16 +246,22 @@ export function startFloorCombatEncounter(
   options?: {
     preferredEnemyTemplate?: TowerEnemyTemplate | null;
     initialEngagementPhase?: "vicinity" | "engaged";
+    waveNumber?: number;
   }
 ): LabyrinthState {
   const clampedFloor = Math.max(0, Math.min(100, Math.floor(floor || 0)));
   if (clampedFloor <= 0) {
-    return { ...state, activeEncounter: null };
+    return { ...state, currentFloorWave: 0, currentFloorTotalWaves: 0, activeEncounter: null };
   }
 
   const floorType = getFloorType(clampedFloor);
-  if (!forceStart && floorType !== "COMBAT" && floorType !== "GATE_BOSS") {
-    return { ...state, activeEncounter: null };
+  if (
+    !forceStart &&
+    floorType !== "COMBAT" &&
+    floorType !== "EVENT" &&
+    floorType !== "GATE_BOSS"
+  ) {
+    return { ...state, currentFloorWave: 0, currentFloorTotalWaves: 0, activeEncounter: null };
   }
 
   const effectiveSeed = seed || `${state.summonSeed || "starfall"}:f${clampedFloor}`;
@@ -201,12 +280,20 @@ export function startFloorCombatEncounter(
     .slice(0, 2)
     .map((r) => r.heroineName);
 
-  const generated = generateScaledFloorEnemy(
+  const requestedWave =
+    options?.waveNumber ??
+    (state.currentFloor === clampedFloor ? state.currentFloorWave : undefined) ??
+    1;
+
+  const generated = generateScaledFloorEnemyPack(
     clampedFloor,
     effectiveSeed,
+    requestedWave,
     options?.preferredEnemyTemplate
   );
+  const leadUnit = generated.enemyUnits[0];
   const firstIntent: EnemyIntentTemplate =
+    leadUnit?.currentTelegraph ||
     generated.enemy.intents[0] || {
       id: "default_cleave",
       label: "Labyrinth Cleave",
@@ -215,25 +302,32 @@ export function startFloorCombatEncounter(
       damageMultiplier: 1.0,
     };
 
+  const hasBossUnit = generated.enemyUnits.some((u) => u.tier === "BOSS");
+  const packNames = generated.enemyUnits.map((u) => u.name).join(" + ");
+
   const masterSealOrder = buildMasterSealForEncounter(
     clampedFloor,
-    Boolean(generated.enemy.isBoss),
+    hasBossUnit,
     state.masterTrust ?? 35,
-    generated.enemy.name,
+    packNames,
     effectiveSeed
   );
 
   const engagementPhase: "vicinity" | "engaged" =
-    options?.initialEngagementPhase ?? (generated.enemy.isBoss ? "engaged" : "vicinity");
+    options?.initialEngagementPhase ?? (hasBossUnit ? "engaged" : "vicinity");
 
   const encounter: StarfallCombatState = {
     isActive: true,
-    encounterId: `enc_f${clampedFloor}_${Math.abs(effectiveSeed.length * 37 + clampedFloor)}`,
+    encounterId: `enc_f${clampedFloor}_w${generated.floorWave}_${Math.abs(effectiveSeed.length * 37 + clampedFloor)}`,
     floor: clampedFloor,
+    floorWave: generated.floorWave,
+    floorTotalWaves: generated.floorTotalWaves,
     turnNumber: 1,
     status: "ongoing",
     engagementPhase,
-    enemyTier: generated.enemyTier,
+    enemyTier: leadUnit?.tier || generated.enemyTier,
+    enemyUnits: generated.enemyUnits,
+    activeTargetUnitId: leadUnit?.unitId,
     themeId: generated.theme.id,
     themeName: generated.theme.name,
     environmentalLawName: generated.theme.environmentalLawName,
@@ -244,21 +338,21 @@ export function startFloorCombatEncounter(
     layoutTacticalHint: generated.layout.tacticalHint,
     terrainTags: [...generated.layout.terrainTags],
     enemyId: generated.enemy.id,
-    enemyName: generated.enemy.name,
-    enemyTitle: generated.enemy.title,
-    isBoss: Boolean(generated.enemy.isBoss),
+    enemyName: leadUnit?.name || generated.enemy.name,
+    enemyTitle: leadUnit?.title || generated.enemy.title,
+    isBoss: hasBossUnit,
     isThresholdGuardian: Boolean(generated.enemy.isThresholdGuardian || generated.isThresholdFloor),
     enemyHp: generated.scaledStats.maxHp,
     enemyMaxHp: generated.scaledStats.maxHp,
-    enemyAtk: generated.scaledStats.atk,
-    enemyDef: generated.scaledStats.def,
-    enemySpd: generated.scaledStats.spd,
-    enemyPoise: generated.scaledStats.maxPoise,
-    enemyMaxPoise: generated.scaledStats.maxPoise,
+    enemyAtk: leadUnit?.atk || generated.scaledStats.atk,
+    enemyDef: leadUnit?.def || generated.scaledStats.def,
+    enemySpd: leadUnit?.spd || generated.scaledStats.spd,
+    enemyPoise: leadUnit?.maxPoise || generated.scaledStats.maxPoise,
+    enemyMaxPoise: leadUnit?.maxPoise || generated.scaledStats.maxPoise,
     isEnemyBroken: false,
     brokenTurnsRemaining: 0,
-    enemyWeaknesses: [...generated.enemy.weaknesses],
-    enemyResistances: [...(generated.enemy.resistances || [])],
+    enemyWeaknesses: [...(leadUnit?.weaknesses || generated.enemy.weaknesses)],
+    enemyResistances: [...(leadUnit?.resistances || generated.enemy.resistances || [])],
     activeConditions: [],
     hexSealsOnEnemy: 0,
     phantomEchoesActive: 0,
@@ -270,26 +364,31 @@ export function startFloorCombatEncounter(
     lastDiceRolls: [],
     combatTelemetrySummary:
       engagementPhase === "vicinity"
-        ? `Floor ${clampedFloor} Hostile Detected in Vicinity (${generated.layout.name}, ${generated.theme.name}): ${generated.enemy.name} (${generated.enemy.title}). Ready to ambush, scout, or Begin Encounter.`
-        : `Floor ${clampedFloor} Tactical Encounter engaged in ${generated.layout.name} (${generated.theme.name}) against ${generated.enemy.name} (${generated.enemy.title}). Telegraph: ${firstIntent.telegraphText}`,
+        ? `Floor ${clampedFloor} (Wave ${generated.floorWave}/${generated.floorTotalWaves}) Hostile Pack Detected in Vicinity (${generated.layout.name}): ${packNames}. Ready to ambush, scout, or Begin Encounter.`
+        : `Floor ${clampedFloor} (Wave ${generated.floorWave}/${generated.floorTotalWaves}) Tactical Encounter engaged in ${generated.layout.name} against ${packNames}. Telegraph: ${firstIntent.telegraphText}`,
     combatLog: [
-      `[FLOOR ${clampedFloor} — ${generated.theme.name.toUpperCase()}] Entered ${generated.layout.name}. ${
-        engagementPhase === "vicinity" ? "Hostile sensed in vicinity" : "Hostile engaged"
-      }: ${generated.enemy.name} [${generated.enemyTier}] (HP ${generated.scaledStats.maxHp}, Poise ${generated.scaledStats.maxPoise}).`,
+      `[FLOOR ${clampedFloor} • WAVE ${generated.floorWave}/${generated.floorTotalWaves} — ${generated.theme.name.toUpperCase()}] Entered ${generated.layout.name}. ${
+        engagementPhase === "vicinity" ? "Hostile pack sensed in vicinity" : "Hostile pack engaged"
+      }: ${generated.enemyUnits
+        .map((u) => `${u.name} [${u.tier}, HP ${u.maxHp}]`)
+        .join(" | ")}.`,
     ],
   };
 
   return {
     ...state,
     currentFloor: clampedFloor,
+    currentFloorWave: generated.floorWave,
+    currentFloorTotalWaves: generated.floorTotalWaves,
+    floorClearedPendingAscent: false,
     roster: normalizedRoster,
-    activeEncounter: encounter,
+    activeEncounter: syncEncounterAggregateWithUnits(encounter),
   };
 }
 
 /**
  * If an encounter is in vicinity/Turn-1 state and the narrative prose explicitly names another curated
- * monster from the stratum bestiary (e.g., "Verdant Stalker"), synchronize the encounter template cleanly.
+ * monster from the stratum bestiary (e.g., "Verdant Stalker"), synchronize the encounter pack cleanly.
  */
 export function syncEncounterWithProseIfVicinity(
   state: LabyrinthState,
@@ -305,8 +404,12 @@ export function syncEncounterWithProseIfVicinity(
   const cleanProse = typeof proseText === "string" ? proseText : "";
   if (!cleanProse.trim()) return state;
 
-  // Already consistent with prose
-  if (cleanProse.toLowerCase().includes(enc.enemyName.toLowerCase())) {
+  const lowerProse = cleanProse.toLowerCase();
+  const packAlreadyMatchesProse =
+    (enc.enemyUnits && enc.enemyUnits.some((u) => lowerProse.includes(u.name.toLowerCase().replace(/\s+[αβγδ]$/, "")))) ||
+    lowerProse.includes(enc.enemyName.toLowerCase());
+
+  if (packAlreadyMatchesProse) {
     return state;
   }
 
@@ -315,36 +418,51 @@ export function syncEncounterWithProseIfVicinity(
     return state;
   }
 
-  const regenerated = generateScaledFloorEnemy(enc.floor, enc.encounterId, matched);
-  const firstIntent =
-    regenerated.enemy.intents[0] || enc.currentTelegraph;
+  const currentWave = enc.floorWave || state.currentFloorWave || 1;
+  const regenerated = generateScaledFloorEnemyPack(
+    enc.floor,
+    enc.encounterId,
+    currentWave,
+    matched
+  );
+  const leadUnit = regenerated.enemyUnits[0];
+  const firstIntent = leadUnit?.currentTelegraph || regenerated.enemy.intents[0] || enc.currentTelegraph;
+  const packNames = regenerated.enemyUnits.map((u) => u.name).join(" + ");
+
+  const nextEnc: StarfallCombatState = {
+    ...enc,
+    floorWave: regenerated.floorWave,
+    floorTotalWaves: regenerated.floorTotalWaves,
+    enemyUnits: regenerated.enemyUnits,
+    activeTargetUnitId: leadUnit?.unitId,
+    enemyId: regenerated.enemy.id,
+    enemyName: leadUnit?.name || regenerated.enemy.name,
+    enemyTitle: leadUnit?.title || regenerated.enemy.title,
+    enemyTier: leadUnit?.tier || regenerated.enemyTier,
+    enemyHp: regenerated.scaledStats.maxHp,
+    enemyMaxHp: regenerated.scaledStats.maxHp,
+    enemyAtk: leadUnit?.atk || regenerated.scaledStats.atk,
+    enemyDef: leadUnit?.def || regenerated.scaledStats.def,
+    enemySpd: leadUnit?.spd || regenerated.scaledStats.spd,
+    enemyPoise: leadUnit?.maxPoise || regenerated.scaledStats.maxPoise,
+    enemyMaxPoise: leadUnit?.maxPoise || regenerated.scaledStats.maxPoise,
+    isEnemyBroken: false,
+    brokenTurnsRemaining: 0,
+    enemyWeaknesses: [...(leadUnit?.weaknesses || regenerated.enemy.weaknesses)],
+    enemyResistances: [...(leadUnit?.resistances || regenerated.enemy.resistances || [])],
+    currentTelegraph: firstIntent,
+    combatTelemetrySummary: `Floor ${enc.floor} (Wave ${regenerated.floorWave}/${regenerated.floorTotalWaves}) Hostile Pack Sensed in Vicinity (${enc.layoutName}): ${packNames}.`,
+    combatLog: [
+      ...enc.combatLog.slice(-6),
+      `[BESTIARY SYNC] Visual confirmation in ${enc.layoutName}: ${regenerated.enemyUnits
+        .map((u) => `${u.name} [${u.tier}, HP ${u.maxHp}]`)
+        .join(" | ")}.`,
+    ],
+  };
 
   return {
     ...state,
-    activeEncounter: {
-      ...enc,
-      enemyId: regenerated.enemy.id,
-      enemyName: regenerated.enemy.name,
-      enemyTitle: regenerated.enemy.title,
-      enemyTier: regenerated.enemyTier,
-      enemyHp: regenerated.scaledStats.maxHp,
-      enemyMaxHp: regenerated.scaledStats.maxHp,
-      enemyAtk: regenerated.scaledStats.atk,
-      enemyDef: regenerated.scaledStats.def,
-      enemySpd: regenerated.scaledStats.spd,
-      enemyPoise: regenerated.scaledStats.maxPoise,
-      enemyMaxPoise: regenerated.scaledStats.maxPoise,
-      isEnemyBroken: false,
-      brokenTurnsRemaining: 0,
-      enemyWeaknesses: [...regenerated.enemy.weaknesses],
-      enemyResistances: [...(regenerated.enemy.resistances || [])],
-      currentTelegraph: firstIntent,
-      combatTelemetrySummary: `Floor ${enc.floor} Hostile Sensed in Vicinity (${enc.layoutName}): ${regenerated.enemy.name} (${regenerated.enemy.title}).`,
-      combatLog: [
-        ...enc.combatLog.slice(-6),
-        `[BESTIARY SYNC] Visual confirmation in ${enc.layoutName}: ${regenerated.enemy.name} [${regenerated.enemyTier}] (HP ${regenerated.scaledStats.maxHp}, Poise ${regenerated.scaledStats.maxPoise}).`,
-      ],
-    },
+    activeEncounter: syncEncounterAggregateWithUnits(nextEnc),
   };
 }
 
@@ -385,8 +503,38 @@ export function parseStarfallCombatIntentFromAction(
   encounter: StarfallCombatState,
   state: LabyrinthState
 ): ParsedStarfallCombatCommand {
-  const clean = String(rawAction || "").trim();
+  let clean = String(rawAction || "").trim();
+  let targetUnitId: string | undefined;
+
+  // 0. Check explicit [COMBAT:TARGET:<unitId>] prefix first and strip it so main command parses cleanly
+  const explicitTargetMatch = clean.match(/\[COMBAT:TARGET:([^\]]+)\]\s*/i);
+  if (explicitTargetMatch) {
+    targetUnitId = explicitTargetMatch[1].trim();
+    clean = clean.replace(/\[COMBAT:TARGET:[^\]]+\]\s*/gi, "").trim();
+  }
+
   const lower = clean.toLowerCase();
+
+  // Also detect natural-language enemy name targeting when multiple enemies are alive
+  if (!targetUnitId && encounter.enemyUnits && encounter.enemyUnits.length > 1) {
+    const livingUnits = encounter.enemyUnits.filter((u) => u.hp > 0);
+    const exactMatch = livingUnits.find((u) => lower.includes(u.name.toLowerCase()));
+    if (exactMatch) {
+      targetUnitId = exactMatch.unitId;
+    } else {
+      const partialMatch = livingUnits.find((u) => {
+        const baseName = u.name.toLowerCase().replace(/\s+[αβγδ]$/, "");
+        if (lower.includes(baseName)) return true;
+        const distinctWords = baseName
+          .split(/[\s-]+/)
+          .filter((w) => w.length >= 5 && !["crypt", "sunken", "verdant", "ossuary", "ember", "mirror"].includes(w));
+        return distinctWords.some((w) => new RegExp(`\\b${w}\\b`, "i").test(lower));
+      });
+      if (partialMatch) {
+        targetUnitId = partialMatch.unitId;
+      }
+    }
+  }
 
   // 1. Check explicit structured HUD command prefix: [COMBAT:MODE:TARGET:SECONDARY]
   const tagMatch = clean.match(/\[COMBAT:([A-Z_]+)(?::([^\]:]+))?(?::([^\]]+))?\]/i);
@@ -396,6 +544,7 @@ export function parseStarfallCombatIntentFromAction(
     const arg2 = tagMatch[3]?.trim();
     return {
       actionType: mode,
+      targetUnitId,
       actorHeroineName: arg1,
       swapInHeroineName:
         mode === "INTERCEPT_SWAP" || mode === "CHAIN_SWAP" ? arg1 : undefined,
@@ -412,18 +561,18 @@ export function parseStarfallCombatIntentFromAction(
       lower
     )
   ) {
-    return { actionType: "RETREAT_TO_LOBBY", rawPlayerText: clean };
+    return { actionType: "RETREAT_TO_LOBBY", targetUnitId, rawPlayerText: clean };
   }
 
   if (encounter.masterSealOrder && !encounter.masterSealOrder.resolved) {
     if (/\b(loophole|twist the seal|satisfy the wording|decoy bait)\b/i.test(lower)) {
-      return { actionType: "SEAL_LOOPHOLE", rawPlayerText: clean };
+      return { actionType: "SEAL_LOOPHOLE", targetUnitId, rawPlayerText: clean };
     }
     if (/\b(defy the seal|reject the master|refuse the command|shatter the seal)\b/i.test(lower)) {
-      return { actionType: "SEAL_DEFY", rawPlayerText: clean };
+      return { actionType: "SEAL_DEFY", targetUnitId, rawPlayerText: clean };
     }
     if (/\b(obey the seal|comply with the seal|follow the master's order)\b/i.test(lower)) {
-      return { actionType: "SEAL_COMPLY", rawPlayerText: clean };
+      return { actionType: "SEAL_COMPLY", targetUnitId, rawPlayerText: clean };
     }
   }
 
@@ -437,6 +586,7 @@ export function parseStarfallCombatIntentFromAction(
     ) {
       return {
         actionType: encounter.isEnemyBroken ? "CHAIN_SWAP" : "INTERCEPT_SWAP",
+        targetUnitId,
         swapInHeroineName: reserveName,
         swapOutHeroineName: encounter.frontlineHeroines[0],
         rawPlayerText: clean,
@@ -461,6 +611,7 @@ export function parseStarfallCombatIntentFromAction(
     ) {
       return {
         actionType: "BOND_SPECIAL",
+        targetUnitId,
         actorHeroineName: frontName,
         rawPlayerText: clean,
       };
@@ -475,6 +626,7 @@ export function parseStarfallCombatIntentFromAction(
     ) {
       return {
         actionType: "HEROINE_SKILL",
+        targetUnitId,
         actorHeroineName: frontName,
         rawPlayerText: clean,
       };
@@ -490,6 +642,7 @@ export function parseStarfallCombatIntentFromAction(
     if (words.some((w) => lower.includes(w))) {
       return {
         actionType: "TERRAIN_STUNT",
+        targetUnitId,
         terrainTagUsed: tag,
         rawPlayerText: clean,
       };
@@ -502,15 +655,15 @@ export function parseStarfallCombatIntentFromAction(
       lower
     )
   ) {
-    return { actionType: "ROLE_SKILL", rawPlayerText: clean };
+    return { actionType: "ROLE_SKILL", targetUnitId, rawPlayerText: clean };
   }
 
   // If lengthy custom prose (>35 chars), reward it as a graded CUSTOM_STUNT!
   if (clean.length > 35) {
-    return { actionType: "CUSTOM_STUNT", rawPlayerText: clean };
+    return { actionType: "CUSTOM_STUNT", targetUnitId, rawPlayerText: clean };
   }
 
-  return { actionType: "BASIC_ATTACK", rawPlayerText: clean };
+  return { actionType: "BASIC_ATTACK", targetUnitId, rawPlayerText: clean };
 }
 
 function outcomeDamageFactor(outcome: DiceCheckOutcome): number {
@@ -617,11 +770,19 @@ export function resolveStarfallCombatTurn(params: {
     terrainTags: [...(stateWithEnc.activeEncounter?.terrainTags || [])],
     enemyWeaknesses: [...(stateWithEnc.activeEncounter?.enemyWeaknesses || [])],
     enemyResistances: [...(stateWithEnc.activeEncounter?.enemyResistances || [])],
+    enemyUnits: stateWithEnc.activeEncounter?.enemyUnits?.map((u) => ({
+      ...u,
+      weaknesses: [...u.weaknesses],
+      resistances: [...u.resistances],
+      currentTelegraph: { ...u.currentTelegraph },
+    })),
     activeConditions: (stateWithEnc.activeEncounter?.activeConditions || []).map((c) => ({ ...c })),
     frontlineHeroines: [...(stateWithEnc.activeEncounter?.frontlineHeroines || [])],
     reserveHeroines: [...(stateWithEnc.activeEncounter?.reserveHeroines || [])],
     combatLog: [...(stateWithEnc.activeEncounter?.combatLog || [])],
   };
+
+  syncEncounterAggregateWithUnits(enc);
 
   let workingRoster: HeroRosterEntry[] = normalizeSquadFormations(
     (stateWithEnc.roster || []).map((r) => {
@@ -667,6 +828,16 @@ export function resolveStarfallCombatTurn(params: {
     enc,
     stateWithEnc
   );
+
+  if (command.targetUnitId && enc.enemyUnits) {
+    const requestedTarget = enc.enemyUnits.find(
+      (u) => u.unitId === command.targetUnitId && u.hp > 0
+    );
+    if (requestedTarget) {
+      enc.activeTargetUnitId = requestedTarget.unitId;
+      syncEncounterAggregateWithUnits(enc);
+    }
+  }
 
   const diceRolls: StarfallDiceRollRecord[] = [];
   const turnEvents: string[] = [];
@@ -883,6 +1054,10 @@ export function resolveStarfallCombatTurn(params: {
   let totalPlayerPhaseDamage = 0;
   let totalPoiseDamage = 0;
   let usedWeaknessTags: TacticalWeaknessTag[] = [];
+  let telegraphInterrupted = false;
+  const preTurnBrokenUnitIds = new Set(
+    (enc.enemyUnits || []).filter((u) => u.isBroken).map((u) => u.unitId)
+  );
 
   const rollHeroCrit = (hero: HeroRosterEntry, seedSuffix: string): boolean => {
     const baseCrit = hero.combatStats?.critRate ?? 12;
@@ -914,22 +1089,22 @@ export function resolveStarfallCombatTurn(params: {
   const heroSpdBonus = (hero?: HeroRosterEntry): number =>
     Math.floor((hero?.combatStats?.spd || 20) / 12);
 
-  const applyDamageAndPoise = (
+  const computeHitAgainstUnit = (
+    unit: StarfallEnemyUnit,
     rawDmg: number,
     rawPoise: number,
     tag?: TacticalWeaknessTag,
-    sourceLabel?: string,
     attackerEntry?: HeroRosterEntry
   ) => {
     let dmg = rawDmg * sealPartyAtkBonus;
     let poise = rawPoise;
 
-    if (enc.isEnemyBroken) {
+    if (unit.isBroken) {
       dmg *= 1.5;
     }
 
-    const hitsWeakness = Boolean(tag && enc.enemyWeaknesses.includes(tag));
-    const hitsResistance = Boolean(tag && enc.enemyResistances?.includes(tag));
+    const hitsWeakness = Boolean(tag && unit.weaknesses.includes(tag));
+    const hitsResistance = Boolean(tag && unit.resistances?.includes(tag));
 
     if (hitsWeakness && tag) {
       dmg *= 1.25;
@@ -979,12 +1154,12 @@ export function resolveStarfallCombatTurn(params: {
 
     // Hero SPD & Dyad Passive combat bonuses
     if (attackerEntry) {
-      if ((attackerEntry.combatStats?.spd || 20) > enc.enemySpd) {
+      if ((attackerEntry.combatStats?.spd || 20) > unit.spd) {
         poise *= 1.1;
       }
       if (
         matchesHeroineName(attackerEntry.heroineName, "Vaelkor") &&
-        (enc.enemyDef >= 20 || enc.isBoss)
+        (unit.def >= 20 || unit.tier === "BOSS")
       ) {
         poise *= 1.25;
       }
@@ -997,21 +1172,143 @@ export function resolveStarfallCombatTurn(params: {
       }
     }
 
-    const finalDmg = Math.max(4, Math.round(dmg));
-    const finalPoise = Math.max(4, Math.round(poise));
-    totalPlayerPhaseDamage += finalDmg;
-    totalPoiseDamage += finalPoise;
+    return {
+      finalDmg: Math.max(4, Math.round(dmg)),
+      finalPoise: Math.max(4, Math.round(poise)),
+      hitsWeakness,
+      hitsResistance,
+    };
+  };
 
-    if (hitsWeakness && sourceLabel && tag) {
-      turnEvents.push(
-        `${sourceLabel} exploited ${enc.enemyName}'s [${tag}] weakness (${finalDmg} DMG, ${finalPoise} Poise shred)!`
-      );
-    } else if (hitsResistance && sourceLabel && tag) {
-      turnEvents.push(
-        `${enc.enemyName} resisted [${tag}] from ${sourceLabel} (-25% DMG, -30% Poise)!`
-      );
+  const applyDamageAndPoise = (
+    rawDmg: number,
+    rawPoise: number,
+    tag?: TacticalWeaknessTag,
+    sourceLabel?: string,
+    attackerEntry?: HeroRosterEntry,
+    isAoECleave: boolean = false
+  ) => {
+    const units = enc.enemyUnits || [];
+    const primaryUnit =
+      units.find((u) => u.unitId === enc.activeTargetUnitId && u.hp > 0) ||
+      units.find((u) => u.hp > 0);
+
+    if (!primaryUnit) {
+      return { finalDmg: 0, finalPoise: 0, hitsWeakness: false };
     }
-    return { finalDmg, finalPoise, hitsWeakness };
+
+    const applyToSingleUnit = (
+      targetUnit: StarfallEnemyUnit,
+      hitRawDmg: number,
+      hitRawPoise: number,
+      suppressLogs: boolean = false
+    ) => {
+      const calc = computeHitAgainstUnit(
+        targetUnit,
+        hitRawDmg,
+        hitRawPoise,
+        tag,
+        attackerEntry
+      );
+      let bonusPoise = 0;
+      if (
+        tag &&
+        targetUnit.currentTelegraph.interruptibleBy &&
+        targetUnit.currentTelegraph.interruptibleBy.includes(tag)
+      ) {
+        bonusPoise = 25;
+        if (targetUnit.unitId === primaryUnit.unitId && !telegraphInterrupted) {
+          telegraphInterrupted = true;
+          turnEvents.push(
+            `[TELEGRAPH INTERRUPTED!] Countered ${targetUnit.name}'s [${targetUnit.currentTelegraph.label}] via [${tag}]!`
+          );
+        }
+      }
+
+      const prevHp = targetUnit.hp;
+      const rawRem = prevHp - calc.finalDmg;
+      const overflowDmg = rawRem < 0 ? Math.abs(rawRem) : 0;
+      targetUnit.hp = Math.max(0, rawRem);
+
+      if (!targetUnit.isBroken && targetUnit.hp > 0) {
+        targetUnit.poise = Math.max(
+          0,
+          targetUnit.poise - (calc.finalPoise + bonusPoise)
+        );
+        if (targetUnit.poise <= 0) {
+          targetUnit.isBroken = true;
+          targetUnit.brokenTurnsRemaining = 1;
+          if (targetUnit.unitId === primaryUnit.unitId) {
+            telegraphInterrupted = true;
+          }
+          turnEvents.push(
+            `[POISE BREAK!!] ${targetUnit.name}'s guard shattered completely—its telegraphed [${targetUnit.currentTelegraph.label}] collapsed (+50% vulnerability)!`
+          );
+        }
+      }
+
+      totalPlayerPhaseDamage += Math.min(prevHp, calc.finalDmg);
+      totalPoiseDamage += calc.finalPoise;
+
+      if (!suppressLogs) {
+        if (calc.hitsWeakness && sourceLabel && tag) {
+          turnEvents.push(
+            `${sourceLabel} exploited ${targetUnit.name}'s [${tag}] weakness (${calc.finalDmg} DMG, ${calc.finalPoise} Poise shred)!`
+          );
+        } else if (calc.hitsResistance && sourceLabel && tag) {
+          turnEvents.push(
+            `${targetUnit.name} resisted [${tag}] from ${sourceLabel} (-25% DMG, -30% Poise)!`
+          );
+        }
+      }
+
+      if (targetUnit.hp <= 0) {
+        turnEvents.push(`[ENEMY SLAIN!] ${targetUnit.name} was cut down!`);
+      }
+
+      return { ...calc, overflowDmg };
+    };
+
+    const primaryRes = applyToSingleUnit(primaryUnit, rawDmg, rawPoise, false);
+
+    // Carry lethal overflow to next living unit if primary died on a single-target focus strike
+    if (!isAoECleave && primaryUnit.hp <= 0 && primaryRes.overflowDmg >= 6) {
+      const nextLiving = units.find(
+        (u) => u.unitId !== primaryUnit.unitId && u.hp > 0
+      );
+      if (nextLiving) {
+        const carryRaw = Math.round(primaryRes.overflowDmg * 0.85);
+        const prevNextHp = nextLiving.hp;
+        nextLiving.hp = Math.max(0, prevNextHp - carryRaw);
+        totalPlayerPhaseDamage += Math.min(prevNextHp, carryRaw);
+        turnEvents.push(
+          `[OVERFLOW CLEAVE] Leftover impact carried into ${nextLiving.name} for ${carryRaw} DMG!`
+        );
+        if (nextLiving.hp <= 0) {
+          turnEvents.push(`[ENEMY SLAIN!] ${nextLiving.name} fell to the follow-through!`);
+        }
+      }
+    }
+
+    // If AoE / Cleave attack, damage all other living enemies in the pack!
+    if (isAoECleave) {
+      const secondaryLiving = units.filter(
+        (u) => u.unitId !== primaryUnit.unitId && u.hp > 0
+      );
+      for (const sec of secondaryLiving) {
+        const secRes = applyToSingleUnit(sec, rawDmg * 0.62, rawPoise * 0.58, true);
+        turnEvents.push(
+          `[AOE CLEAVE] ${sec.name} caught in blast for ${secRes.finalDmg} DMG (${secRes.finalPoise} Poise)!`
+        );
+      }
+    }
+
+    syncEncounterAggregateWithUnits(enc);
+    return {
+      finalDmg: primaryRes.finalDmg,
+      finalPoise: primaryRes.finalPoise,
+      hitsWeakness: primaryRes.hitsWeakness,
+    };
   };
 
   // --- CASE A: DEFENSIVE INTERCEPT SWAP OR OFFENSIVE CHAIN SWAP ---
@@ -1306,18 +1603,24 @@ export function resolveStarfallCombatTurn(params: {
           const rawPoise =
             move.poiseBreak * outcomePoiseFactor(skillRoll.outcome);
 
+          const isSkillAoE =
+            (isBond && !isCooldownFallback) ||
+            /\b(sweep|wave|barrage|nova|storm|cleave|rain|choir|cluster|volley|all|surge|maelstrom|eruption)\b/i.test(
+              `${move.name} ${move.description}`
+            );
+
           const res = applyDamageAndPoise(
             rawDmg,
             rawPoise,
             move.weaknessTag,
             `${hero.heroineName}'s [${move.name}]`,
-            hero
+            hero,
+            isSkillAoE
           );
           turnEvents.push(
-            `${hero.heroineName} unleashed [${move.name}]${skillCrit ? " [CRIT!]" : ""} (${skillRoll.outcome.replace(
-              /_/g,
-              " "
-            )}: ${res.finalDmg} DMG, ${res.finalPoise} Poise shred)!`
+            `${hero.heroineName} unleashed [${move.name}]${skillCrit ? " [CRIT!]" : ""}${
+              isSkillAoE && (enc.enemyUnits?.filter((u) => u.hp > 0).length || 0) > 1 ? " [AOE]" : ""
+            } (${skillRoll.outcome.replace(/_/g, " ")}: ${res.finalDmg} DMG, ${res.finalPoise} Poise shred)!`
           );
         }
       }
@@ -1356,12 +1659,19 @@ export function resolveStarfallCombatTurn(params: {
       Math.max(14, baseProtagAtk * 1.45 - enc.enemyDef * 0.25) *
       outcomeDamageFactor(stuntRoll.outcome);
     const rawPoise = 34 * outcomePoiseFactor(stuntRoll.outcome);
+    const isStuntAoE =
+      command.actionType === "TERRAIN_STUNT" ||
+      /\b(sweep|all|pack|both|scatter|collapse|flood|blast|shockwave|shatter)\b/i.test(
+        command.rawPlayerText
+      );
 
     const res = applyDamageAndPoise(
       rawDmg,
       rawPoise,
       stuntTag,
-      `${params.protagonistName}'s [${terrainLabel}] exploit`
+      `${params.protagonistName}'s [${terrainLabel}] exploit`,
+      undefined,
+      isStuntAoE
     );
     turnEvents.push(
       `${params.protagonistName} weaponized [${terrainLabel}] in ${enc.layoutName} (${stuntRoll.outcome.replace(
@@ -1550,42 +1860,17 @@ export function resolveStarfallCombatTurn(params: {
     );
   }
 
-  // Apply accumulated HP & Poise damage to Enemy!
-  const wasAlreadyBroken = enc.isEnemyBroken;
-  enc.enemyHp = Math.max(0, enc.enemyHp - totalPlayerPhaseDamage);
-
-  // Check Telegraph Interrupt via Weakness Tag OR Poise Break!
-  let telegraphInterrupted = false;
-  if (
-    enc.currentTelegraph.interruptibleBy &&
-    enc.currentTelegraph.interruptibleBy.some((t) => usedWeaknessTags.includes(t))
-  ) {
-    telegraphInterrupted = true;
-    totalPoiseDamage += 25;
-  }
-
-  if (!wasAlreadyBroken) {
-    enc.enemyPoise = Math.max(0, enc.enemyPoise - totalPoiseDamage);
-    if (enc.enemyPoise <= 0 && enc.enemyHp > 0) {
-      enc.isEnemyBroken = true;
-      enc.brokenTurnsRemaining = 1;
-      telegraphInterrupted = true;
-      turnEvents.push(
-        `[POISE BREAK!!] ${enc.enemyName}'s guard shattered completely—its telegraphed [${enc.currentTelegraph.label}] collapsed and it is staggered (+50% vulnerability next turn)!`
-      );
-    } else if (telegraphInterrupted && enc.enemyHp > 0) {
-      turnEvents.push(
-        `[TELEGRAPH INTERRUPTED!] Countered ${enc.enemyName}'s [${enc.currentTelegraph.label}] via weakness Disruption!`
-      );
-    }
-  } else {
-    // Recover from previous turn's Poise Break at end of turn
-    enc.brokenTurnsRemaining = Math.max(0, enc.brokenTurnsRemaining - 1);
-    if (enc.brokenTurnsRemaining === 0) {
-      enc.isEnemyBroken = false;
-      enc.enemyPoise = enc.enemyMaxPoise;
+  // Tick Poise Break recovery on units that entered this turn already Broken
+  for (const unit of enc.enemyUnits || []) {
+    if (preTurnBrokenUnitIds.has(unit.unitId) && unit.isBroken && unit.hp > 0) {
+      unit.brokenTurnsRemaining = Math.max(0, unit.brokenTurnsRemaining - 1);
+      if (unit.brokenTurnsRemaining === 0) {
+        unit.isBroken = false;
+        unit.poise = unit.maxPoise;
+      }
     }
   }
+  syncEncounterAggregateWithUnits(enc);
 
   // =========================================================================
   // 3. CHECK ENEMY DEFEAT & VICTORY REWARDS
@@ -1593,31 +1878,44 @@ export function resolveStarfallCombatTurn(params: {
   const finalizeVictoryReturn = (): StarfallCombatResolutionResult => {
     enc.isActive = false;
     enc.status = "victory";
-    const expAwarded = enc.isThresholdGuardian
-      ? 160 + activeFloor * 6
-      : enc.isBoss
-      ? 125 + activeFloor * 5
-      : 42 + activeFloor * 3;
-    const shardsAwarded = enc.isThresholdGuardian
-      ? 90
-      : enc.isBoss
-      ? 60
-      : 15;
+    const packUnits = enc.enemyUnits || [];
+    const packBonusMult = packUnits.length >= 3 ? 1.25 : packUnits.length === 2 ? 1.12 : 1.0;
+    const expAwarded = Math.round(
+      (enc.isThresholdGuardian
+        ? 160 + activeFloor * 6
+        : enc.isBoss
+        ? 125 + activeFloor * 5
+        : 42 + activeFloor * 3) * packBonusMult
+    );
+    const shardsAwarded = Math.round(
+      (enc.isThresholdGuardian ? 90 : enc.isBoss ? 60 : 15) *
+        (packUnits.length >= 2 && !enc.isBoss ? 1.2 : 1.0)
+    );
     trustDelta += enc.isBoss ? 8 : 3;
 
+    const defeatedLabel =
+      packUnits.length > 1
+        ? packUnits.map((u) => u.name).join(" & ")
+        : `${enc.enemyName} (${enc.enemyTitle})`;
+    const waveLabel = `Wave ${enc.floorWave || 1}/${enc.floorTotalWaves || 1}`;
+
     turnEvents.push(
-      `[VICTORY!] ${enc.enemyName} (${enc.enemyTitle}) collapsed in ${enc.layoutName}! Earned +${expAwarded} EXP, +${shardsAwarded} Star Shards, and +${
+      `[VICTORY — ${waveLabel}!] Defeated ${defeatedLabel} in ${enc.layoutName}! Earned +${expAwarded} EXP, +${shardsAwarded} Star Shards, and +${
         enc.isBoss ? 8 : 3
       }% Master Trust.`
     );
 
     enc.lastDiceRolls = diceRolls;
     enc.combatLog.push(...turnEvents);
-    enc.combatTelemetrySummary = `[COMBAT VICTORY ON FLOOR ${activeFloor}]: Defeated ${enc.enemyName}. ${turnEvents.join(
+    enc.combatTelemetrySummary = `[COMBAT VICTORY ON FLOOR ${activeFloor} — ${waveLabel}]: Defeated ${defeatedLabel}. ${turnEvents.join(
       " "
     )}`;
 
-    const nextHighest = Math.max(baseState.highestFloorCleared || 0, activeFloor);
+    const clearedFinalWaveOnFloor =
+      (enc.floorWave || 1) >= (enc.floorTotalWaves || 1);
+    const nextHighest = clearedFinalWaveOnFloor
+      ? Math.max(baseState.highestFloorCleared || 0, activeFloor)
+      : baseState.highestFloorCleared || 0;
     const nextState: LabyrinthState = {
       ...stateWithEnc,
       highestFloorCleared: nextHighest,
@@ -1659,21 +1957,38 @@ export function resolveStarfallCombatTurn(params: {
   // =========================================================================
   // 4. ENEMY COUNTER-ATTACK PHASE & TWO-STAGE PERMADEATH PROTECTION
   // =========================================================================
-  if (!enc.isEnemyBroken && !telegraphInterrupted) {
-    const intent = enc.currentTelegraph;
+  const livingUnitsNow = (enc.enemyUnits || []).filter((u) => u.hp > 0);
+  const unbrokenLivingUnits = livingUnitsNow.filter((u) => !u.isBroken);
+  const activeTargetUnit = livingUnitsNow.find(
+    (u) => u.unitId === enc.activeTargetUnitId
+  );
+  // Active target's action is blocked if it was broken or interrupted; remaining living unbroken packmates still strike!
+  const remainingActors = unbrokenLivingUnits.filter(
+    (u) => !(telegraphInterrupted && u.unitId === activeTargetUnit?.unitId)
+  );
+  const counterAttacker =
+    remainingActors.find((u) => u.unitId === activeTargetUnit?.unitId) ||
+    remainingActors[0];
+
+  if (counterAttacker) {
+    const intent = counterAttacker.currentTelegraph || enc.currentTelegraph;
+    const flankSupportCount = Math.max(0, remainingActors.length - 1);
+    const packFlankMult = Math.min(1.36, 1 + flankSupportCount * 0.18);
+
     if (intent.targetMode === "SELF_BUFF") {
-      enc.enemyPoise = Math.min(enc.enemyMaxPoise, enc.enemyPoise + 25);
+      counterAttacker.poise = Math.min(counterAttacker.maxPoise, counterAttacker.poise + 25);
       if (intent.appliesCondition === "TIME_REWIND") {
-        const rewindHeal = Math.round(enc.enemyMaxHp * 0.12);
-        enc.enemyHp = Math.min(enc.enemyMaxHp, enc.enemyHp + rewindHeal);
+        const rewindHeal = Math.round(counterAttacker.maxHp * 0.12);
+        counterAttacker.hp = Math.min(counterAttacker.maxHp, counterAttacker.hp + rewindHeal);
         turnEvents.push(
-          `[TIME REWIND] ${enc.enemyName} executed [${intent.label}], rewinding +${rewindHeal} HP & +25 Poise!`
+          `[TIME REWIND] ${counterAttacker.name} executed [${intent.label}], rewinding +${rewindHeal} HP & +25 Poise!`
         );
       } else {
         turnEvents.push(
-          `${enc.enemyName} executed [${intent.label}], reinforcing its stance (+25 Poise).`
+          `${counterAttacker.name} executed [${intent.label}], reinforcing its stance (+25 Poise).`
         );
       }
+      syncEncounterAggregateWithUnits(enc);
     } else {
       // Check Trinity's Seeing Double Phantom Dodge first!
       if (
@@ -1682,7 +1997,7 @@ export function resolveStarfallCombatTurn(params: {
       ) {
         enc.phantomEchoesActive -= 1;
         turnEvents.push(
-          `[PHANTOM EVADE!] ${enc.enemyName}'s [${intent.label}] sliced harmlessly through a Seeing Double afterimage (${enc.phantomEchoesActive} echo remaining)!`
+          `[PHANTOM EVADE!] ${counterAttacker.name}'s [${intent.label}] sliced harmlessly through a Seeing Double afterimage (${enc.phantomEchoesActive} echo remaining)!`
         );
       } else {
         // Roll Squad Evasion / Guard Save
@@ -1703,7 +2018,7 @@ export function resolveStarfallCombatTurn(params: {
             evaBonus +
             (interceptMitigationFactor < 1 ? 3 : 0) +
             conditionModPenalty(leadEntry?.heroineName || "PROTAGONIST"),
-          difficultyClass: Math.max(10, 10 + Math.floor(enc.enemyAtk / 8)),
+          difficultyClass: Math.max(10, 10 + Math.floor(counterAttacker.atk / 8)),
         });
         diceRolls.push(defenseRoll);
 
@@ -1732,13 +2047,23 @@ export function resolveStarfallCombatTurn(params: {
         }
         if (rolandBossMult < 1) {
           turnEvents.push(
-            `[CRIMSON MANTLE] Sir Roland Vance checked ${enc.enemyName}'s boss cleave (-15% DMG)!`
+            `[CRIMSON MANTLE] Sir Roland Vance checked ${counterAttacker.name}'s boss cleave (-15% DMG)!`
+          );
+        }
+        if (flankSupportCount > 0) {
+          const flankNames = remainingActors
+            .filter((u) => u.unitId !== counterAttacker.unitId)
+            .map((u) => u.name)
+            .join(", ");
+          turnEvents.push(
+            `[PACK FLANK PRESSURE] ${flankNames} pressed alongside ${counterAttacker.name} (+${Math.round((packFlankMult - 1) * 100)}% enemy pack pressure)!`
           );
         }
 
         let rawEnemyHit = Math.round(
-          enc.enemyAtk *
+          counterAttacker.atk *
             intent.damageMultiplier *
+            packFlankMult *
             defFactor *
             interceptMitigationFactor *
             sealPartyDefPenalty *
@@ -1863,10 +2188,10 @@ export function resolveStarfallCombatTurn(params: {
               }
             } else {
               // STAGE 2: ALREADY WOUNDED + UNSHIELDED LETHAL BLOW -> TRUE PERMADEATH!
-              const cause = `Fell on Floor ${activeFloor} shielding the Vanguard against ${enc.enemyName}'s ${intent.label}`;
+              const cause = `Fell on Floor ${activeFloor} shielding the Vanguard against ${counterAttacker.name}'s ${intent.label}`;
               newlyFallenHeroines.push({ name: tHero.heroineName, cause });
               turnEvents.push(
-                `[IRREVERSIBLE CASUALTY] Already [WOUNDED], ${tHero.heroineName} took the full brunt of ${enc.enemyName}'s [${intent.label}] and shattered into fading starlight on Floor ${activeFloor}...`
+                `[IRREVERSIBLE CASUALTY] Already [WOUNDED], ${tHero.heroineName} took the full brunt of ${counterAttacker.name}'s [${intent.label}] and shattered into fading starlight on Floor ${activeFloor}...`
               );
             }
           }
@@ -1878,11 +2203,12 @@ export function resolveStarfallCombatTurn(params: {
           defenseRoll.outcome !== "CRITICAL_BREACH"
         ) {
           if (intent.appliesCondition === "TIME_REWIND") {
-            const rewindHeal = Math.round(enc.enemyMaxHp * 0.12);
-            enc.enemyHp = Math.min(enc.enemyMaxHp, enc.enemyHp + rewindHeal);
-            enc.enemyPoise = Math.min(enc.enemyMaxPoise, enc.enemyPoise + 25);
+            const rewindHeal = Math.round(counterAttacker.maxHp * 0.12);
+            counterAttacker.hp = Math.min(counterAttacker.maxHp, counterAttacker.hp + rewindHeal);
+            counterAttacker.poise = Math.min(counterAttacker.maxPoise, counterAttacker.poise + 25);
+            syncEncounterAggregateWithUnits(enc);
             turnEvents.push(
-              `[TIME REWIND] ${enc.enemyName} reversed its wounds (+${rewindHeal} HP, +25 Poise)!`
+              `[TIME REWIND] ${counterAttacker.name} reversed its wounds (+${rewindHeal} HP, +25 Poise)!`
             );
           } else if (intent.appliesCondition === "MANA_DRAIN") {
             protagonistMpDelta -= 10;
@@ -1895,7 +2221,7 @@ export function resolveStarfallCombatTurn(params: {
                 : r
             );
             turnEvents.push(
-              `[MANA DRAIN] ${enc.enemyName}'s [${intent.label}] siphoned -10 MP (${params.protagonistName}) & -12 MP from targeted allies!`
+              `[MANA DRAIN] ${counterAttacker.name}'s [${intent.label}] siphoned -10 MP (${params.protagonistName}) & -12 MP from targeted allies!`
             );
           } else {
             const condType = intent.appliesCondition;
@@ -1915,7 +2241,7 @@ export function resolveStarfallCombatTurn(params: {
             enc.activeConditions = nextConds;
             syncRosterConditions();
             turnEvents.push(
-              `[CONDITION INFLICTED: ${condType}] ${enc.enemyName}'s [${intent.label}] afflicted ${
+              `[CONDITION INFLICTED: ${condType}] ${counterAttacker.name}'s [${intent.label}] afflicted ${
                 condTarget === "PARTY" ? "Frontline Squad" : condTarget
               } for ${dur} turn(s)!`
             );
@@ -1930,11 +2256,21 @@ export function resolveStarfallCombatTurn(params: {
         ) {
           const riposteDmg = Math.max(12, 20 + activeFloor * 2);
           const ripostePoise = 18;
-          enc.enemyHp = Math.max(0, enc.enemyHp - riposteDmg);
-          enc.enemyPoise = Math.max(0, enc.enemyPoise - ripostePoise);
+          counterAttacker.hp = Math.max(0, counterAttacker.hp - riposteDmg);
+          if (!counterAttacker.isBroken && counterAttacker.hp > 0) {
+            counterAttacker.poise = Math.max(0, counterAttacker.poise - ripostePoise);
+            if (counterAttacker.poise <= 0) {
+              counterAttacker.isBroken = true;
+              counterAttacker.brokenTurnsRemaining = 1;
+            }
+          }
+          syncEncounterAggregateWithUnits(enc);
           turnEvents.push(
-            `[SILVER COUNTER-RIPOSTE] Sir Roland Vance parried [${intent.label}] and counter-thrust for ${riposteDmg} DMG & ${ripostePoise} Poise!`
+            `[SILVER COUNTER-RIPOSTE] Sir Roland Vance parried ${counterAttacker.name}'s [${intent.label}] and counter-thrust for ${riposteDmg} DMG & ${ripostePoise} Poise!`
           );
+          if (counterAttacker.hp <= 0) {
+            turnEvents.push(`[ENEMY SLAIN!] ${counterAttacker.name} fell to Sir Roland Vance's riposte!`);
+          }
           if (enc.enemyHp <= 0) {
             return finalizeVictoryReturn();
           }
@@ -1986,14 +2322,20 @@ export function resolveStarfallCombatTurn(params: {
   refreshSquadLists();
 
   enc.turnNumber += 1;
-  const enemyHpRatio = enc.enemyMaxHp > 0 ? enc.enemyHp / enc.enemyMaxHp : 0.5;
-  enc.currentTelegraph = pickNextEnemyTelegraph(
-    activeFloor,
-    enc.turnNumber,
-    enemyHpRatio,
-    seed,
-    enc.enemyId
-  );
+  for (const unit of enc.enemyUnits || []) {
+    if (unit.hp > 0) {
+      const uRatio = unit.maxHp > 0 ? unit.hp / unit.maxHp : 0.5;
+      unit.currentTelegraph = pickNextEnemyTelegraph(
+        activeFloor,
+        enc.turnNumber,
+        uRatio,
+        `${seed}:${unit.unitId}`,
+        unit.templateId
+      );
+    }
+  }
+  syncEncounterAggregateWithUnits(enc);
+
   enc.lastDiceRolls = diceRolls;
   enc.combatLog = [...enc.combatLog, ...turnEvents].slice(-12);
   enc.combatTelemetrySummary = buildCombatTelemetryBlock(
@@ -2034,6 +2376,22 @@ function buildCombatTelemetryBlock(
   shardsAwarded: number
 ): string {
   const rollLines = diceRolls.map((d) => `  • ${d.summaryText}`).join("\n");
+  const packUnits = enc.enemyUnits && enc.enemyUnits.length > 0 ? enc.enemyUnits : null;
+  const packStatusLines = packUnits
+    ? packUnits
+        .map((u) => {
+          const isTarget = u.unitId === enc.activeTargetUnitId && u.hp > 0;
+          return `  • ${isTarget ? "[TARGETED] " : ""}${u.name} [${u.tier}] — ${
+            u.hp <= 0
+              ? "SLAIN"
+              : `HP ${u.hp}/${u.maxHp} | Poise ${u.poise}/${u.maxPoise}${
+                  u.isBroken ? " [BROKEN!]" : ""
+                } | Weak: ${u.weaknesses.join(", ")}`
+          }`;
+        })
+        .join("\n")
+    : `  • ${enc.enemyName} (${enc.enemyTitle}) — HP ${enc.enemyHp}/${enc.enemyMaxHp} | Poise ${enc.enemyPoise}/${enc.enemyMaxPoise}`;
+
   const squadLines = roster
     .filter((r) => r.status === "DEPLOYED" || r.status === "WOUNDED")
     .map(
@@ -2052,14 +2410,9 @@ function buildCombatTelemetryBlock(
 
   return `
 === [DETERMINISTIC STARFALL COMBAT ENGINE TELEMETRY — NARRATE THIS OUTCOME VIVIDLY] ===
-- Floor & Stratum: Floor ${enc.floor} — ${enc.themeName} | Room: ${enc.layoutName} (${enc.layoutGeometry})
-- Enemy Status: ${enc.enemyName} (${enc.enemyTitle}) — HP ${enc.enemyHp}/${enc.enemyMaxHp} | Poise ${enc.enemyPoise}/${enc.enemyMaxPoise}${
-    enc.isEnemyBroken ? " [POISE BROKEN / STAGGERED!]" : ""
-  }${enc.hexSealsOnEnemy > 0 ? ` | Hex Seals: ${enc.hexSealsOnEnemy}/5` : ""}${
-    enc.enemyResistances && enc.enemyResistances.length > 0
-      ? ` | Resists: ${enc.enemyResistances.join(", ")}`
-      : ""
-  } | Status: ${enc.status.toUpperCase()}${
+- Floor & Stratum: Floor ${enc.floor} (Encounter Wave ${enc.floorWave || 1}/${enc.floorTotalWaves || 1}) — ${enc.themeName} | Room: ${enc.layoutName} (${enc.layoutGeometry})
+- Enemy Pack Status (Total Pack HP ${enc.enemyHp}/${enc.enemyMaxHp} | Status: ${enc.status.toUpperCase()}):
+${packStatusLines}${enc.hexSealsOnEnemy > 0 ? `\n- Active Hex Seals on Primary Target: ${enc.hexSealsOnEnemy}/5` : ""}${
     enc.activeConditions && enc.activeConditions.length > 0
       ? `\n- Active Conditions: ${enc.activeConditions.map((c) => `${c.type} on ${c.target} (${c.turnsRemaining}T)`).join(", ")}`
       : ""
@@ -2072,9 +2425,9 @@ ${turnEvents.map((e) => `  • ${e}`).join("\n")}
 ${squadLines || "  • Solo Vanguard."}
 ${
   enc.status === "ongoing"
-    ? `- NEXT ENEMY TELEGRAPH (Foreshadow this threat at the end of the beat!): [${enc.currentTelegraph.label}] — ${enc.currentTelegraph.telegraphText}`
+    ? `- NEXT ENEMY TELEGRAPH (Foreshadow this threat at the end of the beat!): [${enc.enemyName} -> ${enc.currentTelegraph.label}] — ${enc.currentTelegraph.telegraphText}`
     : expAwarded > 0
-    ? `- Floor Clear Spoils: +${expAwarded} EXP, +${shardsAwarded} Star Shards.`
+    ? `- Encounter Clear Spoils: +${expAwarded} EXP, +${shardsAwarded} Star Shards.`
     : ""
 }`.trim();
 }

@@ -106,14 +106,38 @@ export interface StarfallMasterSealOrder {
 
 export type StarfallEnemyTier = "COMMON" | "ELITE" | "BOSS";
 
+export interface StarfallEnemyUnit {
+  unitId: string;
+  templateId: string;
+  name: string;
+  title: string;
+  tier: StarfallEnemyTier;
+  hp: number;
+  maxHp: number;
+  atk: number;
+  def: number;
+  spd: number;
+  poise: number;
+  maxPoise: number;
+  isBroken: boolean;
+  brokenTurnsRemaining: number;
+  weaknesses: TacticalWeaknessTag[];
+  resistances: TacticalWeaknessTag[];
+  currentTelegraph: EnemyTelegraphIntent;
+}
+
 export interface StarfallCombatState {
   isActive: boolean;
   encounterId: string;
   floor: number;
+  floorWave?: number;
+  floorTotalWaves?: number;
   turnNumber: number;
   status: "ongoing" | "victory" | "retreat" | "defeat";
   engagementPhase?: "vicinity" | "engaged";
   enemyTier?: StarfallEnemyTier;
+  enemyUnits?: StarfallEnemyUnit[];
+  activeTargetUnitId?: string;
   themeId: TowerThemeId;
   themeName: string;
   environmentalLawName: string;
@@ -186,6 +210,9 @@ export interface MemorialRecord {
 
 export interface LabyrinthState {
   currentFloor: number; // 0 = Star Gate Plaza (Main Lobby), 1-100 = Labyrinth Floors
+  currentFloorWave?: number; // 1-based encounter wave on the current floor
+  currentFloorTotalWaves?: number; // total waves before advancing from current floor
+  floorClearedPendingAscent?: boolean; // true when all waves on currentFloor are defeated and the Transfer Ring is active
   highestFloorCleared: number;
   starShards: number; // Summon currency (30 per pull, 300 per 10x pull)
   pityCounter: number; // Guaranteed 5★ at 90 pulls

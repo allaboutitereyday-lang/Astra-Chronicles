@@ -27,6 +27,7 @@ import {
   matchesHeroineName,
   MAX_DEPLOYED_PARTY,
   normalizeSquadFormations,
+  syncActiveEncounterFormationWithRoster,
   toggleHeroFormationSlot,
 } from "@/lib/starfallEngine";
 import { getTowerThemeForFloor } from "@/lib/starfallTowerThemes";
@@ -95,12 +96,18 @@ export function StarfallBarracksModal({
   );
   const selectedAffection = selectedCompanion?.affection ?? 15;
 
+  const isEngagedCombat = Boolean(
+    labyrinthState.activeEncounter?.isActive &&
+      labyrinthState.activeEncounter?.engagementPhase === "engaged"
+  );
+
   const resolvePortrait = (name?: string): string => {
     const d = getHeroineDossier(name);
     if (d?.spriteSlug) {
       return `/characters/starfall-labyrinth/${d.spriteSlug}/neutral.png`;
     }
-    return selectedCompanion?.baseImageUrl || "/characters/default.png";
+    const comp = partyMembers.find((c) => matchesHeroineName(c.name, name, c.id));
+    return comp?.baseImageUrl || "/characters/default.png";
   };
 
   const handleToggleSlot = (heroName: string) => {
@@ -110,7 +117,7 @@ export function StarfallBarracksModal({
   };
 
   const handleToggleDeployBench = (entry: HeroRosterEntry) => {
-    if (entry.status === "FALLEN") return;
+    if (entry.status === "FALLEN" || isEngagedCombat) return;
     soundEffects.playClick();
     const currentlyActive =
       entry.status === "DEPLOYED" || entry.status === "WOUNDED";
@@ -122,10 +129,12 @@ export function StarfallBarracksModal({
           ? { ...r, status: "BENCHED" as HeroStatus, formationSlot: undefined }
           : r
       );
-      onUpdateLabyrinthState({
-        ...labyrinthState,
-        roster: normalizeSquadFormations(nextRoster),
-      });
+      onUpdateLabyrinthState(
+        syncActiveEncounterFormationWithRoster({
+          ...labyrinthState,
+          roster: normalizeSquadFormations(nextRoster),
+        })
+      );
     } else {
       if (activeSquad.length >= MAX_DEPLOYED_PARTY) {
         // Swap out the last reserve unit so 1-click deploy works smoothly
@@ -142,10 +151,12 @@ export function StarfallBarracksModal({
           }
           return r;
         });
-        onUpdateLabyrinthState({
-          ...labyrinthState,
-          roster: normalizeSquadFormations(nextRoster),
-        });
+        onUpdateLabyrinthState(
+          syncActiveEncounterFormationWithRoster({
+            ...labyrinthState,
+            roster: normalizeSquadFormations(nextRoster),
+          })
+        );
       } else {
         const nextRoster = roster.map((r) =>
           matchesHeroineName(r.heroineName, entry.heroineName)
@@ -156,10 +167,12 @@ export function StarfallBarracksModal({
               })
             : r
         );
-        onUpdateLabyrinthState({
-          ...labyrinthState,
-          roster: normalizeSquadFormations(nextRoster),
-        });
+        onUpdateLabyrinthState(
+          syncActiveEncounterFormationWithRoster({
+            ...labyrinthState,
+            roster: normalizeSquadFormations(nextRoster),
+          })
+        );
       }
     }
   };
@@ -352,6 +365,10 @@ export function StarfallBarracksModal({
                             <img
                               src={resolvePortrait(hero.heroineName)}
                               alt={hero.heroineName}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "/characters/default.png";
+                              }}
                               className="w-11 h-14 object-contain object-bottom rounded-lg bg-zinc-900 border border-white/10 shrink-0"
                             />
                             <div className="min-w-0 flex-1 font-mono">
@@ -388,11 +405,17 @@ export function StarfallBarracksModal({
                             </button>
                             <button
                               type="button"
+                              disabled={isEngagedCombat}
+                              title={
+                                isEngagedCombat
+                                  ? "Cannot Bench or Deploy from Standby during active combat — use Rearguard Hot-Swap!"
+                                  : undefined
+                              }
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleToggleDeployBench(hero);
                               }}
-                              className="py-1 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-[10px] font-mono text-zinc-300 cursor-pointer"
+                              className="py-1 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-[10px] font-mono text-zinc-300 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
                             >
                               Bench
                             </button>
@@ -447,6 +470,10 @@ export function StarfallBarracksModal({
                             <img
                               src={resolvePortrait(hero.heroineName)}
                               alt={hero.heroineName}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "/characters/default.png";
+                              }}
                               className="w-11 h-14 object-contain object-bottom rounded-lg bg-zinc-900 border border-white/10 shrink-0"
                             />
                             <div className="min-w-0 flex-1 font-mono">
@@ -478,11 +505,17 @@ export function StarfallBarracksModal({
                             </button>
                             <button
                               type="button"
+                              disabled={isEngagedCombat}
+                              title={
+                                isEngagedCombat
+                                  ? "Cannot Bench or Deploy from Standby during active combat — use Rearguard Hot-Swap!"
+                                  : undefined
+                              }
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleToggleDeployBench(hero);
                               }}
-                              className="py-1 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-[10px] font-mono text-zinc-300 cursor-pointer"
+                              className="py-1 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-[10px] font-mono text-zinc-300 cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed"
                             >
                               Bench
                             </button>
@@ -529,11 +562,17 @@ export function StarfallBarracksModal({
                           </div>
                           <button
                             type="button"
+                            disabled={isEngagedCombat}
+                            title={
+                              isEngagedCombat
+                                ? "Cannot Bench or Deploy from Standby during active combat — use Rearguard Hot-Swap!"
+                                : undefined
+                            }
                             onClick={(e) => {
                               e.stopPropagation();
                               handleToggleDeployBench(hero);
                             }}
-                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold cursor-pointer shrink-0"
+                            className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold cursor-pointer shrink-0 disabled:opacity-45 disabled:cursor-not-allowed"
                           >
                             Deploy
                           </button>
@@ -580,6 +619,10 @@ export function StarfallBarracksModal({
                             <img
                               src={resolvePortrait(selectedEntry.heroineName)}
                               alt={selectedEntry.heroineName}
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "/characters/default.png";
+                              }}
                               className="w-full h-full object-contain object-bottom"
                             />
                           </div>

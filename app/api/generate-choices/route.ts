@@ -235,9 +235,14 @@ Format Requirement:
 
     let dynamicChoices = null;
     const requestedModel =
-      modelId && modelId !== "orchestrated-hybrid" && modelId !== "orchestrated-hybrid-deepseek" && modelId.includes("/")
+      modelId &&
+      modelId !== "orchestrated-hybrid" &&
+      modelId !== "orchestrated-hybrid-deepseek" &&
+      modelId !== "ooc-two-pass-sonnet" &&
+      modelId !== "ooc-two-pass-deepseek" &&
+      modelId.includes("/")
         ? modelId
-        : modelId === "orchestrated-hybrid-deepseek"
+        : modelId === "orchestrated-hybrid-deepseek" || modelId === "ooc-two-pass-deepseek"
           ? "deepseek/deepseek-v3.2"
           : "google/gemini-2.5-flash";
     const modelsToTry = [requestedModel, ...FALLBACK_MODELS.filter((m) => m !== requestedModel)];

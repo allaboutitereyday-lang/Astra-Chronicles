@@ -484,10 +484,10 @@ const STARFALL_LABYRINTH_GLOSSARY: GlossaryEntry[] = [
       "Surviving floor trials to hit Heart Resonance milestones (25%, 50%, 75%, 90%) or absorbing duplicate Star Gate echoes promotes even a 1★ fodder hero by +1★ up to 5★.",
   },
   {
-    term: "Irreversible Permadeath & Memorial Wall (Covenant VI)",
+    term: "Two-Stage Casualty & Memorial Wall (Covenant VI)",
     category: "World & Lore",
     summary:
-      "Deployed heroines who die in combat shatter into Star Ash permanently—removed from party, sprites, and choices, etched onto the Memorial Wall, and never revived even on duplicate gacha pulls. Protagonist death is immediate Game Over.",
+      "Deployed heroines knocked to 0 HP once become WOUNDED and fall back to Rearguard Reserve until recovered at a Safe Zone or Lobby. A second lethal hit while WOUNDED permanently shatters them into Star Ash—removed from party, etched onto the Memorial Wall, and unrevivable even on duplicate pulls. Protagonist death is immediate Game Over.",
   },
   {
     term: "Unseen Master & Command Seals (Covenant VII)",
@@ -1819,12 +1819,12 @@ export function WorldGuidebookModal({
                       ]
                     : isStarfall
                     ? [
-                        { id: "ALL", label: "All 6 Summonable Heroines" },
+                        { id: "ALL", label: `All ${story.companions?.length || 14} Summonable Heroes` },
                         { id: "STAR_5", label: "★★★★★ 5★ Mythic" },
                         { id: "STAR_4", label: "★★★★ 4★ Elite" },
-                        { id: "STAR_3", label: "★★★ 3★ Vanguard" },
-                        { id: "STAR_2", label: "★★ 2★ Scout" },
-                        { id: "STAR_1", label: "★ 1★ Discard Cleric" },
+                        { id: "STAR_3", label: "★★★ 3★ Specialist" },
+                        { id: "STAR_2", label: "★★ 2★ Vanguard & Scout" },
+                        { id: "STAR_1", label: "★ 1★ Discard Queue" },
                       ]
                     : [
                         { id: "ALL", label: "All 8 Heroines" },

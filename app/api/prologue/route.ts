@@ -131,10 +131,16 @@ export async function POST(req: Request) {
         ? "1-2 paragraphs of spoken lines"
         : "2-3 rich paragraphs weaving multi-part spoken lines in double quotation marks (\"...\") with physical gestures, micro-expressions, and spatial movement";
 
-    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
+    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug or hybrid alias,
     // auto-route to cloud!
     let effectiveEnvironment = targetEnvironment;
-    if (effectiveEnvironment === "local" && modelId && modelId.includes("/")) {
+    if (
+      effectiveEnvironment === "local" &&
+      modelId &&
+      (modelId.includes("/") ||
+        modelId.startsWith("orchestrated-hybrid") ||
+        modelId.startsWith("ooc-two-pass"))
+    ) {
       console.warn(`Local environment requested with cloud model ID "${modelId}". Auto-routing to cloud.`);
       effectiveEnvironment = "cloud";
     }
@@ -643,9 +649,12 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
     // Smart Hybrid routes structured prologue orchestration to Gemini 2.5 Flash (default) or DeepSeek V3.2
     const normalizedRequestedModel = modelId ? (LEGACY_MODEL_MIGRATIONS[modelId] || modelId) : "";
     const effectiveModelId =
-      normalizedRequestedModel === "orchestrated-hybrid" || !normalizedRequestedModel
+      normalizedRequestedModel === "orchestrated-hybrid" ||
+      normalizedRequestedModel === "ooc-two-pass-sonnet" ||
+      !normalizedRequestedModel
         ? "google/gemini-2.5-flash"
-        : normalizedRequestedModel === "orchestrated-hybrid-deepseek"
+        : normalizedRequestedModel === "orchestrated-hybrid-deepseek" ||
+          normalizedRequestedModel === "ooc-two-pass-deepseek"
         ? "deepseek/deepseek-v3.2"
         : normalizedRequestedModel;
     const modelsToTry = isLocal

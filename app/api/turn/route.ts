@@ -70,6 +70,7 @@ import {
   syncRosterWithParty,
   resolveHeroCasualty,
   advanceFloor,
+  completeCurrentFloorAtTransferRing,
   adjustMasterTrust,
   inferFloorFromLocation,
   isStarfallLobbyLocation,
@@ -80,6 +81,7 @@ import {
 } from "@/lib/starfallEngine";
 import {
   getTowerThemeForFloor,
+  getTotalWavesForFloor,
   matchCuratedEnemyFromProse,
 } from "@/lib/starfallTowerThemes";
 import {
@@ -204,10 +206,16 @@ export async function POST(req: Request) {
         ? "3 to 5 detailed paragraphs (approx. 300–450 words)"
         : "5 to 7+ rich, novel-length paragraphs (450–800+ words) with multi-stage dialogue";
 
-    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
+    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug or hybrid alias,
     // auto-route to cloud!
     let effectiveEnvironment = targetEnvironment;
-    if (effectiveEnvironment === "local" && modelId && modelId.includes("/")) {
+    if (
+      effectiveEnvironment === "local" &&
+      modelId &&
+      (modelId.includes("/") ||
+        modelId.startsWith("orchestrated-hybrid") ||
+        modelId.startsWith("ooc-two-pass"))
+    ) {
       console.warn(`Local environment requested with cloud model ID "${modelId}". Auto-routing to cloud.`);
       effectiveEnvironment = "cloud";
     }
@@ -657,6 +665,15 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
     let starfallCombatTelemetryDirective = "";
     let preTurnStarfallCombatResult: StarfallCombatResolutionResult | null = null;
     let preTurnStarfallLabState: any = null;
+    let preTurnWaveAdvanceMeta: {
+      floor: number;
+      clearedWave: number;
+      nextWave: number;
+      totalWaves: number;
+    } | null = null;
+    let preTurnFloorClearMeta: ReturnType<typeof completeCurrentFloorAtTransferRing> | null = null;
+    let isCampfireRestAction = false;
+    let effectiveTurnLocation = gameState?.location || "Star Gate Plaza (Main Lobby)";
 
     if (isStarfallStory) {
       let baseLabState = syncRosterWithParty(
@@ -673,6 +690,19 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
         baseLabState.currentFloor || 0
       );
       const rawActionStr = String(action || "");
+      isCampfireRestAction =
+        /\[Safe Zone\/Rest\]|\bcampfire\s+bond\s+rest\b|\brest\s+at\s+the\s+sanctuary\s+hearth\b/i.test(
+          rawActionStr
+        );
+      const preActionRetreatToLobby =
+        /\b(return|retreat|head\s+back|extract|go\s+back)\s+(?:to\s+)?(?:the\s+)?(?:star\s+gate\s+plaza|main\s+lobby|floating\s+lobby|lobby|barracks|memorial)\b/i.test(
+          rawActionStr
+        );
+      const isEnteringClearedFloorOrSafeExit =
+        preActionRetreatToLobby &&
+        (Boolean(baseLabState.floorClearedPendingAscent) ||
+          getFloorType(baseLabState.currentFloor || 0) === "SAFE_ZONE" ||
+          !baseLabState.activeEncounter?.isActive);
       const actionFloorMatch = rawActionStr.match(
         /\b(?:enter|step\s+into|ascend\s+to|deploy\s+to|advance\s+to)\s+floor\s+(\d{1,3})\b/i
       );
@@ -682,7 +712,9 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
           rawActionStr
         ) ||
           /\bfloor\s*1\s+goblins\b/i.test(rawActionStr));
-      const explicitActionFloor = actionFloorMatch
+      const explicitActionFloor = isEnteringClearedFloorOrSafeExit
+        ? 0
+        : actionFloorMatch
         ? Math.min(100, Math.max(0, parseInt(actionFloorMatch[1], 10)))
         : implicitFloorEntry
         ? Math.max(1, (baseLabState.highestFloorCleared || 0) + 1)
@@ -690,14 +722,64 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
       const effectivePreFloor =
         explicitActionFloor !== null ? explicitActionFloor : locFloor;
 
-      if (effectivePreFloor !== baseLabState.currentFloor) {
+      if (
+        effectivePreFloor !== baseLabState.currentFloor ||
+        (explicitActionFloor !== null &&
+          explicitActionFloor > 0 &&
+          baseLabState.floorClearedPendingAscent)
+      ) {
+        const nextTotalWaves = getTotalWavesForFloor(effectivePreFloor);
         baseLabState = {
           ...baseLabState,
           currentFloor: effectivePreFloor,
+          currentFloorWave: nextTotalWaves > 0 ? 1 : 0,
+          currentFloorTotalWaves: nextTotalWaves,
+          floorClearedPendingAscent: false,
+          activeEncounter: null,
         };
         if (effectivePreFloor === 0 || getFloorType(effectivePreFloor) === "SAFE_ZONE") {
           baseLabState = healRosterAtSafeZoneOrLobby(baseLabState);
         }
+      }
+
+      if (effectivePreFloor > 0 && getFloorType(effectivePreFloor) === "SAFE_ZONE") {
+        baseLabState = healRosterAtSafeZoneOrLobby(baseLabState);
+        if (effectivePreFloor > (baseLabState.highestFloorCleared || 0)) {
+          const safeClear = completeCurrentFloorAtTransferRing(baseLabState);
+          baseLabState = safeClear.newState;
+          preTurnFloorClearMeta = safeClear;
+          starfallCombatTelemetryDirective += `\n\n=== [SAFE ZONE SANCTUARY REACHED (FLOOR ${effectivePreFloor}) — CHECKPOINT UNLOCKED!] ===\n- All [WOUNDED] statuses cleared and Heroines restored to 100% HP/MP (+${safeClear.shardsAwarded} Star Shards first-clear bonus).\n- NARRATIVE INSTRUCTION: Narrate the squad crossing into the warm sanctuary glow of Floor ${effectivePreFloor}, their wounds knitting shut and the Transfer Ring checkpoint humming cleanly ahead.`;
+        }
+      }
+
+      if (
+        isCampfireRestAction &&
+        !(
+          baseLabState.activeEncounter?.isActive &&
+          baseLabState.activeEncounter.engagementPhase === "engaged"
+        )
+      ) {
+        if (effectivePreFloor === 0 || getFloorType(effectivePreFloor) === "SAFE_ZONE") {
+          baseLabState = healRosterAtSafeZoneOrLobby(baseLabState);
+          baseLabState = adjustMasterTrust(baseLabState, 2);
+        } else {
+          const restedRoster = (baseLabState.roster || []).map((r) => {
+            if (r.status === "FALLEN") return r;
+            const maxHp = r.combatStats?.maxHp || 100;
+            const maxMp = r.combatStats?.maxMp || 60;
+            return {
+              ...r,
+              currentHp: Math.min(maxHp, (r.currentHp ?? maxHp) + Math.round(maxHp * 0.35)),
+              currentMp: Math.min(maxMp, (r.currentMp ?? maxMp) + Math.round(maxMp * 0.35)),
+            };
+          });
+          baseLabState = adjustMasterTrust({ ...baseLabState, roster: restedRoster }, 1);
+        }
+        starfallCombatTelemetryDirective += `\n\n=== [SANCTUARY CAMPFIRE BOND REST EXECUTED] ===\n- The squad takes a quiet breather around the warm hearth / Transfer Ring (${
+          effectivePreFloor === 0 || getFloorType(effectivePreFloor) === "SAFE_ZONE"
+            ? "100% full HP/MP & Wounded recovery"
+            : "+35% Transfer Ring field vitals recovery"
+        }).\n- NARRATIVE INSTRUCTION: Focus strictly on atmospheric rest, tending gear, quiet emotional rapport, and preparation. Do NOT ambush them with monsters during this rest turn.`;
       }
 
       const preFloorType = getFloorType(effectivePreFloor);
@@ -705,7 +787,11 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
 
       if (
         effectivePreFloor > 0 &&
-        (preFloorType === "COMBAT" || preFloorType === "GATE_BOSS" || isExplicitCombatTag) &&
+        (preFloorType === "COMBAT" ||
+          preFloorType === "EVENT" ||
+          preFloorType === "GATE_BOSS" ||
+          isExplicitCombatTag) &&
+        !isCampfireRestAction &&
         !summonContext &&
         !giftItemContext
       ) {
@@ -744,13 +830,72 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
             });
             baseLabState = preTurnStarfallCombatResult.nextLabyrinthState;
             starfallCombatTelemetryDirective = preTurnStarfallCombatResult.combatTelemetryBlock;
+
+            // Pre-spawn next wave or activate Transfer Ring BEFORE Pass 1/Pass 2 runs
+            if (preTurnStarfallCombatResult.encounter.status === "victory") {
+              const clearedWave =
+                preTurnStarfallCombatResult.encounter.floorWave ||
+                baseLabState.currentFloorWave ||
+                1;
+              const totalWaves =
+                preTurnStarfallCombatResult.encounter.floorTotalWaves ||
+                baseLabState.currentFloorTotalWaves ||
+                getTotalWavesForFloor(effectivePreFloor) ||
+                3;
+
+              if (clearedWave < totalWaves) {
+                const nextWave = clearedWave + 1;
+                baseLabState = startFloorCombatEncounter(
+                  {
+                    ...baseLabState,
+                    currentFloorWave: nextWave,
+                    currentFloorTotalWaves: totalWaves,
+                    floorClearedPendingAscent: false,
+                    activeEncounter: null,
+                  },
+                  effectivePreFloor,
+                  `${baseLabState.summonSeed || "sf"}:f${effectivePreFloor}:w${nextWave}:${currentTurnNumber}`,
+                  true,
+                  {
+                    initialEngagementPhase: "vicinity",
+                    waveNumber: nextWave,
+                  }
+                );
+                preTurnWaveAdvanceMeta = {
+                  floor: effectivePreFloor,
+                  clearedWave,
+                  nextWave,
+                  totalWaves,
+                };
+                const nextPackDesc = (baseLabState.activeEncounter?.enemyUnits || [])
+                  .map(
+                    (u) => `${u.name} (${u.title}, Tier: ${u.tier}, HP ${u.hp}/${u.maxHp})`
+                  )
+                  .join(" + ");
+                starfallCombatTelemetryDirective += `\n\n=== [WAVE ${clearedWave}/${totalWaves} CLEARED -> NEXT HOSTILE PACK DETECTED IN VICINITY (WAVE ${nextWave}/${totalWaves})] ===
+- Newly Approaching Pack on Floor ${effectivePreFloor} (Wave ${nextWave}/${totalWaves}): ${nextPackDesc}
+- NARRATIVE INSTRUCTION: First narrate the decisive defeat of Wave ${clearedWave}. Then, in the closing paragraph, have the squad spot or sense the incoming Wave ${nextWave}/${totalWaves} pack (${nextPackDesc}) in the vicinity ahead (do NOT engage them yet—give tactical choices to ambush, scout, or strike them next turn!).`;
+              } else {
+                const floorDone = completeCurrentFloorAtTransferRing(baseLabState);
+                baseLabState = floorDone.newState;
+                preTurnFloorClearMeta = floorDone;
+                starfallCombatTelemetryDirective += `\n\n=== [FLOOR ${effectivePreFloor} ALL WAVES CLEARED (${clearedWave}/${totalWaves}) — TRANSFER RING ILLUMINATED!] ===
+- Floor ${effectivePreFloor} Status: ALL HOSTILE WAVES DEFEATED! The Floor Transfer Ring now hums with pale cyan starlight.
+- NARRATIVE INSTRUCTION: Narrate the final enemy of Wave ${clearedWave}/${totalWaves} collapsing into Star Ash and the chamber falling quiet as the Transfer Ring activates. Do NOT auto-move the party to Floor ${effectivePreFloor + 1} yet—let them catch their breath at the Transfer Ring and offer choices to ascend to Floor ${Math.min(100, effectivePreFloor + 1)}, check on wounded teammates, or extract to Star Gate Plaza!`;
+              }
+            }
           } else {
-            starfallCombatTelemetryDirective = `=== [HOSTILE IN VICINITY — STEALTH / RECONNAISSANCE PHASE — FLOOR ${effectivePreFloor}] ===
-- Curated Hostile Detected Nearby: ${baseLabState.activeEncounter.enemyName} (${baseLabState.activeEncounter.enemyTitle}, Tier: ${baseLabState.activeEncounter.enemyTier || "COMMON"})
+            const packUnitsDesc =
+              (baseLabState.activeEncounter.enemyUnits || [])
+                .map((u) => `${u.name} (${u.title}, Tier: ${u.tier}, HP ${u.hp}/${u.maxHp})`)
+                .join(" + ") ||
+              `${baseLabState.activeEncounter.enemyName} (${baseLabState.activeEncounter.enemyTitle}, Tier: ${baseLabState.activeEncounter.enemyTier || "COMMON"})`;
+            starfallCombatTelemetryDirective = `=== [HOSTILE PACK IN VICINITY — STEALTH / RECONNAISSANCE PHASE — FLOOR ${effectivePreFloor} WAVE ${baseLabState.activeEncounter.floorWave || 1}/${baseLabState.activeEncounter.floorTotalWaves || 3}] ===
+- Locked Curated Hostile Pack Nearby: ${packUnitsDesc}
 - Room Geometry: ${baseLabState.activeEncounter.layoutName} — ${baseLabState.activeEncounter.layoutGeometry}
-- Current Status: The party is scouting/positioning in the vicinity of ${baseLabState.activeEncounter.enemyName}; direct clash has NOT started yet. Keep tension high around ${baseLabState.activeEncounter.enemyName} specifically.`;
+- Current Status: The party is scouting/positioning in the vicinity of ${packUnitsDesc}; direct clash has NOT started yet. Refer ONLY to these monsters.`;
           }
-        } else {
+        } else if (!baseLabState.floorClearedPendingAscent) {
           // Entering a new combat or boss floor — initialize themed encounter in vicinity (or engaged for Gate Bosses)!
           baseLabState = startFloorCombatEncounter(
             baseLabState,
@@ -758,12 +903,17 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
             `${baseLabState.summonSeed || "sf"}:init:${effectivePreFloor}:${currentTurnNumber}`
           );
           if (baseLabState.activeEncounter) {
-            starfallCombatTelemetryDirective = `=== [NEW FLOOR ENCOUNTER DETECTED — FLOOR ${effectivePreFloor}] ===
-- Phase: ${baseLabState.activeEncounter.engagementPhase === "vicinity" ? "HOSTILE IN VICINITY (Approach / Scouting)" : "GATE BOSS ENGAGED"}
+            const packUnitsDesc =
+              (baseLabState.activeEncounter.enemyUnits || [])
+                .map((u) => `${u.name} [${u.tier}, HP ${u.hp}/${u.maxHp}, Poise ${u.poise}]`)
+                .join(" + ") ||
+              `${baseLabState.activeEncounter.enemyName} (${baseLabState.activeEncounter.enemyTitle}, Tier: ${baseLabState.activeEncounter.enemyTier || "COMMON"}) [HP ${baseLabState.activeEncounter.enemyHp}/${baseLabState.activeEncounter.enemyMaxHp}]`;
+            starfallCombatTelemetryDirective = `=== [NEW FLOOR ENCOUNTER DETECTED — FLOOR ${effectivePreFloor} WAVE ${baseLabState.activeEncounter.floorWave || 1}/${baseLabState.activeEncounter.floorTotalWaves || 3}] ===
+- Phase: ${baseLabState.activeEncounter.engagementPhase === "vicinity" ? "HOSTILE PACK IN VICINITY (Approach / Scouting)" : "GATE BOSS ENGAGED"}
 - Stratum Theme: ${baseLabState.activeEncounter.themeName} (${baseLabState.activeEncounter.environmentalLawName})
 - Room Geometry: ${baseLabState.activeEncounter.layoutName} — ${baseLabState.activeEncounter.layoutGeometry}
 - Interactive Terrain: ${baseLabState.activeEncounter.terrainTags.join(", ")}
-- Hostile Manifested: ${baseLabState.activeEncounter.enemyName} (${baseLabState.activeEncounter.enemyTitle}, Tier: ${baseLabState.activeEncounter.enemyTier || "COMMON"}) [HP ${baseLabState.activeEncounter.enemyHp}/${baseLabState.activeEncounter.enemyMaxHp} | Poise ${baseLabState.activeEncounter.enemyPoise}]
+- Hostile Pack Manifested: ${packUnitsDesc}
 - Opening Telegraph: [${baseLabState.activeEncounter.currentTelegraph.label}] — ${baseLabState.activeEncounter.currentTelegraph.telegraphText}${
               baseLabState.activeEncounter.masterSealOrder
                 ? `\n- Intrusive Master Command Seal: ${baseLabState.activeEncounter.masterSealOrder.commandText}`
@@ -773,15 +923,34 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
         }
       }
 
+      effectiveTurnLocation =
+        effectivePreFloor === 0
+          ? locFloor > 0 || isEnteringClearedFloorOrSafeExit
+            ? "Star Gate Plaza (Main Lobby)"
+            : gameState?.location || "Star Gate Plaza (Main Lobby)"
+          : preTurnFloorClearMeta
+          ? getFloorType(effectivePreFloor) === "SAFE_ZONE"
+            ? `Floor ${effectivePreFloor} — Safe Zone Sanctuary`
+            : `Floor ${effectivePreFloor} — Floor Transfer Ring (Cleared)`
+          : preTurnWaveAdvanceMeta
+          ? `Floor ${effectivePreFloor} — ${
+              baseLabState.activeEncounter?.layoutName || "Labyrinth Chamber"
+            } (Wave ${preTurnWaveAdvanceMeta.nextWave}/${preTurnWaveAdvanceMeta.totalWaves})`
+          : effectivePreFloor !== locFloor
+          ? `Floor ${effectivePreFloor} — ${
+              baseLabState.activeEncounter?.layoutName ||
+              (getFloorType(effectivePreFloor) === "SAFE_ZONE"
+                ? "Safe Zone Sanctuary"
+                : "Labyrinth Corridor")
+            }`
+          : gameState?.location || "Star Gate Plaza (Main Lobby)";
+
       preTurnStarfallLabState = baseLabState;
       starfallDirective = buildStarfallTurnDirective({
         protagonistName: playerProfile?.name || "Tactician",
         protagonistLevel: playerProfile?.level || 1,
         labyrinthState: baseLabState,
-        currentLocation:
-          effectivePreFloor > 0 && isStarfallStory && locFloor === 0
-            ? `Floor ${effectivePreFloor} — ${baseLabState.activeEncounter?.layoutName || "Labyrinth Corridor"}`
-            : gameState?.location || "Star Gate Plaza (Main Lobby)",
+        currentLocation: effectiveTurnLocation,
         activeSpeaker: sanitizedContextSpeaker,
         deployedHeroines: presentHeroineNames,
       });
@@ -1339,7 +1508,9 @@ ${visualInspectionInstruction}`;
           storyId: storyContext?.id,
           storyTitle,
           settingName,
-          location: gameState?.location || "Star Gate Plaza (Main Lobby)",
+          location: isStarfallStory
+            ? effectiveTurnLocation
+            : gameState?.location || "Star Gate Plaza (Main Lobby)",
           timeOfDay: gameState?.timeOfDay,
           playerProfile,
           presentCompanions: physicallyPresentCompanions,
@@ -2060,31 +2231,42 @@ ${visualInspectionInstruction}`;
       // Sync location floor if player stepped into a numbered floor or returned to Lobby
       // (Unless emergency extraction just returned the party to Floor 0!)
       const preTurnFloor = preTurnStarfallLabState?.currentFloor || 0;
-      const wasExtractedToLobby =
-        preTurnStarfallCombatResult?.encounter.status === "retreat";
       const playerAskedToRetreatToLobby =
         /\b(return|retreat|head\s+back|extract|go\s+back)\s+(?:to\s+)?(?:the\s+)?(?:star\s+gate\s+plaza|main\s+lobby|floating\s+lobby|lobby|barracks|memorial)\b/i.test(
           String(action || "")
         );
+      const wasExtractedToLobby =
+        preTurnStarfallCombatResult?.encounter.status === "retreat" ||
+        (playerAskedToRetreatToLobby &&
+          !workingLabyrinth.activeEncounter?.isActive &&
+          preTurnFloor === 0);
       let updatedLoc = wasExtractedToLobby
         ? "Star Gate Plaza (Main Lobby)"
         : String(
             responseData.state_updates?.current_location ||
+              effectiveTurnLocation ||
               gameState?.location ||
               "Star Gate Plaza (Main Lobby)"
           );
       const rawLlmLoc = responseData.state_updates?.current_location;
+      const llmLocFloor = rawLlmLoc ? inferFloorFromLocation(String(rawLlmLoc), 0) : 0;
       if (
         !wasExtractedToLobby &&
         preTurnFloor > 0 &&
         !playerAskedToRetreatToLobby &&
-        (!rawLlmLoc || isStarfallLobbyLocation(String(rawLlmLoc)) || isStarfallLobbyLocation(updatedLoc))
+        (!rawLlmLoc ||
+          isStarfallLobbyLocation(String(rawLlmLoc)) ||
+          isStarfallLobbyLocation(updatedLoc) ||
+          (llmLocFloor > 0 && llmLocFloor !== preTurnFloor))
       ) {
-        updatedLoc = `Floor ${preTurnFloor}: ${
-          preTurnFloor === 1
-            ? "The Verdant Antechamber"
-            : workingLabyrinth.activeEncounter?.layoutName || getTowerThemeForFloor(preTurnFloor).name
-        }`;
+        updatedLoc =
+          effectiveTurnLocation && !isStarfallLobbyLocation(effectiveTurnLocation)
+            ? effectiveTurnLocation
+            : `Floor ${preTurnFloor}: ${
+                preTurnFloor === 1
+                  ? "The Verdant Antechamber"
+                  : workingLabyrinth.activeEncounter?.layoutName || getTowerThemeForFloor(preTurnFloor).name
+              }`;
         if (responseData.state_updates) {
           responseData.state_updates.current_location = updatedLoc;
         }
@@ -2098,6 +2280,9 @@ ${visualInspectionInstruction}`;
       if (resolvedPostFloor === 0 && isStarfallDungeonLocation(updatedLoc)) {
         resolvedPostFloor = Math.max(1, preTurnFloor);
       }
+      const combatVictoryTriggered =
+        preTurnStarfallCombatResult?.encounter.status === "victory";
+
       if (resolvedPostFloor !== workingLabyrinth.currentFloor) {
         workingLabyrinth = {
           ...workingLabyrinth,
@@ -2108,19 +2293,26 @@ ${visualInspectionInstruction}`;
         workingLabyrinth = healRosterAtSafeZoneOrLobby(workingLabyrinth);
       } else if (
         resolvedPostFloor > 0 &&
+        !combatVictoryTriggered &&
+        !preTurnFloorClearMeta &&
+        !workingLabyrinth.floorClearedPendingAscent &&
         !workingLabyrinth.activeEncounter?.isActive &&
+        !isCampfireRestAction &&
         (getFloorType(resolvedPostFloor) === "COMBAT" ||
+          getFloorType(resolvedPostFloor) === "EVENT" ||
           getFloorType(resolvedPostFloor) === "GATE_BOSS")
       ) {
         const matchedFromProse = matchCuratedEnemyFromProse(resolvedPostFloor, cleanedProse);
+        const targetWave = workingLabyrinth.currentFloorWave || 1;
         workingLabyrinth = startFloorCombatEncounter(
           workingLabyrinth,
           resolvedPostFloor,
-          `${workingLabyrinth.summonSeed || "sf"}:post:${resolvedPostFloor}:${currentTurnNumber}`,
+          `${workingLabyrinth.summonSeed || "sf"}:post:${resolvedPostFloor}:w${targetWave}:${currentTurnNumber}`,
           false,
           {
             preferredEnemyTemplate: matchedFromProse,
             initialEngagementPhase: "vicinity",
+            waveNumber: targetWave,
           }
         );
       }
@@ -2161,15 +2353,58 @@ ${visualInspectionInstruction}`;
         }
       }
 
-      // Apply deterministic combat protagonist HP/MP deltas
+      let deterministicHpDelta: number | null = null;
+      let deterministicMpDelta: number | null = null;
+
+      // Apply deterministic combat protagonist HP/MP deltas & enforce defeat Game Over
       if (preTurnStarfallCombatResult) {
-        responseData.player_progression.hp_change =
-          preTurnStarfallCombatResult.protagonistHpDelta;
-        responseData.player_progression.mp_change =
-          preTurnStarfallCombatResult.protagonistMpDelta;
+        deterministicHpDelta = preTurnStarfallCombatResult.protagonistHpDelta;
+        deterministicMpDelta = preTurnStarfallCombatResult.protagonistMpDelta;
+        responseData.player_progression.hp_change = deterministicHpDelta;
+        responseData.player_progression.mp_change = deterministicMpDelta;
         if (preTurnStarfallCombatResult.protagonistHpDelta < 0) {
           responseData.player_progression.vitals_reason = `Floor ${preTurnStarfallCombatResult.encounter.floor} Combat vs ${preTurnStarfallCombatResult.encounter.enemyName}`;
         }
+        if (preTurnStarfallCombatResult.encounter.status === "defeat") {
+          responseData.death_event = {
+            is_fatal: true,
+            cause_of_death:
+              responseData.death_event?.cause_of_death ||
+              `Struck down on Floor ${preTurnStarfallCombatResult.encounter.floor} by ${preTurnStarfallCombatResult.encounter.enemyName}.`,
+            killer_or_hazard:
+              responseData.death_event?.killer_or_hazard ||
+              preTurnStarfallCombatResult.encounter.enemyName,
+          };
+        }
+      }
+
+      const isSanctuaryFullHeal =
+        preTurnStarfallCombatResult?.encounter.status !== "defeat" &&
+        (resolvedPostFloor === 0 || getFloorType(resolvedPostFloor) === "SAFE_ZONE");
+
+      if (isSanctuaryFullHeal) {
+        const curHp = playerProfile?.stats?.hp ?? 100;
+        const maxHp = playerProfile?.stats?.maxHp ?? 100;
+        const curMp = playerProfile?.stats?.mp ?? 60;
+        const maxMp = playerProfile?.stats?.maxMp ?? 60;
+        deterministicHpDelta = Math.max(0, maxHp - curHp);
+        deterministicMpDelta = Math.max(0, maxMp - curMp);
+        responseData.player_progression.hp_change = deterministicHpDelta;
+        responseData.player_progression.mp_change = deterministicMpDelta;
+        responseData.player_progression.vitals_reason =
+          resolvedPostFloor === 0
+            ? "Star Gate Plaza Sanctuary Recovery"
+            : `Floor ${resolvedPostFloor} Safe Sanctuary Recovery`;
+      } else if (isCampfireRestAction && !preTurnStarfallCombatResult) {
+        const curHp = playerProfile?.stats?.hp ?? 100;
+        const maxHp = playerProfile?.stats?.maxHp ?? 100;
+        const curMp = playerProfile?.stats?.mp ?? 60;
+        const maxMp = playerProfile?.stats?.maxMp ?? 60;
+        deterministicHpDelta = Math.min(Math.max(0, maxHp - curHp), Math.round(maxHp * 0.35));
+        deterministicMpDelta = Math.min(Math.max(0, maxMp - curMp), Math.round(maxMp * 0.35));
+        responseData.player_progression.hp_change = deterministicHpDelta;
+        responseData.player_progression.mp_change = deterministicMpDelta;
+        responseData.player_progression.vitals_reason = `Floor ${resolvedPostFloor} Campfire Bond Rest`;
       }
 
       // Remove any newly fallen heroines from present_companions & speaker immediately
@@ -2201,78 +2436,193 @@ ${visualInspectionInstruction}`;
         clearedAll100?: boolean;
       } | null = null;
 
-      const combatVictoryTriggered =
-        preTurnStarfallCombatResult?.encounter.status === "victory";
-      const shouldAdvanceFloor =
-        combatVictoryTriggered ||
-        (Boolean(rawSf.floor_cleared) &&
-          workingLabyrinth.currentFloor > 0 &&
-          !workingLabyrinth.activeEncounter?.isBoss);
+      let waveAdvanceMeta: {
+        floor: number;
+        clearedWave: number;
+        nextWave: number;
+        totalWaves: number;
+      } | null = null;
 
-      if (shouldAdvanceFloor && workingLabyrinth.currentFloor > 0) {
-        if (workingLabyrinth.activeEncounter?.isActive) {
-          workingLabyrinth = {
-            ...workingLabyrinth,
-            activeEncounter: null,
-          };
+      const clearedWave =
+        preTurnStarfallCombatResult?.encounter.floorWave ||
+        workingLabyrinth.currentFloorWave ||
+        1;
+      const totalWaves =
+        preTurnStarfallCombatResult?.encounter.floorTotalWaves ||
+        workingLabyrinth.currentFloorTotalWaves ||
+        getTotalWavesForFloor(workingLabyrinth.currentFloor || 1) ||
+        3;
+
+      if (preTurnWaveAdvanceMeta) {
+        if (responseData.state_updates) {
+          responseData.state_updates.current_location = `Floor ${preTurnWaveAdvanceMeta.floor} — ${
+            workingLabyrinth.activeEncounter?.layoutName || "Labyrinth Chamber"
+          } (Wave ${preTurnWaveAdvanceMeta.nextWave}/${preTurnWaveAdvanceMeta.totalWaves})`;
         }
-        const adv = advanceFloor(workingLabyrinth);
-        workingLabyrinth = adv.newState;
-        // Immediately spawn the next floor's encounter if the next floor is COMBAT or GATE_BOSS!
+        waveAdvanceMeta = preTurnWaveAdvanceMeta;
+        responseData.player_progression.exp_gained = Math.max(
+          responseData.player_progression.exp_gained || 0,
+          preTurnStarfallCombatResult?.expAwarded || 42 + workingLabyrinth.currentFloor * 3
+        );
+        responseData.player_progression.exp_reason = `Floor ${preTurnWaveAdvanceMeta.floor} • Wave ${preTurnWaveAdvanceMeta.clearedWave}/${preTurnWaveAdvanceMeta.totalWaves} Cleared`;
+      } else if (preTurnFloorClearMeta) {
+        if (responseData.state_updates) {
+          responseData.state_updates.current_location =
+            getFloorType(preTurnFloorClearMeta.clearedFloor) === "SAFE_ZONE"
+              ? `Floor ${preTurnFloorClearMeta.clearedFloor} — Safe Zone Sanctuary`
+              : `Floor ${preTurnFloorClearMeta.clearedFloor} — Floor Transfer Ring (Cleared)`;
+        }
+        const combinedFloorExp = Math.max(
+          preTurnFloorClearMeta.expAwarded,
+          preTurnStarfallCombatResult?.expAwarded || 0
+        );
+        floorAdvanceMeta = {
+          clearedFloor: preTurnFloorClearMeta.clearedFloor,
+          isGateBoss: preTurnFloorClearMeta.isGateBoss,
+          isThemeShift: preTurnFloorClearMeta.isThemeShift,
+          beyondMemory: preTurnFloorClearMeta.beyondMemory,
+          shardsAwarded: preTurnFloorClearMeta.shardsAwarded,
+          expAwarded: combinedFloorExp,
+          companionExpAwarded: preTurnFloorClearMeta.companionExpAwarded,
+          clearedAll100: preTurnFloorClearMeta.clearedAll100,
+        };
+        responseData.player_progression.exp_gained = combinedFloorExp;
+        responseData.player_progression.exp_reason =
+          preTurnFloorClearMeta.clearedFloor % 10 === 0 || preTurnFloorClearMeta.clearedFloor % 25 === 0
+            ? `Boss Floor ${preTurnFloorClearMeta.clearedFloor} Cleared`
+            : getFloorType(preTurnFloorClearMeta.clearedFloor) === "SAFE_ZONE"
+              ? `Floor ${preTurnFloorClearMeta.clearedFloor} Safe Zone Reached`
+              : `Floor ${preTurnFloorClearMeta.clearedFloor} Cleared`;
+      } else if (
+        combatVictoryTriggered &&
+        workingLabyrinth.currentFloor > 0 &&
+        clearedWave < totalWaves
+      ) {
+        // Fallback: Cleared an intra-floor enemy pack wave: stay on the same floor and spawn Wave Y+1 in vicinity!
+        const nextWave = clearedWave + 1;
+        workingLabyrinth = {
+          ...workingLabyrinth,
+          currentFloorWave: nextWave,
+          currentFloorTotalWaves: totalWaves,
+          floorClearedPendingAscent: false,
+          activeEncounter: null,
+        };
         const nextFt = getFloorType(workingLabyrinth.currentFloor);
-        if (nextFt === "COMBAT" || nextFt === "GATE_BOSS") {
+        if (nextFt === "COMBAT" || nextFt === "EVENT" || nextFt === "GATE_BOSS") {
           workingLabyrinth = startFloorCombatEncounter(
             workingLabyrinth,
             workingLabyrinth.currentFloor,
-            `${workingLabyrinth.summonSeed || "sf"}:next:${workingLabyrinth.currentFloor}:${currentTurnNumber}`
+            `${workingLabyrinth.summonSeed || "sf"}:f${workingLabyrinth.currentFloor}:w${nextWave}:${currentTurnNumber}`,
+            true,
+            {
+              initialEngagementPhase: "vicinity",
+              waveNumber: nextWave,
+            }
           );
         }
         if (responseData.state_updates) {
           responseData.state_updates.current_location = `Floor ${workingLabyrinth.currentFloor} — ${
-            workingLabyrinth.activeEncounter?.layoutName ||
-            (nextFt === "SAFE_ZONE" ? "Safe Zone Sanctuary" : "Labyrinth Threshold")
-          }`;
+            workingLabyrinth.activeEncounter?.layoutName || "Labyrinth Chamber"
+          } (Wave ${nextWave}/${totalWaves})`;
         }
-        const combinedFloorExp = Math.max(
-          adv.expAwarded,
-          preTurnStarfallCombatResult?.expAwarded || 0
-        );
-        floorAdvanceMeta = {
-          clearedFloor: adv.clearedFloor,
-          isGateBoss: adv.isGateBoss,
-          isThemeShift: adv.isThemeShift,
-          beyondMemory: adv.beyondMemory,
-          shardsAwarded: adv.shardsAwarded,
-          expAwarded: combinedFloorExp,
-          companionExpAwarded: adv.companionExpAwarded,
-          clearedAll100: adv.clearedAll100,
+        waveAdvanceMeta = {
+          floor: workingLabyrinth.currentFloor,
+          clearedWave,
+          nextWave,
+          totalWaves,
         };
-        responseData.player_progression.exp_gained = combinedFloorExp;
-        responseData.player_progression.exp_reason =
-          adv.clearedFloor % 10 === 0 || adv.clearedFloor % 25 === 0
-            ? `Boss Floor ${adv.clearedFloor} Cleared`
-            : `Floor ${adv.clearedFloor} Cleared`;
-      } else if (workingLabyrinth.currentFloor > 0) {
-        const proseKilledEnemy =
-          earnedTurnExp.tier === "ENEMY_KILL" ||
-          /\b(slain|killed|eliminated|dissolves?\s+into\s+(?:star\s+)?ash|shatters?\s+into\s+(?:star\s+)?ash|collapses?\s+dead|falls?\s+dead|corpse)\b/i.test(
-            cleanedProse
+        responseData.player_progression.exp_gained = Math.max(
+          responseData.player_progression.exp_gained || 0,
+          preTurnStarfallCombatResult?.expAwarded || 42 + workingLabyrinth.currentFloor * 3
+        );
+        responseData.player_progression.exp_reason = `Floor ${workingLabyrinth.currentFloor} • Wave ${clearedWave}/${totalWaves} Cleared`;
+      } else {
+        const canHonorLlmFloorClear =
+          Boolean(rawSf.floor_cleared) &&
+          workingLabyrinth.currentFloor > 0 &&
+          !workingLabyrinth.floorClearedPendingAscent &&
+          !workingLabyrinth.activeEncounter?.isBoss &&
+          (!workingLabyrinth.activeEncounter?.isActive || clearedWave >= totalWaves);
+
+        const shouldAdvanceFloor =
+          (combatVictoryTriggered && clearedWave >= totalWaves) ||
+          canHonorLlmFloorClear;
+
+        if (shouldAdvanceFloor && workingLabyrinth.currentFloor > 0) {
+          if (workingLabyrinth.activeEncounter?.isActive) {
+            workingLabyrinth = {
+              ...workingLabyrinth,
+              activeEncounter: null,
+            };
+          }
+          const isSafeZoneClear = getFloorType(workingLabyrinth.currentFloor) === "SAFE_ZONE";
+          const adv = isSafeZoneClear
+            ? advanceFloor(workingLabyrinth)
+            : completeCurrentFloorAtTransferRing(workingLabyrinth);
+          workingLabyrinth = adv.newState;
+          if (isSafeZoneClear) {
+            const nextFt = getFloorType(workingLabyrinth.currentFloor);
+            if (nextFt === "COMBAT" || nextFt === "EVENT" || nextFt === "GATE_BOSS") {
+              workingLabyrinth = startFloorCombatEncounter(
+                workingLabyrinth,
+                workingLabyrinth.currentFloor,
+                `${workingLabyrinth.summonSeed || "sf"}:next:${workingLabyrinth.currentFloor}:${currentTurnNumber}`,
+                false,
+                {
+                  initialEngagementPhase: "vicinity",
+                  waveNumber: 1,
+                }
+              );
+            }
+          }
+          if (responseData.state_updates) {
+            responseData.state_updates.current_location = isSafeZoneClear
+              ? `Floor ${workingLabyrinth.currentFloor} — ${
+                  workingLabyrinth.activeEncounter?.layoutName || "Labyrinth Threshold"
+                }`
+              : `Floor ${adv.clearedFloor} — Floor Transfer Ring (Cleared)`;
+          }
+          const combinedFloorExp = Math.max(
+            adv.expAwarded,
+            preTurnStarfallCombatResult?.expAwarded || 0
           );
-        if (proseKilledEnemy) {
-          const killExp = Math.max(
-            responseData.player_progression.exp_gained || 0,
-            42 + workingLabyrinth.currentFloor * 3
-          );
-          responseData.player_progression.exp_gained = killExp;
-          responseData.player_progression.exp_reason = `Slain Hostile on Floor ${workingLabyrinth.currentFloor}`;
-        } else if (preTurnStarfallCombatResult) {
-          responseData.player_progression.exp_gained = Math.max(
-            responseData.player_progression.exp_gained || 0,
-            24 + workingLabyrinth.currentFloor * 2
-          );
+          floorAdvanceMeta = {
+            clearedFloor: adv.clearedFloor,
+            isGateBoss: adv.isGateBoss,
+            isThemeShift: adv.isThemeShift,
+            beyondMemory: adv.beyondMemory,
+            shardsAwarded: adv.shardsAwarded,
+            expAwarded: combinedFloorExp,
+            companionExpAwarded: adv.companionExpAwarded,
+            clearedAll100: adv.clearedAll100,
+          };
+          responseData.player_progression.exp_gained = combinedFloorExp;
           responseData.player_progression.exp_reason =
-            responseData.player_progression.exp_reason ||
-            `Floor ${workingLabyrinth.currentFloor} Combat Exchange`;
+            adv.clearedFloor % 10 === 0 || adv.clearedFloor % 25 === 0
+              ? `Boss Floor ${adv.clearedFloor} Cleared`
+              : `Floor ${adv.clearedFloor} Cleared`;
+        } else if (workingLabyrinth.currentFloor > 0) {
+          const proseKilledEnemy =
+            earnedTurnExp.tier === "ENEMY_KILL" ||
+            /\b(slain|killed|eliminated|dissolves?\s+into\s+(?:star\s+)?ash|shatters?\s+into\s+(?:star\s+)?ash|collapses?\s+dead|falls?\s+dead|corpse)\b/i.test(
+              cleanedProse
+            );
+          if (proseKilledEnemy) {
+            const killExp = Math.max(
+              responseData.player_progression.exp_gained || 0,
+              42 + workingLabyrinth.currentFloor * 3
+            );
+            responseData.player_progression.exp_gained = killExp;
+            responseData.player_progression.exp_reason = `Slain Hostile on Floor ${workingLabyrinth.currentFloor}`;
+          } else if (preTurnStarfallCombatResult) {
+            responseData.player_progression.exp_gained = Math.max(
+              responseData.player_progression.exp_gained || 0,
+              24 + workingLabyrinth.currentFloor * 2
+            );
+            responseData.player_progression.exp_reason =
+              responseData.player_progression.exp_reason ||
+              `Floor ${workingLabyrinth.currentFloor} Combat Exchange`;
+          }
         }
       }
 
@@ -2305,11 +2655,19 @@ ${visualInspectionInstruction}`;
         responseData.timeline_echo_unlocked = null;
       }
 
+      const combatShards = preTurnStarfallCombatResult?.shardsAwarded || 0;
+
       const resolvedStarfallPayload = {
         floor_cleared: Boolean(floorAdvanceMeta),
         floorCleared: Boolean(floorAdvanceMeta),
         cleared_floor: floorAdvanceMeta?.clearedFloor ?? null,
         clearedFloor: floorAdvanceMeta?.clearedFloor ?? null,
+        wave_cleared: waveAdvanceMeta?.clearedWave ?? null,
+        floor_wave: workingLabyrinth.activeEncounter?.floorWave ?? workingLabyrinth.currentFloorWave ?? 1,
+        floor_total_waves:
+          workingLabyrinth.activeEncounter?.floorTotalWaves ??
+          workingLabyrinth.currentFloorTotalWaves ??
+          getTotalWavesForFloor(workingLabyrinth.currentFloor || 1),
         is_gate_boss_next: Boolean(floorAdvanceMeta?.isGateBoss),
         isGateBoss: Boolean(floorAdvanceMeta?.isGateBoss),
         beyond_memory:
@@ -2322,14 +2680,18 @@ ${visualInspectionInstruction}`;
         clearedAll100: Boolean(floorAdvanceMeta?.clearedAll100),
         hero_casualties: validatedCasualties,
         casualtiesResolved: validatedCasualties.map((vc) => vc.name),
-        star_shards_earned: bonusShards + (floorAdvanceMeta?.shardsAwarded || 0),
-        shardsAwarded: bonusShards + (floorAdvanceMeta?.shardsAwarded || 0),
+        star_shards_earned: bonusShards + (floorAdvanceMeta?.shardsAwarded || 0) + combatShards,
+        shardsAwarded: bonusShards + (floorAdvanceMeta?.shardsAwarded || 0) + combatShards,
         exp_awarded: floorAdvanceMeta?.expAwarded || 0,
         expAwarded: floorAdvanceMeta?.expAwarded || 0,
         companion_exp_awarded: floorAdvanceMeta?.companionExpAwarded || 0,
         companionExpAwarded: floorAdvanceMeta?.companionExpAwarded || 0,
         master_command: masterCommand,
         master_trust_delta: trustDelta,
+        full_vitals_restored: isSanctuaryFullHeal,
+        sanctuary_rest: Boolean(isCampfireRestAction),
+        deterministic_hp_delta: deterministicHpDelta,
+        deterministic_mp_delta: deterministicMpDelta,
         labyrinth_state: workingLabyrinth,
         labyrinthState: workingLabyrinth,
       };

@@ -132,7 +132,13 @@ export async function POST(req: Request) {
     );
 
     let effectiveEnvironment = targetEnvironment;
-    if (effectiveEnvironment === "local" && modelId && modelId.includes("/")) {
+    if (
+      effectiveEnvironment === "local" &&
+      modelId &&
+      (modelId.includes("/") ||
+        modelId.startsWith("orchestrated-hybrid") ||
+        modelId.startsWith("ooc-two-pass"))
+    ) {
       effectiveEnvironment = "cloud";
     }
     const isLocal = effectiveEnvironment === "local";
@@ -221,9 +227,12 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
 
     const normalizedRequestedModel = modelId ? (LEGACY_MODEL_MIGRATIONS[modelId] || modelId) : "";
     const effectiveModelId =
-      normalizedRequestedModel === "orchestrated-hybrid" || !normalizedRequestedModel
+      normalizedRequestedModel === "orchestrated-hybrid" ||
+      normalizedRequestedModel === "ooc-two-pass-sonnet" ||
+      !normalizedRequestedModel
         ? "google/gemini-2.5-flash"
-        : normalizedRequestedModel === "orchestrated-hybrid-deepseek"
+        : normalizedRequestedModel === "orchestrated-hybrid-deepseek" ||
+          normalizedRequestedModel === "ooc-two-pass-deepseek"
         ? "deepseek/deepseek-v3.2"
         : normalizedRequestedModel;
     const modelsToTry = isLocal

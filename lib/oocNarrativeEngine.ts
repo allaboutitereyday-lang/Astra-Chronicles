@@ -504,6 +504,10 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
   const isStarfall = params.storyId === "starfall-labyrinth";
   const presentNamesList = params.presentCompanions.map((c) => c.name);
   const allKnownCompanionNames = presentNamesList.length > 0 ? presentNamesList.join(", ") : "None (Solo)";
+  const starfallPass2Telemetry =
+    isStarfall && params.combatTelemetryDirective
+      ? `\nLIVE STARFALL COMBAT / WAVE STATE (ALIGN CHOICES & LOCATION TO THIS):\n${params.combatTelemetryDirective.slice(0, 1200)}`
+      : "";
 
   const pass2SystemPrompt = `You are a deterministic RPG State & Choice Extractor. Read the newly authored scene turn and output ONLY a valid JSON object tracking speaker, expressions, affection shift, location, and 4 sharp in-character next choices for ${playerFirstName}.
 
@@ -518,7 +522,8 @@ RULES:
    - Choice 4: "[Move/Transition]: ..." (lead toward a new room/floor/area when ready)
 ${
   isStarfall
-    ? `5. "starfall_updates": Include { "floor_cleared": boolean (true ONLY if the prose explicitly cleared the current dungeon floor and opened the way up), "hero_casualties": [], "star_shards_earned": 0, "master_trust_delta": number (-5..+5), "master_command": string | null }.`
+    ? `5. "starfall_updates": Include { "floor_cleared": boolean (true ONLY if all waves on the floor are cleared and the Transfer Ring is active—never true while Wave Y+1 remains), "hero_casualties": [], "star_shards_earned": 0, "master_trust_delta": number (-5..+5), "master_command": string | null }.
+6. Align "suggested_choices" and "state_updates.current_location" strictly with the locked enemy pack, wave number, or Transfer Ring telemetry below—never invent off-list monster names!${starfallPass2Telemetry}`
     : ""
 }
 

@@ -788,7 +788,8 @@ export function SummonModal({
                         src={resolvePortrait(showcaseResult.heroineName, showcaseResult.spriteSlug)}
                         alt={showcaseResult.heroineName}
                         onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src = "/characters/default.png";
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "/characters/default.png";
                         }}
                         className={`relative z-10 max-h-72 sm:max-h-96 object-contain drop-shadow-[0_12px_36px_rgba(0,0,0,0.85)] animate-in zoom-in-90 duration-300 ${
                           showcaseResult.isFallenEcho ? "grayscale opacity-60" : ""
@@ -1025,7 +1026,8 @@ export function SummonModal({
                           src={resolvePortrait(hero.name, hero.spriteSlug)}
                           alt={hero.name}
                           onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src = "/characters/default.png";
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "/characters/default.png";
                           }}
                           className={`w-full h-full object-contain object-bottom ${
                             isFallen ? "grayscale opacity-50" : ""
@@ -1187,7 +1189,8 @@ export function SummonModal({
                     )}
                     alt={spotlightQuoteResult.heroineName}
                     onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = "/characters/default.png";
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "/characters/default.png";
                     }}
                     className="w-14 h-16 object-contain object-bottom rounded-xl bg-black/50 border border-white/10 shrink-0"
                   />
@@ -1350,7 +1353,8 @@ export function SummonModal({
                               src={resolvePortrait(res.heroineName, res.spriteSlug)}
                               alt={res.heroineName}
                               onError={(e) => {
-                                (e.currentTarget as HTMLImageElement).src = "/characters/default.png";
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = "/characters/default.png";
                               }}
                               className={`h-full w-full object-contain object-bottom ${
                                 res.isFallenEcho ? "grayscale opacity-50" : ""

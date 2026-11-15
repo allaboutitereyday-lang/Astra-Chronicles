@@ -139,7 +139,20 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
       isPending: false,
     }));
 
+  const defaultBgForSave =
+    raw.storyId === "starfall-labyrinth" || Boolean(p.labyrinthState)
+      ? "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg"
+      : raw.storyId === "port-solaris" || Boolean(p.boardingHouse)
+      ? "/backgrounds/port-solaris/stray_anchor.jpg"
+      : raw.storyId === "sovereign-spire"
+      ? "/backgrounds/sovereign-spire/seal_gate.jpg"
+      : "/backgrounds/imperial_capital_imperium.jpg";
+
   const lastCharacterMsg = [...normalizedChatLog].reverse().find((m: any) => m.sender === "character");
+  const rawBgImage =
+    typeof gs.bgImage === "string" && gs.bgImage.endsWith("/imperial_capital.png")
+      ? defaultBgForSave
+      : gs.bgImage;
   const normalizedGameState = {
     location: gs.location || "Astral Convergence",
     speaker: gs.speaker || lastCharacterMsg?.speakerName || "Narrator",
@@ -148,9 +161,9 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
       lastCharacterMsg?.text ||
       "The chronicle resumes...",
     bgImage:
-      typeof gs.bgImage === "string" && gs.bgImage.startsWith("data:image") && gs.bgImage.length > 350000
-        ? "/images/backgrounds/imperial_capital.png"
-        : gs.bgImage || "/images/backgrounds/imperial_capital.png",
+      typeof rawBgImage === "string" && rawBgImage.startsWith("data:image") && rawBgImage.length > 350000
+        ? defaultBgForSave
+        : rawBgImage || defaultBgForSave,
     mood: gs.mood || "Tense",
     npcKnowledgeMap: gs.npcKnowledgeMap && typeof gs.npcKnowledgeMap === "object" ? gs.npcKnowledgeMap : {},
   };

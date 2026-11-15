@@ -82,10 +82,16 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
     let headers: Record<string, string>;
     let targetModel: string;
 
-    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug (e.g. sao10k/...),
+    // Smart auto-detection: If targetEnvironment is local but modelId has a cloud slug or hybrid alias,
     // auto-route to cloud!
     let effectiveEnvironment = targetEnvironment;
-    if (effectiveEnvironment === "local" && modelId && modelId.includes("/")) {
+    if (
+      effectiveEnvironment === "local" &&
+      modelId &&
+      (modelId.includes("/") ||
+        modelId.startsWith("orchestrated-hybrid") ||
+        modelId.startsWith("ooc-two-pass"))
+    ) {
       console.warn(`Local environment requested with cloud model ID "${modelId}". Auto-routing to cloud.`);
       effectiveEnvironment = "cloud";
     }
@@ -115,7 +121,11 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`,
       };
       const normalizedModelId = modelId ? (legacyMap[modelId] || modelId) : "";
       const resolvedModelId =
-        normalizedModelId === "orchestrated-hybrid" || normalizedModelId === "orchestrated-hybrid-deepseek"
+        normalizedModelId === "ooc-two-pass-sonnet"
+          ? "anthropic/claude-sonnet-4.6"
+          : normalizedModelId === "ooc-two-pass-deepseek"
+          ? "deepseek/deepseek-v3.2"
+          : normalizedModelId === "orchestrated-hybrid" || normalizedModelId === "orchestrated-hybrid-deepseek"
           ? "sao10k/l3.1-euryale-70b"
           : normalizedModelId;
       targetModel = resolvedModelId || "sao10k/l3.1-euryale-70b";

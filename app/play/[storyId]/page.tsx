@@ -234,6 +234,9 @@ import {
   createInitialLabyrinthState,
   applyAwakening,
   clampProtagonistStarLevel,
+  hydrateRosterEntryStats,
+  normalizeSquadFormations,
+  syncActiveEncounterFormationWithRoster,
   syncRosterWithParty,
 } from "@/lib/starfallEngine";
 import {
@@ -1911,6 +1914,7 @@ export default function VisualNovelGame() {
   const [showMobileCommandSheet, setShowMobileCommandSheet] = useState(false);
   const [showSummonModal, setShowSummonModal] = useState(false);
   const [showBarracksModal, setShowBarracksModal] = useState(false);
+  const [selectedDeployFloor, setSelectedDeployFloor] = useState<number | null>(null);
   const [showOocDrawer, setShowOocDrawer] = useState(false);
   const [directorNotes, setDirectorNotes] = useState("");
   const [starfallGameOver, setStarfallGameOver] = useState<{
@@ -2413,7 +2417,7 @@ export default function VisualNovelGame() {
           const isFallen = comp.heroStatus === "FALLEN" || rMatch?.status === "FALLEN";
           const isDeployedOrPresent = isStarfall
             ? rMatch
-              ? rMatch.status === "DEPLOYED"
+              ? rMatch.status === "DEPLOYED" || rMatch.status === "WOUNDED"
               : comp.isPresent
             : comp.isPresent;
 
@@ -2447,12 +2451,12 @@ export default function VisualNovelGame() {
           }
 
           if (rMatchIdx >= 0 && updatedRoster) {
-            updatedRoster[rMatchIdx] = {
+            updatedRoster[rMatchIdx] = hydrateRosterEntryStats({
               ...updatedRoster[rMatchIdx],
               level: compRes.level,
               exp: compRes.exp,
               maxExp: compRes.maxExp,
-            };
+            });
           }
 
           return {
@@ -4928,8 +4932,23 @@ export default function VisualNovelGame() {
       speaker: sanitizedSpeaker || data.gameState?.speaker || (isLoadedAlone ? "Narrator" : "Companion"),
     };
 
+    // Hydrate Starfall Labyrinth roster stats, squad formations, and active encounter rows on load
+    const isStarfallSave =
+      data.storyId === "starfall-labyrinth" || Boolean(loadedPlayer?.labyrinthState);
+    let hydratedLoadedLabyrinth = loadedPlayer?.labyrinthState;
+    if (hydratedLoadedLabyrinth) {
+      const hydratedRoster = (hydratedLoadedLabyrinth.roster || []).map((entry) =>
+        hydrateRosterEntryStats(entry)
+      );
+      hydratedLoadedLabyrinth = syncActiveEncounterFormationWithRoster({
+        ...hydratedLoadedLabyrinth,
+        roster: normalizeSquadFormations(hydratedRoster),
+      });
+    }
+
     let safeLoadedPlayer: PlayerProfile = {
       ...loadedPlayer,
+      ...(hydratedLoadedLabyrinth ? { labyrinthState: hydratedLoadedLabyrinth } : {}),
       gender: loadedPlayer?.gender || "Male",
       age: loadedPlayer?.age || "22",
       worldOrigin: loadedPlayer?.worldOrigin || "Born & Raised (Native)",
@@ -4944,14 +4963,29 @@ export default function VisualNovelGame() {
       unspentStatPoints: typeof loadedPlayer?.unspentStatPoints === "number" ? loadedPlayer.unspentStatPoints : 0,
     };
 
-    // Normalize maxExp to the steeper 1.35x RPG curve and self-heal any legacy corrupted S-rank quest surges
+    const maxLevelCap = isStarfallSave
+      ? getStarLevelCap(
+          safeLoadedPlayer.labyrinthState?.protagonistStarRank ||
+            safeLoadedPlayer.starRank ||
+            1
+        )
+      : 60;
+
+    // Normalize maxExp to the steeper 1.35x RPG curve and self-heal only legacy linear-curve (level * 100) S-rank quest surges
     const turnCount = Math.max(1, Math.floor((data.chatLog?.length || 0) / 2));
     const claimedQuestsCount = (data.systemState?.completedQuests || []).filter((q) => q && q.isClaimed).length;
     const maxExpectedLevelForProgress = Math.max(
       6,
       Math.min(20, 2 + Math.ceil((turnCount * 28 + claimedQuestsCount * 180) / 160))
     );
-    if ((safeLoadedPlayer.level || 1) > maxExpectedLevelForProgress + 4) {
+    const savedLevel = Math.max(1, Math.floor(safeLoadedPlayer.level || 1));
+    const isLegacyLinearCurveSave =
+      !isStarfallSave &&
+      !safeLoadedPlayer.labyrinthState &&
+      savedLevel > 1 &&
+      safeLoadedPlayer.stats?.maxExp === savedLevel * 100;
+
+    if (isLegacyLinearCurveSave && savedLevel > maxExpectedLevelForProgress + 6) {
       const basePlayerAtLv1: PlayerProfile = {
         ...safeLoadedPlayer,
         level: 1,
@@ -4964,22 +4998,27 @@ export default function VisualNovelGame() {
           maxMp: 60,
           exp: 0,
           maxExp: BASE_LEVEL_ONE_MAX_EXP,
-          str: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.str || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
-          dex: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.dex || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
-          int: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.int || 12) - ((safeLoadedPlayer.level || 1) - 1) * 2)),
+          str: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.str || 12) - (savedLevel - 1) * 2)),
+          dex: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.dex || 12) - (savedLevel - 1) * 2)),
+          int: Math.min(18, Math.max(10, (safeLoadedPlayer.stats?.int || 12) - (savedLevel - 1) * 2)),
         },
       };
       const expectedTotalExp = claimedQuestsCount * 120 + Math.floor(turnCount * 8);
       const healedProg = applyExpProgression(basePlayerAtLv1, expectedTotalExp, { storyIdOverride: data.storyId });
       safeLoadedPlayer = healedProg.updatedPlayer;
     } else {
-      const expectedMaxExp = getRequiredExpForLevel(safeLoadedPlayer.level || 1);
+      const clampedLevel = Math.max(1, Math.min(maxLevelCap, savedLevel));
+      const expectedMaxExp = getRequiredExpForLevel(clampedLevel);
       safeLoadedPlayer = {
         ...safeLoadedPlayer,
+        level: clampedLevel,
         stats: {
           ...safeLoadedPlayer.stats,
           maxExp: expectedMaxExp,
-          exp: Math.min(expectedMaxExp - 1, Math.max(0, safeLoadedPlayer.stats?.exp || 0)),
+          exp:
+            clampedLevel >= maxLevelCap
+              ? 0
+              : Math.min(expectedMaxExp - 1, Math.max(0, safeLoadedPlayer.stats?.exp || 0)),
         },
       };
     }
@@ -5479,16 +5518,17 @@ export default function VisualNovelGame() {
 
   const handleUpdateLabyrinthStateFromBarracks = useCallback(
     (nextState: LabyrinthState) => {
+      const syncedState = syncActiveEncounterFormationWithRoster(nextState);
       const nextPlayer: PlayerProfile = {
         ...(playerRef.current || player),
-        labyrinthState: nextState,
+        labyrinthState: syncedState,
       };
       playerRef.current = nextPlayer;
       setPlayer(nextPlayer);
 
       const currentParty = partyRef.current || party;
       const nextParty = currentParty.map((comp) => {
-        const rosterMatch = (nextState.roster || []).find((r) =>
+        const rosterMatch = (syncedState.roster || []).find((r) =>
           matchesHeroineName(r.heroineName, comp.name, r.heroineId)
         );
         if (!rosterMatch) return comp;
@@ -5541,14 +5581,16 @@ export default function VisualNovelGame() {
     if (!curLs) return;
     const inLobbyOrSafe =
       isStarfallLobbyLocation(gameState.location) ||
-      getFloorType(curLs.currentFloor || 0) === "SAFE_ZONE";
+      getFloorType(curLs.currentFloor || 0) === "SAFE_ZONE" ||
+      Boolean(curLs.floorClearedPendingAscent) ||
+      curLs.activeEncounter?.engagementPhase === "vicinity";
     if (!inLobbyOrSafe) {
       soundEffects.playSystemAlert();
       pushNotification({
         id: `deploy_lock_${Date.now()}`,
         type: "system_alert",
         title: "SQUAD DEPLOYMENT LOCKED IN COMBAT",
-        subtitle: "Return to Star Gate Plaza (Main Lobby) or a Safe Zone (Floor 5, 15, 25...) to swap Deployed & Benched heroes.",
+        subtitle: "Return to Star Gate Plaza (Main Lobby), a Safe Zone, or out of engaged combat to swap Deployed & Benched heroes.",
         difficulty: "C",
       });
       return;
@@ -5561,8 +5603,11 @@ export default function VisualNovelGame() {
     const entry = curLs.roster[idx];
     if (entry.status === "FALLEN") return;
 
-    const deployedCount = (curLs.roster || []).filter((r) => r.status === "DEPLOYED").length;
-    const nextStatus: HeroStatus = entry.status === "DEPLOYED" ? "BENCHED" : "DEPLOYED";
+    const deployedCount = (curLs.roster || []).filter(
+      (r) => r.status === "DEPLOYED" || r.status === "WOUNDED"
+    ).length;
+    const isCurrentlyActive = entry.status === "DEPLOYED" || entry.status === "WOUNDED";
+    const nextStatus: HeroStatus = isCurrentlyActive ? "BENCHED" : "DEPLOYED";
     if (nextStatus === "DEPLOYED" && deployedCount >= MAX_DEPLOYED_PARTY) {
       soundEffects.playSystemAlert();
       pushNotification({
@@ -5577,9 +5622,16 @@ export default function VisualNovelGame() {
 
     soundEffects.playEquipChime();
     const updatedRoster = curLs.roster.map((r, i) =>
-      i === idx ? { ...r, status: nextStatus } : r
+      i === idx
+        ? nextStatus === "BENCHED"
+          ? { ...r, status: nextStatus, formationSlot: undefined }
+          : hydrateRosterEntryStats({ ...r, status: nextStatus })
+        : r
     );
-    const nextLs: LabyrinthState = { ...curLs, roster: updatedRoster };
+    const nextLs: LabyrinthState = syncActiveEncounterFormationWithRoster({
+      ...curLs,
+      roster: normalizeSquadFormations(updatedRoster),
+    });
     const nextPlayer: PlayerProfile = {
       ...(playerRef.current || player),
       labyrinthState: nextLs,
@@ -6186,16 +6238,47 @@ export default function VisualNovelGame() {
               difficulty: "S",
             });
           } else {
+            const nextFloorAfterClear = (starfallUpdates.clearedFloor || finalLs.currentFloor) + 1;
             pushNotification({
               id: `starfall_floor_${starfallUpdates.clearedFloor}_${Date.now()}`,
               type: "quest_completed",
               title: `FLOOR ${starfallUpdates.clearedFloor} CLEARED (+${starfallUpdates.shardsAwarded || 15} 💠)`,
-              subtitle: starfallUpdates.beyondMemory
-                ? `Advancing into Uncharted Stratum (Floor ${finalLs.currentFloor} — Beyond Ranker Memory)!`
-                : `Squad advancing to Floor ${finalLs.currentFloor} (${getFloorTypeLabel(finalLs.currentFloor)}).`,
+              subtitle: finalLs.floorClearedPendingAscent
+                ? `Transfer Ring unlocked! Ascend to Floor ${nextFloorAfterClear} (${getFloorTypeLabel(nextFloorAfterClear)}) via the Field Dock or Extract to Plaza.`
+                : starfallUpdates.beyondMemory
+                  ? `Advancing into Uncharted Stratum (Floor ${finalLs.currentFloor} — Beyond Ranker Memory)!`
+                  : `Squad advancing to Floor ${finalLs.currentFloor} (${getFloorTypeLabel(finalLs.currentFloor)}).`,
               difficulty: starfallUpdates.isGateBoss ? "A" : "B",
             });
           }
+        } else if (starfallUpdates?.wave_cleared) {
+          soundEffects.playQuestComplete();
+          const clearedWaveNum = Number(starfallUpdates.wave_cleared);
+          const nextWaveNum = Number(starfallUpdates.floor_wave) || clearedWaveNum + 1;
+          const totalWavesNum = Number(starfallUpdates.floor_total_waves) || nextWaveNum;
+          const waveShards = Number(starfallUpdates.shardsAwarded || starfallUpdates.star_shards_earned || 0);
+          pushNotification({
+            id: `starfall_wave_${finalLs.currentFloor}_${clearedWaveNum}_${Date.now()}`,
+            type: "quest_completed",
+            title: `FLOOR ${finalLs.currentFloor} • WAVE ${clearedWaveNum}/${totalWavesNum} CLEARED${waveShards > 0 ? ` (+${waveShards} 💠)` : ""}`,
+            subtitle: `Wave ${nextWaveNum}/${totalWavesNum} hostile signature detected ahead — engage via Combat Dock or tactical RP.`,
+            difficulty: "B",
+          });
+        } else if (starfallUpdates?.sanctuary_rest) {
+          soundEffects.playEquipChime();
+          pushNotification({
+            id: `starfall_rest_${finalLs.currentFloor}_${Date.now()}`,
+            type: "quest_completed",
+            title:
+              finalLs.currentFloor > 0 && getFloorType(finalLs.currentFloor) === "SAFE_ZONE"
+                ? `FLOOR ${finalLs.currentFloor} SANCTUARY RESTORED`
+                : `CAMPFIRE BOND REST • VITALS RECOVERED`,
+            subtitle:
+              starfallUpdates?.full_vitals_restored
+                ? "All [WOUNDED] conditions cleared and squad HP/MP restored to 100%."
+                : "Transfer Ring field respite restored +35% HP/MP across active squad members.",
+            difficulty: "B",
+          });
         }
       }
 
@@ -6259,8 +6342,14 @@ export default function VisualNovelGame() {
         maxMp: playerRef.current.stats.maxMp,
         maxExpCap: turnMaxExpCap,
       });
-      const rawHpDelta = clampedVitalsPreview.hpChange;
-      const rawMpDelta = clampedVitalsPreview.mpChange;
+      const rawHpDelta =
+        typeof starfallUpdates?.deterministic_hp_delta === "number"
+          ? starfallUpdates.deterministic_hp_delta
+          : clampedVitalsPreview.hpChange;
+      const rawMpDelta =
+        typeof starfallUpdates?.deterministic_mp_delta === "number"
+          ? starfallUpdates.deterministic_mp_delta
+          : clampedVitalsPreview.mpChange;
       const rawVitalsReason = data.player_progression?.vitals_reason || null;
 
       const companionMsg: ChatMessage = {
@@ -6638,12 +6727,34 @@ export default function VisualNovelGame() {
         );
         let finalTurnInventory = unsealTurnRes.updatedInventory;
         // When handleExecuteClashAction already resolved combat vitals for this turn, skip duplicate server HP/MP deltas
-        const hpDeltaToApply = isClashTurn ? 0 : clampedProg.hpChange;
-        const mpDeltaToApply = isClashTurn ? 0 : clampedProg.mpChange;
+        const activeStarfallLs = playerRef.current.labyrinthState;
+        const isStarfallSanctuaryHeal =
+          currentStory?.id === "starfall-labyrinth" &&
+          !data.death_event?.is_fatal &&
+          Boolean(
+            starfallUpdates?.full_vitals_restored ||
+              (activeStarfallLs &&
+                (activeStarfallLs.currentFloor === 0 ||
+                  getFloorType(activeStarfallLs.currentFloor || 0) === "SAFE_ZONE"))
+          );
+        const hpDeltaToApply = isClashTurn
+          ? 0
+          : typeof starfallUpdates?.deterministic_hp_delta === "number"
+            ? starfallUpdates.deterministic_hp_delta
+            : clampedProg.hpChange;
+        const mpDeltaToApply = isClashTurn
+          ? 0
+          : typeof starfallUpdates?.deterministic_mp_delta === "number"
+            ? starfallUpdates.deterministic_mp_delta
+            : clampedProg.mpChange;
         const levelUpHpBonus = levelsGained * 20;
         const levelUpMpBonus = levelsGained * 10;
-        const resolvedHp = Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + levelUpHpBonus + hpDeltaToApply));
-        const resolvedMp = Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + levelUpMpBonus + mpDeltaToApply));
+        const resolvedHp = isStarfallSanctuaryHeal
+          ? newMaxHp
+          : Math.max(0, Math.min(newMaxHp, playerRef.current.stats.hp + levelUpHpBonus + hpDeltaToApply));
+        const resolvedMp = isStarfallSanctuaryHeal
+          ? newMaxMp
+          : Math.max(0, Math.min(newMaxMp, playerRef.current.stats.mp + levelUpMpBonus + mpDeltaToApply));
 
         if (hpDeltaToApply !== 0 || mpDeltaToApply !== 0) {
           if (hpDeltaToApply < 0) {
@@ -12267,12 +12378,15 @@ export default function VisualNovelGame() {
           </div>
         </div>
 
-        {/* Starfall Labyrinth Turn-Based Tactical Combat HUD (Hidden 1d20 Checks + Party Hot-Swapping) */}
+        {/* Starfall Labyrinth Turn-Based Tactical Combat HUD & Field Dock */}
         {currentStory.id === "starfall-labyrinth" &&
-          player.labyrinthState?.activeEncounter?.isActive && (
+          player.labyrinthState &&
+          (player.labyrinthState.activeEncounter?.isActive ||
+            ((player.labyrinthState.currentFloor || 0) > 0 &&
+              !isStarfallLobbyLocation(gameState.location))) && (
             <div className="pointer-events-auto mb-1.5">
               <StarfallTacticalCombatHud
-                encounter={player.labyrinthState.activeEncounter}
+                encounter={player.labyrinthState.activeEncounter || null}
                 labyrinthState={player.labyrinthState}
                 protagonistName={player.name}
                 protagonistRole={player.role}
@@ -12284,6 +12398,42 @@ export default function VisualNovelGame() {
                 partyMembers={party as StoryCompanion[]}
                 isSending={isLoading}
                 onExecuteCombatCommand={(cmd) => sendAction(cmd, true)}
+                onSelectTargetUnit={(unitId) => {
+                  const updatePlayerTarget = (prev: PlayerProfile): PlayerProfile => {
+                    const enc = prev.labyrinthState?.activeEncounter;
+                    if (!prev.labyrinthState || !enc) return prev;
+                    const chosen = enc.enemyUnits?.find((u) => u.unitId === unitId && u.hp > 0);
+                    return {
+                      ...prev,
+                      labyrinthState: {
+                        ...prev.labyrinthState,
+                        activeEncounter: {
+                          ...enc,
+                          activeTargetUnitId: unitId,
+                          ...(chosen
+                            ? {
+                                enemyId: chosen.templateId,
+                                enemyName: chosen.name,
+                                enemyTitle: chosen.title,
+                                enemyTier: chosen.tier,
+                                enemyHp: chosen.hp,
+                                enemyMaxHp: chosen.maxHp,
+                                enemyPoise: chosen.poise,
+                                enemyMaxPoise: chosen.maxPoise,
+                                isEnemyBroken: chosen.isBroken,
+                              }
+                            : {}),
+                        },
+                      },
+                    };
+                  };
+                  playerRef.current = updatePlayerTarget(playerRef.current || player);
+                  setPlayer((prev) => {
+                    const next = updatePlayerTarget(prev);
+                    playerRef.current = next;
+                    return next;
+                  });
+                }}
                 onOpenBarracks={() => setShowBarracksModal(true)}
               />
             </div>
@@ -12501,25 +12651,66 @@ export default function VisualNovelGame() {
             </button>
             {currentStory.id === "starfall-labyrinth" &&
               !player.labyrinthState?.activeEncounter?.isActive &&
-              isStarfallLobbyLocation(gameState.location) && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    sendAction(
-                      `Enter Floor ${Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)} with the deployed vanguard.`,
-                      true
-                    )
-                  }
-                  disabled={isLoading}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer disabled:opacity-50"
-                  title="Step directly through the Star Gate into your next Labyrinth floor"
-                >
-                  <span>
-                    ⚔ Deploy to Floor{" "}
-                    {Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)}
-                  </span>
-                </button>
-              )}
+              isStarfallLobbyLocation(gameState.location) && (() => {
+                const frontierFloor = Math.min(
+                  100,
+                  Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)
+                );
+                const targetDeployFloor =
+                  selectedDeployFloor === null
+                    ? frontierFloor
+                    : Math.max(1, Math.min(frontierFloor, selectedDeployFloor));
+                const availableFloors = Array.from(
+                  { length: frontierFloor },
+                  (_, idx) => frontierFloor - idx
+                );
+                return (
+                  <div className="inline-flex items-center gap-1">
+                    <select
+                      aria-label="Select Starfall Labyrinth deploy floor"
+                      value={targetDeployFloor}
+                      disabled={isLoading}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setSelectedDeployFloor(val >= frontierFloor ? null : val);
+                      }}
+                      className="px-1.5 py-0.5 rounded-lg bg-zinc-950/90 border border-amber-500/35 text-[10px] font-mono font-bold text-amber-200 focus:outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50"
+                      title="Select frontier floor or any previously cleared floor to replay"
+                    >
+                      {availableFloors.map((f) => {
+                        const ft = getFloorType(f);
+                        const tag =
+                          f === frontierFloor
+                            ? " • Frontier"
+                            : ft === "GATE_BOSS"
+                              ? " • Boss"
+                              : ft === "SAFE_ZONE"
+                                ? " • Safe"
+                                : "";
+                        return (
+                          <option key={f} value={f} className="bg-zinc-950 text-amber-100">
+                            F{f}{tag}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        sendAction(
+                          `Enter Floor ${targetDeployFloor} with the deployed vanguard.`,
+                          true
+                        )
+                      }
+                      disabled={isLoading}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer disabled:opacity-50"
+                      title="Step directly through the Star Gate into the selected Labyrinth floor"
+                    >
+                      <span>⚔ Deploy to Floor {targetDeployFloor}</span>
+                    </button>
+                  </div>
+                );
+              })()}
           </div>
           {showOocDrawer && (
             <div className="flex items-center gap-2 bg-zinc-950/95 border border-indigo-500/40 rounded-xl px-3 py-1.5 shadow-lg">

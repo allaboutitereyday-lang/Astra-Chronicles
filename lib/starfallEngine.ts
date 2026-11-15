@@ -32,6 +32,7 @@ import {
 import {
   getCuratedStratumBestiarySummary,
   getTowerThemeForFloor,
+  getTotalWavesForFloor,
   getFloorLayout,
 } from "@/lib/starfallTowerThemes";
 
@@ -303,15 +304,15 @@ export function hydrateRosterEntryStats(
     entry.status === "FALLEN"
       ? 0
       : typeof entry.currentHp === "number"
-      ? Math.max(1, Math.min(stats.maxHp, stats.maxHp > prevMaxHp ? Math.round(hpRatio * stats.maxHp) : entry.currentHp))
-      : stats.maxHp;
+        ? Math.max(1, Math.min(stats.maxHp, stats.maxHp > prevMaxHp ? Math.round(hpRatio * stats.maxHp) : entry.currentHp))
+        : stats.maxHp;
 
   const nextMp =
     entry.status === "FALLEN"
       ? 0
       : typeof entry.currentMp === "number"
-      ? Math.max(0, Math.min(stats.maxMp, entry.currentMp))
-      : stats.maxMp;
+        ? Math.max(0, Math.min(stats.maxMp, entry.currentMp))
+        : stats.maxMp;
 
   return {
     ...entry,
@@ -394,6 +395,43 @@ export function healRosterAtSafeZoneOrLobby(state: LabyrinthState): LabyrinthSta
 }
 
 /**
+ * Synchronizes activeEncounter.frontlineHeroines and reserveHeroines whenever the squad roster formation is updated.
+ */
+export function syncActiveEncounterFormationWithRoster(
+  state: LabyrinthState
+): LabyrinthState {
+  if (!state) return state;
+  const normalizedRoster = normalizeSquadFormations(state.roster || []);
+  if (!state.activeEncounter || !state.activeEncounter.isActive) {
+    return {
+      ...state,
+      roster: normalizedRoster,
+    };
+  }
+  const activeSquad = normalizedRoster.filter(
+    (r) => r.status === "DEPLOYED" || r.status === "WOUNDED"
+  );
+  const frontlineHeroines = activeSquad
+    .filter((r) => (r.formationSlot || "FRONTLINE") === "FRONTLINE")
+    .slice(0, MAX_FRONTLINE_HEROINES)
+    .map((r) => r.heroineName);
+  const reserveHeroines = activeSquad
+    .filter((r) => r.formationSlot === "RESERVE")
+    .slice(0, MAX_RESERVE_HEROINES)
+    .map((r) => r.heroineName);
+
+  return {
+    ...state,
+    roster: normalizedRoster,
+    activeEncounter: {
+      ...state.activeEncounter,
+      frontlineHeroines,
+      reserveHeroines,
+    },
+  };
+}
+
+/**
  * Swaps a deployed heroine between FRONTLINE and RESERVE in the Barracks (auto-swapping with another teammate if the target row is full).
  */
 export function toggleHeroFormationSlot(
@@ -438,10 +476,10 @@ export function toggleHeroFormationSlot(
     formationSlot: nextSlot,
   };
 
-  return {
+  return syncActiveEncounterFormationWithRoster({
     ...state,
     roster: normalizeSquadFormations(roster),
-  };
+  });
 }
 
 /**
@@ -1022,13 +1060,13 @@ export function resolveHeroCasualty(
   const nextRoster = (state.roster || []).map((r, idx) =>
     idx === targetIdx
       ? {
-          ...r,
-          status: "FALLEN" as HeroStatus,
-          currentHp: 0,
-          currentMp: 0,
-          fallenOnFloor: casualtyFloor,
-          fallenCause: cleanCause,
-        }
+        ...r,
+        status: "FALLEN" as HeroStatus,
+        currentHp: 0,
+        currentMp: 0,
+        fallenOnFloor: casualtyFloor,
+        fallenCause: cleanCause,
+      }
       : r
   );
 
@@ -1038,20 +1076,71 @@ export function resolveHeroCasualty(
   const nextMemorial = alreadyInMemorial
     ? state.memorial
     : [
-        ...(state.memorial || []),
-        {
-          name: canonicalName,
-          starRank: targetIdx >= 0 ? state.roster[targetIdx].starRank : undefined,
-          level: targetIdx >= 0 ? state.roster[targetIdx].level : undefined,
-          floor: casualtyFloor,
-          cause: cleanCause,
-        },
-      ];
+      ...(state.memorial || []),
+      {
+        name: canonicalName,
+        starRank: targetIdx >= 0 ? state.roster[targetIdx].starRank : undefined,
+        level: targetIdx >= 0 ? state.roster[targetIdx].level : undefined,
+        floor: casualtyFloor,
+        cause: cleanCause,
+      },
+    ];
 
   return {
     ...state,
     roster: normalizeSquadFormations(nextRoster),
     memorial: nextMemorial,
+  };
+}
+
+function resolveFloorClearOutcome(
+  state: LabyrinthState,
+  clearedFloor: number,
+  targetFloorForMeta: number
+) {
+  const newHighest = Math.max(state.highestFloorCleared || 0, clearedFloor);
+  const wasFirstTimeClear = newHighest > (state.highestFloorCleared || 0);
+  const wasBossClear =
+    clearedFloor > 0 &&
+    (clearedFloor % 10 === 0 ||
+      clearedFloor === 25 ||
+      clearedFloor === 50 ||
+      clearedFloor === 75 ||
+      clearedFloor === 100);
+  const wasSafeZoneFloor = clearedFloor > 0 && clearedFloor % 10 === 5 && !wasBossClear;
+  const shardsAwarded = wasFirstTimeClear ? (wasBossClear ? 50 : 18) : 6;
+  const clearedAll100 = clearedFloor >= 100 || newHighest >= 100;
+
+  const prevTheme = getTowerThemeForFloor(clearedFloor);
+  const nextTheme = getTowerThemeForFloor(targetFloorForMeta);
+  const isThemeShift = targetFloorForMeta > 0 && prevTheme.id !== nextTheme.id;
+
+  const firstClearExp = wasBossClear
+    ? 150 + clearedFloor * 16
+    : wasSafeZoneFloor
+      ? 32 + clearedFloor * 4
+      : 48 + clearedFloor * 6;
+  const expAwarded = wasFirstTimeClear
+    ? firstClearExp
+    : Math.max(12, Math.round(firstClearExp * 0.25));
+
+  const companionExpAwarded = Math.max(1, Math.round(expAwarded * COMPANION_SHARED_EXP_RATIO));
+  const nextRoster = (state.roster || []).map((r) =>
+    r.status === "DEPLOYED" || r.status === "WOUNDED"
+      ? applyLevelGain(r, companionExpAwarded)
+      : r
+  );
+
+  return {
+    newHighest,
+    shardsAwarded,
+    clearedAll100,
+    isThemeShift,
+    expAwarded,
+    companionExpAwarded,
+    nextRoster,
+    isGateBoss: getFloorType(targetFloorForMeta) === "GATE_BOSS",
+    beyondMemory: targetFloorForMeta > (state.metaKnowledgeCeiling || 40),
   };
 }
 
@@ -1080,45 +1169,17 @@ export function advanceFloor(
       ? Math.min(100, explicitTargetFloor)
       : Math.min(100, Math.max(1, prevFloor + 1));
 
-  const newHighest = Math.max(state.highestFloorCleared || 0, clearedFloor);
-  const wasFirstTimeClear = newHighest > (state.highestFloorCleared || 0);
-  const wasBossClear =
-    clearedFloor > 0 &&
-    (clearedFloor % 10 === 0 ||
-      clearedFloor === 25 ||
-      clearedFloor === 50 ||
-      clearedFloor === 75 ||
-      clearedFloor === 100);
-  const wasSafeZoneFloor = clearedFloor > 0 && clearedFloor % 10 === 5 && !wasBossClear;
-  const shardsAwarded = wasFirstTimeClear ? (wasBossClear ? 50 : 18) : 6;
-  const clearedAll100 = clearedFloor >= 100 || newHighest >= 100;
-
-  const prevTheme = getTowerThemeForFloor(clearedFloor);
-  const nextTheme = getTowerThemeForFloor(nextFloor);
-  const isThemeShift = nextFloor > 0 && prevTheme.id !== nextTheme.id;
-
-  const firstClearExp = wasBossClear
-    ? 150 + clearedFloor * 16
-    : wasSafeZoneFloor
-    ? 32 + clearedFloor * 4
-    : 48 + clearedFloor * 6;
-  const expAwarded = wasFirstTimeClear
-    ? firstClearExp
-    : Math.max(12, Math.round(firstClearExp * 0.25));
-
-  const companionExpAwarded = Math.max(1, Math.round(expAwarded * COMPANION_SHARED_EXP_RATIO));
-  const nextRoster = (state.roster || []).map((r) =>
-    r.status === "DEPLOYED" || r.status === "WOUNDED"
-      ? applyLevelGain(r, companionExpAwarded)
-      : r
-  );
-
+  const outcome = resolveFloorClearOutcome(state, clearedFloor, nextFloor);
+  const nextFloorTotalWaves = getTotalWavesForFloor(nextFloor);
   let newState: LabyrinthState = {
     ...state,
     currentFloor: nextFloor,
-    highestFloorCleared: newHighest,
-    starShards: (state.starShards || 0) + shardsAwarded,
-    roster: normalizeSquadFormations(nextRoster),
+    currentFloorWave: nextFloorTotalWaves > 0 ? 1 : 0,
+    currentFloorTotalWaves: nextFloorTotalWaves,
+    floorClearedPendingAscent: false,
+    highestFloorCleared: outcome.newHighest,
+    starShards: (state.starShards || 0) + outcome.shardsAwarded,
+    roster: normalizeSquadFormations(outcome.nextRoster),
     activeEncounter: null,
   };
 
@@ -1130,13 +1191,53 @@ export function advanceFloor(
   return {
     newState,
     clearedFloor,
-    isGateBoss: getFloorType(nextFloor) === "GATE_BOSS",
-    isThemeShift,
-    beyondMemory: nextFloor > (state.metaKnowledgeCeiling || 40),
-    shardsAwarded,
-    expAwarded,
-    companionExpAwarded,
-    clearedAll100,
+    isGateBoss: outcome.isGateBoss,
+    isThemeShift: outcome.isThemeShift,
+    beyondMemory: outcome.beyondMemory,
+    shardsAwarded: outcome.shardsAwarded,
+    expAwarded: outcome.expAwarded,
+    companionExpAwarded: outcome.companionExpAwarded,
+    clearedAll100: outcome.clearedAll100,
+  };
+}
+
+/**
+ * Marks the current floor's final wave as vanquished and activates the Transfer Ring
+ * without auto-ascending to Floor N+1 yet.
+ */
+export function completeCurrentFloorAtTransferRing(state: LabyrinthState): {
+  newState: LabyrinthState;
+  clearedFloor: number;
+  isGateBoss: boolean;
+  isThemeShift: boolean;
+  beyondMemory: boolean;
+  shardsAwarded: number;
+  expAwarded: number;
+  companionExpAwarded: number;
+  clearedAll100: boolean;
+} {
+  const clearedFloor = Math.max(1, state.currentFloor || 1);
+  const nextFloorPreview = Math.min(100, clearedFloor + 1);
+  const outcome = resolveFloorClearOutcome(state, clearedFloor, nextFloorPreview);
+  const newState: LabyrinthState = {
+    ...state,
+    currentFloor: clearedFloor,
+    floorClearedPendingAscent: true,
+    highestFloorCleared: outcome.newHighest,
+    starShards: (state.starShards || 0) + outcome.shardsAwarded,
+    roster: normalizeSquadFormations(outcome.nextRoster),
+    activeEncounter: null,
+  };
+  return {
+    newState,
+    clearedFloor,
+    isGateBoss: outcome.isGateBoss,
+    isThemeShift: outcome.isThemeShift,
+    beyondMemory: outcome.beyondMemory,
+    shardsAwarded: outcome.shardsAwarded,
+    expAwarded: outcome.expAwarded,
+    companionExpAwarded: outcome.companionExpAwarded,
+    clearedAll100: outcome.clearedAll100,
   };
 }
 
@@ -1184,8 +1285,8 @@ export function syncRosterWithParty(
     const nextStatus: HeroStatus = !matchingParty.isPresent
       ? "BENCHED"
       : entry.status === "WOUNDED" || matchingParty.heroStatus === "WOUNDED"
-      ? "WOUNDED"
-      : "DEPLOYED";
+        ? "WOUNDED"
+        : "DEPLOYED";
     const syncedCap = getStarLevelCap(updated.starRank);
     const syncedLevel = Math.min(
       syncedCap,
@@ -1195,10 +1296,10 @@ export function syncRosterWithParty(
       syncedLevel >= syncedCap
         ? 0
         : syncedLevel > (updated.level || 1)
-        ? Math.max(0, matchingParty.exp ?? 0)
-        : syncedLevel === (matchingParty.level || 1)
-        ? Math.max(updated.exp || 0, matchingParty.exp || 0)
-        : updated.exp || 0;
+          ? Math.max(0, matchingParty.exp ?? 0)
+          : syncedLevel === (matchingParty.level || 1)
+            ? Math.max(updated.exp || 0, matchingParty.exp || 0)
+            : updated.exp || 0;
 
     return hydrateRosterEntryStats({
       ...updated,
@@ -1297,8 +1398,7 @@ export function buildStarfallTurnDirective(params: {
       .filter((r) => (r.formationSlot || "FRONTLINE") === "FRONTLINE")
       .map(
         (r) =>
-          `${r.heroineName} (${r.starRank}★ Lv.${r.level}/${getStarLevelCap(r.starRank)}${
-            r.status === "WOUNDED" ? " • ⚠️ CRITICALLY WOUNDED" : ""
+          `${r.heroineName} (${r.starRank}★ Lv.${r.level}/${getStarLevelCap(r.starRank)}${r.status === "WOUNDED" ? " • ⚠️ CRITICALLY WOUNDED" : ""
           })`
       )
       .join(", ") ||
@@ -1310,8 +1410,7 @@ export function buildStarfallTurnDirective(params: {
       .filter((r) => r.formationSlot === "RESERVE")
       .map(
         (r) =>
-          `${r.heroineName} (${r.starRank}★ Lv.${r.level} • Rearguard Reserve${
-            r.status === "WOUNDED" ? " • ⚠️ WOUNDED" : ""
+          `${r.heroineName} (${r.starRank}★ Lv.${r.level} • Rearguard Reserve${r.status === "WOUNDED" ? " • ⚠️ WOUNDED" : ""
           })`
       )
       .join(", ") || "None in Rearguard";
@@ -1328,8 +1427,8 @@ export function buildStarfallTurnDirective(params: {
   const memorialSummary =
     (labyrinthState.memorial || []).length > 0
       ? labyrinthState.memorial
-          .map((m) => `✝ ${m.name} (DIED PERMANENTLY on Floor ${m.floor}: ${m.cause})`)
-          .join(" | ")
+        .map((m) => `✝ ${m.name} (DIED PERMANENTLY on Floor ${m.floor}: ${m.cause})`)
+        .join(" | ")
       : "None — Zero Casualties So Far";
 
   const speakerDossier = getHeroineDossier(activeSpeaker);
@@ -1358,53 +1457,70 @@ ${curatedBestiaryDirective}`
       : `   - Lobby Sanctuary: Star Gate Plaza atop your Master's large floating sky-island drifting in the astral cloud sea around the central Starfall Spire, with rival Masters' floating islands visible across the void (Next Climb Theme: ${activeTheme.name}).
 ${curatedBestiaryDirective}`;
 
+  const activeEnc = labyrinthState.activeEncounter;
+  const packUnits =
+    activeEnc?.enemyUnits && activeEnc.enemyUnits.length > 0
+      ? activeEnc.enemyUnits
+      : null;
+  const packRosterList = packUnits
+    ? packUnits
+      .map(
+        (u) =>
+          `"${u.name}" [${u.tier}${u.hp <= 0 ? " — SLAIN" : ` — HP ${u.hp}/${u.maxHp}, Poise ${u.poise}/${u.maxPoise}`
+          }]`
+      )
+      .join("; ")
+    : activeEnc
+      ? `"${activeEnc.enemyName}" [${activeEnc.enemyTier || (activeEnc.isBoss ? "BOSS" : "COMMON")}]`
+      : "";
+
   const encounterBlock =
-    labyrinthState.activeEncounter && labyrinthState.activeEncounter.isActive
+    activeEnc && activeEnc.isActive
       ? `\n7. LIVE TACTICAL COMBAT TELEMETRY (STRICT ENEMY CANON LOCK — NARRATE IN PLAIN PROSE):
-   - LOCKED FLOOR HOSTILE [${labyrinthState.activeEncounter.enemyTier || (labyrinthState.activeEncounter.isBoss ? "BOSS" : "COMMON")}]: "${labyrinthState.activeEncounter.enemyName}" (${labyrinthState.activeEncounter.enemyTitle}) — Phase: ${
-          labyrinthState.activeEncounter.engagementPhase === "vicinity"
-            ? "HOSTILE IN VICINITY (Party has sensed/spotted it or is sizing it up; they can scout/set up OR strike to engage)"
-            : "ACTIVE COMBAT ENGAGED"
-        }
-   - Hostile Status: HP ${labyrinthState.activeEncounter.enemyHp}/${labyrinthState.activeEncounter.enemyMaxHp} | Poise ${labyrinthState.activeEncounter.enemyPoise}/${labyrinthState.activeEncounter.enemyMaxPoise}${labyrinthState.activeEncounter.isEnemyBroken ? " [STAGGERED / POISE BROKEN!]" : ""} | Weaknesses: ${labyrinthState.activeEncounter.enemyWeaknesses.join(", ")}
-   - MANDATORY NAME LOCK: You MUST refer to this floor's hostile strictly as "${labyrinthState.activeEncounter.enemyName}" (never substitute a different monster name).
-   - Next Enemy Telegraph: "${labyrinthState.activeEncounter.currentTelegraph.label}" — ${labyrinthState.activeEncounter.currentTelegraph.telegraphText}
-   - Latest Turn Resolution: ${labyrinthState.activeEncounter.combatTelemetrySummary || "Encounter initiated."}`
+   - FLOOR ENCOUNTER WAVE: Wave ${activeEnc.floorWave || 1} of ${activeEnc.floorTotalWaves || 3} on Floor ${effectiveFloor}
+   - LOCKED HOSTILE PACK: ${packRosterList} — Phase: ${activeEnc.engagementPhase === "vicinity"
+        ? "HOSTILE PACK IN VICINITY (Party has sensed/spotted them or is sizing them up; they can scout/set up OR strike to engage)"
+        : "ACTIVE COMBAT ENGAGED"
+      }
+   - Primary Target: "${activeEnc.enemyName}" (${activeEnc.enemyTitle}) — Total Pack HP ${activeEnc.enemyHp}/${activeEnc.enemyMaxHp} | Primary Poise ${activeEnc.enemyPoise}/${activeEnc.enemyMaxPoise}${activeEnc.isEnemyBroken ? " [STAGGERED / POISE BROKEN!]" : ""} | Weaknesses: ${activeEnc.enemyWeaknesses.join(", ")}
+   - MANDATORY NAME LOCK: You MUST refer strictly to the monsters listed in LOCKED HOSTILE PACK above (${packUnits ? packUnits.map((u) => `"${u.name}"`).join(", ") : `"${activeEnc.enemyName}"`}) — never substitute or invent different monster names!
+   - Next Enemy Telegraph: "${activeEnc.currentTelegraph.label}" — ${activeEnc.currentTelegraph.telegraphText}
+   - Latest Turn Resolution: ${activeEnc.combatTelemetrySummary || "Encounter initiated."}`
+      : labyrinthState.floorClearedPendingAscent && effectiveFloor > 0
+      ? `\n7. FLOOR ${effectiveFloor} TRANSFER RING ACTIVE (ALL WAVES CLEARED): All hostile waves on Floor ${effectiveFloor} have been vanquished. The obsidian Floor Transfer Ring is humming with starlight. The party can catch their breath, check wounds, ascend to Floor ${Math.min(100, effectiveFloor + 1)}, or extract safely to Star Gate Plaza. Do NOT invent new monsters attacking until they ascend!`
+      : effectiveFloor > 0 && getFloorType(effectiveFloor) === "SAFE_ZONE"
+      ? `\n7. SAFE ZONE SANCTUARY (FLOOR ${effectiveFloor} — ZERO HOSTILES): All WOUNDED statuses and HP/MP are restored here. Focus on campfire camaraderie, tending gear, emotional heart-to-hearts, or preparing to ascend to Floor ${Math.min(100, effectiveFloor + 1)}.`
       : "";
 
   return `--- STARFALL LABYRINTH CANON BIBLE, 25-FLOOR STRATA & PERMADEATH ENGINE (MANDATORY) ---
 1. LIVE LABYRINTH TELEMETRY:
-   - Active Location: ${currentLocation} (${
-     effectiveFloor === 0
-       ? "Floor 0 — Main Lobby Hub"
-       : `Floor ${effectiveFloor} / 100 — [${floorTypeLabel.toUpperCase()}]`
-   })
+   - Active Location: ${currentLocation} (${effectiveFloor === 0
+      ? "Floor 0 — Main Lobby Hub"
+      : `Floor ${effectiveFloor} / 100 — [${floorTypeLabel.toUpperCase()}]`
+    })
    - Stratum Canon: ${matchingStratum.stratumName} — ${matchingStratum.canonHazardsAndBoss}
 ${themeContextBlock}
    - Protagonist Status: ${protagonistName} [${protagStarLabel} • Lv.${protagonistLevel}/${protagCap}] | Highest Floor Cleared: ${labyrinthState.highestFloorCleared}/100
-   - Star Gate Economy: ${labyrinthState.starShards} Star Shards | Pity Counter: ${labyrinthState.pityCounter}/${PITY_THRESHOLD} | Summon Access: ${
-     inMainLobby
-       ? "UNLOCKED (Currently in Star Gate Plaza Main Lobby)"
-       : "LOCKED (Summoning is ONLY possible in Star Gate Plaza Main Lobby — never inside Labyrinth floors!)"
-   }
-   - Unseen Master Trust: ${labyrinthState.masterTrust}% (${
-     labyrinthState.masterTrust <= 20
-       ? "DANGEROUSLY LOW — Master is impatient and prone to reckless auto-battle Command Seals!"
-       : labyrinthState.masterTrust >= 70
-       ? "HIGH — Master trusts your shot-calling and grants tactical leeway."
-       : "GUARDED — Master is watching your floor clear speed vs. survival."
-   })
+   - Star Gate Economy: ${labyrinthState.starShards} Star Shards | Pity Counter: ${labyrinthState.pityCounter}/${PITY_THRESHOLD} | Summon Access: ${inMainLobby
+      ? "UNLOCKED (Currently in Star Gate Plaza Main Lobby)"
+      : "LOCKED (Summoning is ONLY possible in Star Gate Plaza Main Lobby — never inside Labyrinth floors!)"
+    }
+   - Unseen Master Trust: ${labyrinthState.masterTrust}% (${labyrinthState.masterTrust <= 20
+      ? "DANGEROUSLY LOW — Master is impatient and prone to reckless auto-battle Command Seals!"
+      : labyrinthState.masterTrust >= 70
+        ? "HIGH — Master trusts your shot-calling and grants tactical leeway."
+        : "GUARDED — Master is watching your floor clear speed vs. survival."
+    })
    - Active Frontline Vanguard: ${frontlineSummary}
    - Rearguard Reserve (Ready for Tag-Swap): ${reserveSummary}
    - Benched Roster (Safe in Lobby): ${benchedSummary}
    - Memorial Wall (PERMANENTLY DEAD): ${memorialSummary}
 
 2. META-KNOWLEDGE CEILING RULE (FLOOR ${labyrinthState.metaKnowledgeCeiling} HORIZON):
-   ${
-     beyondMemory
-       ? `- CRITICAL: Floor ${effectiveFloor} EXCEEDS ${protagonistName}'s pre-isekai memory ceiling (Floor ${labyrinthState.metaKnowledgeCeiling})! ${protagonistName} has ZERO foreknowledge of bosses, traps, or layouts here—portray genuine uncertainty and live tactical improvisation!`
-       : `- Within Ranker Memory (Current Floor ${effectiveFloor} <= Ceiling Floor ${labyrinthState.metaKnowledgeCeiling}): ${protagonistName} remembers monster aggro cones, hidden Safe Zone caches, and boss phase transitions from playing 'Celestia Summons'—though real-life pain, stamina limits, and human fear still make execution razor-thin.`
-   }
+   ${beyondMemory
+      ? `- CRITICAL: Floor ${effectiveFloor} EXCEEDS ${protagonistName}'s pre-isekai memory ceiling (Floor ${labyrinthState.metaKnowledgeCeiling})! ${protagonistName} has ZERO foreknowledge of bosses, traps, or layouts here—portray genuine uncertainty and live tactical improvisation!`
+      : `- Within Ranker Memory (Current Floor ${effectiveFloor} <= Ceiling Floor ${labyrinthState.metaKnowledgeCeiling}): ${protagonistName} remembers monster aggro cones, hidden Safe Zone caches, and boss phase transitions from playing 'Celestia Summons'—though real-life pain, stamina limits, and human fear still make execution razor-thin.`
+    }
 
 3. EIGHT IMMUTABLE LABYRINTH COVENANT LAWS:
 ${covenantQuickList}
@@ -1416,13 +1532,12 @@ ${covenantQuickList}
 
 5. CANONICAL RIVALS & SYSTEM ENTITIES:
 ${antagonistList}
-${
-  speakerDossier
-    ? `\n6. ACTIVE SPEAKER VOICE, WEAPONRY & INNER CONFLICT (${speakerDossier.name} — ${speakerDossier.epithet}):
+${speakerDossier
+      ? `\n6. ACTIVE SPEAKER VOICE, WEAPONRY & INNER CONFLICT (${speakerDossier.name} — ${speakerDossier.epithet}):
    - Combat Kit: ${speakerDossier.skillKit.activeSkill.name} / ${speakerDossier.skillKit.tagAssistSkill.name} / Bond Special: ${speakerDossier.skillKit.bondSpecial.name} (${speakerDossier.dyadPassiveName})
    - Core Conflict: ${speakerDossier.actOneConflict}
    - Hidden Depth: ${speakerDossier.traumaAndSecret}
    - Spoken Cadence: ${speakerDossier.speechVoiceBrief}`
-    : ""
-}${encounterBlock}`;
+      : ""
+    }${encounterBlock}`;
 }
