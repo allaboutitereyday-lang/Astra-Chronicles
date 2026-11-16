@@ -468,6 +468,7 @@ ${starfallHeroineMeta ? `- First Squadmate Dossier (${starfallHeroineMeta.name.s
       playerRole: playerProfile.role,
       playerGender: playerProfile.gender,
       playerAge: playerProfile.age,
+      playerHeight: playerProfile.height,
       worldOrigin: playerProfile.worldOrigin,
       worldOriginDetails: playerProfile.worldOriginDetails,
       playerRace: playerProfile.race,
@@ -618,7 +619,7 @@ Respond strictly in valid JSON matching this schema:
       : "None unlocked yet";
 
     const promptText = `Protagonist (Narrator Reference Only — Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsName ? playerProfile.name : `[UNKNOWN TO ${(startingHeroine || "COMPANION").toUpperCase()} — Refer to as "stranger" or "initiate" in spoken dialogue]`}
-Gender & Age: ${playerProfile?.gender || "Male"} | Age: ${playerProfile?.age || "22"}
+Gender, Age & Height: ${playerProfile?.gender || "Male"} | Age: ${playerProfile?.age || "22"} | Height: ${playerProfile?.height || "5'11\""}
 World Origin & System Familiarity: ${playerProfile?.worldOrigin || "Born & Raised (Native)"}${playerProfile?.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
 Internal Class (Unknown to ${startingHeroine} in dialogue unless unlocked): ${startingHeroineKnowledge.knowsClass ? playerProfile?.role : `[UNKNOWN TO ${(startingHeroine || "COMPANION").toUpperCase()} — Judge only visible gear]`}
 Chosen Personality Archetype: "${personaVoice.personaTitle}" (Traits: ${personaVoice.traitsList.join(", ")})

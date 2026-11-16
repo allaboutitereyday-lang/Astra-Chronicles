@@ -20,6 +20,7 @@ export interface SavedCharacterBlueprint {
   role: string; // Class / Archetype
   gender?: string;
   age?: string;
+  height?: string;
   worldOrigin?: string;
   worldOriginDetails?: string;
   race: string;
@@ -88,6 +89,7 @@ export function normalizeCharacterBlueprint(rawInput: unknown): SavedCharacterBl
     role: typeof raw.role === "string" && raw.role.trim() ? raw.role.trim() : "Voidstrider",
     gender: typeof raw.gender === "string" && raw.gender.trim() ? raw.gender.trim() : "Male",
     age: typeof raw.age === "string" && raw.age.trim() ? raw.age.trim() : "22",
+    height: typeof raw.height === "string" && raw.height.trim() ? raw.height.trim() : "5'11\"",
     worldOrigin:
       typeof raw.worldOrigin === "string" && raw.worldOrigin.trim()
         ? raw.worldOrigin.trim()
@@ -159,6 +161,7 @@ export function createBlueprintFromPlayer(params: {
     role: cleanRole,
     gender: player.gender || "Male",
     age: player.age || "22",
+    height: player.height || "5'11\"",
     worldOrigin: player.worldOrigin || "Born & Raised (Native)",
     worldOriginDetails: player.worldOriginDetails,
     race: cleanRace,

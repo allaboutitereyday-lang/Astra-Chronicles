@@ -5,6 +5,7 @@ import { sanitizeVisualNovelProse, ensureChoiceIntentTag, sanitizeAndFilterChoic
 import {
   buildDynamicChoiceDirective,
   buildPersonalityFallbackChoices,
+  extractPlayerVoiceStyleFromHistory,
   getPersonaVoiceProfile,
   buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
@@ -42,6 +43,7 @@ export async function POST(req: Request) {
       userAccessKey,
       narrationStyle,
       modelId,
+      rerollFocus,
       storyTitle: topLevelStoryTitle,
       location: topLevelLocation,
       mood: topLevelMood,
@@ -156,6 +158,7 @@ export async function POST(req: Request) {
       playerRole: playerProfile?.role || "Adventurer",
       playerGender: playerProfile?.gender,
       playerAge: playerProfile?.age,
+      playerHeight: playerProfile?.height,
       worldOrigin: playerProfile?.worldOrigin,
       worldOriginDetails: playerProfile?.worldOriginDetails,
       playerRace: playerProfile?.race,
@@ -175,7 +178,26 @@ export async function POST(req: Request) {
       candidateNextLocations: candidateNextLocations.slice(0, 3),
       otherHeroineNames,
       storyId: storyContext?.id,
+      recentHistory: Array.isArray(recentHistory) ? recentHistory : [],
     });
+
+    const voiceFingerprint = extractPlayerVoiceStyleFromHistory(
+      Array.isArray(recentHistory) ? recentHistory : [],
+      playerProfile?.name
+    );
+
+    const normalizedFocus = typeof rerollFocus === "string" ? rerollFocus.trim().toLowerCase() : "";
+    const directedFocusInstruction = normalizedFocus
+      ? `\n\n[DIRECTED REROLL FOCUS — HIGH PRIORITY]:\nThe player specifically requested choices focused on: "${rerollFocus}". Tilt ALL 4 options cleanly toward "${
+          normalizedFocus === "romantic"
+            ? "romantic tension, intimacy, playful flirting, personal vulnerability, and heartfelt banter"
+            : normalizedFocus === "objective"
+            ? "pushing the active quest objective, deal, or scene plot decisively forward"
+            : normalizedFocus === "bold"
+            ? "high-stakes physical action, gutsy gambits, confrontation, or signature skill plays"
+            : rerollFocus
+        }" while preserving ${playerProfile?.name || "the protagonist"}'s voice and conversational cadence.`
+      : "";
 
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
 
@@ -207,12 +229,13 @@ ${buildAntiRepetitionDirective(recentHistory, playerProfile?.name || "Protagonis
 
 ${originAndIdentityDirective}
 
-${choiceDirective}
+${choiceDirective}${directedFocusInstruction}
 
 Format Requirement:
-- Every choice MUST strictly follow the format: [Tone/Action]: Short summary of character action/dialogue (e.g. "[Traversal/Agile]: Vault across the roof gap toward the canal", "[Combat/Aggressive]: Draw blade and lunge forward", "[Arcana/Analytical]: Channel mana into the containment ward", "[Command/Strategic]: Demand to know which tunnel leads to safety").
+- Every choice MUST strictly follow the format: [Tone/Action]: 'Natural conversational spoken line' + physical action (e.g. "[Banter/Pushback]: 'Whoa, hold on—you seriously expect me to buy that?' Lean against the railing with a raised eyebrow.", "[Combat/Aggressive]: 'Alright, let's finish this before they regroup!' Step in and drive your blade toward the exposed flank.", "[Inquire/Direct]: 'Okay, skip the act—what's your real angle here?' Meet her eyes straight on.", "[Move/Transition]: 'Come on, let's head out before this place wakes up.' Motion toward the exit.").
+- SPOKEN VOICE ADAPTATION (CRITICAL): Tune the spoken line inside '...' to match ${playerProfile?.name || "the protagonist"}'s live speaking style from recent exchanges (${voiceFingerprint.cadenceSummary}). Always sound like a real human talking casually out loud—use contractions ('I'm', 'don't', 'you're', 'let's'), relaxed rhythm, and everyday diction. NEVER make choices stiff, archaic, or overly proper.
 - Never output bare single brackets like [Combat] or [Inquire]. Always use the [Tone/Action]: format.
-- Each choice must be 1 concise, vivid, natural sentence summarizing the protagonist's intended move or reply that ACTIVELY MOVES THE STORY FORWARD.
+- Each choice must be 1 crisp, natural line that ACTIVELY MOVES THE STORY FORWARD.
 - Return strictly JSON matching:
 {
   "choices": [string, string, string, string]
@@ -223,13 +246,14 @@ Format Requirement:
       playerProfile?.personalityTraits
     );
 
+    const focusSuffix = normalizedFocus ? ` Prioritize a "${rerollFocus}" angle across all 4 options.` : "";
     const messages = [
       { role: "system", content: systemPrompt },
       {
         role: "user",
-        content: isProtagonistAlone
-          ? `Generate 4 dynamic, story-advancing choices for ${playerProfile?.name} exploring ${gameState?.location} alone, voiced strictly in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality.`
-          : `Generate 4 distinct, story-advancing choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}, voiced strictly in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and speech cadence.`
+        content: (isProtagonistAlone
+          ? `Generate 4 dynamic, story-advancing choices for ${playerProfile?.name} exploring ${gameState?.location} alone, voiced naturally in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and matching their conversational style (${voiceFingerprint.register}).`
+          : `Generate 4 distinct, story-advancing choices for ${playerProfile?.name} reacting to ${sanitizedSpeaker}'s dialogue in ${gameState?.location}, voiced naturally in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) personality and mirrored to their conversational cadence (${voiceFingerprint.register}—use contractions and everyday speech, never stiff formality).`) + focusSuffix
       }
     ];
 
@@ -336,10 +360,10 @@ Format Requirement:
     return NextResponse.json(
       {
         choices: [
-          `[Inquire/Diplomatic]: Press the speaker on the matters unfolding before you.`,
-          `[Pragmatism/Tactical]: Propose a pragmatic mutual alliance under clear conditions.`,
-          `[Combat/Defiant]: Prepare your weapons and ready yourself for sudden escalation.`,
-          `[Tactics/Caution]: Remain guarded, maintain distance, and evaluate the atmosphere.`,
+          `[Inquire/Direct]: 'Alright, skip the spin—what's actually going on here?' Look the speaker straight in the eye.`,
+          `[Pragmatism/Tactical]: 'Tell you what—let's work together on this, my terms included.' Offer a clear, practical deal.`,
+          `[Combat/Defiant]: 'Stay back—we're about to have company.' Shift your weight and get ready for trouble.`,
+          `[Observe/Calm]: 'Hold on a second—let's check the room first.' Keep your distance and read the situation.`,
         ]
       },
       { status: 200 }

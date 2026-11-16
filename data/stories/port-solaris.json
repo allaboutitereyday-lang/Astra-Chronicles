@@ -487,14 +487,15 @@
       "baseImageUrl": "/characters/port-solaris/seraphina_vane.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Proud aristocratic college girl with long honey-blonde hair in sweeping twin-tails with navy silk ribbons, sharp emerald-green eyes, haughty tsundere blush, wearing a crisp tailored white-and-gold Platinum Board resort blazer over a summer blouse, holding a gold-plated Star Audit clipboard. Vibrant modern anime visual novel key art, Makoto Shinkai and Kyoto Animation inspired lighting, glossy expressive eyes.",
       "expressions": {
-        "neutral": "/characters/port-solaris/seraphina_vane.png",
-        "intrigued": "/characters/port-solaris/seraphina_vane.png",
-        "flustered": "/characters/port-solaris/seraphina_vane.png",
-        "smug": "/characters/port-solaris/seraphina_vane.png",
-        "surprised": "/characters/port-solaris/seraphina_vane.png",
-        "combat_ready": "/characters/port-solaris/seraphina_vane.png",
-        "dangerous": "/characters/port-solaris/seraphina_vane.png",
-        "hurt": "/characters/port-solaris/seraphina_vane.png"
+        "neutral": "/characters/port-solaris/seraphina_vane/neutral.png",
+        "intrigued": "/characters/port-solaris/seraphina_vane/intrigued.png",
+        "flustered": "/characters/port-solaris/seraphina_vane/flustered.png",
+        "smug": "/characters/port-solaris/seraphina_vane/smug.png",
+        "surprised": "/characters/port-solaris/seraphina_vane/flustered.png",
+        "combat_ready": "/characters/port-solaris/seraphina_vane/combat_ready.png",
+        "dangerous": "/characters/port-solaris/seraphina_vane/combat_ready.png",
+        "hurt": "/characters/port-solaris/seraphina_vane/hurt.png",
+        "beckon": "/characters/port-solaris/seraphina_vane/smug.png"
       }
     },
     {
@@ -532,14 +533,15 @@
       "baseImageUrl": "/characters/port-solaris/vivienne_laurent.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Tall elegant young woman with long silky silver-white hair, serene sapphire-blue eyes, gentle curious expression with a faint blush, wearing a flowing pastel-blue summer sundress with a wide-brimmed white sunhat and pearl earrings, delicately holding a pink street-market cotton candy with both hands. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/vivienne_laurent.png",
-        "intrigued": "/characters/port-solaris/vivienne_laurent.png",
-        "flustered": "/characters/port-solaris/vivienne_laurent.png",
-        "smug": "/characters/port-solaris/vivienne_laurent.png",
-        "surprised": "/characters/port-solaris/vivienne_laurent.png",
-        "combat_ready": "/characters/port-solaris/vivienne_laurent.png",
-        "dangerous": "/characters/port-solaris/vivienne_laurent.png",
-        "hurt": "/characters/port-solaris/vivienne_laurent.png"
+        "neutral": "/characters/port-solaris/vivienne_laurent/neutral.png",
+        "intrigued": "/characters/port-solaris/vivienne_laurent/intrigued.png",
+        "flustered": "/characters/port-solaris/vivienne_laurent/flustered.png",
+        "smug": "/characters/port-solaris/vivienne_laurent/smug.png",
+        "surprised": "/characters/port-solaris/vivienne_laurent/flustered.png",
+        "combat_ready": "/characters/port-solaris/vivienne_laurent/combat_ready.png",
+        "dangerous": "/characters/port-solaris/vivienne_laurent/combat_ready.png",
+        "hurt": "/characters/port-solaris/vivienne_laurent/hurt.png",
+        "beckon": "/characters/port-solaris/vivienne_laurent/smug.png"
       }
     },
     {
@@ -577,14 +579,15 @@
       "baseImageUrl": "/characters/port-solaris/mia_bellini.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Energetic girl-next-door with warm chestnut hair tied up in a messy bun with a red gingham bandana, warm hazel eyes, cute pouty blush with a smudge of white flour on her cheek, wearing a rolled-sleeve white chef shirt and striped bistro apron, holding a wicker basket of fresh golden croissants. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/mia_bellini.png",
-        "intrigued": "/characters/port-solaris/mia_bellini.png",
-        "flustered": "/characters/port-solaris/mia_bellini.png",
-        "smug": "/characters/port-solaris/mia_bellini.png",
-        "surprised": "/characters/port-solaris/mia_bellini.png",
-        "combat_ready": "/characters/port-solaris/mia_bellini.png",
-        "dangerous": "/characters/port-solaris/mia_bellini.png",
-        "hurt": "/characters/port-solaris/mia_bellini.png"
+        "neutral": "/characters/port-solaris/mia_bellini/neutral.png",
+        "intrigued": "/characters/port-solaris/mia_bellini/intrigued.png",
+        "flustered": "/characters/port-solaris/mia_bellini/flustered.png",
+        "smug": "/characters/port-solaris/mia_bellini/smug.png",
+        "surprised": "/characters/port-solaris/mia_bellini/flustered.png",
+        "combat_ready": "/characters/port-solaris/mia_bellini/combat_ready.png",
+        "dangerous": "/characters/port-solaris/mia_bellini/combat_ready.png",
+        "hurt": "/characters/port-solaris/mia_bellini/hurt.png",
+        "beckon": "/characters/port-solaris/mia_bellini/smug.png"
       }
     },
     {
@@ -622,14 +625,15 @@
       "baseImageUrl": "/characters/port-solaris/colette_moreau.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Stylish alluring young woman with wavy burgundy-red hair swept over one shoulder, half-lidded emerald eyes, teasing mature smile, beauty mark near her lip, wearing a fitted black-and-burgundy vest over a crisp white dress shirt with a black bowtie and rolled sleeves, holding a gleaming silver cocktail shaker and a crystal coupe glass garnished with citrus. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/colette_moreau.png",
-        "intrigued": "/characters/port-solaris/colette_moreau.png",
-        "flustered": "/characters/port-solaris/colette_moreau.png",
-        "smug": "/characters/port-solaris/colette_moreau.png",
-        "surprised": "/characters/port-solaris/colette_moreau.png",
-        "combat_ready": "/characters/port-solaris/colette_moreau.png",
-        "dangerous": "/characters/port-solaris/colette_moreau.png",
-        "hurt": "/characters/port-solaris/colette_moreau.png"
+        "neutral": "/characters/port-solaris/colette_moreau/neutral.png",
+        "intrigued": "/characters/port-solaris/colette_moreau/intrigued.png",
+        "flustered": "/characters/port-solaris/colette_moreau/flustered.png",
+        "smug": "/characters/port-solaris/colette_moreau/smug.png",
+        "surprised": "/characters/port-solaris/colette_moreau/flustered.png",
+        "combat_ready": "/characters/port-solaris/colette_moreau/combat_ready.png",
+        "dangerous": "/characters/port-solaris/colette_moreau/combat_ready.png",
+        "hurt": "/characters/port-solaris/colette_moreau/hurt.png",
+        "beckon": "/characters/port-solaris/colette_moreau/smug.png"
       }
     },
     {
@@ -667,14 +671,15 @@
       "baseImageUrl": "/characters/port-solaris/pippa_reyes.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Sun-kissed athletic freshman girl with short spiky caramel-blonde hair and bright coral-pink highlights, bright turquoise eyes, energetic cheeky grin with a fang-tooth smile and band-aid on her nose bridge, wearing an unzipped red-and-white cropped lifeguard windbreaker over a sporty bikini top, a silver whistle around her neck, holding a beach volleyball under one arm and a parfait spoon in the other. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/pippa_reyes.png",
-        "intrigued": "/characters/port-solaris/pippa_reyes.png",
-        "flustered": "/characters/port-solaris/pippa_reyes.png",
-        "smug": "/characters/port-solaris/pippa_reyes.png",
-        "surprised": "/characters/port-solaris/pippa_reyes.png",
-        "combat_ready": "/characters/port-solaris/pippa_reyes.png",
-        "dangerous": "/characters/port-solaris/pippa_reyes.png",
-        "hurt": "/characters/port-solaris/pippa_reyes.png"
+        "neutral": "/characters/port-solaris/pippa_reyes/neutral.png",
+        "intrigued": "/characters/port-solaris/pippa_reyes/intrigued.png",
+        "flustered": "/characters/port-solaris/pippa_reyes/flustered.png",
+        "smug": "/characters/port-solaris/pippa_reyes/smug.png",
+        "surprised": "/characters/port-solaris/pippa_reyes/flustered.png",
+        "combat_ready": "/characters/port-solaris/pippa_reyes/combat_ready.png",
+        "dangerous": "/characters/port-solaris/pippa_reyes/combat_ready.png",
+        "hurt": "/characters/port-solaris/pippa_reyes/hurt.png",
+        "beckon": "/characters/port-solaris/pippa_reyes/smug.png"
       }
     },
     {
@@ -712,14 +717,15 @@
       "baseImageUrl": "/characters/port-solaris/kaede_tachibana.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Tall toned athletic swordswoman with long glossy ink-black hair tied in a high ponytail, calm golden-amber eyes, stoic dignified expression with a subtle earnest blush, wearing a sleeveless dark indigo kendo keikogi training top over a fitted athletic rashguard, resting a bamboo shinai sword over her shoulder while holding a small paper bag of warm steamed buns. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/kaede_tachibana.png",
-        "intrigued": "/characters/port-solaris/kaede_tachibana.png",
-        "flustered": "/characters/port-solaris/kaede_tachibana.png",
-        "smug": "/characters/port-solaris/kaede_tachibana.png",
-        "surprised": "/characters/port-solaris/kaede_tachibana.png",
-        "combat_ready": "/characters/port-solaris/kaede_tachibana.png",
-        "dangerous": "/characters/port-solaris/kaede_tachibana.png",
-        "hurt": "/characters/port-solaris/kaede_tachibana.png"
+        "neutral": "/characters/port-solaris/kaede_tachibana/neutral.png",
+        "intrigued": "/characters/port-solaris/kaede_tachibana/intrigued.png",
+        "flustered": "/characters/port-solaris/kaede_tachibana/flustered.png",
+        "smug": "/characters/port-solaris/kaede_tachibana/smug.png",
+        "surprised": "/characters/port-solaris/kaede_tachibana/flustered.png",
+        "combat_ready": "/characters/port-solaris/kaede_tachibana/combat_ready.png",
+        "dangerous": "/characters/port-solaris/kaede_tachibana/combat_ready.png",
+        "hurt": "/characters/port-solaris/kaede_tachibana/hurt.png",
+        "beckon": "/characters/port-solaris/kaede_tachibana/smug.png"
       }
     },
     {
@@ -757,14 +763,15 @@
       "baseImageUrl": "/characters/port-solaris/roxy_vance.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Stylish flirty upperclassman girl with tousled shoulder-length auburn-pink hair, bright amber eyes, playful mischievous wink, aviator sunglasses propped on her forehead, wearing an off-shoulder cropped denim jacket over a graphic tank top and a Driftwood Syndicate press pass lanyard, holding a vintage SLR camera up near her chin. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/roxy_vance.png",
-        "intrigued": "/characters/port-solaris/roxy_vance.png",
-        "flustered": "/characters/port-solaris/roxy_vance.png",
-        "smug": "/characters/port-solaris/roxy_vance.png",
-        "surprised": "/characters/port-solaris/roxy_vance.png",
-        "combat_ready": "/characters/port-solaris/roxy_vance.png",
-        "dangerous": "/characters/port-solaris/roxy_vance.png",
-        "hurt": "/characters/port-solaris/roxy_vance.png"
+        "neutral": "/characters/port-solaris/roxy_vance/neutral.png",
+        "intrigued": "/characters/port-solaris/roxy_vance/intrigued.png",
+        "flustered": "/characters/port-solaris/roxy_vance/flustered.png",
+        "smug": "/characters/port-solaris/roxy_vance/smug.png",
+        "surprised": "/characters/port-solaris/roxy_vance/flustered.png",
+        "combat_ready": "/characters/port-solaris/roxy_vance/combat_ready.png",
+        "dangerous": "/characters/port-solaris/roxy_vance/combat_ready.png",
+        "hurt": "/characters/port-solaris/roxy_vance/hurt.png",
+        "beckon": "/characters/port-solaris/roxy_vance/smug.png"
       }
     },
     {
@@ -802,14 +809,15 @@
       "baseImageUrl": "/characters/port-solaris/chloe_lin.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched out-of-focus Mediterranean terrace background with warm golden bokeh. Petite sleepy night-owl girl with long messy dark-blue and black hair with neon-cyan inner streaks, half-lidded lavender eyes, deadpan cozy expression, wearing an oversized pastel arcade hoodie slipping off one shoulder and big headphones around her neck, holding an iced espresso cup with one hand and a custom retro arcade fight-stick under her other arm. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/chloe_lin.png",
-        "intrigued": "/characters/port-solaris/chloe_lin.png",
-        "flustered": "/characters/port-solaris/chloe_lin.png",
-        "smug": "/characters/port-solaris/chloe_lin.png",
-        "surprised": "/characters/port-solaris/chloe_lin.png",
-        "combat_ready": "/characters/port-solaris/chloe_lin.png",
-        "dangerous": "/characters/port-solaris/chloe_lin.png",
-        "hurt": "/characters/port-solaris/chloe_lin.png"
+        "neutral": "/characters/port-solaris/chloe_lin/neutral.png",
+        "intrigued": "/characters/port-solaris/chloe_lin/intrigued.png",
+        "flustered": "/characters/port-solaris/chloe_lin/flustered.png",
+        "smug": "/characters/port-solaris/chloe_lin/smug.png",
+        "surprised": "/characters/port-solaris/chloe_lin/flustered.png",
+        "combat_ready": "/characters/port-solaris/chloe_lin/combat_ready.png",
+        "dangerous": "/characters/port-solaris/chloe_lin/combat_ready.png",
+        "hurt": "/characters/port-solaris/chloe_lin/hurt.png",
+        "beckon": "/characters/port-solaris/chloe_lin/smug.png"
       }
     },
     {
@@ -847,14 +855,15 @@
       "baseImageUrl": "/characters/port-solaris/nadia_saint_clair.png",
       "visualPrompt": "Waist-up three-quarter character portrait, eye-level camera, sun-drenched Mediterranean cliffside wine terrace background with bougainvillea and warm golden bokeh. Striking young woman with deep rich brown skin and short curly snow-white hair with a clean side-undercut fade and soft white ringlets across her forehead, piercing golden-amber eyes behind round gold-rimmed glasses with a delicate gold beaded eyeglass chain draped down her neck, multiple silver ear piercings, glossy black lipstick, sleeveless black mock-neck top, three stacked polished gold arm cuffs on her right upper arm, and an intricate black botanical floral tattoo along her right upper arm and neck. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/nadia_saint_clair.png",
-        "intrigued": "/characters/port-solaris/nadia_saint_clair.png",
-        "flustered": "/characters/port-solaris/nadia_saint_clair.png",
-        "smug": "/characters/port-solaris/nadia_saint_clair.png",
-        "surprised": "/characters/port-solaris/nadia_saint_clair.png",
-        "combat_ready": "/characters/port-solaris/nadia_saint_clair.png",
-        "dangerous": "/characters/port-solaris/nadia_saint_clair.png",
-        "hurt": "/characters/port-solaris/nadia_saint_clair.png"
+        "neutral": "/characters/port-solaris/nadia_saint_clair/neutral.png",
+        "intrigued": "/characters/port-solaris/nadia_saint_clair/intrigued.png",
+        "flustered": "/characters/port-solaris/nadia_saint_clair/flustered.png",
+        "smug": "/characters/port-solaris/nadia_saint_clair/smug.png",
+        "surprised": "/characters/port-solaris/nadia_saint_clair/flustered.png",
+        "combat_ready": "/characters/port-solaris/nadia_saint_clair/combat_ready.png",
+        "dangerous": "/characters/port-solaris/nadia_saint_clair/combat_ready.png",
+        "hurt": "/characters/port-solaris/nadia_saint_clair/hurt.png",
+        "beckon": "/characters/port-solaris/nadia_saint_clair/smug.png"
       }
     },
     {
@@ -892,14 +901,15 @@
       "baseImageUrl": "/characters/port-solaris/zuri_delacroix.png",
       "visualPrompt": "Waist-up character portrait, eye-level camera, sunlit Mediterranean Sunset Rambla botanical café terrace background with hanging greenery and bokeh fairy lights. Charismatic young woman with warm golden-brown bronze skin and vibrant matcha-sage green hair styled in two playful high space-buns with thick, long twin braids framing her shoulders and two smaller braided locks framing her face. Half-lidded teasing chartreuse-emerald green eyes with four small symmetrical beauty-mark stud dots around her eyes, glossy sage-green tinted lips in a playful cat-like smile, hanging iridescent prism-drop earrings, wearing an indigo-violet vest over a crisp white high-collar sleeveless top. Vibrant modern anime visual novel key art.",
       "expressions": {
-        "neutral": "/characters/port-solaris/zuri_delacroix.png",
-        "intrigued": "/characters/port-solaris/zuri_delacroix.png",
-        "flustered": "/characters/port-solaris/zuri_delacroix.png",
-        "smug": "/characters/port-solaris/zuri_delacroix.png",
-        "surprised": "/characters/port-solaris/zuri_delacroix.png",
-        "combat_ready": "/characters/port-solaris/zuri_delacroix.png",
-        "dangerous": "/characters/port-solaris/zuri_delacroix.png",
-        "hurt": "/characters/port-solaris/zuri_delacroix.png"
+        "neutral": "/characters/port-solaris/zuri_delacroix/neutral.png",
+        "intrigued": "/characters/port-solaris/zuri_delacroix/intrigued.png",
+        "flustered": "/characters/port-solaris/zuri_delacroix/flustered.png",
+        "smug": "/characters/port-solaris/zuri_delacroix/smug.png",
+        "surprised": "/characters/port-solaris/zuri_delacroix/flustered.png",
+        "combat_ready": "/characters/port-solaris/zuri_delacroix/combat_ready.png",
+        "dangerous": "/characters/port-solaris/zuri_delacroix/combat_ready.png",
+        "hurt": "/characters/port-solaris/zuri_delacroix/hurt.png",
+        "beckon": "/characters/port-solaris/zuri_delacroix/smug.png"
       }
     }
   ],

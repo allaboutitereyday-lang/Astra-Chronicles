@@ -150,11 +150,10 @@ export function getNarrativeDepthDirective(depth: NarrativeDepthMode = "deep_nov
  * and visual novel markdown immersion across all styles.
  */
 export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY RIGOR, GRAMMAR & PLAIN-TEXT JSON DIRECTIVE ---
-1. GRAMMATICAL ACCURACY & SYNTACTIC POLISH:
-   - Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs.
-   - Strictly prohibit grammatical errors: no comma splices, dropped clauses, run-on fragments, or unnatural tense flipping.
+1. GRAMMATICAL ACCURACY & CONVERSATIONAL SPOKEN DIALOGUE SEPARATION:
+   - In narrative prose (surrounding action and description), maintain clean literary grammar, clear punctuation, active voice, and rich sensory verbs without mechanical AI clichés (avoid repeating "Suddenly...", "As if on cue...", "A testament to...", "A palpable silence...").
    - Maintain consistent past-tense for narrative prose descriptions and present-tense for spoken character dialogue.
-   - Eliminate repetitive robotic AI clichés and machine transitions (e.g. avoid repeating "Suddenly...", "As if on cue...", "A testament to...", "A palpable silence...").
+   - CRITICAL EXEMPTION FOR SPOKEN DIALOGUE ("..."): Spoken words inside quotation marks are EXEMPT from formal-essay clause rules! Characters and the protagonist MUST talk like real humans using natural contractions ("don't", "you're", "I'm", "let's"), casual interjections, and short reactive fragments ("Wait—seriously?", "Yeah, no chance.", "Hold on.", "Fair enough.")—never stiff, multi-clause textbook sentences.
 2. MANDATORY DOUBLE QUOTATION MARKS FOR ALL SPOKEN DIALOGUE:
    - ALL spoken words, verbal banter, and character utterances MUST be cleanly enclosed in standard double quotation marks ("..."). NEVER use single quotes ('...') to wrap spoken dialogue.
    - NEVER output floating or unattributed speech. Every spoken line must be physically anchored to an action beat, facial micro-expression, tone of voice, or spatial movement.
@@ -174,11 +173,11 @@ export const UNIVERSAL_IMMERSION_AND_GRAMMAR_DIRECTIVE = `--- UNIVERSAL LITERARY
    - DESCRIBE ITEMS & GEAR NATURALLY — NEVER PASTE INVENTORY LABELS: Do NOT copy-paste capitalized multi-word UI equipment names into prose or dialogue (e.g., NEVER write "He drew his Concealed Punch-Dagger & Curved Mist-Saber", "adjusted his Iron-Grey Initiate Greatcoat & Brigandine", or "channeled his Fractured Ashen Legion Spine-Node"). Instead, write like a human novelist by referring to items naturally and descriptively ("his curved saber", "the punch-dagger at his belt", "his heavy coat", "the tarnished ring on his thumb", "her brass-bound ledger").
    - REFER TO LOCATIONS ORGANICALLY — NEVER REPEAT MAP BANNERS: Do NOT repeat full capitalized location headers ("The Sky-Crown & Sovereign Terraces", "Stratum I: The Sunken Cloisters", "The Velvet Spill & The Tribunal Pit", "The Seal-Gate & Boarding Quays") in every paragraph or spoken sentence. Refer to the physical space naturally ("the amphitheater", "the flooded cloisters", "the sunken pit", "the boarding quay", "the iron cage", "this sanctum").
    - SHOW TECHNIQUES & MAGIC THROUGH SENSORY ACTION, NOT SKILL-SLOT NAMES: Do NOT insert capitalized RPG skill titles or mechanical jargon into narrative sentences (e.g., avoid writing "executing a Mist-Mirage Tendon Sever" or "using Path A: Somatic Tempering"). Describe the physical movement, breath, light, and impact organically ("leaving a fleeting afterimage in the violet mist as his blade sliced toward the tendon", "steadying his breath until kinetic heat hummed along the steel").
-6. SPOKEN DIALOGUE REALISM, CLARITY & HUMAN CADENCE (CRITICAL):
-   - CONTRAST LITERARY PROSE WITH NATURAL SPOKEN SPEECH: While narrative prose should be atmospheric and vivid, all spoken dialogue inside quotation marks ("...") MUST sound like a real human being talking aloud in the moment—clear, decipherable, conversational, and grounded.
-   - NO TEXTBOOK JARGON OR THESAURUS MONOLOGUES: Characters must NEVER speak in multi-clause academic essays, dictionary definitions, or clinical jargon dumps (e.g., NEVER write stiff lines like "The arborio starch emulsion is unexpectedly intimate", "provided you do not confuse my temporary acquiescence with subservience", "drive a half-sword thrust through its cervical seal", or "negative seventeen frame advantage on block").
-   - NATURAL CONTRACTIONS & HUMAN RHYTHM: Unless a character is speaking a formal oath, use natural spoken contractions ("don't", "you're", "I'll", "it's", "can't") and concise, punchy sentences. Let a character's pride, intelligence, coldness, or shyness shine through their attitude, subtext, and timing—not by stuffing their mouth with ten-dollar words.
-   - SHOW EXPERTISE THROUGH CONFIDENCE, NOT BUZZWORDS: A noblewoman, sommelier, knight, or scholar shows her status through sharp observation and effortless poise, speaking in plain, cutting, or warm human sentences that anyone can immediately understand.`;
+6. SPOKEN DIALOGUE REALISM, PROTAGONIST VOICE & CONVERSATIONAL CADENCE (CRITICAL):
+   - CONTRAST LITERARY PROSE WITH NATURAL SPOKEN SPEECH: While surrounding narrative prose can be atmospheric and vivid, all spoken dialogue inside quotation marks ("...")—especially the protagonist's speech in "player_execution" / "PROTAGONIST BEAT"—MUST sound like a real human being talking casually out loud in the moment.
+   - NO PROPERNESS, TEXTBOOK JARGON, OR STIFF RPG MONOLOGUES: The protagonist and companions must NEVER sound like stiff aristocrats, courtroom lawyers, or academic essays (e.g., NEVER write stiff lines like "The arborio starch emulsion is unexpectedly intimate", "provided you do not confuse my temporary acquiescence with subservience", "State your terms plainly", or "Listen closely, we handle this on my terms").
+   - ADAPTIVE CONVERSATIONAL RHYTHM: Always use natural spoken contractions ("don't", "you're", "I'm", "I'll", "it's", "can't", "let's"), casual conversational hooks ("Wait—", "Hold on,", "Alright,", "Look,", "Come on,"), and punchy everyday phrasing. Whenever the player has typed custom dialogue or actions, mirror their casualness, humor, sentence length, and edge.
+   - SHOW PERSONALITY THROUGH ATTITUDE, NOT STIFF WORDS: Let pride, warmth, dry wit, or sharpness show through timing, teasing, and plain human speech that anyone would actually say aloud.`;
 
 /**
  * Mandatory checklist ensuring the LLM checks universe state, memory, and scene context before responding.
@@ -313,17 +312,19 @@ ${UNIVERSE_STATE_AND_MEMORY_CHECKLIST}`;
  */
 export function getChoicesStyleDirective(rawTone?: string): string {
   const key = resolveNarrationStyleKey(rawTone);
+  const conversationalTail =
+    " Inside every choice, write the protagonist's spoken line ('...') so it sounds like a real person talking casually out loud—using natural contractions, everyday speech rhythm, and tuning directly to the player's own speaking style in recent turns (never stiff, overly proper, or formal).";
   if (key === "tactical_survival") {
-    return `Generate 4 distinct, plot-advancing player action choices reflecting Tactical Dungeon Survival: (1) calling a sharp tactical/meta-knowledge play to clear the immediate floor or objective, (2) checking in on or protecting a squadmate to build real trust, (3) taking a bold combat or Command Seal loophole risk, and (4) advancing to the next floor/zone or returning to Star Gate Plaza (Main Lobby).`;
+    return `Generate 4 distinct, plot-advancing player action choices reflecting Tactical Dungeon Survival: (1) calling a sharp tactical/meta-knowledge play to clear the immediate floor or objective, (2) checking in on or protecting a squadmate to build real trust, (3) taking a bold combat or Command Seal loophole risk, and (4) advancing to the next floor/zone or returning to Star Gate Plaza (Main Lobby).${conversationalTail}`;
   }
   if (key === "coastal_romcom") {
-    return `Generate 4 distinct, plot-advancing player action choices reflecting a Sun-Drenched Coastal Rom-Com & Flair Showdown dynamic: (1) completing the active quest objective or sealing a deal/wager, (2) physically moving to a new island/café location, (3) triggering a hands-on culinary/social showdown or decisive action, and (4) shifting the scene dynamic or bringing in a new activity/character. Never offer 4 stationary banter-only options.`;
+    return `Generate 4 distinct, plot-advancing player action choices reflecting a Sun-Drenched Coastal Rom-Com & Flair Showdown dynamic: (1) completing the active quest objective or sealing a deal/wager, (2) physically moving to a new island/café location, (3) triggering a hands-on culinary/social showdown or decisive action, and (4) shifting the scene dynamic or bringing in a new activity/character. Never offer 4 stationary banter-only options.${conversationalTail}`;
   }
   if (key === "light_novel") {
-    return `Generate 4 distinct, plot-advancing player action choices reflecting a Light Novel / High Fantasy dynamic: proactive, kinetic, and story-driving—advancing quest objectives, transitioning locations, escalating stakes, and initiating decisive action rather than stalling in small talk.`;
+    return `Generate 4 distinct, plot-advancing player action choices reflecting a Light Novel / High Fantasy dynamic: proactive, kinetic, and story-driving—advancing quest objectives, transitioning locations, escalating stakes, and initiating decisive action rather than stalling in small talk.${conversationalTail}`;
   }
   if (key === "noir") {
-    return `Generate 4 distinct, plot-advancing player action choices reflecting a Noir Arcana style: sharp, street-smart underworld maneuvers that close deals, move to new sectors, press critical leads, or escalate the investigation.`;
+    return `Generate 4 distinct, plot-advancing player action choices reflecting a Noir Arcana style: sharp, street-smart underworld maneuvers that close deals, move to new sectors, press critical leads, or escalate the investigation.${conversationalTail}`;
   }
-  return `Generate 4 distinct, plot-advancing player action choices reflecting a Grimdark & Atmospheric style: decisive, calculated actions that advance active objectives, move across sectors, confront hazards, and drive the story forward.`;
+  return `Generate 4 distinct, plot-advancing player action choices reflecting a Grimdark & Atmospheric style: decisive, calculated actions that advance active objectives, move across sectors, confront hazards, and drive the story forward.${conversationalTail}`;
 }

@@ -38,6 +38,7 @@ import {
 } from "@/lib/progressionMechanics";
 import {
   buildDynamicChoiceDirective,
+  extractPlayerVoiceStyleFromHistory,
   getPersonaVoiceProfile,
   buildProtagonistOriginAndIdentityDirective,
   buildPersonalityFallbackChoices,
@@ -278,26 +279,17 @@ export async function POST(req: Request) {
       sanitizedContextSpeaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
     }
 
-    const mergedCompanionsForDossier = (storyContext?.companions || []).map((sc: any) => {
-      const liveMatch = (partyMembers || []).find(
-        (pm: any) => pm.name && sc.name && pm.name.toLowerCase() === sc.name.toLowerCase()
-      );
-      return {
-        ...sc,
-        isPresent: liveMatch ? Boolean(liveMatch.isPresent) : Boolean(sc.isPresent),
-      };
-    });
-
-    const companionDossiers = buildPersonaPromptDossier(
-      mergedCompanionsForDossier,
-      sanitizedContextSpeaker
-    );
-
     const personaVoice = getPersonaVoiceProfile(
       playerProfile?.personality,
       playerProfile?.personalityTraits
     );
     const playerFirstName = (playerProfile?.name || "Wanderer").trim().split(/\s+/)[0] || playerProfile.name;
+    const playerVoiceFingerprint = extractPlayerVoiceStyleFromHistory(
+      recentHistory,
+      playerProfile?.name,
+      action,
+      Boolean(isCustom)
+    );
 
     // Dynamic player input directive
     const inputHandlingInstruction = isCustom
@@ -305,15 +297,19 @@ export async function POST(req: Request) {
 The user wrote their own action verbatim: "${action}".
 - Do NOT rewrite, expand, paraphrase, or narrate what the player does or says.
 - Set "player_execution" to null.
-- Accept their action as immediate canon and advance the scene through world and NPC reactions in "narrative_text".`
+- Accept their action as immediate canon and advance the scene through world and NPC reactions in "narrative_text".
+
+${playerVoiceFingerprint.promptDirectiveBlock}`
       : `[INPUT TYPE: PRESET CHOICE VECTOR SELECTED]
 The user selected this choice/action vector: "${action}".
 - CRITICAL: The user did NOT type this text verbatim. This prompt vector represents their tactical and narrative intent following the format "[Tone/Action]: Short summary of character action/dialogue".
 - In "player_execution", you MUST write a substantial, immersive narrative sequence from the protagonist's perspective (${playerFirstName}, Role: ${playerProfile.role}, Chosen Personality: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}], Stance: ${activeStance || "neutral"}).
-- PERSONALITY VOICE MANDATE FOR "player_execution":
+- PERSONALITY & CONVERSATIONAL VOICE MANDATE FOR "player_execution":
   * Speech Cadence: ${personaVoice.speechCadence}
   * Demeanor: ${personaVoice.attitudeAndWorldview}
-  * Every spoken line and physical gesture in "player_execution" MUST sound unmistakably like a "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}).
+  * Spoken lines in "player_execution" MUST sound like real, casual human conversation—mirroring the player's own speaking style below (contractions, natural phrasing, zero stiff aristocratic/textbook declarations).
+  * Examples of this voice: ${personaVoice.exampleSpokenLines.join(" | ")}
+${playerVoiceFingerprint.promptDirectiveBlock}
 - LENGTH & SUBSTANCE REQUIREMENT: Write **2 full, vivid paragraphs (6 to 10 sentences total)** separated by "\\n\\n".
 - CONTENT REQUIREMENTS FOR "player_execution":
   1. Paragraph 1 (Physical Action, Tactical Stance & Sensory Presence): Describe ${playerFirstName}'s physical movements, natural weapon/gear handling, posture, footsteps, spatial maneuvering, and sensory observations matching their "${personaVoice.personaTitle}" demeanor.
@@ -327,12 +323,12 @@ The user selected this choice/action vector: "${action}".
 
     const isFirstEncounter = !recentHistory || recentHistory.length <= 1;
 
-    // Inspect uploaded protagonist avatar if present using fast vision encoder (cached by image content on server)
+    // Inspect uploaded protagonist avatar if present and not yet described on profile
     let visualDescription: string | null =
       playerProfile?.visualDescription && !isFallbackVisualDescription(playerProfile.visualDescription)
         ? playerProfile.visualDescription
         : null;
-    if (playerAvatarBase64) {
+    if (playerAvatarBase64 && !visualDescription) {
       try {
         const freshDesc = await describeProtagonistAvatar(
           playerAvatarBase64,
@@ -601,50 +597,6 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
         }
       }
     }
-
-    const otherHeroineNames: string[] = (partyMembers || [])
-      .filter((c: any) => c.name && !presentHeroineNames.includes(c.name))
-      .map((c: any) => c.name);
-
-    const candidateNextLocations: string[] = [];
-    const currentLocLower = (gameState?.location || "").toLowerCase();
-    for (const node of storyContext?.startingNodes || []) {
-      if (node?.location && node.location.toLowerCase() !== currentLocLower && !candidateNextLocations.includes(node.location)) {
-        candidateNextLocations.push(node.location);
-      }
-    }
-    for (const comp of storyContext?.companions || []) {
-      if (comp?.defaultLocation && comp.defaultLocation.toLowerCase() !== currentLocLower && !candidateNextLocations.includes(comp.defaultLocation)) {
-        candidateNextLocations.push(comp.defaultLocation);
-      }
-    }
-
-    const dynamicChoiceDirective = buildDynamicChoiceDirective({
-      playerName: playerProfile.name,
-      playerRole: playerProfile.role,
-      playerGender: playerProfile.gender,
-      playerAge: playerProfile.age,
-      worldOrigin: playerProfile.worldOrigin,
-      worldOriginDetails: playerProfile.worldOriginDetails,
-      playerRace: playerProfile.race,
-      racialTraits: playerProfile.racialTraits,
-      personality: playerProfile.personality,
-      personalityTraits: playerProfile.personalityTraits,
-      behavioralTendencies: playerProfile.behavioralTendencies,
-      activeStance,
-      abilities: playerProfile.abilities,
-      location: gameState.location,
-      activeSpeaker: sanitizedContextSpeaker,
-      latestDialogue: gameState.dialogue,
-      mood: gameState.mood,
-      isProtagonistAlone,
-      presentHeroineNames,
-      pendingObjectives,
-      candidateNextLocations: candidateNextLocations.slice(0, 3),
-      otherHeroineNames,
-      storyId: storyContext?.id,
-      turnsInScene: Array.isArray(recentHistory) ? Math.floor(recentHistory.length / 2) : 1,
-    });
 
     const plausibilityCapabilityDirective = buildPlausibilityCapabilityEnvelope(
       playerProfile,
@@ -999,7 +951,70 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
       });
     }
 
-    const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
+    const buildSinglePassFallbackPrompts = () => {
+      const mergedCompanionsForDossier = (storyContext?.companions || []).map((sc: any) => {
+        const liveMatch = (partyMembers || []).find(
+          (pm: any) => pm.name && sc.name && pm.name.toLowerCase() === sc.name.toLowerCase()
+        );
+        return {
+          ...sc,
+          isPresent: liveMatch ? Boolean(liveMatch.isPresent) : Boolean(sc.isPresent),
+        };
+      });
+
+      const companionDossiers = buildPersonaPromptDossier(
+        mergedCompanionsForDossier,
+        sanitizedContextSpeaker
+      );
+
+      const otherHeroineNames: string[] = (partyMembers || [])
+        .filter((c: any) => c.name && !presentHeroineNames.includes(c.name))
+        .map((c: any) => c.name);
+
+      const candidateNextLocations: string[] = [];
+      const currentLocLower = (gameState?.location || "").toLowerCase();
+      for (const node of storyContext?.startingNodes || []) {
+        if (node?.location && node.location.toLowerCase() !== currentLocLower && !candidateNextLocations.includes(node.location)) {
+          candidateNextLocations.push(node.location);
+        }
+      }
+      for (const comp of storyContext?.companions || []) {
+        if (comp?.defaultLocation && comp.defaultLocation.toLowerCase() !== currentLocLower && !candidateNextLocations.includes(comp.defaultLocation)) {
+          candidateNextLocations.push(comp.defaultLocation);
+        }
+      }
+
+      const dynamicChoiceDirective = buildDynamicChoiceDirective({
+        playerName: playerProfile.name,
+        playerRole: playerProfile.role,
+        playerGender: playerProfile.gender,
+        playerAge: playerProfile.age,
+        playerHeight: playerProfile.height,
+        worldOrigin: playerProfile.worldOrigin,
+        worldOriginDetails: playerProfile.worldOriginDetails,
+        playerRace: playerProfile.race,
+        racialTraits: playerProfile.racialTraits,
+        personality: playerProfile.personality,
+        personalityTraits: playerProfile.personalityTraits,
+        behavioralTendencies: playerProfile.behavioralTendencies,
+        activeStance,
+        abilities: playerProfile.abilities,
+        location: gameState.location,
+        activeSpeaker: sanitizedContextSpeaker,
+        latestDialogue: gameState.dialogue,
+        mood: gameState.mood,
+        isProtagonistAlone,
+        presentHeroineNames,
+        pendingObjectives,
+        candidateNextLocations: candidateNextLocations.slice(0, 3),
+        otherHeroineNames,
+        storyId: storyContext?.id,
+        turnsInScene: Array.isArray(recentHistory) ? Math.floor(recentHistory.length / 2) : 1,
+        recentHistory: Array.isArray(recentHistory) ? recentHistory : [],
+        lastPlayerAction: action,
+      });
+
+      const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
 ${isPortSolarisStory ? portSolarisDirective + "\n\n" : ""}${isStarfallStory ? starfallDirective + "\n\n" : ""}${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
 
@@ -1022,28 +1037,28 @@ ${companionDossiers}
         This guarantees the player's equipment updates immediately and the item appears both in inventory and equipped in the active weapon/armor slot.
    - NEVER leave a picked-up weapon or armor solely in prose. If the protagonist takes possession of an item in the story, you MUST emit both "items_dropped" and "gear_granted" in JSON.
    - EXP REWARD: Grant 15-40 EXP on meaningful actions. If a fight, chest, or breakthrough occurs, award loot items or an ability in "player_progression".
-5. Choices: Always generate 4 distinct, engaging prompt options for the next turn. Every single choice MUST strictly follow this format:
-   "[Tone/Action]: Short summary of character action/dialogue"
+5. Choices: Always generate 4 distinct, conversational prompt options for the next turn. Every single choice MUST strictly follow this format:
+   "[Tone/Action]: 'Natural conversational spoken line in player voice' + concrete physical action"
    Examples:
    ${
      isPortSolarisStory
-       ? `- "[Physical Tempo / Culinary Flair]: Fire up the flat-top range and plate a midnight comfort special to test her composure."
-   - "[Social Panache / Table-Turn]: Lean across the mahogany bar and cite Article 6 Clause 6B to call her bluff."
-   - "[Heart-to-Heart / Attentive]: Pour two chilled glasses and ask what she's hiding behind her professional facade."
-   - "[Article 9 Wager / Audacious]: Ring the brass ship's bell and challenge the inspector to a public Sunset Rambla taste-off."`
+       ? `- "[Culinary/Flair]: 'Give me two minutes at the stove—I'll let the plate do the talking.' Fire up the flat-top range to plate a midnight comfort special."
+   - "[Banter/Pushback]: 'Whoa, wait—you're seriously leaning on Article 6 Clause 6B right now?' Lean across the bar with an amused grin to call her bluff."
+   - "[Heart-to-Heart/Deepen]: 'Okay, drop the clipboard for a second—what's actually bugging you?' Pour two chilled glasses and catch her eye."
+   - "[Article 9/Wager]: 'Alright, let's settle this properly—Sunset Rambla taste-off, winner calls the shots.' Ring the brass ship's bell cleanly."`
        : isStarfallStory
-       ? `- "[Meta-Knowledge / Callout]: Pull the squad behind the cracked left pillar two seconds before the boss's breath sweep."
-   - "[Role Technique / Guard]: Intercept the flanking hound's lunge at a seventeen-degree shield angle to protect Pia."
-   - "[Command Loophole / Bold]: Satisfy the Master's rush timer via the side culvert without sacrificing anyone."
-   - "[Move / Return to Lobby]: Extract through the cleared floor ring back to Star Gate Plaza to regroup and summon."`
-       : `- "[Combat/Aggressive]: Step forward and drive your broadsword toward the beast's exposed flank."
-   - "[Arcana/Analytical]: Channel ether into your palm to decipher the fluctuating rune sequence."
-   - "[Subterfuge/Cunning]: Slip into the perimeter shadows and pick the cargo vault lock."
-   - "[Inquire/Diplomatic]: Lower your weapon, meet her cold gaze, and demand to know House Abbandonato's stake here."`
+       ? `- "[Meta-Knowledge/Callout]: 'Hey, step behind that cracked left pillar—two seconds, hurry.' Pull the squad clear right before the boss's breath sweep."
+   - "[Guard/Protect]: 'Hold on, I've got your left—don't move!' Step in cleanly to intercept the flanking hound's lunge before it touches Pia."
+   - "[Loophole/Bold]: 'Wait—the side culvert counts for the timer, doesn't it?' Motion the squad into the drainage tunnel to beat the Master's clock safely."
+   - "[Move/Transition]: 'Everybody grab breath—let's head back through the ring to Star Gate Plaza.' Lead the squad cleanly back to the lobby to regroup."`
+       : `- "[Combat/Aggressive]: 'Alright, let's end this before they regroup!' Step forward and drive your blade toward the beast's exposed flank."
+   - "[Arcana/Analytical]: 'Hold on—look at how that rune flickers.' Channel ether into your palm to trace the flaw in the containment ward."
+   - "[Subterfuge/Cunning]: 'Keep 'em talking for ten seconds—I've got the lock.' Slip into the perimeter shadows toward the cargo vault."
+   - "[Inquire/Direct]: 'Okay, skip the act—what does your house actually want here?' Lower your weapon an inch and meet her gaze straight on."`
    }
-   These tags serve as an explicit intent prompt for the AI to author a rich, thoughtful protagonist action and dialogue in subsequent turns.
+   Keep spoken lines casual, natural, and tuned to ${playerFirstName}'s actual speaking style (use contractions, everyday rhythm, zero stiff/courtroom speeches).
 6. Narrative Prose, Grammar & Strict Plain-Text JSON Formatting:
-   - GRAMMATICAL INTEGRITY: Maintain flawless literary grammar, correct punctuation, active voice, and rich sensory verbs. No comma splices, dropped clauses, run-on fragments, or mechanical AI clichés. Maintain consistent past-tense for narrative action and present-tense for spoken character dialogue.
+   - GRAMMATICAL & CONVERSATIONAL SEPARATION: Keep surrounding narrative prose clean and past-tense with active verbs and zero mechanical AI clichés. However, SPOKEN DIALOGUE inside quotes ("..." and '...') is EXEMPT from formal-essay clause rules—use natural contractions ("I'm", "don't", "you're", "let's"), casual interjections, and natural conversational fragments ("Wait—seriously?", "Yeah, no chance.", "Hold on.") so both the protagonist and heroines talk like real people.
    - NATURAL, DECIPHERABLE SPOKEN DIALOGUE (CRITICAL): Keep surrounding narrative prose rich and atmospheric, but make all spoken character dialogue inside quotation marks ("...") sound like a real human being talking out loud. Preserve each heroine's distinct personality, attitude, and edge, while using natural contractions ("don't", "you're", "I'll") and direct, conversational phrasing. NEVER write robotic, overly verbose, or textbook-jargon speeches in dialogue (no pseudo-academic phrases like "arborio starch emulsion", "temporary acquiescence", "cervical seal", or "negative frame advantage").
    - MANDATORY DOUBLE QUOTATION MARKS: ALL spoken dialogue in both "player_execution" and "narrative_text" MUST be enclosed in standard double quotation marks ("..."). NEVER wrap spoken dialogue in single quotes ('...'). Anchor dialogue to physical gestures, body language, tone, or facial expressions.
    - STRICT NEGATIVE CONSTRAINT: NEVER end "narrative_text" with meta-narration or question clichés such as "The choice of what happens next hangs in the balance", "What will you do next?", "The choice is yours", or "Only time will tell". Conclude cleanly and naturally on an active sensory beat, spoken dialogue line, or environmental detail.
@@ -1203,7 +1218,8 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
     "knowledge_unlocked": {
       "knowsName": boolean, // Set true ONLY if the protagonist explicitly introduced their name in this turn
       "knowsClass": boolean, // Set true ONLY if the protagonist explicitly stated or visibly unleashed their signature class archetype in this turn
-      "knowsOrigin": boolean // Set true ONLY if the protagonist explicitly revealed their Regressor/System origin in this turn
+      "knowsOrigin": boolean, // Set true ONLY if the protagonist explicitly revealed their Regressor/System origin in this turn
+      "learned_fact": string | null // Concise 1-sentence personal fact if the companion learned something new about the protagonist (background, promise, preference, specialty, goal), else null
     },
     "story_clash": {
       "isActive": boolean, // Set true ONLY when lethal blows, spells, or ambushes are actively exchanged this turn. Set null if player is observing, sneaking, talking, or in proximity to an enemy!
@@ -1292,7 +1308,7 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
 
 --- CURRENT CAMPAIGN STATE & DYNAMIC TURN CONTEXT ---
 - Protagonist (Narrator Reference): ${playerProfile.name} | Spoken Dialogue Address by ${sanitizedContextSpeaker}: ${activeSpeakerKnowledge.knowsName ? `"${playerProfile.name}" (Name Known)` : `"stranger" / "wanderer" (NAME UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} — DO NOT USE "${playerProfile.name}" IN DIALOGUE QUOTES)`}
-- Gender & Age: ${playerProfile.gender || "Male"} | Age: ${playerProfile.age || "22"}
+- Gender, Age & Height: ${playerProfile.gender || "Male"} | Age: ${playerProfile.age || "22"} | Height: ${playerProfile.height || "5'11\""}
 - World Origin & System Familiarity: ${playerProfile.worldOrigin || "Born & Raised (Native)"}${playerProfile.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
 - Chosen Personality & Traits: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}] — (${personaVoice.speechCadence})
 - Archetype / Class: ${activeSpeakerKnowledge.knowsClass ? `${playerProfile.role} (Lv.${playerProfile.level} — Class Known)` : `[INTERNAL CLASS: ${playerProfile.role} — UNKNOWN TO ${sanitizedContextSpeaker.toUpperCase()} IN DIALOGUE]`}
@@ -1407,16 +1423,38 @@ ${dynamicChoiceDirective}
 
 ${visualInspectionInstruction}`;
 
-    const messages: any[] = [{ role: "system", content: systemPrompt }];
+      const cleanActionSummary = (action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim() || action;
+      const primaryPendingObj = pendingObjectives[0] || "Resolve the current confrontation and advance to the next scene";
 
-    if (recentHistory && Array.isArray(recentHistory)) {
-      recentHistory.forEach((turn: { speaker: string; text: string }) => {
-        messages.push({
-          role: turn.speaker === playerProfile.name ? "user" : "assistant",
-          content: `${turn.speaker}: ${turn.text}`,
-        });
-      });
-    }
+      const userPromptContent = isCustom
+        ? `[TURN EXECUTION MANDATE — CUSTOM PLAYER ACTION]
+1. Direct Consequence & Story Momentum: In "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" that directly answer ${playerFirstName}'s custom action below. Honor their intent (whether lingering in conversation to deepen the moment or pushing the plot to a new stage/location), and ensure the conversation and story stakes evolve forward without repeating prior beats.
+2. Zero Scene Re-Staging: The events in the previous turn are FINISHED. Do NOT repeat or reorder any quotes, prop actions, or side-character interruptions from the previous turn, and do NOT write spoken dialogue for ${playerFirstName} inside "narrative_text".
+3. 4 Balanced, Conversational Story Choices ("suggested_choices"): Generate 4 distinct choices formatted as "[Tag]: 'Spoken dialogue' + action", matching ${playerFirstName}'s "${personaVoice.personaTitle}" vibe AND mirroring how the player actually talks in their custom action/recent turns (${playerVoiceFingerprint.cadenceSummary} — keep spoken quotes casual, natural, with contractions and zero stiff/formal phrasing):
+   - Choice 1 (Advance Objective / Plot): Directly advance the active objective ("${primaryPendingObj}") or bring the current exchange to a meaningful decision.
+   - Choice 2 (Linger & Deepen): Stay in the current scene to explore a deeper personal/romantic/banter angle with ${sanitizedContextSpeaker}.
+   - Choice 3 (High-Stakes Action / Flair): Take a bold physical action, wager, or hands-on skill move in the scene.
+   - Choice 4 ("[Move/Transition]: ..."): Transition out of ${gameState.location} toward a new area or next phase when ready.
+
+>>> NEW PLAYER ACTION TO ANSWER NOW: "${action}" <<<`
+        : `[TURN EXECUTION MANDATE — PRESET CHOICE VECTOR]
+1. Protagonist Execution ("player_execution"): Expand the choice vector below into a vivid 2-paragraph passage (6–10 sentences separated by "\\n\\n") of ${playerFirstName}'s physical movements and natural, conversational spoken dialogue ("...") in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) voice (${playerVoiceFingerprint.cadenceSummary} — use contractions, casual human phrasing, and zero stiff/formal dialogue). Strip all bracket tags.
+2. World Consequence & Soft Pacing Balance ("narrative_text"): Author ${paragraphSpecLabel} separated by "\\n\\n" showing how ${sanitizedContextSpeaker} and the world directly respond to THIS move ("${cleanActionSummary}").
+   - If the player's move stays in the scene to talk or banter, let them stay and deepen the interaction (revealing new character nuance, shifting emotional tension, or advancing what they are doing together—never looping on the same surface argument).
+   - If the player's move settles a deal, completes a task, or transitions locations, accept the outcome and advance the plot into its next stage (updating "state_updates.current_location" when moving).
+3. Strict Anti-Repetition & Boundary Rules:
+   - NEVER write spoken dialogue or actions for ${playerFirstName} inside "narrative_text" (${playerFirstName}'s speech belongs ONLY in "player_execution").
+   - NEVER repeat, paraphrase, or shuffle paragraphs, quotes, prop gags, or side-character quips from the previous turn!
+4. 4 Balanced, Conversational Story Choices ("suggested_choices"): Write 4 distinct choices formatted as "[Tag]: 'Spoken dialogue' + action" in ${playerFirstName}'s "${personaVoice.personaTitle}" voice, tuned to how the player talks in recent turns (casual contractions, everyday speech rhythm, NEVER stiff or overly proper):
+   - Choice 1 (Advance Objective / Plot): Directly advance the active objective ("${primaryPendingObj}") or settle the current point.
+   - Choice 2 (Linger & Deepen): Remain in the scene to deepen the conversation, personal connection, or banter with ${sanitizedContextSpeaker} from a fresh angle.
+   - Choice 3 (High-Stakes Action / Flair): Initiate a decisive physical action, wager, or signature craft move.
+   - Choice 4 ("[Move/Transition]: ..."): Physically lead the way to a new location or next activity when the player is ready to move on.
+
+>>> SELECTED CHOICE VECTOR TO EXECUTE & ANSWER NOW: "${action}" <<<`;
+
+      return { systemPrompt, userPromptContent };
+    };
 
     function supportsVision(modelName?: string): boolean {
       if (!modelName) return false;
@@ -1430,36 +1468,6 @@ ${visualInspectionInstruction}`;
         m.includes("pixtral")
       );
     }
-
-    const cleanActionSummary = (action || "").replace(/^\[[^\]]+\](?::)?\s*/, "").trim() || action;
-    const primaryPendingObj = pendingObjectives[0] || "Resolve the current confrontation and advance to the next scene";
-
-    const userPromptContent = isCustom
-      ? `[TURN EXECUTION MANDATE — CUSTOM PLAYER ACTION]
-1. Direct Consequence & Story Momentum: In "narrative_text", author ${paragraphSpecLabel} separated by "\\n\\n" that directly answer ${playerFirstName}'s custom action below. Honor their intent (whether lingering in conversation to deepen the moment or pushing the plot to a new stage/location), and ensure the conversation and story stakes evolve forward without repeating prior beats.
-2. Zero Scene Re-Staging: The events in the previous turn are FINISHED. Do NOT repeat or reorder any quotes, prop actions, or side-character interruptions from the previous turn, and do NOT write spoken dialogue for ${playerFirstName} inside "narrative_text".
-3. 4 Balanced Story & Roleplay Choices ("suggested_choices"): Generate 4 distinct choices in ${playerFirstName}'s "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) voice:
-   - Choice 1 (Advance Objective / Plot): Directly advance the active objective ("${primaryPendingObj}") or bring the current exchange to a meaningful decision.
-   - Choice 2 (Linger & Deepen): Stay in the current scene to explore a deeper personal/romantic/banter angle with ${sanitizedContextSpeaker}.
-   - Choice 3 (High-Stakes Action / Flair): Take a bold physical action, wager, or hands-on skill move in the scene.
-   - Choice 4 ("[Move/Transition]: ..."): Transition out of ${gameState.location} toward a new area or next phase when ready.
-
->>> NEW PLAYER ACTION TO ANSWER NOW: "${action}" <<<`
-      : `[TURN EXECUTION MANDATE — PRESET CHOICE VECTOR]
-1. Protagonist Execution ("player_execution"): Expand the choice vector below into a vivid 2-paragraph passage (6–10 sentences separated by "\\n\\n") of ${playerFirstName}'s physical movements and spoken dialogue ("...") in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) voice. Strip all bracket tags.
-2. World Consequence & Soft Pacing Balance ("narrative_text"): Author ${paragraphSpecLabel} separated by "\\n\\n" showing how ${sanitizedContextSpeaker} and the world directly respond to THIS move ("${cleanActionSummary}").
-   - If the player's move stays in the scene to talk or banter, let them stay and deepen the interaction (revealing new character nuance, shifting emotional tension, or advancing what they are doing together—never looping on the same surface argument).
-   - If the player's move settles a deal, completes a task, or transitions locations, accept the outcome and advance the plot into its next stage (updating "state_updates.current_location" when moving).
-3. Strict Anti-Repetition & Boundary Rules:
-   - NEVER write spoken dialogue or actions for ${playerFirstName} inside "narrative_text" (${playerFirstName}'s speech belongs ONLY in "player_execution").
-   - NEVER repeat, paraphrase, or shuffle paragraphs, quotes, prop gags, or side-character quips from the previous turn!
-4. 4 Balanced Story & Roleplay Choices ("suggested_choices"): Write 4 distinct choices in ${playerFirstName}'s "${personaVoice.personaTitle}" voice:
-   - Choice 1 (Advance Objective / Plot): Directly advance the active objective ("${primaryPendingObj}") or settle the current point.
-   - Choice 2 (Linger & Deepen): Remain in the scene to deepen the conversation, personal connection, or banter with ${sanitizedContextSpeaker} from a fresh angle.
-   - Choice 3 (High-Stakes Action / Flair): Initiate a decisive physical action, wager, or signature craft move.
-   - Choice 4 ("[Move/Transition]: ..."): Physically lead the way to a new location or next activity when the player is ready to move on.
-
->>> SELECTED CHOICE VECTOR TO EXECUTE & ANSWER NOW: "${action}" <<<`;
 
     let responseData: any = null;
     let lastError: any = null;
@@ -1522,6 +1530,8 @@ ${visualInspectionInstruction}`;
           isCustomAction: Boolean(isCustom),
           persistentDirectorNotes: persistentNotes,
           pendingObjectives,
+          activeQuests: Array.isArray(systemState?.activeQuests) ? systemState.activeQuests : [],
+          completedQuests: Array.isArray(systemState?.completedQuests) ? systemState.completedQuests : [],
           worldSpecificDirective: isStarfallStory
             ? starfallDirective
             : isPortSolarisStory
@@ -1554,6 +1564,8 @@ ${visualInspectionInstruction}`;
       }
     }
 
+    const singlePassPrompts = !responseData ? buildSinglePassFallbackPrompts() : null;
+
     const effectiveModelId =
       normalizedRequestedModel === "orchestrated-hybrid" ||
       normalizedRequestedModel === "ooc-two-pass-sonnet" ||
@@ -1568,7 +1580,7 @@ ${visualInspectionInstruction}`;
       ? [effectiveModelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
       : (effectiveModelId ? [effectiveModelId, ...FALLBACK_MODELS.filter((m) => m !== effectiveModelId)] : FALLBACK_MODELS);
 
-    for (let modelIdx = 0; !responseData && modelIdx < modelsToTry.length; modelIdx++) {
+    for (let modelIdx = 0; !responseData && singlePassPrompts && modelIdx < modelsToTry.length; modelIdx++) {
       const model = modelsToTry[modelIdx];
       try {
         const fetchUrl = isLocal
@@ -1584,6 +1596,7 @@ ${visualInspectionInstruction}`;
               "X-Title": "Astra Chronicles",
             };
 
+        const { systemPrompt, userPromptContent } = singlePassPrompts;
         const fallbackSysPromptWithOoc = oocParsedForFallback.combinedDirectorNotes
           ? `${systemPrompt}\n\n${starfallCombatTelemetryDirective}\n\n[OOC DIRECTOR STAGE NOTES]: ${oocParsedForFallback.combinedDirectorNotes}`
           : starfallCombatTelemetryDirective
@@ -1797,12 +1810,37 @@ ${visualInspectionInstruction}`;
       responseData.player_execution = `${safePlayerName} shifts weight and commits decisively to the tactical maneuver, ${stanceDesc}. The tension in the air crystallizes as every muscle tightens for immediate follow-through. ${cleanAct}`;
     }
 
-    // Merge LLM-reported knowledge unlocks with pre-turn deterministic unlocks
+    // Re-evaluate spoken lines & explicit disclosures from player_execution before merging LLM unlocks
+    let postExecKnowledgeMap = workingKnowledgeMap;
+    if (responseData.player_execution && typeof responseData.player_execution === "string") {
+      const spokenQuotesInExec = (responseData.player_execution.match(/"[^"\n]+"/g) || []).join(" ");
+      const explicitDisclosureMatches = (
+        responseData.player_execution.match(
+          /\b(?:introduces? (?:himself|herself|themselves)|gives? (?:his|her|their) name|my name is|call me|i am (?:a |an )?[^.,;"]+)\b/gi
+        ) || []
+      ).join(" ");
+      const execEvalText = `${spokenQuotesInExec} ${explicitDisclosureMatches}`.trim();
+      if (execEvalText) {
+        const postExecUnlockEval = evaluateActionForKnowledgeUnlocks(
+          execEvalText,
+          playerProfile?.name || "Wanderer",
+          playerProfile?.role || "Adventurer",
+          playerProfile?.abilities || [],
+          presentHeroineNames,
+          workingKnowledgeMap
+        );
+        postExecKnowledgeMap = postExecUnlockEval.updatedMap;
+      }
+    }
+
+    // Merge LLM-reported knowledge unlocks (including learned personal facts) with deterministic unlocks
     const finalKnowledgeMap = applyLlmKnowledgeUnlocks(
-      workingKnowledgeMap,
+      postExecKnowledgeMap,
       presentHeroineNames,
       responseData.state_updates?.knowledge_unlocked || null
     );
+    responseData.new_memory_unlocked =
+      responseData.new_memory_unlocked || responseData.state_updates?.new_plot_memory || null;
     const finalSpeakerName = String(responseData.speaker || sanitizedContextSpeaker || "Narrator");
     responseData.speaker = finalSpeakerName;
     const speakerKnowsNameNow = getCompanionKnowledge(finalKnowledgeMap, finalSpeakerName).knowsName;

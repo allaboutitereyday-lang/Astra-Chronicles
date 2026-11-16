@@ -384,6 +384,7 @@ export interface PlayerProfile {
   role: string;
   gender?: string; // Character Gender (e.g. "Male", "Female", "Non-Binary", or custom)
   age?: string; // Character Age (e.g. "22", "28", "120")
+  height?: string; // Character Height / Stature (e.g. "5'11\"", "6'2\"", "175 cm")
   worldOrigin?: string; // How the protagonist entered the world (e.g. "Born & Raised (Native)", "Summoned (Otherworlder)", "Reincarnated", "Regressor")
   worldOriginDetails?: string; // Detailed description of world familiarity and system knowledge
   race?: string; // Character Lineage / Race (e.g. "Human", "Lycan", "Demonkin", or custom)
@@ -569,6 +570,7 @@ export interface CompanionKnowledgeState {
   knowsName: boolean;
   knowsClass: boolean;
   knowsOrigin: boolean;
+  knownFacts?: string[];
 }
 
 export type NpcKnowledgeMap = Record<string, CompanionKnowledgeState>;

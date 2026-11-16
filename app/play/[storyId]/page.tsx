@@ -95,10 +95,10 @@ import {
   createBlueprintFromPlayer,
   normalizeCharacterBlueprint,
 } from "@/lib/characterRosterStorage";
-import { StoryCompanion, StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA, HeroineGuardTier, CompanionCoreMemory } from "@/types/story";
+import { StoryCompanion, StoryContext, VisitedStoryNode, AbilityDetail, TimelineEcho, RelicUnsealingCondition, RelicAwakenedForm, CharacterVisualDNA, HeroineGuardTier, CompanionCoreMemory, NpcKnowledgeMap } from "@/types/story";
+import { getCompanionKnowledge } from "@/lib/knowledgeGating";
 import { ensureRelicUnsealingCondition, ensureInventoryRelicConditions, updateInventoryUnsealingProgress, awakenRelicItem } from "@/lib/relicAwakening";
 import { SectorClashHud, ClashCombatPopup, ClashVisualHitEvent } from "@/components/play/SectorClashHud";
-import { CharacterCardModal } from "@/components/play/CharacterCardModal";
 import {
   isExplicitlyNudeOrUnclad,
   isFallbackVisualDescription,
@@ -106,7 +106,7 @@ import {
 } from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { ActionInputBar } from "@/components/play/ActionInputBar";
-import { ChatMessageItem } from "@/components/play/ChatMessageItem";
+import { ChatMessageItem, ChatMessageSwipe } from "@/components/play/ChatMessageItem";
 import {
   evaluateDeathAndRegression,
   CURSED_RELIC_TABLE,
@@ -141,8 +141,6 @@ import { validateKeyClientSide } from "@/lib/clientKeyValidation";
 import { ScreenTransitionOverlay, ScreenTransitionConfig } from "@/components/ScreenTransitionOverlay";
 import { GeneratedGearPiece } from "@/app/api/generate-starting-gear/route";
 import { getNarrationStyleBadge } from "@/lib/narrationStyles";
-import { CloudSyncModal } from "@/components/CloudSyncModal";
-import { WorldGuidebookModal } from "@/components/WorldGuidebookModal";
 import { triggerBackgroundCloudSync, downloadAstraBundleFile } from "@/lib/crossSaveEngine";
 import {
   LlmConfig,
@@ -153,10 +151,6 @@ import {
   CLOUD_MODELS,
   LlmProviderModal,
 } from "@/components/LlmProviderSelector";
-import { SystemQuestModal } from "@/components/SystemQuestModal";
-import { NotificationHistoryModal } from "@/components/NotificationHistoryModal";
-import { WorldShareModal } from "@/components/WorldShareModal";
-import { PortraitEditorModal } from "@/components/play/PortraitEditorModal";
 import { GearManifestScreen } from "@/components/play/GearManifestScreen";
 import {
   GENDER_PRESETS,
@@ -254,9 +248,37 @@ import { StarfallBarracksModal } from "@/components/play/StarfallBarracksModal";
 import { StarfallTacticalCombatHud } from "@/components/play/StarfallTacticalCombatHud";
 import { GameOverModal } from "@/components/play/GameOverModal";
 
-// Dynamic code splitting for heavy interactive canvas graph
+// Dynamic code splitting for heavy interactive canvas graph & secondary modals
 const FlowchartViewer = dynamic(
   () => import("@/components/FlowchartViewer").then((m) => m.FlowchartViewer),
+  { ssr: false }
+);
+const CloudSyncModal = dynamic(
+  () => import("@/components/CloudSyncModal").then((m) => m.CloudSyncModal),
+  { ssr: false }
+);
+const WorldGuidebookModal = dynamic(
+  () => import("@/components/WorldGuidebookModal").then((m) => m.WorldGuidebookModal),
+  { ssr: false }
+);
+const SystemQuestModal = dynamic(
+  () => import("@/components/SystemQuestModal").then((m) => m.SystemQuestModal),
+  { ssr: false }
+);
+const NotificationHistoryModal = dynamic(
+  () => import("@/components/NotificationHistoryModal").then((m) => m.NotificationHistoryModal),
+  { ssr: false }
+);
+const WorldShareModal = dynamic(
+  () => import("@/components/WorldShareModal").then((m) => m.WorldShareModal),
+  { ssr: false }
+);
+const PortraitEditorModal = dynamic(
+  () => import("@/components/play/PortraitEditorModal").then((m) => m.PortraitEditorModal),
+  { ssr: false }
+);
+const CharacterCardModal = dynamic(
+  () => import("@/components/play/CharacterCardModal").then((m) => m.CharacterCardModal),
   { ssr: false }
 );
 
@@ -339,6 +361,7 @@ interface PlayerProfile {
   role: string;
   gender?: string;
   age?: string;
+  height?: string;
   worldOrigin?: string;
   worldOriginDetails?: string;
   race?: string;
@@ -380,6 +403,7 @@ interface RoleplayState {
   mood: string;
   bgImage: string;
   presentCompanions: string[];
+  npcKnowledgeMap?: NpcKnowledgeMap;
 }
 
 interface ChatMessage {
@@ -396,6 +420,9 @@ interface ChatMessage {
   timestamp: string;
   avatarSrc?: string;
   isPending?: boolean;
+  swipes?: ChatMessageSwipe[];
+  activeSwipeIndex?: number;
+  choicesSnapshot?: string[];
 }
 
 interface SaveSlotData {
@@ -821,6 +848,7 @@ export default function VisualNovelGame() {
     role: "",
     gender: "Male",
     age: "22",
+    height: "5'11\"",
     worldOrigin: "Born & Raised (Native)",
     worldOriginDetails: WORLD_ORIGIN_PRESETS[0].defaultDetails,
     race: "Human",
@@ -2365,6 +2393,15 @@ export default function VisualNovelGame() {
   useEffect(() => { activeClashRef.current = activeClash; }, [activeClash]);
   const visitedNodesRef = useRef<VisitedStoryNode[]>(visitedStoryNodes);
   useEffect(() => { visitedNodesRef.current = visitedStoryNodes; }, [visitedStoryNodes]);
+  const isLoadingRef = useRef<boolean>(isLoading);
+  useEffect(() => { isLoadingRef.current = isLoading; }, [isLoading]);
+  const editingTextRef = useRef<string>(editingText);
+  useEffect(() => { editingTextRef.current = editingText; }, [editingText]);
+  const sendActionRef = useRef<((...args: any[]) => Promise<void>) | null>(null);
+  const handleStartGameRef = useRef<((...args: any[]) => Promise<void>) | null>(null);
+  const performAutoSaveRef = useRef<((override?: any) => Promise<void>) | null>(null);
+  const pushNotificationRef = useRef<((notif: any) => void) | null>(null);
+  const pendingSwipeVariantsRef = useRef<ChatMessageSwipe[]>([]);
 
   // Synchronize shared combat, tactical, floor, and quest EXP to living deployed/present companions
   const applySharedSquadExp = useCallback(
@@ -2594,6 +2631,7 @@ export default function VisualNovelGame() {
         role: bp.role || "",
         gender: bp.gender || "Male",
         age: bp.age || "22",
+        height: bp.height || "5'11\"",
         worldOrigin: bp.worldOrigin || "Born & Raised (Native)",
         worldOriginDetails:
           bp.worldOriginDetails ||
@@ -4098,35 +4136,41 @@ export default function VisualNovelGame() {
     if (safeSpeakerLower.includes("valeria")) {
       return "/characters/sovereign-spire/valeria_noctis.png";
     }
+    const portSolarisExprAlias: Record<string, string> = {
+      surprised: "flustered",
+      dangerous: "combat_ready",
+      beckon: "smug",
+    };
+    const portSolarisExpr = portSolarisExprAlias[normalizedKey] ?? validStarfallExpr;
     if (safeSpeakerLower.includes("seraphina")) {
-      return "/characters/port-solaris/seraphina_vane.png";
+      return `/characters/port-solaris/seraphina_vane/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("vivienne")) {
-      return "/characters/port-solaris/vivienne_laurent.png";
+      return `/characters/port-solaris/vivienne_laurent/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("mia")) {
-      return "/characters/port-solaris/mia_bellini.png";
+      return `/characters/port-solaris/mia_bellini/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("colette")) {
-      return "/characters/port-solaris/colette_moreau.png";
+      return `/characters/port-solaris/colette_moreau/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("pippa") || safeSpeakerLower.includes("pip ")) {
-      return "/characters/port-solaris/pippa_reyes.png";
+      return `/characters/port-solaris/pippa_reyes/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("kaede")) {
-      return "/characters/port-solaris/kaede_tachibana.png";
+      return `/characters/port-solaris/kaede_tachibana/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("roxy")) {
-      return "/characters/port-solaris/roxy_vance.png";
+      return `/characters/port-solaris/roxy_vance/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("chloe")) {
-      return "/characters/port-solaris/chloe_lin.png";
+      return `/characters/port-solaris/chloe_lin/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("nadia") || safeSpeakerLower.includes("saint-clair")) {
-      return "/characters/port-solaris/nadia_saint_clair.png";
+      return `/characters/port-solaris/nadia_saint_clair/${portSolarisExpr}.png`;
     }
     if (safeSpeakerLower.includes("zuri") || safeSpeakerLower.includes("delacroix")) {
-      return "/characters/port-solaris/zuri_delacroix.png";
+      return `/characters/port-solaris/zuri_delacroix/${portSolarisExpr}.png`;
     }
     return DEFAULT_FALLBACK_SPRITE;
   };
@@ -4393,14 +4437,18 @@ export default function VisualNovelGame() {
         })
       );
 
-      setGameState({
+      const initialKnowledgeMap: NpcKnowledgeMap = data.npc_knowledge_map || {};
+      const initGameStateSnapshot: RoleplayState = {
         speaker: activeSpeaker,
         location: data.location || chosen.location,
         dialogue: openingPrologueText,
         mood: data.initial_mood || "Guarded & Observant",
         bgImage: initialBg,
         presentCompanions: initialPresentList,
-      });
+        npcKnowledgeMap: initialKnowledgeMap,
+      };
+      gameStateRef.current = initGameStateSnapshot;
+      setGameState(initGameStateSnapshot);
 
       setChatLog([
         {
@@ -4462,6 +4510,7 @@ export default function VisualNovelGame() {
             mood: data.initial_mood || "Guarded & Observant",
             bgImage: initialBg,
             presentCompanions: initialPresentList,
+            npcKnowledgeMap: initialKnowledgeMap,
           },
           party: initPartyState,
           player: playerRef.current || finalStartingPlayer,
@@ -4656,6 +4705,9 @@ export default function VisualNovelGame() {
       }, remainingDelay);
     }
   };
+  useEffect(() => {
+    handleStartGameRef.current = handleStartGame;
+  });
 
   const [confirmDeleteSlot, setConfirmDeleteSlot] = useState<number | null>(null);
 
@@ -4782,6 +4834,10 @@ export default function VisualNovelGame() {
       setIsAutoSaving(false);
     }
   };
+  useEffect(() => {
+    performAutoSaveRef.current = performAutoSave;
+    pushNotificationRef.current = pushNotification;
+  });
 
   const handleNavigateToTrials = async () => {
     soundEffects.playRiftTransition();
@@ -4951,6 +5007,7 @@ export default function VisualNovelGame() {
       ...(hydratedLoadedLabyrinth ? { labyrinthState: hydratedLoadedLabyrinth } : {}),
       gender: loadedPlayer?.gender || "Male",
       age: loadedPlayer?.age || "22",
+      height: loadedPlayer?.height || "5'11\"",
       worldOrigin: loadedPlayer?.worldOrigin || "Born & Raised (Native)",
       worldOriginDetails:
         loadedPlayer?.worldOriginDetails || WORLD_ORIGIN_PRESETS[0].defaultDetails,
@@ -5304,18 +5361,20 @@ export default function VisualNovelGame() {
     setEditingText("");
   }, []);
 
-  const handleSaveEdit = async (id: string, nextText?: string, shouldRegenerate?: boolean) => {
-    const resolvedText = nextText !== undefined ? nextText : editingText;
+  const handleSaveEdit = useCallback(async (id: string, nextText?: string, shouldRegenerate?: boolean) => {
+    const resolvedText = nextText !== undefined ? nextText : editingTextRef.current;
     setEditingMessageId(null);
     setEditingText("");
 
     if (shouldRegenerate) {
       // Find the edited user message index and prune everything from that index onward, then replay the edited action
-      const targetIdx = chatLog.findIndex((m) => m.id === id);
-      if (targetIdx !== -1 && chatLog[targetIdx].sender === "user") {
-        const previousHistory = chatLog.slice(0, targetIdx);
+      const curLog = chatLogRef.current || [];
+      const targetIdx = curLog.findIndex((m) => m.id === id);
+      if (targetIdx !== -1 && curLog[targetIdx].sender === "user") {
+        const previousHistory = curLog.slice(0, targetIdx);
+        chatLogRef.current = previousHistory;
         setChatLog(previousHistory);
-        await sendAction(resolvedText, true);
+        await sendActionRef.current?.(resolvedText, true);
         return;
       }
     }
@@ -5328,7 +5387,7 @@ export default function VisualNovelGame() {
       }
       return prev.map((msg) => (msg.id === id ? { ...msg, text: resolvedText } : msg));
     });
-  };
+  }, []);
 
   const handleDeleteMessage = useCallback(
     (id: string) => {
@@ -5385,29 +5444,165 @@ export default function VisualNovelGame() {
     }
   }, [gameState.dialogue, typingUserMsgId, clearUserTypewriter]);
 
-  const handleRegenerateTurn = async () => {
-    if (isLoading || chatLog.length === 0) return;
+  const handleRegenerateTurn = useCallback(async () => {
+    const curLog = chatLogRef.current || [];
+    if (isLoadingRef.current || curLog.length === 0) return;
 
     // Locate the most recent user message to replay
     let lastUserIdx = -1;
-    for (let i = chatLog.length - 1; i >= 0; i--) {
-      if (chatLog[i].sender === "user") {
+    for (let i = curLog.length - 1; i >= 0; i--) {
+      if (curLog[i].sender === "user") {
         lastUserIdx = i;
         break;
       }
     }
 
+    // Preserve previous character response(s) as swipe variants before regenerating
+    let lastCharIdx = -1;
+    for (let i = curLog.length - 1; i >= 0; i--) {
+      if (curLog[i].sender === "character") {
+        lastCharIdx = i;
+        break;
+      }
+    }
+
     if (lastUserIdx !== -1) {
-      const lastUserMsg = chatLog[lastUserIdx];
-      const previousHistory = chatLog.slice(0, lastUserIdx);
+      if (lastCharIdx > lastUserIdx) {
+        const prevChar = curLog[lastCharIdx];
+        const existingSwipes: ChatMessageSwipe[] =
+          Array.isArray(prevChar.swipes) && prevChar.swipes.length > 0
+            ? prevChar.swipes
+            : [
+                {
+                  text: prevChar.text,
+                  speakerName: prevChar.speakerName,
+                  avatarSrc: prevChar.avatarSrc,
+                  mechanics: prevChar.mechanics,
+                  choices: prevChar.choicesSnapshot || choicesRef.current,
+                },
+              ];
+        pendingSwipeVariantsRef.current = existingSwipes;
+      } else {
+        pendingSwipeVariantsRef.current = [];
+      }
+
+      const lastUserMsg = curLog[lastUserIdx];
+      const previousHistory = curLog.slice(0, lastUserIdx);
+      chatLogRef.current = previousHistory;
       setChatLog(previousHistory);
-      await sendAction(lastUserMsg.text, true);
+      await sendActionRef.current?.(lastUserMsg.text, true);
       return;
     }
 
     // If on the opening Prologue (no user message yet), regenerate the opening scene turn
-    await handleStartGame(player.gear, player.inventory);
-  };
+    pendingSwipeVariantsRef.current = [];
+    const curPlayer = playerRef.current;
+    await handleStartGameRef.current?.(curPlayer?.gear, curPlayer?.inventory);
+  }, []);
+
+  const handleSelectSwipe = useCallback((msgId: string, nextIdx: number) => {
+    if (isLoadingRef.current) return;
+    const curLog = chatLogRef.current || [];
+    const targetPos = curLog.findIndex((m) => m.id === msgId);
+    if (targetPos === -1) return;
+    const targetMsg = curLog[targetPos];
+    if (targetMsg.sender !== "character" || !Array.isArray(targetMsg.swipes) || targetMsg.swipes.length === 0) {
+      return;
+    }
+
+    const clampedIdx = Math.max(0, Math.min(targetMsg.swipes.length - 1, nextIdx));
+    const chosenSwipe = targetMsg.swipes[clampedIdx];
+    if (!chosenSwipe) return;
+
+    soundEffects.playClick();
+    const updatedMsg: ChatMessage = {
+      ...targetMsg,
+      text: chosenSwipe.text,
+      speakerName: chosenSwipe.speakerName || targetMsg.speakerName,
+      avatarSrc: chosenSwipe.avatarSrc ?? targetMsg.avatarSrc,
+      mechanics: chosenSwipe.mechanics !== undefined ? chosenSwipe.mechanics : targetMsg.mechanics,
+      activeSwipeIndex: clampedIdx,
+      choicesSnapshot: chosenSwipe.choices || targetMsg.choicesSnapshot,
+    };
+
+    const nextLog = curLog.map((m, i) => (i === targetPos ? updatedMsg : m));
+    chatLogRef.current = nextLog;
+    setChatLog(nextLog);
+
+    const isLatestChar = !nextLog.slice(targetPos + 1).some((m) => m.sender === "character");
+    let nextGameState = gameStateRef.current;
+    let nextChoices = choicesRef.current;
+
+    if (isLatestChar) {
+      isResumingSaveRef.current = true;
+      setDisplayedText(chosenSwipe.text);
+      nextGameState = {
+        ...gameStateRef.current,
+        speaker: chosenSwipe.speakerName || gameStateRef.current.speaker,
+        dialogue: chosenSwipe.text,
+      };
+      gameStateRef.current = nextGameState;
+      setGameState(nextGameState);
+
+      if (Array.isArray(chosenSwipe.choices) && chosenSwipe.choices.length > 0) {
+        nextChoices = chosenSwipe.choices;
+        choicesRef.current = chosenSwipe.choices;
+        setChoices(chosenSwipe.choices);
+      }
+    }
+
+    performAutoSaveRef.current?.({
+      chatLog: nextLog,
+      gameState: nextGameState,
+      choices: nextChoices,
+    });
+  }, []);
+
+  const handleRewindToMessage = useCallback((msgId: string) => {
+    if (isLoadingRef.current) return;
+    const curLog = chatLogRef.current || [];
+    const targetIdx = curLog.findIndex((m) => m.id === msgId);
+    if (targetIdx === -1 || curLog[targetIdx].sender !== "character") return;
+
+    soundEffects.playIntroBell();
+    pendingSwipeVariantsRef.current = [];
+    const truncatedLog = curLog.slice(0, targetIdx + 1);
+    const targetMsg = truncatedLog[targetIdx];
+
+    chatLogRef.current = truncatedLog;
+    setChatLog(truncatedLog);
+
+    isResumingSaveRef.current = true;
+    setDisplayedText(targetMsg.text);
+
+    const nextGameState: RoleplayState = {
+      ...gameStateRef.current,
+      speaker: targetMsg.speakerName || gameStateRef.current.speaker,
+      dialogue: targetMsg.text,
+    };
+    gameStateRef.current = nextGameState;
+    setGameState(nextGameState);
+
+    let restoredChoices = choicesRef.current;
+    if (Array.isArray(targetMsg.choicesSnapshot) && targetMsg.choicesSnapshot.length > 0) {
+      restoredChoices = targetMsg.choicesSnapshot;
+      choicesRef.current = restoredChoices;
+      setChoices(restoredChoices);
+    }
+
+    performAutoSaveRef.current?.({
+      chatLog: truncatedLog,
+      gameState: nextGameState,
+      choices: restoredChoices,
+    });
+
+    pushNotificationRef.current?.({
+      id: `rewind_${Date.now()}`,
+      type: "system_alert",
+      title: "CHRONICLE REWOUND",
+      subtitle: `Restored timeline to ${targetMsg.speakerName}'s turn (${targetMsg.timestamp}).`,
+    });
+  }, []);
 
   const handleSummonExecuted = (payload: {
     count: 1 | 10;
@@ -5715,6 +5910,8 @@ export default function VisualNovelGame() {
 
     setIsLoading(true);
     setChoices([]);
+    const inheritedSwipes = pendingSwipeVariantsRef.current;
+    pendingSwipeVariantsRef.current = [];
 
     const playerMsgId = `player_msg_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const initialUserText = isCustom
@@ -5767,6 +5964,27 @@ export default function VisualNovelGame() {
     }
 
     try {
+      const rawGsForTurn = gameStateRef.current || gameState;
+      const lightGameStateForTurn =
+        typeof rawGsForTurn?.bgImage === "string" && rawGsForTurn.bgImage.length > 500
+          ? { ...rawGsForTurn, bgImage: undefined }
+          : rawGsForTurn;
+
+      const { gearImages: _omittedTurnGearImages, ...playerSansGearImages } = playerWithTendencies;
+      const lightInventoryForTurn = Array.isArray(playerSansGearImages.inventory)
+        ? playerSansGearImages.inventory.map((item) =>
+            item?.imageUrl && item.imageUrl.length > 500 ? { ...item, imageUrl: undefined } : item
+          )
+        : playerSansGearImages.inventory;
+      const lightPlayerForTurn = {
+        ...playerSansGearImages,
+        inventory: lightInventoryForTurn,
+      };
+      const needsAvatarInspection =
+        chatBeforeTurn.length <= 1 ||
+        !playerWithTendencies.visualDescription ||
+        isFallbackVisualDescription(playerWithTendencies.visualDescription);
+
       const res = await fetch("/api/turn", {
         method: "POST",
         headers: { 
@@ -5776,16 +5994,17 @@ export default function VisualNovelGame() {
         body: JSON.stringify({
           action: formattedPayload,
           isCustom,
-          gameState: gameStateRef.current || gameState,
+          gameState: lightGameStateForTurn,
           partyMembers: partyRef.current || party,
-          playerProfile: playerWithTendencies,
-          playerAvatarBase64: playerAvatar,
+          playerProfile: lightPlayerForTurn,
+          playerAvatarBase64: needsAvatarInspection ? playerAvatar : undefined,
           narrationStyle: narrationStyle || playerWithTendencies?.narrationStyle || currentStory?.narrationStyle || "Grimdark & Atmospheric",
           plotMemories: memoriesRef.current || memories,
           userAccessKey: accessKey,
           systemState: systemStateRef.current || systemState,
           storyContext: currentStory,
           timelineEchoes,
+          npcKnowledgeMap: rawGsForTurn?.npcKnowledgeMap || null,
           activeStance: playerWithTendencies.activeStance || "neutral",
           giftItemContext: giftContext,
           targetEnvironment: llmConfig.targetEnvironment,
@@ -5822,6 +6041,10 @@ export default function VisualNovelGame() {
       if (data._userStats) {
         setUserAuth(data._userStats);
       }
+      const updatedNpcKnowledgeMap: NpcKnowledgeMap =
+        data.state_updates?.npc_knowledge_map ||
+        (gameStateRef.current || gameState)?.npcKnowledgeMap ||
+        {};
       if (
         (data.visual_description && typeof data.visual_description === "string") ||
         data.portrait_attire ||
@@ -6064,7 +6287,8 @@ export default function VisualNovelGame() {
               dynamicCoreMemories: updatedDynamicMemories,
             },
             llmCoreMemory: data.state_updates?.core_memory_unlocked || null,
-            legacyMemoryText: data.new_memory_unlocked || null,
+            legacyMemoryText:
+              data.new_memory_unlocked || data.state_updates?.new_plot_memory || null,
             actionText: formattedPayload,
             narrativeText: narrative,
             oldAffection: comp.affection,
@@ -6352,6 +6576,49 @@ export default function VisualNovelGame() {
           : clampedVitalsPreview.mpChange;
       const rawVitalsReason = data.player_progression?.vitals_reason || null;
 
+      let resolvedChoices = choices;
+      if (data.suggested_choices && Array.isArray(data.suggested_choices)) {
+        const filteredChoices = sanitizeAndFilterChoices(data.suggested_choices);
+        const finalTurnChoices =
+          filteredChoices.length >= 2
+            ? filteredChoices
+            : sanitizeAndFilterChoices(
+                buildPersonalityFallbackChoices({
+                  personality: playerRef.current?.personality,
+                  personalityTraits: playerRef.current?.personalityTraits,
+                  playerRole: playerRef.current?.role,
+                  playerRace: playerRef.current?.race,
+                  activeSpeaker: speakerName || "Narrator",
+                  location: nextLocation || "this sector",
+                  isProtagonistAlone:
+                    presentList.length === 0 &&
+                    (!speakerName || speakerName === "Narrator"),
+                  storyId: currentStory?.id,
+                  genre: currentStory?.genre,
+                  narrativeText: narrative,
+                })
+              );
+        setChoices(finalTurnChoices);
+        resolvedChoices = finalTurnChoices;
+      }
+
+      const companionAvatarSrc = isAmbientSpeaker
+        ? undefined
+        : getSpriteSrc(speakerName, nextExpression);
+      const combinedSwipes: ChatMessageSwipe[] | undefined =
+        inheritedSwipes.length > 0
+          ? [
+              ...inheritedSwipes,
+              {
+                text: narrative,
+                speakerName,
+                avatarSrc: companionAvatarSrc,
+                mechanics: data.mechanics || null,
+                choices: resolvedChoices,
+              },
+            ]
+          : undefined;
+
       const companionMsg: ChatMessage = {
         id: crypto.randomUUID(),
         sender: "character",
@@ -6367,7 +6634,14 @@ export default function VisualNovelGame() {
               }
             : null,
         timestamp: timeString,
-        avatarSrc: isAmbientSpeaker ? undefined : getSpriteSrc(speakerName, nextExpression),
+        avatarSrc: companionAvatarSrc,
+        choicesSnapshot: resolvedChoices,
+        ...(combinedSwipes
+          ? {
+              swipes: combinedSwipes,
+              activeSwipeIndex: combinedSwipes.length - 1,
+            }
+          : {}),
       };
 
       const updatedChatLog = [
@@ -6834,9 +7108,18 @@ export default function VisualNovelGame() {
       }
 
       let nextMemories = memories;
-      if (data.new_memory_unlocked && data.new_memory_unlocked.trim().length > 0) {
-        nextMemories = [...memories, data.new_memory_unlocked.trim()];
-        setMemories(nextMemories);
+      const unlockedPlotMemory =
+        data.new_memory_unlocked || data.state_updates?.new_plot_memory;
+      if (
+        unlockedPlotMemory &&
+        typeof unlockedPlotMemory === "string" &&
+        unlockedPlotMemory.trim().length > 0
+      ) {
+        const cleanPlotMem = unlockedPlotMemory.trim();
+        if (!memories.some((m) => m.toLowerCase() === cleanPlotMem.toLowerCase())) {
+          nextMemories = [...memories, cleanPlotMem];
+          setMemories(nextMemories);
+        }
       }
 
       if (data.system_updates) {
@@ -7192,33 +7475,8 @@ export default function VisualNovelGame() {
         bgImage: nextBg,
         mood: data.state_updates?.mood ?? prev.mood,
         presentCompanions: presentList,
+        npcKnowledgeMap: updatedNpcKnowledgeMap,
       }));
-
-      let resolvedChoices = choices;
-      if (data.suggested_choices && Array.isArray(data.suggested_choices)) {
-        const filteredChoices = sanitizeAndFilterChoices(data.suggested_choices);
-        const finalTurnChoices =
-          filteredChoices.length >= 2
-            ? filteredChoices
-            : sanitizeAndFilterChoices(
-                buildPersonalityFallbackChoices({
-                  personality: playerRef.current?.personality,
-                  personalityTraits: playerRef.current?.personalityTraits,
-                  playerRole: playerRef.current?.role,
-                  playerRace: playerRef.current?.race,
-                  activeSpeaker: speakerName || "Narrator",
-                  location: nextLocation || "this sector",
-                  isProtagonistAlone:
-                    presentList.length === 0 &&
-                    (!speakerName || speakerName === "Narrator"),
-                  storyId: currentStory?.id,
-                  genre: currentStory?.genre,
-                  narrativeText: narrative,
-                })
-              );
-        setChoices(finalTurnChoices);
-        resolvedChoices = finalTurnChoices;
-      }
 
       const snapshotPlayer = {
         ...playerRef.current,
@@ -7251,12 +7509,13 @@ export default function VisualNovelGame() {
             bgImage: nextBg,
             mood: data.state_updates?.mood ?? gameState.mood,
             presentCompanions: presentList,
+            npcKnowledgeMap: updatedNpcKnowledgeMap,
           },
           party: partyRef.current?.length ? partyRef.current : resolvedPartyState,
           player: snapshotPlayer,
           systemState: systemState,
           memories: nextMemories,
-          chatLog: [...chatLog, playerMsg, companionMsg].slice(-20),
+          chatLog: updatedChatLog.slice(-20),
           choices: resolvedChoices,
         },
         isAnchor: true,
@@ -7402,6 +7661,7 @@ export default function VisualNovelGame() {
         bgImage: nextBg,
         mood: data.state_updates?.mood ?? gameState.mood,
         presentCompanions: presentList,
+        npcKnowledgeMap: updatedNpcKnowledgeMap,
       };
       const finalPartySnapshot = partyRef.current?.length ? partyRef.current : resolvedPartyState;
       gameStateRef.current = nextGameStateSnapshot;
@@ -7439,6 +7699,9 @@ export default function VisualNovelGame() {
       setIsLoading(false);
     }
   };
+  useEffect(() => {
+    sendActionRef.current = sendAction;
+  });
 
   // Systems Evolution Handlers (Pitches A, B, C)
   const covenantCheck = useMemo(() => {
@@ -7920,10 +8183,11 @@ export default function VisualNovelGame() {
     return null;
   };
 
-  const handleRerollChoices = async () => {
+  const handleRerollChoices = async (focusHint?: string) => {
     if (isLoading || isRerollingChoices || isDraftingAction) return;
     soundEffects.playClick();
     setIsRerollingChoices(true);
+    const activeFocus = typeof focusHint === "string" ? focusHint.trim() : "";
     try {
       const res = await fetch("/api/generate-choices", {
         method: "POST",
@@ -7936,6 +8200,7 @@ export default function VisualNovelGame() {
           systemState,
           narrationStyle: narrationStyle || player.narrationStyle || currentStory?.narrationStyle,
           modelId: llmConfig.modelId,
+          rerollFocus: activeFocus || undefined,
           storyTitle: currentStory.title,
           location: gameState.location,
           mood: gameState.mood,
@@ -7945,6 +8210,7 @@ export default function VisualNovelGame() {
             name: player.name,
             gender: player.gender,
             age: player.age,
+            height: player.height,
             worldOrigin: player.worldOrigin,
             worldOriginDetails: player.worldOriginDetails,
             race: player.race,
@@ -7967,12 +8233,41 @@ export default function VisualNovelGame() {
         const data = await res.json();
         const sanitizedReroll = sanitizeAndFilterChoices(data.choices);
         if (sanitizedReroll.length > 0) {
+          choicesRef.current = sanitizedReroll;
           setChoices(sanitizedReroll);
+          setChatLog((prevLog) => {
+            let latestCharIdx = -1;
+            for (let i = prevLog.length - 1; i >= 0; i--) {
+              if (prevLog[i].sender === "character") {
+                latestCharIdx = i;
+                break;
+              }
+            }
+            if (latestCharIdx === -1) return prevLog;
+            const nextLog = prevLog.map((m, idx) => {
+              if (idx !== latestCharIdx) return m;
+              if (Array.isArray(m.swipes) && m.swipes.length > 0) {
+                const sIdx =
+                  typeof m.activeSwipeIndex === "number"
+                    ? Math.max(0, Math.min(m.swipes.length - 1, m.activeSwipeIndex))
+                    : m.swipes.length - 1;
+                const updatedSwipes = m.swipes.map((sw, i) =>
+                  i === sIdx ? { ...sw, choices: sanitizedReroll } : sw
+                );
+                return { ...m, choicesSnapshot: sanitizedReroll, swipes: updatedSwipes };
+              }
+              return { ...m, choicesSnapshot: sanitizedReroll };
+            });
+            chatLogRef.current = nextLog;
+            return nextLog;
+          });
           pushNotification({
             id: `reroll_${Date.now()}`,
             type: "level",
             title: "TACTICAL VECTORS REFRESHED",
-            subtitle: `Synthesized ${sanitizedReroll.length} alternative protagonist choices for the current scene.`,
+            subtitle: activeFocus
+              ? `Synthesized ${sanitizedReroll.length} "${activeFocus}"-steered choices for the current scene.`
+              : `Synthesized ${sanitizedReroll.length} alternative protagonist choices for the current scene.`,
           });
         }
       }
@@ -8069,7 +8364,81 @@ export default function VisualNovelGame() {
     });
   };
 
-  const handleCompleteQuest = (questId: string) => {
+  const handleToggleQuestObjective = (questId: string, objectiveIdx: number) => {
+    let activeIdx = systemState.activeQuests.findIndex((q) => q.id === questId);
+    let completedIdx = systemState.completedQuests.findIndex((q) => q.id === questId);
+
+    if (activeIdx === -1 && completedIdx === -1) {
+      console.warn(`[SystemQuest] Quest not found for objective toggle: ${questId}`);
+      return;
+    }
+
+    const isFromActive = activeIdx !== -1;
+    const rawTarget = isFromActive
+      ? systemState.activeQuests[activeIdx]
+      : systemState.completedQuests[completedIdx];
+
+    if (!rawTarget || rawTarget.isClaimed) {
+      return;
+    }
+
+    const existingObjectives = Array.isArray(rawTarget.objectives) ? rawTarget.objectives : [];
+    if (objectiveIdx < 0 || objectiveIdx >= existingObjectives.length) {
+      return;
+    }
+
+    const toggledComplete = !Boolean(existingObjectives[objectiveIdx]?.completed);
+    const updatedObjectives = existingObjectives.map((obj, idx) =>
+      idx === objectiveIdx ? { ...obj, completed: toggledComplete } : obj
+    );
+    const totalObjectives = updatedObjectives.length;
+    const completedCount = updatedObjectives.filter((o) => o?.completed).length;
+    const allDone = totalObjectives > 0 && completedCount === totalObjectives;
+
+    const updatedQuest: SystemQuest = {
+      ...rawTarget,
+      objectives: updatedObjectives,
+      status: allDone ? ("completed" as const) : ("active" as const),
+    };
+
+    let nextActive = [...systemState.activeQuests];
+    let nextCompleted = [...systemState.completedQuests];
+
+    if (isFromActive) {
+      nextActive[activeIdx] = updatedQuest;
+    } else if (!allDone) {
+      // Unclaimed completed quest had an objective unchecked -> return to active list
+      nextCompleted.splice(completedIdx, 1);
+      nextActive.unshift(updatedQuest);
+    } else {
+      nextCompleted[completedIdx] = updatedQuest;
+    }
+
+    let updatedDirs = [...(systemState.systemDirectives || [])];
+    if (toggledComplete) {
+      const toggleMsg = `[SYSTEM: Objective Manually Verified - '${updatedQuest.title}' (${completedCount}/${totalObjectives})]`;
+      if (updatedDirs.length === 0 || updatedDirs[0].toLowerCase() !== toggleMsg.toLowerCase()) {
+        updatedDirs = [toggleMsg, ...updatedDirs];
+      }
+    }
+
+    const nextSystemState: SystemState = {
+      ...systemState,
+      activeQuests: nextActive,
+      completedQuests: nextCompleted,
+      systemDirectives: updatedDirs.slice(0, 40),
+    };
+
+    setSystemState(nextSystemState);
+    if (allDone && toggledComplete) {
+      soundEffects.playQuestComplete();
+    } else {
+      soundEffects.playSystemNotification();
+    }
+    performAutoSave({ player: playerRef.current || player, systemState: nextSystemState });
+  };
+
+  const handleCompleteQuest = (questId: string, forceManualComplete: boolean = false) => {
     // 1. Synchronously find the target quest from current systemState
     let activeIdx = systemState.activeQuests.findIndex((q) => q.id === questId);
     let completedIdx = systemState.completedQuests.findIndex((q) => q.id === questId);
@@ -8093,10 +8462,10 @@ export default function VisualNovelGame() {
       return;
     }
 
-    // Safety guard: Cannot claim rewards if any objectives are still pending
+    // Safety guard: Cannot claim rewards if any objectives are still pending unless explicitly manually completed
     const rawObjs = rawTarget.objectives || [];
     const allDone = rawObjs.length === 0 || rawObjs.every((o) => o?.completed);
-    if (!allDone) {
+    if (!allDone && !forceManualComplete) {
       console.warn(`[SystemQuest] Quest ${questId} has pending objectives; cannot claim clearance.`);
       return;
     }
@@ -8127,7 +8496,10 @@ export default function VisualNovelGame() {
       nextCompleted.unshift(targetQuest);
     }
 
-    const verifyMsg = `[SYSTEM: Clearance Verified - '${targetQuest.title}']`;
+    const verifyMsg =
+      forceManualComplete && !allDone
+        ? `[SYSTEM: Manual Clearance Override - '${targetQuest.title}']`
+        : `[SYSTEM: Clearance Verified - '${targetQuest.title}']`;
     const curDirs = systemState.systemDirectives || [];
     const updatedDirs = curDirs.length > 0 && curDirs[0].toLowerCase() === verifyMsg.toLowerCase()
       ? curDirs
@@ -8200,12 +8572,15 @@ export default function VisualNovelGame() {
     performAutoSave({ player: latestPlayer, systemState: nextSystemState });
 
     // 8. Companion Milestone & Notification Logic
-    const milestoneMatch = targetQuest.id.match(/^milestone_([a-z0-9_]+)_(\d+)$/i);
+    const milestoneMatch = targetQuest.id.match(/^(?:milestone|romance)_([a-z0-9_]+)_(\d+)$/i);
     let compKey = milestoneMatch && milestoneMatch[1] ? milestoneMatch[1] : null;
     let thresholdNum = milestoneMatch && milestoneMatch[2] ? parseInt(milestoneMatch[2], 10) : null;
 
-    if (!compKey && targetQuest.title.includes("[COMPANION QUEST]")) {
-      const thresholdFound = [25, 50, 75, 100].find((t) => targetQuest.title.includes(`${t}%`));
+    if (
+      !compKey &&
+      (targetQuest.title.includes("[COMPANION QUEST]") || targetQuest.title.includes("[HOUSEMATE QUEST]"))
+    ) {
+      const thresholdFound = [25, 50, 75, 90, 100].find((t) => targetQuest.title.includes(`${t}%`));
       thresholdNum = thresholdFound || 25;
       const compFound = party.find((c) => targetQuest.title.toLowerCase().includes(c.name.toLowerCase()));
       compKey = compFound ? compFound.name.toLowerCase().replace(/[^a-z0-9]/g, "_") : "companion";
@@ -8218,12 +8593,17 @@ export default function VisualNovelGame() {
           c.name.toLowerCase().includes(compKey)
       );
       const canonicalName = matchedComp?.name || compKey;
-      const nextCap = thresholdNum === 25 ? 50 : thresholdNum === 50 ? 75 : 100;
+      const nextCap =
+        thresholdNum === 25 ? 50 : thresholdNum === 50 ? 75 : thresholdNum === 75 ? 90 : 100;
 
-      setCompanionCompletedMilestones((prev) => ({
-        ...prev,
-        [canonicalName.toLowerCase()]: [...(prev[canonicalName.toLowerCase()] || []), thresholdNum!],
-      }));
+      setCompanionCompletedMilestones((prev) => {
+        const key = canonicalName.toLowerCase();
+        const existing = prev[key] || [];
+        return {
+          ...prev,
+          [key]: existing.includes(thresholdNum!) ? existing : [...existing, thresholdNum!],
+        };
+      });
 
       soundEffects.playQuestComplete();
       pushNotification({
@@ -8244,6 +8624,11 @@ export default function VisualNovelGame() {
       });
     }
   };
+
+  const normalizedSystemState = useMemo(
+    () => normalizeSystemState(systemState, player.level || 1),
+    [systemState, player.level]
+  );
 
   const hasUnclaimedClearance = useMemo(() => {
     if (!systemState) return false;
@@ -9788,7 +10173,7 @@ export default function VisualNovelGame() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-white/5 items-end">
-                  <div className="md:col-span-5">
+                  <div className="md:col-span-4">
                     <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
                       Character Name
                     </label>
@@ -9827,7 +10212,7 @@ export default function VisualNovelGame() {
                       })}
                     </div>
                   </div>
-                  <div className="md:col-span-3">
+                  <div className="md:col-span-2">
                     <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
                       Age
                     </label>
@@ -9842,6 +10227,24 @@ export default function VisualNovelGame() {
                         })
                       }
                       placeholder="e.g., 19, 22..."
+                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-sky-500 focus:outline-none font-mono"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
+                      Height
+                    </label>
+                    <input
+                      type="text"
+                      value={player.height ?? "5'11\""}
+                      onChange={(e) =>
+                        setPlayer((prev) => {
+                          const next = { ...prev, height: e.target.value };
+                          playerRef.current = next;
+                          return next;
+                        })
+                      }
+                      placeholder="e.g., 5'11&quot;, 6'2&quot;, 180cm"
                       className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-sky-500 focus:outline-none font-mono"
                     />
                   </div>
@@ -12319,6 +12722,8 @@ export default function VisualNovelGame() {
                       onSkipTypewriter={handleSkipTypewriter}
                       onPinMemory={handlePinTurnMessage}
                       onViewPortrait={handleViewMessagePortrait}
+                      onSelectSwipe={handleSelectSwipe}
+                      onRewindToMessage={handleRewindToMessage}
                     />
                   );
                 });
@@ -12509,10 +12914,41 @@ export default function VisualNovelGame() {
                   (Click card to Draft & Edit • Click ⚡ to Send Immediately)
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {!isChoicesCollapsed && (
+                  <div className="hidden sm:flex items-center gap-1 mr-0.5">
+                    <button
+                      type="button"
+                      onClick={() => handleRerollChoices("romantic")}
+                      disabled={isRerollingChoices || isDraftingAction || isLoading}
+                      className="px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-[10px] font-mono text-rose-200 transition-all cursor-pointer disabled:opacity-50"
+                      title="Reroll 4 choices steered toward romance, flirting, and personal connection"
+                    >
+                      ♥ Bond/Flirt
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRerollChoices("objective")}
+                      disabled={isRerollingChoices || isDraftingAction || isLoading}
+                      className="px-2 py-0.5 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-[10px] font-mono text-sky-200 transition-all cursor-pointer disabled:opacity-50"
+                      title="Reroll 4 choices steered toward active objectives and advancing the plot"
+                    >
+                      ⚔ Push Plot
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRerollChoices("bold")}
+                      disabled={isRerollingChoices || isDraftingAction || isLoading}
+                      className="px-2 py-0.5 rounded-lg bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 hover:border-purple-400/60 text-[10px] font-mono text-purple-200 transition-all cursor-pointer disabled:opacity-50"
+                      title="Reroll 4 choices steered toward bold moves, confrontational gambits, or signature skills"
+                    >
+                      ⚡ Bold Play
+                    </button>
+                  </div>
+                )}
                 <button
                   type="button"
-                  onClick={handleRerollChoices}
+                  onClick={() => handleRerollChoices()}
                   disabled={isRerollingChoices || isDraftingAction || isLoading}
                   className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-amber-500/40 text-[10px] font-mono text-zinc-300 hover:text-amber-300 transition-all cursor-pointer disabled:opacity-50"
                   title="Generate 4 alternative protagonist choices for this scene"
@@ -12778,7 +13214,7 @@ export default function VisualNovelGame() {
             )
           : null;
         const cardKnowledge = liveCardComp
-          ? currentStory?.npcKnowledgeMap?.[liveCardComp.name.toLowerCase().trim()]
+          ? getCompanionKnowledge(gameState.npcKnowledgeMap, liveCardComp.name)
           : undefined;
         const cardRosterEntry =
           liveCardComp && currentStory.id === "starfall-labyrinth"
@@ -12806,8 +13242,10 @@ export default function VisualNovelGame() {
       <SystemQuestModal
         isOpen={showSystemModal}
         onClose={() => setShowSystemModal(false)}
-        systemState={normalizeSystemState(systemState)}
+        systemState={normalizedSystemState}
         onCompleteQuest={handleCompleteQuest}
+        onToggleQuestObjective={handleToggleQuestObjective}
+        onManualCompleteQuest={(questId) => handleCompleteQuest(questId, true)}
       />
 
       <NotificationHistoryModal
@@ -13472,9 +13910,9 @@ export default function VisualNovelGame() {
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/30 text-rose-300 font-bold">
                       Persona: {player.personality || "Stoic Pragmatist"}
                     </span>
-                    {(player.gender || player.age) && (
+                    {(player.gender || player.age || player.height) && (
                       <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/30 text-sky-300 font-bold">
-                        {[player.gender, player.age ? `Age ${player.age}` : ""].filter(Boolean).join(" • ")}
+                        {[player.gender, player.age ? `Age ${player.age}` : "", player.height ? `Height ${player.height}` : ""].filter(Boolean).join(" • ")}
                       </span>
                     )}
                     {player.worldOrigin && (

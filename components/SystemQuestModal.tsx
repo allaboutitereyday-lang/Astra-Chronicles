@@ -22,6 +22,8 @@ interface SystemQuestModalProps {
   onClose: () => void;
   systemState: SystemState;
   onCompleteQuest?: (questId: string) => void;
+  onToggleQuestObjective?: (questId: string, objectiveIdx: number) => void;
+  onManualCompleteQuest?: (questId: string) => void;
 }
 
 const DIFFICULTY_STYLES: Record<QuestDifficulty, { label: string; badge: string }> = {
@@ -78,58 +80,70 @@ const TIER_COLORS: Record<PlausibilityTier, { badge: string; text: string; bg: s
   },
 };
 
-export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest }: SystemQuestModalProps) {
+export function SystemQuestModal({
+  isOpen,
+  onClose,
+  systemState,
+  onCompleteQuest,
+  onToggleQuestObjective,
+  onManualCompleteQuest,
+}: SystemQuestModalProps) {
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "directives">("active");
 
-  const rawActiveQuests = Array.isArray(systemState?.activeQuests) ? systemState.activeQuests : [];
-  const rawCompletedQuests = Array.isArray(systemState?.completedQuests) ? systemState.completedQuests : [];
-  const rawSystemDirectives = Array.isArray(systemState?.systemDirectives) ? systemState.systemDirectives : [];
-
-  // Deduplicate completedQuests by id and normalized title (merging isClaimed)
+  // Deduplicate completedQuests, activeQuests, and systemDirectives only while open
   const completedQuests: SystemQuest[] = [];
-  const seenCompletedIds = new Set<string>();
-  const seenCompletedTitles = new Set<string>();
-  for (const q of rawCompletedQuests) {
-    if (!q) continue;
-    const qId = String(q.id || "").trim();
-    const qTitle = String(q.title || "").trim().toLowerCase();
-    if ((qId && seenCompletedIds.has(qId)) || (qTitle && seenCompletedTitles.has(qTitle))) {
-      const existingIdx = completedQuests.findIndex(
-        (cq) => (qId && cq.id === qId) || (qTitle && String(cq.title || "").trim().toLowerCase() === qTitle)
-      );
-      if (existingIdx !== -1 && q.isClaimed) {
-        completedQuests[existingIdx] = { ...completedQuests[existingIdx], isClaimed: true };
-      }
-      continue;
-    }
-    if (qId) seenCompletedIds.add(qId);
-    if (qTitle) seenCompletedTitles.add(qTitle);
-    completedQuests.push(q);
-  }
-
-  // Deduplicate activeQuests and exclude any already in completedQuests
   const activeQuests: SystemQuest[] = [];
-  const seenActiveIds = new Set<string>();
-  const seenActiveTitles = new Set<string>();
-  for (const q of rawActiveQuests) {
-    if (!q) continue;
-    const qId = String(q.id || "").trim();
-    const qTitle = String(q.title || "").trim().toLowerCase();
-    if (
-      (qId && (seenActiveIds.has(qId) || seenCompletedIds.has(qId))) ||
-      (qTitle && (seenActiveTitles.has(qTitle) || seenCompletedTitles.has(qTitle)))
-    ) {
-      continue;
-    }
-    if (qId) seenActiveIds.add(qId);
-    if (qTitle) seenActiveTitles.add(qTitle);
-    activeQuests.push(q);
-  }
+  let systemDirectives: string[] = [];
 
-  const systemDirectives = rawSystemDirectives.filter((dir, idx, arr) => {
-    if (typeof dir !== "string" || !dir.trim()) return false;
-    return arr.indexOf(dir) === idx;
-  });
+  if (isOpen) {
+    const rawActiveQuests = Array.isArray(systemState?.activeQuests) ? systemState.activeQuests : [];
+    const rawCompletedQuests = Array.isArray(systemState?.completedQuests) ? systemState.completedQuests : [];
+    const rawSystemDirectives = Array.isArray(systemState?.systemDirectives) ? systemState.systemDirectives : [];
+
+    // Deduplicate completedQuests by id and normalized title (merging isClaimed)
+    const seenCompletedIds = new Set<string>();
+    const seenCompletedTitles = new Set<string>();
+    for (const q of rawCompletedQuests) {
+      if (!q) continue;
+      const qId = String(q.id || "").trim();
+      const qTitle = String(q.title || "").trim().toLowerCase();
+      if ((qId && seenCompletedIds.has(qId)) || (qTitle && seenCompletedTitles.has(qTitle))) {
+        const existingIdx = completedQuests.findIndex(
+          (cq) => (qId && cq.id === qId) || (qTitle && String(cq.title || "").trim().toLowerCase() === qTitle)
+        );
+        if (existingIdx !== -1 && q.isClaimed) {
+          completedQuests[existingIdx] = { ...completedQuests[existingIdx], isClaimed: true };
+        }
+        continue;
+      }
+      if (qId) seenCompletedIds.add(qId);
+      if (qTitle) seenCompletedTitles.add(qTitle);
+      completedQuests.push(q);
+    }
+
+    // Deduplicate activeQuests and exclude any already in completedQuests
+    const seenActiveIds = new Set<string>();
+    const seenActiveTitles = new Set<string>();
+    for (const q of rawActiveQuests) {
+      if (!q) continue;
+      const qId = String(q.id || "").trim();
+      const qTitle = String(q.title || "").trim().toLowerCase();
+      if (
+        (qId && (seenActiveIds.has(qId) || seenCompletedIds.has(qId))) ||
+        (qTitle && (seenActiveTitles.has(qTitle) || seenCompletedTitles.has(qTitle)))
+      ) {
+        continue;
+      }
+      if (qId) seenActiveIds.add(qId);
+      if (qTitle) seenActiveTitles.add(qTitle);
+      activeQuests.push(q);
+    }
+
+    systemDirectives = rawSystemDirectives.filter((dir, idx, arr) => {
+      if (typeof dir !== "string" || !dir.trim()) return false;
+      return arr.indexOf(dir) === idx;
+    });
+  }
 
   const [selectedQuestId, setSelectedQuestId] = useState<string | null>(
     activeQuests[0]?.id || completedQuests[0]?.id || null
@@ -554,25 +568,71 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
 
                     {/* Objectives */}
                     <div>
-                      <p className="text-xs font-mono text-zinc-400 block mb-2">OBJECTIVES</p>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <p className="text-xs font-mono text-zinc-400">OBJECTIVES</p>
+                        {!selectedQuest.isClaimed && onToggleQuestObjective && (
+                          <span className="text-[10px] font-mono text-zinc-500">
+                            Click any objective to toggle
+                          </span>
+                        )}
+                      </div>
                       <div className="space-y-2">
-                        {(selectedQuest.objectives || []).map((obj, i) => (
-                          <div
-                            key={i}
-                            className={`p-2.5 rounded-xl border flex items-center gap-3 text-xs ${
-                              obj?.completed
-                                ? "bg-emerald-950/30 border-emerald-500/40 text-emerald-200 line-through opacity-80"
-                                : "bg-black/50 border-rose-500/20 text-zinc-200"
-                            }`}
-                          >
-                            {obj?.completed ? (
-                              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                            ) : (
-                              <Circle className="w-4 h-4 text-rose-400 shrink-0" />
-                            )}
-                            <span className="flex-1">{obj?.text || "Investigate objective"}</span>
-                          </div>
-                        ))}
+                        {(selectedQuest.objectives || []).map((obj, i) => {
+                          const canToggle = Boolean(!selectedQuest.isClaimed && onToggleQuestObjective);
+                          const isCompleted = Boolean(obj?.completed);
+
+                          if (canToggle) {
+                            return (
+                              <button
+                                key={i}
+                                type="button"
+                                onClick={() => onToggleQuestObjective?.(selectedQuest.id, i)}
+                                title={isCompleted ? "Click to mark objective incomplete" : "Click to mark objective complete"}
+                                className={`w-full text-left p-2.5 rounded-xl border flex items-center gap-3 text-xs transition-all cursor-pointer group ${
+                                  isCompleted
+                                    ? "bg-emerald-950/35 border-emerald-500/45 text-emerald-200 hover:bg-emerald-950/50"
+                                    : "bg-black/50 border-rose-500/25 text-zinc-200 hover:border-emerald-500/50 hover:bg-emerald-950/20"
+                                }`}
+                              >
+                                {isCompleted ? (
+                                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                                ) : (
+                                  <Circle className="w-4 h-4 text-rose-400 group-hover:text-emerald-400 transition-colors shrink-0" />
+                                )}
+                                <span className={`flex-1 ${isCompleted ? "line-through opacity-80" : ""}`}>
+                                  {obj?.text || "Investigate objective"}
+                                </span>
+                                <span
+                                  className={`text-[10px] font-mono px-2 py-0.5 rounded-md border shrink-0 transition-colors ${
+                                    isCompleted
+                                      ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+                                      : "bg-zinc-900/80 border-white/10 text-zinc-400 group-hover:border-emerald-500/40 group-hover:text-emerald-300"
+                                  }`}
+                                >
+                                  {isCompleted ? "✓ Done" : "Mark Done"}
+                                </span>
+                              </button>
+                            );
+                          }
+
+                          return (
+                            <div
+                              key={i}
+                              className={`p-2.5 rounded-xl border flex items-center gap-3 text-xs ${
+                                isCompleted
+                                  ? "bg-emerald-950/30 border-emerald-500/40 text-emerald-200 line-through opacity-80"
+                                  : "bg-black/50 border-rose-500/20 text-zinc-200"
+                              }`}
+                            >
+                              {isCompleted ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                              ) : (
+                                <Circle className="w-4 h-4 text-rose-400 shrink-0" />
+                              )}
+                              <span className="flex-1">{obj?.text || "Investigate objective"}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -653,12 +713,24 @@ export function SystemQuestModal({ isOpen, onClose, systemState, onCompleteQuest
                     }
 
                     return (
-                      <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-zinc-400 px-1 py-1">
-                        <span className="flex items-center gap-1.5 text-zinc-400">
-                          <Circle className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-                          Objectives In Progress
-                        </span>
-                        <span className="text-zinc-500">Fulfill all objectives to claim clearance</span>
+                      <div className="pt-3 border-t border-white/10 space-y-2.5">
+                        <div className="flex items-center justify-between text-[11px] font-mono text-zinc-400 px-1">
+                          <span className="flex items-center gap-1.5 text-zinc-400">
+                            <Circle className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                            Objectives In Progress
+                          </span>
+                          <span className="text-zinc-500">Check off objectives or mark complete below</span>
+                        </div>
+                        {(onManualCompleteQuest || onCompleteQuest) && (
+                          <button
+                            type="button"
+                            onClick={() => (onManualCompleteQuest || onCompleteQuest)?.(selectedQuest.id)}
+                            className="w-full py-2.5 px-3 rounded-xl border border-emerald-500/45 bg-emerald-950/40 hover:bg-emerald-900/55 hover:border-emerald-400/70 text-emerald-200 font-mono text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>Mark Quest Complete & Claim Rewards</span>
+                          </button>
+                        )}
                       </div>
                     );
                   })()}

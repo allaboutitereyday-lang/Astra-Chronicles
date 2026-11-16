@@ -4,6 +4,7 @@ import { getNarrationProseDirective } from "@/lib/narrationStyles";
 import { sanitizeVisualNovelProse, humanizeGearForProse, humanizeLocationForProse } from "@/lib/proseSanitizer";
 import { resolvePortraitAttireLabel } from "@/lib/visionEncoder";
 import {
+  extractPlayerVoiceStyleFromHistory,
   getPersonaVoiceProfile,
   buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
@@ -81,12 +82,12 @@ function buildFallbackTwoParagraphAction(params: {
   const spokenLine =
     extractedQuote ||
     (isProtagonistAlone
-      ? `The trail doesn't end here. Whatever is waiting deeper inside, I'm going to draw it into the light.`
-      : `Listen closely, ${speakerFirstName}. We handle this on my terms—stay sharp and watch the perimeter while we make our move.`);
+      ? `Okay, let's see what's actually waiting down this way.`
+      : `Alright, ${speakerFirstName}—let's handle this our way. Stick with me.`);
 
   const paragraph2 = isProtagonistAlone
-    ? `Drawing a slow, steadying breath against the chill air, ${playerFirstName}'s gaze locks onto the path ahead with unflinching resolve. "${spokenLine}" The quiet declaration hangs in the air for a beat before ${playerFirstName} advances another step, ready for whatever answers from the shadows.`
-    : `Meeting ${speakerFirstName}'s gaze without a flicker of hesitation, ${playerFirstName} lets the weight of the moment settle between them before speaking in a steady, resonant voice. "${spokenLine}" Holding that eye contact for a deliberate beat, ${playerFirstName} waits for her answer.`;
+    ? `Letting out a quick breath against the cool air, ${playerFirstName} keeps eyes forward and stays light on both feet. "${spokenLine}" After a brief pause to gauge the room, ${playerFirstName} moves ahead into the shadows.`
+    : `Catching ${speakerFirstName}'s eye without forcing it, ${playerFirstName} lets an easy beat pass before speaking up in a relaxed, natural tone. "${spokenLine}" Holding her gaze for a second, ${playerFirstName} waits to see how she'll take it.`;
 
   return `${ sanitizeVisualNovelProse(paragraph1) }\n\n${ sanitizeVisualNovelProse(paragraph2) }`;
 }
@@ -103,6 +104,9 @@ export async function POST(req: Request) {
       partyMembers = [],
       activeStance = "neutral",
       narrationStyle,
+      storyContext,
+      storyId: rawStoryId,
+      genre: rawGenre,
       recentHistory = [],
       targetEnvironment = "cloud",
       modelId,
@@ -181,25 +185,49 @@ export async function POST(req: Request) {
     const playerFirstName = playerName.trim().split(/\s+/)[0] || playerName;
     const speakerFirstName = sanitizedSpeaker.trim().split(/\s+/)[0] || sanitizedSpeaker;
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
+    const voiceFingerprint = extractPlayerVoiceStyleFromHistory(
+      Array.isArray(recentHistory) ? recentHistory : [],
+      playerName
+    );
+    const resolvedGenreLabel = (() => {
+      const explicitGenre = storyContext?.genre || rawGenre;
+      if (typeof explicitGenre === "string" && explicitGenre.trim()) {
+        return explicitGenre.trim().toLowerCase();
+      }
+      const combinedHints = `${rawStoryId || ""} ${effectiveTone} ${location}`.toLowerCase();
+      if (combinedHints.includes("coastal") || combinedHints.includes("rom-com") || combinedHints.includes("port solaris") || combinedHints.includes("stray anchor")) {
+        return "modern coastal rom-com";
+      }
+      if (combinedHints.includes("tactical") || combinedHints.includes("starfall") || combinedHints.includes("labyrinth")) {
+        return "tactical dungeon survival LitRPG";
+      }
+      if (combinedHints.includes("noir")) {
+        return "noir fantasy";
+      }
+      return "interactive fiction";
+    })();
 
-    const systemPrompt = `You are the Protagonist Action & Dialogue Author for an interactive dark fantasy visual novel.
+    const systemPrompt = `You are the Protagonist Action & Dialogue Author for an interactive ${resolvedGenreLabel} visual novel.
 ${getNarrationProseDirective(effectiveTone, "standard")}
 
-Your sole task is to expand the player's selected choice vector into an immersive, publication-grade **2-paragraph protagonist action and spoken dialogue passage** from ${playerFirstName}'s perspective so the player can review and edit it before sending.
+Your sole task is to expand the player's selected choice vector into an immersive, natural **2-paragraph protagonist action and spoken dialogue passage** from ${playerFirstName}'s perspective so the player can review and edit it before sending.
 
 --- PROTAGONIST PROFILE ---
 - First Name (Use this in prose): ${playerFirstName} (Full Name: ${playerName} — do NOT repeat their surname in narrative prose)
-- Gender & Age: ${playerProfile?.gender || "Male"} | Age: ${playerProfile?.age || "22"}
+- Gender, Age & Height: ${playerProfile?.gender || "Male"} | Age: ${playerProfile?.age || "22"} | Height: ${playerProfile?.height || "5'11\""}
 - World Origin & System Familiarity: ${playerProfile?.worldOrigin || "Born & Raised (Native)"}${playerProfile?.worldOriginDetails ? ` (${playerProfile.worldOriginDetails})` : ""}
 - Class / Archetype: ${playerRole} (Lv.${playerProfile?.level || 1})
 - Lineage / Species: ${playerRace}${racialTraits.length > 0 ? ` (Biological Traits: ${racialTraits.join(", ")})` : ""}
 - Chosen Personality: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}]
 - Speech Cadence: ${personaVoice.speechCadence}
+- Conversational Examples: ${personaVoice.exampleSpokenLines.join(" | ")}
 - Demeanor & Worldview: ${personaVoice.attitudeAndWorldview}
 - Active Stance: [${(activeStance || "neutral").toUpperCase()}]
 - Physical Gear Description: ${visibleWeapon} | ${visibleArmor}
 
 ${originAndIdentityDirective}
+
+${voiceFingerprint.promptDirectiveBlock}
 
 --- ACTIVE SCENE CONTEXT ---
 - Setting: ${naturalLocation}
@@ -209,14 +237,17 @@ ${Array.isArray(playerProfile?.pinnedMemories) && playerProfile.pinnedMemories.l
 
 ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
 
---- MANDATORY 2-PARAGRAPH STRUCTURE & HUMAN-PROSE CONSTRAINTS ---
-1. EXACTLY 2 RICH PARAGRAPHS (6 to 10 sentences total), separated by a double line break ("\\n\\n"):
-   - PARAGRAPH 1 (Physical Choreography, Sensory Grounding & Tactical Presence): Describe ${playerFirstName}'s physical movements, posture, natural weapon handling (${visibleWeapon}), anatomical/lineage sensory awareness (${playerRace}), and spatial maneuvering as they execute the chosen intent.
-   - PARAGRAPH 2 (Spoken Dialogue & Psychological Delivery): Include ${playerFirstName}'s actual spoken dialogue enclosed in standard double quotation marks ("...") voiced unmistakably in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) cadence, anchored to facial micro-expressions, eye contact with ${speakerFirstName}, and vocal tone.
-2. NATURAL HUMAN DICTION (CRITICAL):
+--- MANDATORY 2-PARAGRAPH STRUCTURE & CONVERSATIONAL SPOKEN DIALOGUE CONSTRAINTS ---
+1. EXACTLY 2 CRISP PARAGRAPHS (5 to 9 sentences total), separated by a double line break ("\\n\\n"):
+   - PARAGRAPH 1 (Physical Choreography, Sensory Grounding & Presence): Describe ${playerFirstName}'s physical movements, posture, natural item/gear handling (${visibleWeapon}), anatomical/lineage sensory awareness (${playerRace}), and spatial maneuvering as they execute the chosen intent.
+   - PARAGRAPH 2 (Conversational Spoken Dialogue & Delivery): Include ${playerFirstName}'s actual spoken dialogue enclosed in standard double quotation marks ("...") voiced naturally in their "${personaVoice.personaTitle}" (${personaVoice.traitsList.join(", ")}) vibe and **matched to their live speaking style above**, anchored to facial expression, eye contact with ${speakerFirstName}, and relaxed body language.
+2. NATURAL CONVERSATIONAL SPEECH (CRITICAL — ANTI-PROPERNESS RULE):
+   - Keep spoken dialogue inside "..." genuinely casual, human, and conversational—use normal contractions ("I'm", "don't", "you're", "let's", "that's"), everyday vocabulary, and natural spoken fragments ("Wait—seriously?", "Alright, fair enough.", "Hold on.").
+   - If the selected choice already contains a spoken quote, expand around that exact tone cleanly—NEVER make ${playerFirstName} sound stiff, overly proper, formal, or theatrical (banned: "State your terms", "steady, resonant voice", "Listen closely, we handle this on my terms").
+3. NATURAL HUMAN DICTION:
    - Refer to the protagonist strictly by first name ("${playerFirstName}") and pronouns, and refer to companions by their first name ("${speakerFirstName}")—NEVER repeat full first+last names ("${playerName}", "${sanitizedSpeaker}").
-   - NEVER paste capitalized inventory item strings, class titles, or map banner headers into the prose. Describe weapons, clothing, and surroundings naturally like a human novelist (e.g., "his blade", "her gloved wrist", "the stone floor", "the damp air").
-3. STRICT BOUNDARIES:
+   - NEVER paste capitalized inventory item strings, class titles, or map banner headers into the prose. Describe weapons, clothing, and surroundings naturally like a human novelist (e.g., "his blade", "her gloved wrist", "the stone floor", "the warm counter").
+4. STRICT BOUNDARIES:
    - Write ONLY ${playerFirstName}'s action, internal focus, and spoken dialogue.
    - DO NOT narrate ${speakerFirstName}'s reply or decide the outcome of the companion's reaction yet (the companion will react after the user sends this turn).
    - DO NOT include bracket tags like "[Combat/Aggressive]:" or Markdown asterisks (* or **).
@@ -270,7 +301,7 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
               { role: "system", content: systemPrompt },
               {
                 role: "user",
-                content: `Selected Choice Vector: "${action}"\n\nExpand this choice into a vivid 2-paragraph protagonist action and spoken dialogue passage for ${playerName} (${personaVoice.personaTitle}). Separate the 2 paragraphs with "\\n\\n". Do NOT include bracket tags or companion reactions.`,
+                content: `Selected Choice Vector: "${action}"\n\nExpand this choice into a natural 2-paragraph protagonist action and conversational spoken dialogue passage for ${playerName} (${personaVoice.personaTitle}, matching their speaking cadence: ${voiceFingerprint.register}). Separate the 2 paragraphs with "\\n\\n". Use casual contractions and natural speech—never stiff or formal. Do NOT include bracket tags or companion reactions.`,
               },
             ],
             temperature: effectiveTemperature,

@@ -81,7 +81,12 @@ export interface CharacterCardModalProps {
   liveBpm?: number;
   shopRole?: ShopRole | string;
   roomNumber?: number;
-  npcKnowledge?: { knowsName?: boolean; knowsClass?: boolean; knowsOrigin?: boolean };
+  npcKnowledge?: {
+    knowsName?: boolean;
+    knowsClass?: boolean;
+    knowsOrigin?: boolean;
+    knownFacts?: string[];
+  };
   onSelectRole?: (role: ShopRole) => void;
   starfallRosterEntry?: HeroRosterEntry | null;
 }
@@ -1084,6 +1089,20 @@ export function CharacterCardModal({
                       <span>{npcKnowledge?.knowsOrigin ? "Disclosed" : "Masked"}</span>
                     </div>
                   </div>
+                  {Array.isArray(npcKnowledge?.knownFacts) && npcKnowledge.knownFacts.length > 0 && (
+                    <div className="pt-2 border-t border-white/10 space-y-1">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 font-semibold block">
+                        Personal Facts Learned About You
+                      </span>
+                      <ul className="space-y-1 text-[11px] text-zinc-200 list-disc list-inside">
+                        {npcKnowledge.knownFacts.map((fact, idx) => (
+                          <li key={idx} className="leading-snug">
+                            {fact}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1105,6 +1124,32 @@ export function CharacterCardModal({
                         ? "A summoned hero fighting to survive the Starfall Labyrinth."
                         : "A key figure on Port Solaris.")}
                   </p>
+                </div>
+
+                {/* What She Has Learned About You */}
+                <div className="p-3.5 rounded-2xl bg-cyan-950/25 border border-cyan-500/30 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-cyan-300 uppercase text-[10px] tracking-wider font-bold flex items-center gap-1.5">
+                      <Eye className="w-3.5 h-3.5 text-cyan-400" />
+                      What She Has Learned About You
+                    </span>
+                    <span className="text-[10px] font-mono text-zinc-400">
+                      {Array.isArray(npcKnowledge?.knownFacts) ? npcKnowledge.knownFacts.length : 0} Recorded
+                    </span>
+                  </div>
+                  {Array.isArray(npcKnowledge?.knownFacts) && npcKnowledge.knownFacts.length > 0 ? (
+                    <ul className="space-y-1 text-[11px] text-zinc-200 list-disc list-inside">
+                      {npcKnowledge.knownFacts.map((fact, idx) => (
+                        <li key={idx} className="leading-relaxed">
+                          {fact}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-[11px] text-zinc-400 italic leading-relaxed">
+                      Share your background, preferences, promises, or specialty in dialogue to record personal details she remembers about you here.
+                    </p>
+                  )}
                 </div>
 
                 {/* Starfall Chronicle Quote & Voice Brief */}

@@ -30,6 +30,20 @@ const CANONICAL_COMPANIONS = [
   "Chloe Lin",
   "Nadia Saint-Clair",
   "Zuri Delacroix",
+  "Lyra Nocturne",
+  "Sable Ashgrove",
+  "Pia Hollis",
+  "Aurelle, the Seraph Lance",
+  "Mei Zhou",
+  "Dame Odette Varr",
+  "Abraxia",
+  "Godiva",
+  "Vaelkor",
+  "Garrick Ironbrow",
+  "Sir Roland Vance",
+  "Lotte Klein",
+  "Onyxia Cryss",
+  "Trinity Valoren",
 ];
 
 const COMPANION_SHADOW_SECRETS: Record<string, string> = {
@@ -85,6 +99,7 @@ export function createDefaultNpcKnowledgeMap(
       knowsName: false,
       knowsClass: false,
       knowsOrigin: false,
+      knownFacts: [],
     };
   }
 
@@ -95,6 +110,7 @@ export function createDefaultNpcKnowledgeMap(
           knowsName: false,
           knowsClass: false,
           knowsOrigin: false,
+          knownFacts: [],
         };
       }
     }
@@ -134,16 +150,22 @@ export function getCompanionKnowledge(
   companionName: string
 ): CompanionKnowledgeState {
   if (!map || !companionName) {
-    return { knowsName: false, knowsClass: false, knowsOrigin: false };
+    return { knowsName: false, knowsClass: false, knowsOrigin: false, knownFacts: [] };
   }
   const key = resolveCompanionKnowledgeKey(map, companionName);
-  return (
-    map[key] || {
+  const found = map[key];
+  if (!found) {
+    return {
       knowsName: false,
       knowsClass: false,
       knowsOrigin: false,
-    }
-  );
+      knownFacts: [],
+    };
+  }
+  return {
+    ...found,
+    knownFacts: Array.isArray(found.knownFacts) ? found.knownFacts : [],
+  };
 }
 
 /**
@@ -235,8 +257,12 @@ export function evaluateActionForKnowledgeUnlocks(
       knowsName: false,
       knowsClass: false,
       knowsOrigin: false,
+      knownFacts: [],
     };
-    const next = { ...current };
+    const next: CompanionKnowledgeState = {
+      ...current,
+      knownFacts: Array.isArray(current.knownFacts) ? [...current.knownFacts] : [],
+    };
 
     if (revealsName && !next.knowsName) {
       next.knowsName = true;
@@ -259,14 +285,34 @@ export function evaluateActionForKnowledgeUnlocks(
 
 /**
  * Merges LLM-reported knowledge unlock flags (`knowledge_unlocked`) into the NpcKnowledgeMap
- * for all physically present companions.
+ * for all physically present companions, appending any learned personal facts.
  */
 export function applyLlmKnowledgeUnlocks(
   currentMap: NpcKnowledgeMap,
   presentCompanionNames: string[],
-  llmUnlocks?: Partial<CompanionKnowledgeState> | null
+  llmUnlocks?:
+    | (Partial<CompanionKnowledgeState> & {
+        learned_fact?: string | null;
+        known_facts?: string[];
+      })
+    | null
 ): NpcKnowledgeMap {
   if (!llmUnlocks || presentCompanionNames.length === 0) return currentMap;
+
+  const incomingFacts: string[] = [];
+  if (typeof llmUnlocks.learned_fact === "string" && llmUnlocks.learned_fact.trim().length > 3) {
+    incomingFacts.push(llmUnlocks.learned_fact.trim());
+  }
+  if (Array.isArray(llmUnlocks.known_facts)) {
+    for (const f of llmUnlocks.known_facts) {
+      if (typeof f === "string" && f.trim().length > 3) incomingFacts.push(f.trim());
+    }
+  }
+  if (Array.isArray(llmUnlocks.knownFacts)) {
+    for (const f of llmUnlocks.knownFacts) {
+      if (typeof f === "string" && f.trim().length > 3) incomingFacts.push(f.trim());
+    }
+  }
 
   const nextMap: NpcKnowledgeMap = { ...currentMap };
   for (const compName of presentCompanionNames) {
@@ -275,11 +321,20 @@ export function applyLlmKnowledgeUnlocks(
       knowsName: false,
       knowsClass: false,
       knowsOrigin: false,
+      knownFacts: [],
     };
+    const mergedFacts = Array.isArray(prev.knownFacts) ? [...prev.knownFacts] : [];
+    for (const fact of incomingFacts) {
+      const normalized = fact.toLowerCase();
+      if (!mergedFacts.some((existing) => existing.toLowerCase() === normalized)) {
+        mergedFacts.push(fact);
+      }
+    }
     nextMap[key] = {
       knowsName: prev.knowsName || Boolean(llmUnlocks.knowsName),
       knowsClass: prev.knowsClass || Boolean(llmUnlocks.knowsClass),
       knowsOrigin: prev.knowsOrigin || Boolean(llmUnlocks.knowsOrigin),
+      knownFacts: mergedFacts.slice(-12),
     };
   }
   return nextMap;
@@ -334,17 +389,22 @@ export function buildKnowledgeGateDirective(
       ? `[SYSTEM UNLOCKED: ${compName} is aware of the protagonist's Regressor / System Anchor nature.]`
       : `[SYSTEM LOCK — ORIGIN UNKNOWN: ${compName} does NOT know the protagonist is bound to the System Administrator or retains Regressor timeline memories.]`;
 
+    const learnedFactsRule =
+      Array.isArray(k.knownFacts) && k.knownFacts.length > 0
+        ? `\n  4. [LEARNED PERSONAL FACTS ABOUT PROTAGONIST]: ${k.knownFacts.join(" | ")}`
+        : "";
+
     const shadowKey = Object.keys(COMPANION_SHADOW_SECRETS).find(
       (sk) => sk.toLowerCase() === compName.toLowerCase() || compName.toLowerCase().includes(sk.split(" ")[0].toLowerCase())
     );
     const shadowSecretRule = shadowKey
-      ? `\n  4. [COMPANION SHADOW AGENDA & SECRET GATE]: ${COMPANION_SHADOW_SECRETS[shadowKey]}`
+      ? `\n  5. [COMPANION SHADOW AGENDA & SECRET GATE]: ${COMPANION_SHADOW_SECRETS[shadowKey]}`
       : "";
 
     return `Companion "${compName}" Diegetic Knowledge State:
   1. ${nameRule}
   2. ${classRule}
-  3. ${originRule}${shadowSecretRule}`;
+  3. ${originRule}${learnedFactsRule}${shadowSecretRule}`;
   });
 
   return `--- STRICT ANTI-METAGAMING & DIEGETIC NPC KNOWLEDGE GATE (MANDATORY) ---

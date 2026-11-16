@@ -12,8 +12,18 @@ import {
   Zap,
   Bookmark,
   Trash2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+
+export interface ChatMessageSwipe {
+  text: string;
+  speakerName: string;
+  avatarSrc?: string;
+  mechanics?: string | null;
+  choices?: string[];
+}
 
 export interface ChatMessageData {
   id: string;
@@ -29,6 +39,9 @@ export interface ChatMessageData {
   timestamp: string;
   avatarSrc?: string;
   isPending?: boolean;
+  swipes?: ChatMessageSwipe[];
+  activeSwipeIndex?: number;
+  choicesSnapshot?: string[];
 }
 
 export interface ChatMessageItemProps {
@@ -52,6 +65,8 @@ export interface ChatMessageItemProps {
   onViewPortrait?: (imageUrl: string, name?: string) => void;
   onPinMemory?: (text: string, speakerName: string) => void;
   onDeleteMessage?: (id: string) => void;
+  onSelectSwipe?: (msgId: string, nextSwipeIdx: number) => void;
+  onRewindToMessage?: (msgId: string) => void;
 }
 
 export const ChatMessageItem = memo(function ChatMessageItem({
@@ -75,6 +90,8 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onViewPortrait,
   onPinMemory,
   onDeleteMessage,
+  onSelectSwipe,
+  onRewindToMessage,
 }: ChatMessageItemProps) {
   const [localEditText, setLocalEditText] = useState(msg.text);
 
@@ -89,6 +106,22 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     ["narrator", "system", "inner monologue"].some((s) =>
       msg.speakerName.toLowerCase().includes(s)
     );
+
+  const hasSwipes =
+    msg.sender === "character" &&
+    Array.isArray(msg.swipes) &&
+    msg.swipes.length > 1 &&
+    Boolean(onSelectSwipe);
+  const swipeTotal = hasSwipes ? msg.swipes!.length : 0;
+  const activeSwipeIdx = hasSwipes
+    ? Math.max(
+        0,
+        Math.min(
+          swipeTotal - 1,
+          typeof msg.activeSwipeIndex === "number" ? msg.activeSwipeIndex : swipeTotal - 1
+        )
+      )
+    : 0;
 
   return (
     <div className="flex flex-col items-stretch w-full group">
@@ -196,7 +229,32 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         </div>
 
         {!isEditing && !msg.isPending && (
-          <div className="opacity-85 hover:opacity-100 transition-all flex items-center gap-1.5 select-none shrink-0">
+          <div className="opacity-85 hover:opacity-100 transition-all flex items-center gap-1.5 select-none shrink-0 flex-wrap justify-end">
+            {hasSwipes && (
+              <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-zinc-900/95 border border-rose-500/30 text-[11px] font-mono text-zinc-200">
+                <button
+                  type="button"
+                  disabled={activeSwipeIdx <= 0 || isLoading}
+                  onClick={() => onSelectSwipe?.(msg.id, activeSwipeIdx - 1)}
+                  className="p-0.5 rounded hover:bg-white/10 disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
+                  title="Previous response variant"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="px-1 text-[10px] text-rose-300 font-bold">
+                  {activeSwipeIdx + 1} / {swipeTotal}
+                </span>
+                <button
+                  type="button"
+                  disabled={activeSwipeIdx >= swipeTotal - 1 || isLoading}
+                  onClick={() => onSelectSwipe?.(msg.id, activeSwipeIdx + 1)}
+                  className="p-0.5 rounded hover:bg-white/10 disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
+                  title="Next response variant"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
             {onPinMemory && msg.text && msg.text.trim().length > 10 && (
               <button
                 type="button"
@@ -228,12 +286,23 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 <span className="hidden sm:inline">Delete</span>
               </button>
             )}
+            {msg.sender === "character" && !isLatestCharacterTurn && !isLoading && onRewindToMessage && (
+              <button
+                type="button"
+                onClick={() => onRewindToMessage(msg.id)}
+                className="px-2 py-1 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-sky-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                title="Rewind chronicle back to this turn"
+              >
+                <RotateCcw className="w-3 h-3 text-sky-400" />
+                <span className="hidden sm:inline">Rewind Here</span>
+              </button>
+            )}
             {msg.sender === "character" && isLatestCharacterTurn && !isLoading && (
               <button
                 type="button"
                 onClick={onRegenerateTurn}
                 className="px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
-                title="Regenerate response"
+                title="Regenerate response (saves previous version as swipe variant)"
               >
                 <RotateCcw className="w-3 h-3" />
                 <span>Regenerate</span>
@@ -358,40 +427,69 @@ export const ChatMessageItem = memo(function ChatMessageItem({
         {/* Bottom Action Toolbar for Long Narrative Bubbles & Touch Devices */}
         {!isEditing && !msg.isPending && msg.sender === "character" && isLatestCharacterTurn && (
           <div
-            className="mt-3 pt-2 border-t border-white/10 flex items-center justify-end gap-2 select-none"
+            className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between gap-2 select-none flex-wrap"
             onClick={(e) => e.stopPropagation()}
           >
-            <button
-              type="button"
-              onClick={() => onStartEdit(msg)}
-              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
-              title="Edit narrative text"
-            >
-              <Edit3 className="w-3 h-3 text-sky-400" />
-              <span>Edit Text</span>
-            </button>
-            {onDeleteMessage && !isLoading && (
+            <div>
+              {hasSwipes && (
+                <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white/5 border border-rose-500/30 text-[11px] font-mono text-zinc-200">
+                  <button
+                    type="button"
+                    disabled={activeSwipeIdx <= 0 || isLoading}
+                    onClick={() => onSelectSwipe?.(msg.id, activeSwipeIdx - 1)}
+                    className="p-0.5 rounded hover:bg-white/10 disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
+                    title="Previous response variant"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="px-1 text-rose-300 font-bold">
+                    Take {activeSwipeIdx + 1} / {swipeTotal}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={activeSwipeIdx >= swipeTotal - 1 || isLoading}
+                    onClick={() => onSelectSwipe?.(msg.id, activeSwipeIdx + 1)}
+                    className="p-0.5 rounded hover:bg-white/10 disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
+                    title="Next response variant"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 ml-auto">
               <button
                 type="button"
-                onClick={() => onDeleteMessage(msg.id)}
-                className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-400/50 text-red-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
-                title="Delete this AI response"
+                onClick={() => onStartEdit(msg)}
+                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                title="Edit narrative text"
               >
-                <Trash2 className="w-3 h-3 text-red-400" />
-                <span>Delete</span>
+                <Edit3 className="w-3 h-3 text-sky-400" />
+                <span>Edit Text</span>
               </button>
-            )}
-            {!isLoading && (
-              <button
-                type="button"
-                onClick={onRegenerateTurn}
-                className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 hover:border-rose-400/50 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
-                title="Regenerate AI response for this turn"
-              >
-                <RotateCcw className="w-3 h-3 text-rose-400" />
-                <span>Regenerate Response</span>
-              </button>
-            )}
+              {onDeleteMessage && !isLoading && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteMessage(msg.id)}
+                  className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-400/50 text-red-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Delete this AI response"
+                >
+                  <Trash2 className="w-3 h-3 text-red-400" />
+                  <span>Delete</span>
+                </button>
+              )}
+              {!isLoading && (
+                <button
+                  type="button"
+                  onClick={onRegenerateTurn}
+                  className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 hover:border-rose-400/50 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Regenerate AI response for this turn"
+                >
+                  <RotateCcw className="w-3 h-3 text-rose-400" />
+                  <span>Regenerate Response</span>
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

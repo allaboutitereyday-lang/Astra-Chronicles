@@ -207,6 +207,75 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
     };
   }
 
+  const isPortSolarisSave = raw.storyId === "port-solaris" || Boolean(p.boardingHouse);
+  const upgradedPortSolarisSlugs: Record<string, string> = {
+    seraphina: "seraphina_vane",
+    "seraphina vane": "seraphina_vane",
+    comp_seraphina: "seraphina_vane",
+    vivienne: "vivienne_laurent",
+    "vivienne laurent": "vivienne_laurent",
+    comp_vivienne: "vivienne_laurent",
+    mia: "mia_bellini",
+    "mia bellini": "mia_bellini",
+    comp_mia: "mia_bellini",
+    colette: "colette_moreau",
+    "colette moreau": "colette_moreau",
+    comp_colette: "colette_moreau",
+    pippa: "pippa_reyes",
+    "pippa reyes": "pippa_reyes",
+    comp_pippa: "pippa_reyes",
+    kaede: "kaede_tachibana",
+    "kaede tachibana": "kaede_tachibana",
+    comp_kaede: "kaede_tachibana",
+    roxy: "roxy_vance",
+    "roxy vance": "roxy_vance",
+    comp_roxy: "roxy_vance",
+    chloe: "chloe_lin",
+    "chloe lin": "chloe_lin",
+    comp_chloe: "chloe_lin",
+    nadia: "nadia_saint_clair",
+    "nadia saint-clair": "nadia_saint_clair",
+    "saint-clair": "nadia_saint_clair",
+    comp_nadia: "nadia_saint_clair",
+    zuri: "zuri_delacroix",
+    "zuri delacroix": "zuri_delacroix",
+    delacroix: "zuri_delacroix",
+    comp_zuri: "zuri_delacroix",
+  };
+
+  const rawParty = Array.isArray(raw.party) ? raw.party : [];
+  const normalizedParty = isPortSolarisSave
+    ? rawParty.map((comp: any) => {
+        if (!comp || typeof comp !== "object") return comp;
+        const nameKey = String(comp.name || "").trim().toLowerCase();
+        const idKey = String(comp.id || "").trim().toLowerCase();
+        const slug = upgradedPortSolarisSlugs[nameKey] || upgradedPortSolarisSlugs[idKey];
+        if (!slug) return comp;
+        const legacyPath = `/characters/port-solaris/${slug}.png`;
+        const exprValues = comp.expressions && typeof comp.expressions === "object"
+          ? Object.values(comp.expressions)
+          : [];
+        const allLegacy =
+          exprValues.length === 0 ||
+          exprValues.every((v) => v === legacyPath || !v);
+        if (!allLegacy) return comp;
+        return {
+          ...comp,
+          expressions: {
+            neutral: `/characters/port-solaris/${slug}/neutral.png`,
+            intrigued: `/characters/port-solaris/${slug}/intrigued.png`,
+            flustered: `/characters/port-solaris/${slug}/flustered.png`,
+            smug: `/characters/port-solaris/${slug}/smug.png`,
+            surprised: `/characters/port-solaris/${slug}/flustered.png`,
+            combat_ready: `/characters/port-solaris/${slug}/combat_ready.png`,
+            dangerous: `/characters/port-solaris/${slug}/combat_ready.png`,
+            hurt: `/characters/port-solaris/${slug}/hurt.png`,
+            beckon: `/characters/port-solaris/${slug}/smug.png`,
+          },
+        };
+      })
+    : rawParty;
+
   return {
     ...raw,
     slotId: typeof raw.slotId === "number" ? raw.slotId : 0,
@@ -215,7 +284,7 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
     player: normalizedPlayer,
     playerAvatar: typeof raw.playerAvatar === "string" ? raw.playerAvatar : null,
     gameState: normalizedGameState,
-    party: Array.isArray(raw.party) ? raw.party : [],
+    party: normalizedParty,
     memories: Array.isArray(raw.memories) ? raw.memories : [],
     chatLog:
       normalizedChatLog.length > 0

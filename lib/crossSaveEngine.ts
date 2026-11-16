@@ -624,6 +624,6 @@ export function triggerBackgroundCloudSync(onSynced?: (updatedAt: string) => voi
         onSynced(res.updatedAt);
       }
     } catch {}
-  }, 1200);
+  }, 4000);
 }
 

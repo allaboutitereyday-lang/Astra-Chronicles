@@ -21,6 +21,11 @@ import {
   buildActiveSpeakerPersonaLock,
   getCompanionPersonaFingerprint,
 } from "@/lib/characterPersonas";
+import {
+  extractPlayerVoiceStyleFromHistory,
+  getDominantTendencyLabel,
+  getPersonaVoiceProfile,
+} from "@/lib/personalityArchitect";
 import { parseModelJsonLenient } from "@/lib/jsonSalvage";
 import { LabyrinthState } from "@/types/starfall_labyrinth";
 
@@ -166,8 +171,8 @@ No companions are physically present in ${location}. Focus strictly on tactile a
       affection < 25
         ? "Guarded and testing whether the protagonist's competence is real or luck; gives nothing away for free."
         : affection < 55
-        ? "Invested in keeping the unit alive and quietly curious about what drives the protagonist, though quick to push back on reckless calls."
-        : "Deeply loyal and attuned to the protagonist's smallest tells, balancing sharp banter with unspoken protective closeness.";
+          ? "Invested in keeping the unit alive and quietly curious about what drives the protagonist, though quick to push back on reckless calls."
+          : "Deeply loyal and attuned to the protagonist's smallest tells, balancing sharp banter with unspoken protective closeness.";
 
     if (isWounded) {
       immediateAgenda =
@@ -250,7 +255,7 @@ export function extractOpenRouterErrorInfo(
   try {
     const parsedErr = JSON.parse(rawBody);
     detail = parsedErr?.error?.message || parsedErr?.message || detail;
-  } catch {}
+  } catch { }
   const isAccountAuthError =
     status === 401 ||
     status === 402 ||
@@ -286,6 +291,8 @@ export async function executeOocTwoPassTurn(params: {
   isCustomAction: boolean;
   persistentDirectorNotes?: string | null;
   pendingObjectives: string[];
+  activeQuests?: any[];
+  completedQuests?: any[];
   worldSpecificDirective?: string;
   combatTelemetryDirective?: string;
   specialEventDirective?: string;
@@ -305,6 +312,20 @@ export async function executeOocTwoPassTurn(params: {
 
   const playerName = (params.playerProfile?.name || "Wanderer").trim();
   const playerFirstName = playerName.split(/\s+/)[0] || playerName;
+
+  const personaVoice = getPersonaVoiceProfile(
+    params.playerProfile?.personality,
+    params.playerProfile?.personalityTraits
+  );
+  const dominantTendencyLabel = getDominantTendencyLabel(
+    params.playerProfile?.behavioralTendencies
+  );
+  const voiceFingerprint = extractPlayerVoiceStyleFromHistory(
+    params.recentHistory,
+    playerName,
+    parsedOoc.inCharacterAction,
+    params.isCustomAction
+  );
 
   const proseStyleDirective = getNarrationProseDirective(
     params.narrationTone,
@@ -353,16 +374,16 @@ Write with the effortless human immediacy, psychological subtext, dry wit, and g
 
 --- ACTIVE SCENE GROUNDING ---
 - Location: ${params.location}${params.timeOfDay ? ` (${params.timeOfDay})` : ""}
-- Protagonist: ${playerName} (${params.playerProfile?.gender || "Male"} ${params.playerProfile?.role || "Tactician"}, Lv.${params.playerProfile?.level || 1}${
-    params.playerProfile?.personalityTraits?.length
+- Protagonist: ${playerName} (${params.playerProfile?.gender || "Male"}, Age: ${params.playerProfile?.age || "22"}, Height: ${params.playerProfile?.height || "5'11\""}, ${params.playerProfile?.role || "Tactician"}, Lv.${params.playerProfile?.level || 1}, Personality: "${personaVoice.personaTitle}" — ${personaVoice.speechCadence}, Worldview: ${personaVoice.attitudeAndWorldview}, Emergent Playstyle: ${dominantTendencyLabel}${params.playerProfile?.personalityTraits?.length
       ? `, Vibe: ${params.playerProfile.personalityTraits.join(", ")}`
       : ""
-  })
-${
-  params.pendingObjectives.length > 0
-    ? `- Active Thread: ${params.pendingObjectives.slice(0, 2).join(" | ")}`
-    : ""
-}
+    })
+${params.pendingObjectives.length > 0
+      ? `- Active Thread: ${params.pendingObjectives.slice(0, 2).join(" | ")}`
+      : ""
+    }
+
+${voiceFingerprint.promptDirectiveBlock}
 
 ${proseStyleDirective}
 
@@ -392,7 +413,7 @@ ${directorBlock}
 
 Output your plain-text response in EXACTLY two sections separated by "=== SCENE RESPONSE ===":
 === PROTAGONIST BEAT ===
-(1 to 2 crisp paragraphs in past tense depicting ${playerFirstName} physically executing that move and speaking a natural in-character line in double quotes—strip any bracket tags.)
+(1 to 2 crisp paragraphs in past tense depicting ${playerFirstName} physically executing that move and speaking a natural, conversational in-character line in double quotes—match ${playerFirstName}'s live speaking style with normal contractions and casual human rhythm, NEVER stiff or overly proper phrasing, and strip any bracket tags.)
 
 === SCENE RESPONSE ===
 (The vivid world & character reaction to ${playerFirstName}'s move—elastic pacing, real subtext, natural human dialogue in double quotes, zero JSON or choice lists.)`;
@@ -509,23 +530,74 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
       ? `\nLIVE STARFALL COMBAT / WAVE STATE (ALIGN CHOICES & LOCATION TO THIS):\n${params.combatTelemetryDirective.slice(0, 1200)}`
       : "";
 
-  const pass2SystemPrompt = `You are a deterministic RPG State & Choice Extractor. Read the newly authored scene turn and output ONLY a valid JSON object tracking speaker, expressions, affection shift, location, and 4 sharp in-character next choices for ${playerFirstName}.
+  const [tag1, tag2, tag3] = personaVoice.preferredTagPrefixes;
+  const recentPlayerHistorySnippet = `\n\n${voiceFingerprint.promptDirectiveBlock}`;
+
+  const activeQuestsList = Array.isArray(params.activeQuests) ? params.activeQuests : [];
+  const completedQuestsList = Array.isArray(params.completedQuests) ? params.completedQuests : [];
+  const activeQuestsPass2Block =
+    activeQuestsList.length > 0
+      ? activeQuestsList
+          .map(
+            (q: any) =>
+              `  * Quest ID: "${q.id}" | [${q.difficulty || "E"}-Rank ${q.type || "scenario"}] "${q.title}"\n    Objectives:\n${(q.objectives || [])
+                .map(
+                  (o: any, idx: number) =>
+                    `      - [Index ${idx}]: "${o?.text || ""}" -> STATUS: ${o?.completed ? "COMPLETED" : "PENDING"}`
+                )
+                .join("\n")}`
+          )
+          .join("\n\n")
+      : "  * NONE CURRENTLY ACTIVE — If appropriate for this scene, assign a grounded new scenario in system_updates.new_quest (2–3 clear objectives).";
+  const completedQuestsPass2Block =
+    completedQuestsList.length > 0
+      ? completedQuestsList
+          .slice(0, 6)
+          .map((q: any) => `  * "${q.title}"`)
+          .join("\n")
+      : "  * None completed yet.";
+
+  const pass2SystemPrompt = `You are a deterministic RPG State & Choice Extractor. Read the newly authored scene turn and output ONLY a valid JSON object tracking speaker, expressions, affection shift, quest objective progress, location, and 4 sharp, natural in-character next choices for ${playerFirstName}.
+
+PROTAGONIST VOICE & CONVERSATIONAL CHOICE MANDATE:
+- Persona & Traits: "${personaVoice.personaTitle}" [${personaVoice.traitsList.join(", ")}]
+- Vocal Cadence: ${personaVoice.speechCadence}
+- Decision Worldview & Attitude: ${personaVoice.attitudeAndWorldview}
+- Emergent Playstyle Tendencies (from prior choices): ${dominantTendencyLabel}
+- Physical Stature: Gender ${params.playerProfile?.gender || "Male"}, Age ${params.playerProfile?.age || "22"}, Height ${params.playerProfile?.height || "5'11\""}
+- Conversational Style Examples: ${personaVoice.exampleSpokenLines.join(" | ")}${recentPlayerHistorySnippet}
+
+ACTIVE SCENARIOS & OBJECTIVE INDICES:
+${activeQuestsPass2Block}
+
+ALREADY COMPLETED SCENARIOS (DO NOT RE-ASSIGN):
+${completedQuestsPass2Block}
 
 RULES:
 1. "speaker": Must be the primary companion speaking in SCENE PROSE (from [${allKnownCompanionNames}]), or "Narrator" if nobody else spoke. NEVER set "speaker" to "${playerName}".
 2. "expression_key": One of "neutral" | "intrigued" | "flustered" | "smug" | "combat_ready" | "hurt" matching the speaker's closing mood.
 3. "affection_delta": Integer from -5 to +4 (0 for routine tactical chat, +1 to +3 only when genuinely earned by cleverness, protection, or emotional resonance, negative if reckless/cold).
-4. "suggested_choices": Array of EXACTLY 4 concise, punchy first-person/action choice strings (12–24 words each) prefixed with an intent tag:
-   - Choice 1: "[Advance]: ..." (push the immediate objective/fight/deal forward)
-   - Choice 2: "[Banter]: ..." or "[Deepen]: ..." (probe subtext, tease, or share a real human moment with the speaker)
-   - Choice 3: "[Tactical]: ..." (bold environmental, observational, or signature skill play)
-   - Choice 4: "[Move/Transition]: ..." (lead toward a new room/floor/area when ready)
-${
-  isStarfall
-    ? `5. "starfall_updates": Include { "floor_cleared": boolean (true ONLY if all waves on the floor are cleared and the Transfer Ring is active—never true while Wave Y+1 remains), "hero_casualties": [], "star_shards_earned": 0, "master_trust_delta": number (-5..+5), "master_command": string | null }.
-6. Align "suggested_choices" and "state_updates.current_location" strictly with the locked enemy pack, wave number, or Transfer Ring telemetry below—never invent off-list monster names!${starfallPass2Telemetry}`
-    : ""
-}
+4. "suggested_choices": Array of EXACTLY 4 distinct choices formatted strictly as: "[Tag]: 'Natural conversational spoken line' + physical action" (14–28 words total):
+   - Choice 1: "[${tag1}]: ..." (push the immediate objective, fight, or deal forward)
+   - Choice 2: "[${tag2}]: ..." or "[Banter/Deepen]: ..." (linger to probe subtext, tease, or share a real human moment with the speaker)
+   - Choice 3: "[${tag3}]: ..." (bold physical, environmental, wager, or signature skill play)
+   - Choice 4: "[Move/Transition]: ..." (lead toward a new room, floor, or area when ready)
+   - PERSONALITY & PLAYSTYLE ALIGNMENT RULE: Shape BOTH the tactical/interpersonal decision AND the spoken quote ('...') of all 4 options around ${playerFirstName}'s chosen "${personaVoice.personaTitle}" worldview, custom traits ([${personaVoice.traitsList.join(", ")}]), and emergent playstyle (${dominantTendencyLabel}).
+   - CONVERSATIONAL VOICE RULE (CRITICAL): Tune the vocabulary, contractions, casualness, slang, bluntness, or teasing of every single-quoted line ('...') to match how ${playerFirstName} actually talks in PLAYER ACTION / PROTAGONIST EXECUTION and the Live Player Speaking Style samples above! Use natural contractions ('I'm', 'don't', 'you're', 'let's') and everyday human rhythm. NEVER write stiff, overly proper, courtroom, or robotic RPG dialogue in choices (e.g., BANNED: 'State your terms plainly', 'I shall comply', 'Allow me to inquire', 'Let us proceed'). Do NOT escape apostrophes with \\' inside JSON strings.
+5. "system_updates.quest_updates": Evaluate PLAYER ACTION, PROTAGONIST EXECUTION, and SCENE PROSE against EVERY PENDING objective in ACTIVE SCENARIOS above (including social/romance milestone objectives, wagers, investigations, location arrivals, or combat). Be generous when the player's action reasonably fulfills the spirit of an objective!
+   - When one or more PENDING objectives are fulfilled on an active quest, push an object to "system_updates.quest_updates": { "quest_id": "<exact Quest ID>", "status": "active" | "completed" | "failed", "completed_objective_indices": [0], "progress_note": "Short 1-sentence system log" }.
+   - Set "status": "completed" ONLY if ALL objectives on that quest (previously COMPLETED + newly completed) are now fulfilled; otherwise keep "status": "active".
+6. "state_updates.knowledge_unlocked": Output { "knowsName": boolean, "knowsClass": boolean, "knowsOrigin": boolean, "learned_fact": string | null }:
+   - Set "knowsName": true ONLY if ${playerFirstName} introduced or stated their name in dialogue/action this turn.
+   - Set "knowsClass": true ONLY if ${playerFirstName} stated or visibly demonstrated their class/conduit ("${params.playerProfile?.role || "Adventurer"}") this turn.
+   - Set "knowsOrigin": true ONLY if ${playerFirstName} disclosed their Regressor / System / Ex-Ranker origin this turn.
+   - Set "learned_fact": a concise 1-sentence personal fact if ${params.activeSpeakerName || "the companion"} learned something genuinely new about ${playerFirstName} this turn (background, promise, taste, specialty, or goal), else null.
+7. "state_updates.new_plot_memory": Populate with a concise 1-sentence canon summary whenever a notable character beat, promise, confession, wager, or plot progression occurs this turn, else null.
+${isStarfall
+      ? `8. "starfall_updates": Include { "floor_cleared": boolean (true ONLY if all waves on the floor are cleared and the Transfer Ring is active—never true while Wave Y+1 remains), "hero_casualties": [], "star_shards_earned": 0, "master_trust_delta": number (-5..+5), "master_command": string | null }.
+9. Align "suggested_choices" and "state_updates.current_location" strictly with the locked enemy pack, wave number, or Transfer Ring telemetry below—never invent off-list monster names!${starfallPass2Telemetry}`
+      : ""
+    }
 
 JSON SCHEMA:
 {
@@ -539,7 +611,13 @@ JSON SCHEMA:
     "affection_delta": 0,
     "companion_sentiment": "short 1-sentence internal thought of the speaker",
     "new_plot_memory": null,
-    "completed_objectives": []
+    "completed_objectives": [],
+    "knowledge_unlocked": {
+      "knowsName": false,
+      "knowsClass": false,
+      "knowsOrigin": false,
+      "learned_fact": null
+    }
   },
   "player_progression": {
     "exp_gained": 0,
@@ -552,9 +630,9 @@ JSON SCHEMA:
   "system_updates": {
     "plausibility_score": 92,
     "system_announcement": null,
+    "quest_updates": [],
     "new_quest": null
-  }${
-    isStarfall
+  }${isStarfall
       ? `,
   "starfall_updates": {
     "floor_cleared": false,
@@ -564,7 +642,7 @@ JSON SCHEMA:
     "master_command": null
   }`
       : ""
-  }
+    }
 }`;
 
   const pass2UserContent = `CURRENT LOCATION: ${params.location}
@@ -610,12 +688,92 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
       ? extractedMeta
       : {};
 
+  const rawCompletedObjectives = Array.isArray(safeMeta.state_updates?.completed_objectives)
+    ? safeMeta.state_updates.completed_objectives
+    : [];
+
+  let resolvedQuestUpdates: any[] = Array.isArray(safeMeta.system_updates?.quest_updates)
+    ? [...safeMeta.system_updates.quest_updates]
+    : [];
+
+  if (resolvedQuestUpdates.length === 0 && rawCompletedObjectives.length > 0 && activeQuestsList.length > 0) {
+    for (const q of activeQuestsList) {
+      const qObjs: any[] = Array.isArray(q?.objectives) ? q.objectives : [];
+      const matchedIndices = new Set<number>();
+
+      for (const rawItem of rawCompletedObjectives) {
+        if (typeof rawItem === "number" || /^\d+$/.test(String(rawItem ?? "").trim())) {
+          const idxNum = Number(rawItem);
+          if (activeQuestsList.length === 1 && idxNum >= 0 && idxNum < qObjs.length && !qObjs[idxNum]?.completed) {
+            matchedIndices.add(idxNum);
+          }
+          continue;
+        }
+
+        const needle = String(rawItem || "").toLowerCase().trim();
+        if (needle.length < 4) continue;
+        const needleWords = needle.split(/[^a-z0-9]+/).filter((w) => w.length >= 4);
+
+        qObjs.forEach((obj: any, idx: number) => {
+          if (obj?.completed) return;
+          const haystack = String(obj?.text || "").toLowerCase().trim();
+          if (!haystack) return;
+          if (haystack.includes(needle) || needle.includes(haystack)) {
+            matchedIndices.add(idx);
+            return;
+          }
+          if (needleWords.length >= 2) {
+            const hayWords = new Set(haystack.split(/[^a-z0-9]+/).filter((w) => w.length >= 4));
+            const sharedCount = needleWords.filter((w) => hayWords.has(w)).length;
+            if (sharedCount >= Math.min(2, needleWords.length)) {
+              matchedIndices.add(idx);
+            }
+          }
+        });
+      }
+
+      if (matchedIndices.size > 0) {
+        const idxArr = Array.from(matchedIndices).sort((a, b) => a - b);
+        const allDone =
+          qObjs.length > 0 &&
+          qObjs.every((o: any, idx: number) => Boolean(o?.completed) || matchedIndices.has(idx));
+        resolvedQuestUpdates.push({
+          quest_id: q.id,
+          status: allDone ? "completed" : "active",
+          completed_objective_indices: idxArr,
+          progress_note: "Objective progress verified.",
+        });
+      }
+    }
+  }
+
+  const resolvedAffectionDelta = Number(safeMeta.state_updates?.affection_delta || 0);
+  const resolvedPlotMemory: string | null =
+    typeof safeMeta.state_updates?.new_plot_memory === "string" &&
+    safeMeta.state_updates.new_plot_memory.trim()
+      ? safeMeta.state_updates.new_plot_memory.trim()
+      : typeof safeMeta.new_memory_unlocked === "string" &&
+        safeMeta.new_memory_unlocked.trim()
+      ? safeMeta.new_memory_unlocked.trim()
+      : null;
+
+  const resolvedCoreMemory =
+    safeMeta.state_updates?.core_memory_unlocked ||
+    (resolvedPlotMemory && resolvedAffectionDelta >= 2
+      ? {
+          id: `mem_${Date.now()}`,
+          title: "Shared Breakthrough",
+          summary: resolvedPlotMemory,
+        }
+      : null);
+
   const mergedResponseData = {
     speaker: safeMeta.speaker || params.activeSpeakerName || "Narrator",
     expression_key: safeMeta.expression_key || "neutral",
     player_execution: extractedPlayerExecution,
     narrative_text: extractedNarrativeProse,
     narrative: extractedNarrativeProse,
+    new_memory_unlocked: resolvedPlotMemory,
     suggested_choices: Array.isArray(safeMeta.suggested_choices)
       ? safeMeta.suggested_choices
       : [],
@@ -628,14 +786,12 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
       affected_companion:
         safeMeta.state_updates?.affected_companion ??
         (presentNamesList[0] || null),
-      affection_delta: Number(safeMeta.state_updates?.affection_delta || 0),
+      affection_delta: resolvedAffectionDelta,
       companion_sentiment: safeMeta.state_updates?.companion_sentiment || null,
-      new_plot_memory: safeMeta.state_updates?.new_plot_memory || null,
-      completed_objectives: Array.isArray(
-        safeMeta.state_updates?.completed_objectives
-      )
-        ? safeMeta.state_updates.completed_objectives
-        : [],
+      new_plot_memory: resolvedPlotMemory,
+      core_memory_unlocked: resolvedCoreMemory,
+      completed_objectives: rawCompletedObjectives,
+      knowledge_unlocked: safeMeta.state_updates?.knowledge_unlocked || null,
     },
     player_progression: safeMeta.player_progression || {
       exp_gained: 0,
@@ -645,10 +801,13 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
       vitals_reason: null,
       items_dropped: null,
     },
-    system_updates: safeMeta.system_updates || {
-      plausibility_score: 92,
-      system_announcement: null,
-      new_quest: null,
+    system_updates: {
+      ...(safeMeta.system_updates || {
+        plausibility_score: 92,
+        system_announcement: null,
+        new_quest: null,
+      }),
+      quest_updates: resolvedQuestUpdates,
     },
     ...(isStarfall && safeMeta.starfall_updates
       ? { starfall_updates: safeMeta.starfall_updates }
