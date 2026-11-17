@@ -2341,6 +2341,7 @@ export default function VisualNovelGame() {
   // Editing and response regeneration state
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
+  const [isMobileStageCollapsed, setIsMobileStageCollapsed] = useState(false);
 
   // System Administrator & Quests State
   const [systemState, setSystemState] = useState<SystemState>({
@@ -9621,7 +9622,7 @@ export default function VisualNovelGame() {
   // 1. OPENING / WELCOME SPLASH SCREEN (FIRST LOAD)
   if (!isConfigured && !hasSeenWelcome) {
     return (
-      <div className={`relative h-screen w-screen overflow-hidden bg-black font-sans flex flex-col items-center justify-center select-none transition-all duration-300 ease-out ${
+      <div className={`relative h-[100dvh] w-screen overflow-hidden bg-black font-sans flex flex-col items-center justify-center select-none transition-all duration-300 ease-out ${
         pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
       }`}>
         <div 
@@ -9788,17 +9789,18 @@ export default function VisualNovelGame() {
         <div className="relative z-10 w-full max-w-4xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-5 my-auto">
           <div className="space-y-3 border-b border-white/10 pb-3.5">
             {/* Top Utility Navigation Bar */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 onClick={handleNavigateToCatalogue}
-                className="px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer font-mono shrink-0"
+                className="px-2 sm:px-2.5 py-1.5 rounded-xl border border-white/10 hover:border-white/30 text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer font-mono shrink-0"
                 title="Return to Story Catalogue"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span className="font-mono text-xs">Catalogue</span>
+                <span className="font-mono text-xs hidden sm:inline">Catalogue</span>
+                <span className="font-mono text-[11px] sm:hidden">Back</span>
               </button>
 
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 min-w-0">
                 <button
                   onClick={handleToggleAudio}
                   className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
@@ -9812,43 +9814,44 @@ export default function VisualNovelGame() {
                     soundEffects.playClick();
                     setShowWorldGuidebook(true);
                   }}
-                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 hover:border-amber-400 text-xs text-amber-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer font-bold"
+                  className="px-2 sm:px-3.5 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 hover:border-amber-400 text-[11px] sm:text-xs text-amber-200 hover:text-white flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer font-bold"
                   title="Open World Lore Guidebook (Characters, Locations, Stats & Keywords)"
                 >
-                  <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="font-mono text-xs">World Guide</span>
+                  <BookOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="font-mono hidden sm:inline">World Guide</span>
+                  <span className="font-mono sm:hidden">Guide</span>
                 </button>
                 <button
                   onClick={() => {
                     soundEffects.playClick();
                     router.push("/account");
                   }}
-                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-emerald-300 hover:text-white hover:border-emerald-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-2 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-[11px] sm:text-xs text-emerald-300 hover:text-white hover:border-emerald-500/50 flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer"
                   title="Astral Traveler Account Dossier & Character Roster Hub"
                 >
-                  <User className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="font-mono text-xs">Account</span>
+                  <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="font-mono">Account</span>
                 </button>
                 <button
                   onClick={() => {
                     soundEffects.playClick();
                     setShowAuthModal(true);
                   }}
-                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-2 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-[11px] sm:text-xs text-zinc-300 hover:text-white hover:border-purple-500/50 flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer"
                   title="Realm Access Key"
                 >
-                  <Key className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="font-mono text-xs">{userAuth ? userAuth.name.split(" ")[0] : "Key"}</span>
+                  <Key className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span className="font-mono">{userAuth ? userAuth.name.split(" ")[0] : "Key"}</span>
                 </button>
                 <button
                   onClick={() => {
                     soundEffects.playClick();
                     setShowSaveModal(true);
                   }}
-                  className="px-2.5 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-2 sm:px-3.5 py-1.5 rounded-xl border border-white/15 text-[11px] sm:text-xs text-zinc-300 hover:text-white hover:border-rose-500/50 flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer"
                 >
-                  <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400" />
-                  <span className="font-mono text-xs sm:hidden">Load</span>
+                  <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-sky-400 shrink-0" />
+                  <span className="font-mono sm:hidden">Load</span>
                   <span className="hidden sm:inline">Load Game</span>
                 </button>
               </div>
@@ -11544,7 +11547,7 @@ export default function VisualNovelGame() {
       />
 
       {/* TOP HUD */}
-      <header className="absolute top-2 sm:top-3 inset-x-2 sm:inset-x-6 md:inset-x-8 z-40 pointer-events-auto select-none">
+      <header className="absolute top-[calc(0.5rem+env(safe-area-inset-top,0px))] sm:top-3 inset-x-2 sm:inset-x-6 md:inset-x-8 z-40 pointer-events-auto select-none">
         {/* MOBILE TOP HUD (< sm) */}
         <div className="flex sm:hidden items-center justify-between gap-1.5 w-full">
           <div className="flex items-center gap-1.5 min-w-0">
@@ -11673,7 +11676,7 @@ export default function VisualNovelGame() {
             >
               <Users className="w-3.5 h-3.5 text-rose-400" />
               <span className="absolute -bottom-1 -right-1 text-[8px] font-mono font-bold px-1 rounded-full bg-rose-950 border border-rose-500/50 text-rose-200 leading-tight">
-                {party.filter((p) => p.isPresent).length}
+                {party.filter((p) => p.isPresent && p.heroStatus !== "FALLEN").length}
               </span>
             </button>
 
@@ -12197,8 +12200,104 @@ export default function VisualNovelGame() {
       </header>
 
       {/* DIALOGUE & SPRITE TERMINAL */}
-      <div className="absolute top-14 sm:top-24 md:top-24 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
-        <div className="pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 max-h-[42dvh] sm:max-h-[50vh] md:max-h-[54vh]">
+      <div className="absolute top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-24 md:top-24 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
+        {/* MOBILE VISUAL NOVEL SPOTLIGHT STAGE (< sm) */}
+        {!isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
+          <div className="sm:hidden relative flex-1 min-h-[96px] max-h-[30dvh] w-full flex items-end justify-center overflow-hidden pointer-events-none select-none -mb-2">
+            {presentComps.length === 0 ? (
+              <div className="relative h-full w-full flex items-end justify-center">
+                {playerAvatar && playerAvatar.trim() ? (
+                  <img
+                    src={playerAvatar}
+                    alt={player.name}
+                    onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                    className="h-full w-auto max-w-[82vw] object-contain object-bottom filter drop-shadow-[0_10px_22px_rgba(0,0,0,0.92)] pointer-events-auto cursor-pointer"
+                  />
+                ) : (
+                  <div className="mb-3 px-3 py-1.5 rounded-full bg-black/75 border border-sky-500/35 text-sky-300 text-[10px] font-mono inline-flex items-center gap-1.5 shadow-lg">
+                    <Shield className="w-3 h-3 text-sky-400" />
+                    <span>{player.name} • Solo</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              (() => {
+                const mobileSpotlightComp =
+                  resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) || presentComps[0];
+                const mobileIsSpeaking = gameState.speaker.toLowerCase().includes(mobileSpotlightComp.name.toLowerCase());
+                const mobileSpriteSrc = getSpriteSrc(mobileSpotlightComp.name, mobileSpotlightComp.expressionKey);
+                return (
+                  <div className="relative h-full w-full flex items-end justify-center">
+                    <div
+                      className="absolute bottom-2 w-40 h-40 rounded-full blur-3xl pointer-events-none opacity-35"
+                      style={{ background: getStageHeroineAura(mobileSpotlightComp.name).background }}
+                    />
+                    <img
+                      src={(mobileSpriteSrc && mobileSpriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
+                      alt={mobileSpotlightComp.name}
+                      decoding="async"
+                      onClick={() => {
+                        soundEffects.playClick();
+                        setSelectedCharacterCardComp(mobileSpotlightComp);
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
+                      }}
+                      className={`h-full w-auto max-w-[85vw] object-contain object-bottom filter drop-shadow-[0_10px_24px_rgba(0,0,0,0.95)] pointer-events-auto cursor-pointer transition-all duration-300 ${
+                        mobileIsSpeaking ? "scale-[1.02] brightness-105" : "opacity-95"
+                      }`}
+                    />
+                    {presentComps.length > 1 && (
+                      <div className="absolute bottom-3 left-1 flex flex-col gap-1 pointer-events-auto max-h-[80%] overflow-y-auto no-scrollbar">
+                        {presentComps.slice(0, 4).map((comp) => {
+                          const isActive = comp.name === mobileSpotlightComp.name;
+                          return (
+                            <button
+                              key={comp.name}
+                              type="button"
+                              onClick={() => {
+                                soundEffects.playClick();
+                                setSpotlightHeroineName(comp.name);
+                              }}
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold border backdrop-blur-md transition-all cursor-pointer truncate max-w-[92px] ${
+                                isActive
+                                  ? "bg-rose-950/90 border-rose-400 text-rose-100 shadow-md"
+                                  : "bg-black/75 border-white/15 text-zinc-300"
+                              }`}
+                            >
+                              {comp.name.split(" ")[0]}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                soundEffects.playClick();
+                setIsMobileStageCollapsed(true);
+              }}
+              className="pointer-events-auto absolute bottom-3 right-1 px-2 py-1 rounded-full bg-black/80 border border-white/15 text-[9px] font-mono text-zinc-300 hover:text-white flex items-center gap-1 shadow-lg backdrop-blur-md"
+              title="Minimize portrait art for more story space"
+            >
+              <ChevronDown className="w-3 h-3 text-zinc-400" />
+              <span>Hide Art</span>
+            </button>
+          </div>
+        )}
+
+        <div
+          className={`pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 ${
+            isMobileStageCollapsed || activeClash?.isActive || player.labyrinthState?.activeEncounter?.isActive
+              ? "max-h-[56dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+              : "max-h-[42dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+          }`}
+        >
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
           {/* Pillar 3: Penalty Scenario Warning Banner */}
@@ -12423,18 +12522,33 @@ export default function VisualNovelGame() {
                   Solitary Arc
                 </span>
               )}
-              <div className="relative hidden lg:inline-block min-w-0">
+              {isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setIsMobileStageCollapsed(false);
+                  }}
+                  className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-zinc-900/90 border border-white/15 text-[10px] font-mono text-zinc-300 hover:text-white shrink-0"
+                  title="Show character stage portrait"
+                >
+                  <ChevronUp className="w-3 h-3 text-rose-400" />
+                  <span>Art</span>
+                </button>
+              )}
+              <div className="relative inline-block min-w-0">
                 <button
                   type="button"
                   onClick={() => setShowSubtextPopover((v) => !v)}
                   title={`Mood: ${gameState.mood} — Click to inspect companion micro-expression & psychological subtext`}
-                  className="text-[11px] text-amber-400 hover:text-amber-300 font-mono inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/25 transition-all cursor-pointer max-w-[180px] xl:max-w-[260px]"
+                  className="text-[10px] sm:text-[11px] text-amber-400 hover:text-amber-300 font-mono inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-xl bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/25 transition-all cursor-pointer max-w-[120px] sm:max-w-[180px] xl:max-w-[260px]"
                 >
-                  <span className="truncate">• Mood: {gameState.mood}</span>
+                  <span className="truncate sm:hidden">{gameState.mood}</span>
+                  <span className="truncate hidden sm:inline">• Mood: {gameState.mood}</span>
                   <Eye className="w-3 h-3 text-amber-400/80 shrink-0" />
                 </button>
                 {showSubtextPopover && (
-                  <div className="absolute right-0 top-full mt-2 w-72 p-3 rounded-xl bg-zinc-950/95 border border-amber-500/40 shadow-2xl backdrop-blur-xl z-40 text-left space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-auto sm:top-full mt-2 sm:w-72 p-3 rounded-xl bg-zinc-950/95 border border-amber-500/40 shadow-2xl backdrop-blur-xl z-40 text-left space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
                     <div className="flex items-center justify-between border-b border-white/10 pb-1">
                       <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
                         👁️ Subtext & Micro-Expression
@@ -12658,7 +12772,7 @@ export default function VisualNovelGame() {
             <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
               <div 
                 ref={dialogueFeedRef}
-                className="flex-1 p-4 md:p-5 overflow-y-auto space-y-4 select-text pb-14"
+                className="flex-1 p-3 sm:p-4 md:p-5 overflow-y-auto space-y-3 sm:space-y-4 select-text pb-14"
               >
               {(() => {
                 let latestCharIdx = -1;
@@ -12758,11 +12872,11 @@ export default function VisualNovelGame() {
 
               {/* RETURN TO TOP & RETURN TO BOTTOM QUICK SCROLL BUTTONS */}
               {chatLog.length > 0 && (
-                <div className="absolute right-3.5 bottom-3.5 flex items-center gap-1.5 z-20 pointer-events-auto">
+                <div className="absolute right-2 bottom-2 sm:right-3.5 sm:bottom-3.5 flex items-center gap-1 sm:gap-1.5 z-20 pointer-events-auto opacity-85 hover:opacity-100 transition-opacity">
                   <button
                     type="button"
                     onClick={scrollToTop}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-950/85 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/top"
+                    className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/top"
                     title="Return to Top of dialogue"
                   >
                     <ChevronsUp className="w-3.5 h-3.5 text-zinc-400 group-hover/top:text-rose-400 group-hover/top:-translate-y-0.5 transition-all" />
@@ -12771,7 +12885,7 @@ export default function VisualNovelGame() {
                   <button
                     type="button"
                     onClick={scrollToBottom}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-950/85 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/bottom"
+                    className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/bottom"
                     title="Return to Bottom of dialogue"
                   >
                     <ChevronsDown className="w-3.5 h-3.5 text-zinc-400 group-hover/bottom:text-rose-400 group-hover/bottom:translate-y-0.5 transition-all" />
@@ -12914,14 +13028,14 @@ export default function VisualNovelGame() {
                   (Click card to Draft & Edit • Click ⚡ to Send Immediately)
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <div className="flex items-center gap-1.5 flex-wrap justify-end w-full sm:w-auto">
                 {!isChoicesCollapsed && (
-                  <div className="hidden sm:flex items-center gap-1 mr-0.5">
+                  <div className="flex items-center gap-1 mr-0.5 overflow-x-auto no-scrollbar max-w-full">
                     <button
                       type="button"
                       onClick={() => handleRerollChoices("romantic")}
                       disabled={isRerollingChoices || isDraftingAction || isLoading}
-                      className="px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-[10px] font-mono text-rose-200 transition-all cursor-pointer disabled:opacity-50"
+                      className="px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-[10px] font-mono text-rose-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
                       title="Reroll 4 choices steered toward romance, flirting, and personal connection"
                     >
                       ♥ Bond/Flirt
@@ -12930,7 +13044,7 @@ export default function VisualNovelGame() {
                       type="button"
                       onClick={() => handleRerollChoices("objective")}
                       disabled={isRerollingChoices || isDraftingAction || isLoading}
-                      className="px-2 py-0.5 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-[10px] font-mono text-sky-200 transition-all cursor-pointer disabled:opacity-50"
+                      className="px-2 py-0.5 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-[10px] font-mono text-sky-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
                       title="Reroll 4 choices steered toward active objectives and advancing the plot"
                     >
                       ⚔ Push Plot
@@ -12939,7 +13053,7 @@ export default function VisualNovelGame() {
                       type="button"
                       onClick={() => handleRerollChoices("bold")}
                       disabled={isRerollingChoices || isDraftingAction || isLoading}
-                      className="px-2 py-0.5 rounded-lg bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 hover:border-purple-400/60 text-[10px] font-mono text-purple-200 transition-all cursor-pointer disabled:opacity-50"
+                      className="px-2 py-0.5 rounded-lg bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 hover:border-purple-400/60 text-[10px] font-mono text-purple-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
                       title="Reroll 4 choices steered toward bold moves, confrontational gambits, or signature skills"
                     >
                       ⚡ Bold Play
@@ -12978,7 +13092,7 @@ export default function VisualNovelGame() {
             </div>
 
             {!isChoicesCollapsed && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-28 sm:max-h-36 overflow-y-auto pr-0.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-[25dvh] sm:max-h-36 overflow-y-auto pr-0.5">
                 {choices.map((choice, idx) => {
                   const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
                   const tag = tagMatch ? tagMatch[1] : null;
@@ -13297,6 +13411,9 @@ export default function VisualNovelGame() {
         onOpenSummonModal={() => setShowSummonModal(true)}
         isStarfallInLobby={isStarfallLobbyLocation(gameState.location)}
         starShardsCount={player.labyrinthState?.starShards ?? 0}
+        onOpenBarracks={() => setShowBarracksModal(true)}
+        deployedSquadCount={(player.labyrinthState?.roster || []).filter((r) => r.status === "DEPLOYED" || r.status === "WOUNDED").length}
+        maxSquadCount={MAX_DEPLOYED_PARTY}
       />
 
       {/* PARTY ROSTER DRAWER */}

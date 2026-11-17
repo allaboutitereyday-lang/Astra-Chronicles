@@ -319,12 +319,12 @@ export default function StoryCataloguePage() {
             />
 
             {/* Grouped Utility Dock */}
-            <div className="flex items-center gap-1 bg-zinc-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-md shadow-lg">
+            <div className="flex flex-wrap items-center gap-1 bg-zinc-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-md shadow-lg max-w-full">
               {/* Account & Roster Dossier (with explicit Google OAuth indicator) */}
               <Link
                 href="/account"
                 onClick={() => soundEffects.playClick()}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-emerald-300 hover:text-white transition-all whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-emerald-300 hover:text-white transition-all whitespace-nowrap"
                 title={
                   cloudUser
                     ? cloudUser.provider === "google" ||
@@ -357,7 +357,7 @@ export default function StoryCataloguePage() {
                       />
                     </svg>
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                    <span>Google: {cloudUser.displayName.split(" ")[0]}</span>
+                    <span>{cloudUser.displayName.split(" ")[0]}</span>
                   </>
                 ) : cloudUser ? (
                   <>
@@ -369,7 +369,8 @@ export default function StoryCataloguePage() {
                   <>
                     <User className="w-3.5 h-3.5 text-amber-400" />
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                    <span className="text-amber-200">Account (Guest)</span>
+                    <span className="text-amber-200 sm:hidden">Guest</span>
+                    <span className="text-amber-200 hidden sm:inline">Account (Guest)</span>
                   </>
                 )}
               </Link>

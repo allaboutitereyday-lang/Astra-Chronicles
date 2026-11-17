@@ -22,6 +22,7 @@ import {
   MapPin,
   Key,
   BookOpen,
+  Shield,
 } from "lucide-react";
 
 export interface MobileCommandSheetProps {
@@ -46,6 +47,9 @@ export interface MobileCommandSheetProps {
   onOpenSummonModal?: () => void;
   isStarfallInLobby?: boolean;
   starShardsCount?: number;
+  onOpenBarracks?: () => void;
+  deployedSquadCount?: number;
+  maxSquadCount?: number;
   locationName?: string;
   // Progression & Multiverse
   onNavigateToTrials: () => void;
@@ -85,6 +89,9 @@ export function MobileCommandSheet({
   onOpenSummonModal,
   isStarfallInLobby,
   starShardsCount,
+  onOpenBarracks,
+  deployedSquadCount,
+  maxSquadCount,
   locationName,
   onNavigateToTrials,
   onOpenShareModal,
@@ -350,7 +357,7 @@ export function MobileCommandSheet({
                 <button
                   type="button"
                   onClick={() => handleAction(onOpenSummonModal)}
-                  className={`p-3 rounded-2xl border flex items-center gap-3 transition-all cursor-pointer text-left group shadow-sm col-span-2 ${
+                  className={`p-3 min-h-[48px] rounded-2xl border flex items-center gap-3 transition-all cursor-pointer text-left group shadow-sm col-span-2 ${
                     isStarfallInLobby
                       ? "bg-indigo-950/60 border-indigo-400/50 hover:border-amber-400"
                       : "bg-zinc-900/80 border-white/10 opacity-75"
@@ -367,6 +374,26 @@ export function MobileCommandSheet({
                       {isStarfallInLobby
                         ? "Main Lobby Connected — Ready to Pull"
                         : "Locked Outside Star Gate Plaza (Main Lobby)"}
+                    </span>
+                  </div>
+                </button>
+              )}
+
+              {isStarfall && onOpenBarracks && (
+                <button
+                  type="button"
+                  onClick={() => handleAction(onOpenBarracks)}
+                  className="p-3 min-h-[48px] rounded-2xl bg-zinc-900/90 hover:bg-zinc-800/90 border border-amber-500/35 hover:border-amber-400 flex items-center gap-3 transition-all cursor-pointer text-left group shadow-sm col-span-2"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-300 group-hover:scale-105 transition-transform shrink-0">
+                    <Shield className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-bold text-zinc-100 block truncate">
+                      Iron Barracks ({deployedSquadCount ?? 0}/{maxSquadCount ?? 6} Deployed)
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono block truncate">
+                      Manage Deployed Squad &amp; Reserve Vanguards
                     </span>
                   </div>
                 </button>

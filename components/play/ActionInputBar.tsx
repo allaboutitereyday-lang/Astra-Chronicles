@@ -106,6 +106,10 @@ export const ActionInputBar = memo(function ActionInputBar({
   const adjustTextareaHeight = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
+    if (!el.value) {
+      el.style.height = "44px";
+      return;
+    }
     el.style.height = "auto";
     const nextHeight = Math.min(Math.max(el.scrollHeight, 44), 220);
     el.style.height = `${nextHeight}px`;
@@ -161,7 +165,7 @@ export const ActionInputBar = memo(function ActionInputBar({
         <button
           type="button"
           onClick={onOpenGifting}
-          className="px-2.5 sm:px-3 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-rose-400 active:scale-95 shrink-0"
+          className="px-2.5 sm:px-3 py-2 sm:py-2.5 min-h-[44px] rounded-xl border border-rose-500/30 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm hover:border-rose-400 active:scale-95 shrink-0"
           title="Camp Gifting: Present an item to a companion"
         >
           <Gift className="w-4 h-4 text-rose-400" />
@@ -173,13 +177,13 @@ export const ActionInputBar = memo(function ActionInputBar({
       <button
         type="button"
         onClick={() => setIsOOCMode((prev) => !prev)}
-        className={`px-2.5 sm:px-3 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl border font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 ${
+        className={`px-2 sm:px-3 py-2 sm:py-2.5 min-h-[44px] rounded-xl border font-mono text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 sm:gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0 ${
           isOOCMode
             ? "bg-amber-500/20 border-amber-500 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]"
             : "bg-zinc-900/90 border-white/10 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800"
         }`}
       >
-        <MessageSquareCode className="w-4 h-4" />
+        <MessageSquareCode className="w-4 h-4 shrink-0" />
         <span>OOC</span>
       </button>
 
@@ -193,13 +197,13 @@ export const ActionInputBar = memo(function ActionInputBar({
           onKeyDown={handleKeyDown}
           placeholder={
             isDraftingAction
-              ? `Drafting ${playerName}'s 2-paragraph response for you to edit...`
+              ? `Drafting ${playerName}'s response...`
               : isOOCMode
-              ? "OOC Directive... (Shift+Enter for new line)"
-              : `What will ${playerName} do or say? (Click a choice above to draft & edit, Shift+Enter for new line)`
+              ? "OOC stage note..."
+              : `What will ${playerName} do or say?`
           }
           disabled={isLoading || isDraftingAction}
-          className={`w-full bg-zinc-900/95 backdrop-blur-md rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 pr-8 min-h-[40px] sm:min-h-[44px] max-h-[220px] overflow-y-auto resize-y text-base sm:text-sm leading-relaxed text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-colors select-text ${
+          className={`w-full bg-zinc-900/95 backdrop-blur-md rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 pr-8 min-h-[44px] max-h-[220px] overflow-y-auto resize-y text-base sm:text-sm leading-relaxed text-zinc-100 placeholder-zinc-500 border focus:outline-none transition-colors select-text ${
             isDraftingAction
               ? "border-rose-400/60 ring-1 ring-rose-500/30 animate-pulse"
               : isOOCMode
@@ -233,7 +237,7 @@ export const ActionInputBar = memo(function ActionInputBar({
       <button
         type="submit"
         disabled={isLoading || isDraftingAction || !inputAction.trim()}
-        className="px-3.5 sm:px-5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] min-w-[40px] sm:min-w-[48px] bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
+        className="px-3.5 sm:px-5 py-2 sm:py-2.5 min-h-[44px] min-w-[44px] sm:min-w-[48px] bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl shadow-lg flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0"
         title="Send action (Enter to send, Shift+Enter for new line)"
       >
         {isLoading ? (

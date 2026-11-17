@@ -259,7 +259,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               <button
                 type="button"
                 onClick={() => onPinMemory(msg.text, msg.speakerName)}
-                className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-amber-950/60 border border-white/10 hover:border-amber-500/40 text-zinc-400 hover:text-amber-200 text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                className="px-1.5 sm:px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-amber-950/60 border border-white/10 hover:border-amber-500/40 text-zinc-400 hover:text-amber-200 text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
                 title="Pin a key canon summary of this turn into Pinned Core Memories"
               >
                 <Bookmark className="w-3 h-3 text-amber-400" />
@@ -269,17 +269,17 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             <button
               type="button"
               onClick={() => onStartEdit(msg)}
-              className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+              className="px-1.5 sm:px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
               title={msg.sender === "user" ? "Edit action" : "Edit response"}
             >
               <Edit3 className="w-3 h-3" />
-              <span>Edit</span>
+              <span className="hidden sm:inline">Edit</span>
             </button>
             {onDeleteMessage && !isLoading && (
               <button
                 type="button"
                 onClick={() => onDeleteMessage(msg.id)}
-                className="px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-red-950/60 border border-white/10 hover:border-red-500/40 text-zinc-400 hover:text-red-200 text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                className="px-1.5 sm:px-2 py-1 rounded-lg bg-zinc-900/90 hover:bg-red-950/60 border border-white/10 hover:border-red-500/40 text-zinc-400 hover:text-red-200 text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
                 title={msg.sender === "user" ? "Delete action" : "Delete AI response"}
               >
                 <Trash2 className="w-3 h-3 text-red-400" />
@@ -290,7 +290,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               <button
                 type="button"
                 onClick={() => onRewindToMessage(msg.id)}
-                className="px-2 py-1 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-sky-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                className="px-1.5 sm:px-2 py-1 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-sky-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
                 title="Rewind chronicle back to this turn"
               >
                 <RotateCcw className="w-3 h-3 text-sky-400" />
@@ -301,7 +301,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               <button
                 type="button"
                 onClick={onRegenerateTurn}
-                className="px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1 cursor-pointer shadow-sm transition-all"
+                className="hidden sm:flex px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono items-center gap-1 cursor-pointer shadow-sm transition-all"
                 title="Regenerate response (saves previous version as swipe variant)"
               >
                 <RotateCcw className="w-3 h-3" />
@@ -457,21 +457,22 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-1.5 sm:gap-2 ml-auto flex-wrap justify-end">
               <button
                 type="button"
                 onClick={() => onStartEdit(msg)}
-                className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                className="px-2 sm:px-2.5 py-1.5 sm:py-1 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/25 text-zinc-300 hover:text-white text-[11px] font-mono flex items-center gap-1 sm:gap-1.5 cursor-pointer transition-all"
                 title="Edit narrative text"
               >
                 <Edit3 className="w-3 h-3 text-sky-400" />
-                <span>Edit Text</span>
+                <span className="sm:hidden">Edit</span>
+                <span className="hidden sm:inline">Edit Text</span>
               </button>
               {onDeleteMessage && !isLoading && (
                 <button
                   type="button"
                   onClick={() => onDeleteMessage(msg.id)}
-                  className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-400/50 text-red-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                  className="px-2 sm:px-2.5 py-1.5 sm:py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 hover:border-red-400/50 text-red-200 hover:text-white text-[11px] font-mono flex items-center gap-1 sm:gap-1.5 cursor-pointer transition-all"
                   title="Delete this AI response"
                 >
                   <Trash2 className="w-3 h-3 text-red-400" />
@@ -482,11 +483,12 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 <button
                   type="button"
                   onClick={onRegenerateTurn}
-                  className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 hover:border-rose-400/50 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1.5 cursor-pointer transition-all"
+                  className="px-2 sm:px-2.5 py-1.5 sm:py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 hover:border-rose-400/50 text-rose-200 hover:text-white text-[11px] font-mono flex items-center gap-1 sm:gap-1.5 cursor-pointer transition-all"
                   title="Regenerate AI response for this turn"
                 >
                   <RotateCcw className="w-3 h-3 text-rose-400" />
-                  <span>Regenerate Response</span>
+                  <span className="sm:hidden">Regenerate</span>
+                  <span className="hidden sm:inline">Regenerate Response</span>
                 </button>
               )}
             </div>
