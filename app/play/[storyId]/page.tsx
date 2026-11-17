@@ -12203,7 +12203,7 @@ export default function VisualNovelGame() {
       <div className="absolute top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-24 md:top-24 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
         {/* MOBILE VISUAL NOVEL SPOTLIGHT STAGE (< sm) */}
         {!isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
-          <div className="sm:hidden relative flex-1 min-h-[96px] max-h-[30dvh] w-full flex items-end justify-center overflow-hidden pointer-events-none select-none -mb-2">
+          <div className="sm:hidden relative flex-1 min-h-[80px] max-h-[24dvh] w-full flex items-end justify-center overflow-hidden pointer-events-none select-none -mb-2">
             {presentComps.length === 0 ? (
               <div className="relative h-full w-full flex items-end justify-center">
                 {playerAvatar && playerAvatar.trim() ? (
@@ -12293,9 +12293,11 @@ export default function VisualNovelGame() {
 
         <div
           className={`pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 ${
-            isMobileStageCollapsed || activeClash?.isActive || player.labyrinthState?.activeEncounter?.isActive
-              ? "max-h-[56dvh] sm:max-h-[50vh] md:max-h-[54vh]"
-              : "max-h-[42dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+            activeClash?.isActive || player.labyrinthState?.activeEncounter?.isActive
+              ? "max-h-[46dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+              : isMobileStageCollapsed
+              ? "max-h-[72dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+              : "max-h-[52dvh] sm:max-h-[50vh] md:max-h-[54vh]"
           }`}
         >
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
@@ -12991,46 +12993,175 @@ export default function VisualNovelGame() {
           />
         )}
 
-        {/* Pitch A: The Causal Covenant Reality Severance Trigger */}
-        {covenantCheck.available &&
-          (!activeClash || !activeClash.isActive) &&
-          !player.labyrinthState?.activeEncounter?.isActive && (
-          <button
-            type="button"
-            onClick={() => {
-              soundEffects.playClick();
-              setShowCovenantModal(true);
-            }}
-            className="pointer-events-auto w-full mb-1.5 sm:mb-2 py-2 px-3.5 rounded-xl border border-purple-500/60 bg-gradient-to-r from-purple-950/80 via-zinc-950/90 to-purple-950/80 hover:border-purple-400 text-purple-200 hover:text-white font-mono text-xs font-semibold flex items-center justify-between shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:shadow-[0_0_25px_rgba(168,85,247,0.45)] transition-all cursor-pointer group select-none"
-            title={covenantCheck.reason}
-          >
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-purple-400 animate-pulse" />
-              <span>✦ [COVENANT: REALITY SEVERANCE]</span>
-            </div>
-            <span className="text-[10px] text-purple-300/80 group-hover:text-purple-200 font-mono hidden sm:inline">
-              Burn Cap (-15%) → Overwrite Cosmic Fate
-            </span>
-          </button>
-        )}
+        {/* UNIFIED COMPOSER & TACTICAL CONTROL DOCK */}
+        {(() => {
+          const showChoiceControls =
+            choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive);
+          const showCovenantTrigger =
+            covenantCheck.available &&
+            (!activeClash || !activeClash.isActive) &&
+            !player.labyrinthState?.activeEncounter?.isActive;
+          const showStarfallDeploy =
+            currentStory.id === "starfall-labyrinth" &&
+            !player.labyrinthState?.activeEncounter?.isActive &&
+            isStarfallLobbyLocation(gameState.location);
 
-        {choices.length > 0 &&
-          !isLoading &&
-          (!activeClash || !activeClash.isActive) && (
-          <div className="pointer-events-auto flex flex-col gap-1 select-none shrink-0">
-            {/* Choice Tray Control Header */}
-            <div className="flex items-center justify-between px-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
-                  ✦ {choices.length} Tactical Vectors
-                </span>
-                <span className="text-[10px] font-mono text-zinc-500 hidden sm:inline">
-                  (Click card to Draft & Edit • Click ⚡ to Send Immediately)
-                </span>
+          return (
+            <div className="pointer-events-auto bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col shrink-0 select-none">
+              {/* Compact Single-Row Control Strip Inside Composer */}
+              <div className="flex items-center justify-between gap-1.5 px-2 sm:px-2.5 py-1.5 border-b border-white/10 bg-zinc-900/55 overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {showChoiceControls && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsChoicesCollapsed((v) => !v)}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono font-semibold transition-all cursor-pointer shrink-0 ${
+                          !isChoicesCollapsed
+                            ? "bg-rose-950/70 border-rose-500/45 text-rose-200"
+                            : "bg-zinc-950/80 border-white/10 text-zinc-300 hover:text-white hover:border-white/25"
+                        }`}
+                        title={isChoicesCollapsed ? "Expand suggested choices" : "Minimize suggested choices to view more story"}
+                      >
+                        <Sparkles className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                        <span className="sm:hidden">Choices ({choices.length})</span>
+                        <span className="hidden sm:inline">{choices.length} Tactical Vectors</span>
+                        {isChoicesCollapsed ? (
+                          <ChevronUp className="w-3 h-3 text-rose-400 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-3 h-3 text-zinc-400 shrink-0" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRerollChoices()}
+                        disabled={isRerollingChoices || isDraftingAction || isLoading}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-950/80 hover:bg-zinc-800 border border-white/10 hover:border-amber-500/40 text-[10px] font-mono text-zinc-300 hover:text-amber-300 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                        title="Generate 4 alternative protagonist choices for this scene"
+                      >
+                        <RefreshCw className={`w-2.5 h-2.5 ${isRerollingChoices ? "animate-spin text-amber-400" : ""}`} />
+                        <span>{isRerollingChoices ? "Rerolling..." : "Reroll"}</span>
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setShowOocDrawer((v) => !v)}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono transition-all cursor-pointer shrink-0 ${
+                      directorNotes.trim()
+                        ? "bg-indigo-950/85 border-indigo-400/60 text-indigo-200 shadow-[0_0_10px_rgba(99,102,241,0.25)]"
+                        : showOocDrawer
+                        ? "bg-indigo-950/50 border-indigo-500/40 text-indigo-200"
+                        : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:text-indigo-200 hover:border-indigo-500/40"
+                    }`}
+                    title="Steer pacing, subtext, or scene mood out-of-character without breaking immersion"
+                  >
+                    <Sparkles className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+                    <span className="sm:hidden">{directorNotes.trim() ? "OOC Active" : "OOC Note"}</span>
+                    <span className="hidden sm:inline">
+                      {directorNotes.trim() ? "OOC Director Note Active" : "OOC Stage Direction"}
+                    </span>
+                    {showOocDrawer ? (
+                      <ChevronDown className="w-2.5 h-2.5 opacity-70 shrink-0" />
+                    ) : (
+                      <ChevronUp className="w-2.5 h-2.5 opacity-70 shrink-0" />
+                    )}
+                  </button>
+
+                  {showCovenantTrigger && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playClick();
+                        setShowCovenantModal(true);
+                      }}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-purple-500/60 bg-purple-950/75 hover:border-purple-400 text-purple-200 hover:text-white font-mono text-[10px] font-semibold shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all cursor-pointer shrink-0"
+                      title={covenantCheck.reason}
+                    >
+                      <Zap className="w-3 h-3 text-purple-400 animate-pulse shrink-0" />
+                      <span className="sm:hidden">Covenant</span>
+                      <span className="hidden sm:inline">[COVENANT: REALITY SEVERANCE]</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {showChoiceControls && !isChoicesCollapsed && (
+                    <span className="text-[10px] font-mono text-zinc-500 hidden lg:inline">
+                      Click card to Draft • ⚡ Send Immediately
+                    </span>
+                  )}
+
+                  {showStarfallDeploy && (() => {
+                    const frontierFloor = Math.min(
+                      100,
+                      Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)
+                    );
+                    const targetDeployFloor =
+                      selectedDeployFloor === null
+                        ? frontierFloor
+                        : Math.max(1, Math.min(frontierFloor, selectedDeployFloor));
+                    const availableFloors = Array.from(
+                      { length: frontierFloor },
+                      (_, idx) => frontierFloor - idx
+                    );
+                    return (
+                      <div className="inline-flex items-center gap-1 shrink-0">
+                        <select
+                          aria-label="Select Starfall Labyrinth deploy floor"
+                          value={targetDeployFloor}
+                          disabled={isLoading}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setSelectedDeployFloor(val >= frontierFloor ? null : val);
+                          }}
+                          className="px-1.5 py-0.5 rounded-lg bg-zinc-950/90 border border-amber-500/35 text-[10px] font-mono font-bold text-amber-200 focus:outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50"
+                          title="Select frontier floor or any previously cleared floor to replay"
+                        >
+                          {availableFloors.map((f) => {
+                            const ft = getFloorType(f);
+                            const tag =
+                              f === frontierFloor
+                                ? " • Frontier"
+                                : ft === "GATE_BOSS"
+                                  ? " • Boss"
+                                  : ft === "SAFE_ZONE"
+                                    ? " • Safe"
+                                    : "";
+                            return (
+                              <option key={f} value={f} className="bg-zinc-950 text-amber-100">
+                                F{f}{tag}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            sendAction(
+                              `Enter Floor ${targetDeployFloor} with the deployed vanguard.`,
+                              true
+                            )
+                          }
+                          disabled={isLoading}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer disabled:opacity-50"
+                          title="Step directly through the Star Gate into the selected Labyrinth floor"
+                        >
+                          <span className="sm:hidden">⚔ F{targetDeployFloor}</span>
+                          <span className="hidden sm:inline">⚔ Deploy to Floor {targetDeployFloor}</span>
+                        </button>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 flex-wrap justify-end w-full sm:w-auto">
-                {!isChoicesCollapsed && (
-                  <div className="flex items-center gap-1 mr-0.5 overflow-x-auto no-scrollbar max-w-full">
+
+              {/* Expandable Choices Tray Inside Unified Box */}
+              {showChoiceControls && !isChoicesCollapsed && (
+                <div className="px-2 py-1.5 border-b border-white/10 bg-zinc-950/60 space-y-1.5">
+                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                     <button
                       type="button"
                       onClick={() => handleRerollChoices("romantic")}
@@ -13059,249 +13190,133 @@ export default function VisualNovelGame() {
                       ⚡ Bold Play
                     </button>
                   </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleRerollChoices()}
-                  disabled={isRerollingChoices || isDraftingAction || isLoading}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 hover:border-amber-500/40 text-[10px] font-mono text-zinc-300 hover:text-amber-300 transition-all cursor-pointer disabled:opacity-50"
-                  title="Generate 4 alternative protagonist choices for this scene"
-                >
-                  <RefreshCw className={`w-2.5 h-2.5 ${isRerollingChoices ? "animate-spin text-amber-400" : ""}`} />
-                  <span>{isRerollingChoices ? "Rerolling..." : "Reroll Choices"}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsChoicesCollapsed((v) => !v)}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900/90 hover:bg-zinc-800 border border-white/10 text-[10px] font-mono text-zinc-300 hover:text-white transition-all cursor-pointer"
-                  title={isChoicesCollapsed ? "Expand suggested choices" : "Minimize suggested choices to view more story"}
-                >
-                  {isChoicesCollapsed ? (
-                    <>
-                      <ChevronUp className="w-3 h-3 text-rose-400" />
-                      <span>Expand Choices</span>
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDown className="w-3 h-3 text-zinc-400" />
-                      <span>Minimize</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
 
-            {!isChoicesCollapsed && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-[25dvh] sm:max-h-36 overflow-y-auto pr-0.5">
-                {choices.map((choice, idx) => {
-                  const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
-                  const tag = tagMatch ? tagMatch[1] : null;
-                  const text = tagMatch ? tagMatch[2] : choice;
-                  const isThisChoiceDrafting = isDraftingAction && draftingChoiceIdx === idx;
-                  const resonanceBadge = getChoiceResonanceBadge(choice);
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-[24dvh] sm:max-h-36 overflow-y-auto pr-0.5">
+                    {choices.map((choice, idx) => {
+                      const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
+                      const tag = tagMatch ? tagMatch[1] : null;
+                      const text = tagMatch ? tagMatch[2] : choice;
+                      const isThisChoiceDrafting = isDraftingAction && draftingChoiceIdx === idx;
+                      const resonanceBadge = getChoiceResonanceBadge(choice);
 
-                  return (
-                    <div
-                      key={`${idx}_${choice.slice(0, 16)}`}
-                      className={`group bg-zinc-900/95 hover:bg-zinc-900 border backdrop-blur-md px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-left transition-all duration-150 shadow-md flex items-center justify-between gap-2 ${
-                        isThisChoiceDrafting
-                          ? "border-sky-400 ring-1 ring-sky-500/40 bg-sky-950/30"
-                          : "border-white/10 hover:border-sky-500/50"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleSelectPresetChoice(choice, idx)}
-                        disabled={isLoading || isDraftingAction}
-                        title="Click to expand into a 2-paragraph draft in the text box for editing before sending"
-                        className="flex-1 min-w-0 text-left cursor-pointer disabled:opacity-60"
-                      >
-                        <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                          {tag && (
-                            <span className="font-mono text-[10px] font-semibold text-rose-400/90 group-hover:text-rose-300 shrink-0">
-                              {tag}
-                            </span>
-                          )}
-                          {resonanceBadge && (
-                            <span
-                              className={`px-1.5 py-0.2 rounded border text-[9px] font-mono font-semibold ${resonanceBadge.color}`}
+                      return (
+                        <div
+                          key={`${idx}_${choice.slice(0, 16)}`}
+                          className={`group bg-zinc-900/90 hover:bg-zinc-900 border px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-left transition-all duration-150 shadow-sm flex items-center justify-between gap-2 ${
+                            isThisChoiceDrafting
+                              ? "border-sky-400 ring-1 ring-sky-500/40 bg-sky-950/30"
+                              : "border-white/10 hover:border-sky-500/50"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSelectPresetChoice(choice, idx)}
+                            disabled={isLoading || isDraftingAction}
+                            title="Click to expand into a 2-paragraph draft in the text box for editing before sending"
+                            className="flex-1 min-w-0 text-left cursor-pointer disabled:opacity-60"
+                          >
+                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                              {tag && (
+                                <span className="font-mono text-[10px] font-semibold text-rose-400/90 group-hover:text-rose-300 shrink-0">
+                                  {tag}
+                                </span>
+                              )}
+                              {resonanceBadge && (
+                                <span
+                                  className={`px-1.5 py-0.2 rounded border text-[9px] font-mono font-semibold ${resonanceBadge.color}`}
+                                >
+                                  {resonanceBadge.label}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs sm:text-[13px] text-zinc-200 group-hover:text-white line-clamp-2 leading-snug">
+                              {isThisChoiceDrafting
+                                ? `Drafting 2-paragraph response for ${player.name}...`
+                                : text}
+                            </p>
+                          </button>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleSelectPresetChoice(choice, idx)}
+                              disabled={isLoading || isDraftingAction}
+                              title="Draft & Edit in text box"
+                              className="p-1.5 rounded-lg bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-400/50 text-zinc-400 hover:text-sky-300 transition-all cursor-pointer"
                             >
-                              {resonanceBadge.label}
-                            </span>
-                          )}
+                              {isThisChoiceDrafting ? (
+                                <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-spin" />
+                              ) : (
+                                <Edit3 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (isLoading || isDraftingAction) return;
+                                const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+                                sendAction(clean, false);
+                              }}
+                              disabled={isLoading || isDraftingAction}
+                              title="⚡ Send Immediately (Skip Drafting)"
+                              className="p-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-400 text-rose-300 hover:text-white transition-all cursor-pointer"
+                            >
+                              <Zap className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-xs sm:text-[13px] text-zinc-200 group-hover:text-white line-clamp-2 leading-snug">
-                          {isThisChoiceDrafting
-                            ? `Drafting 2-paragraph response for ${player.name}...`
-                            : text}
-                        </p>
-                      </button>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleSelectPresetChoice(choice, idx)}
-                          disabled={isLoading || isDraftingAction}
-                          title="Draft & Edit in text box"
-                          className="p-1.5 rounded-lg bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-400/50 text-zinc-400 hover:text-sky-300 transition-all cursor-pointer"
-                        >
-                          {isThisChoiceDrafting ? (
-                            <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-spin" />
-                          ) : (
-                            <Edit3 className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (isLoading || isDraftingAction) return;
-                            const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
-                            sendAction(clean, false);
-                          }}
-                          disabled={isLoading || isDraftingAction}
-                          title="⚡ Send Immediately (Skip Drafting)"
-                          className="p-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-400 text-rose-300 hover:text-white transition-all cursor-pointer"
-                        >
-                          <Zap className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* OOC.ai Stage Direction & Persistent Director Note Bar */}
-        <div className="pointer-events-auto flex flex-col gap-1 px-0.5">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setShowOocDrawer((v) => !v)}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-[10px] font-mono transition-all cursor-pointer ${
-                directorNotes.trim()
-                  ? "bg-indigo-950/85 border-indigo-400/60 text-indigo-200 shadow-[0_0_12px_rgba(99,102,241,0.25)]"
-                  : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:text-indigo-200 hover:border-indigo-500/40"
-              }`}
-              title="Steer pacing, subtext, or scene mood out-of-character without breaking immersion (or type (OOC: ...) directly in your message)"
-            >
-              <Sparkles className="w-2.5 h-2.5 text-indigo-400" />
-              <span>
-                {directorNotes.trim()
-                  ? "OOC Director Note Active"
-                  : "OOC Stage Direction"}
-              </span>
-              {showOocDrawer ? (
-                <ChevronDown className="w-2.5 h-2.5 opacity-70" />
-              ) : (
-                <ChevronUp className="w-2.5 h-2.5 opacity-70" />
+                      );
+                    })}
+                  </div>
+                </div>
               )}
-            </button>
-            {currentStory.id === "starfall-labyrinth" &&
-              !player.labyrinthState?.activeEncounter?.isActive &&
-              isStarfallLobbyLocation(gameState.location) && (() => {
-                const frontierFloor = Math.min(
-                  100,
-                  Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)
-                );
-                const targetDeployFloor =
-                  selectedDeployFloor === null
-                    ? frontierFloor
-                    : Math.max(1, Math.min(frontierFloor, selectedDeployFloor));
-                const availableFloors = Array.from(
-                  { length: frontierFloor },
-                  (_, idx) => frontierFloor - idx
-                );
-                return (
-                  <div className="inline-flex items-center gap-1">
-                    <select
-                      aria-label="Select Starfall Labyrinth deploy floor"
-                      value={targetDeployFloor}
-                      disabled={isLoading}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setSelectedDeployFloor(val >= frontierFloor ? null : val);
-                      }}
-                      className="px-1.5 py-0.5 rounded-lg bg-zinc-950/90 border border-amber-500/35 text-[10px] font-mono font-bold text-amber-200 focus:outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50"
-                      title="Select frontier floor or any previously cleared floor to replay"
-                    >
-                      {availableFloors.map((f) => {
-                        const ft = getFloorType(f);
-                        const tag =
-                          f === frontierFloor
-                            ? " • Frontier"
-                            : ft === "GATE_BOSS"
-                              ? " • Boss"
-                              : ft === "SAFE_ZONE"
-                                ? " • Safe"
-                                : "";
-                        return (
-                          <option key={f} value={f} className="bg-zinc-950 text-amber-100">
-                            F{f}{tag}
-                          </option>
-                        );
-                      })}
-                    </select>
+
+              {/* Expandable OOC Director Note Inside Unified Box */}
+              {showOocDrawer && (
+                <div className="flex items-center gap-2 bg-indigo-950/20 border-b border-indigo-500/30 px-2.5 py-1.5">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300 shrink-0">
+                    OOC:
+                  </span>
+                  <input
+                    type="text"
+                    value={directorNotes}
+                    onChange={(e) => setDirectorNotes(e.target.value)}
+                    placeholder='e.g. "Slow burn tension—have her notice my bandaged hand." (Or (OOC: ...) inline)'
+                    className="flex-1 bg-transparent text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none select-text"
+                  />
+                  {directorNotes.trim() && (
                     <button
                       type="button"
-                      onClick={() =>
-                        sendAction(
-                          `Enter Floor ${targetDeployFloor} with the deployed vanguard.`,
-                          true
-                        )
-                      }
-                      disabled={isLoading}
-                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer disabled:opacity-50"
-                      title="Step directly through the Star Gate into the selected Labyrinth floor"
+                      onClick={() => setDirectorNotes("")}
+                      className="text-[10px] font-mono text-zinc-400 hover:text-rose-300 cursor-pointer shrink-0"
                     >
-                      <span>⚔ Deploy to Floor {targetDeployFloor}</span>
+                      Clear
                     </button>
-                  </div>
-                );
-              })()}
-          </div>
-          {showOocDrawer && (
-            <div className="flex items-center gap-2 bg-zinc-950/95 border border-indigo-500/40 rounded-xl px-3 py-1.5 shadow-lg">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300 shrink-0">
-                OOC:
-              </span>
-              <input
-                type="text"
-                value={directorNotes}
-                onChange={(e) => setDirectorNotes(e.target.value)}
-                placeholder='e.g. "Slow burn tension—have her notice my bandaged hand without mentioning it outright." (Or write (OOC: ...) inline)'
-                className="flex-1 bg-transparent text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none"
-              />
-              {directorNotes.trim() && (
-                <button
-                  type="button"
-                  onClick={() => setDirectorNotes("")}
-                  className="text-[10px] font-mono text-zinc-400 hover:text-rose-300 cursor-pointer shrink-0"
-                >
-                  Clear
-                </button>
+                  )}
+                </div>
               )}
-            </div>
-          )}
-        </div>
 
-        <ActionInputBar
-          onSend={handleSendCustomAction}
-          isLoading={isLoading}
-          isDraftingAction={isDraftingAction}
-          draftText={draftActionText}
-          draftVersion={draftActionVersion}
-          playerName={player.name}
-          hasParty={party.length > 0}
-          onOpenGifting={() => {
-            if (party.length > 0 && !selectedGiftRecipient) {
-              setSelectedGiftRecipient(party[0].name);
-            }
-            setShowGiftingModal(true);
-          }}
-        />
+              {/* Integrated Text Entry Bar */}
+              <ActionInputBar
+                embedded
+                onSend={handleSendCustomAction}
+                isLoading={isLoading}
+                isDraftingAction={isDraftingAction}
+                draftText={draftActionText}
+                draftVersion={draftActionVersion}
+                playerName={player.name}
+                hasParty={party.length > 0}
+                onOpenGifting={() => {
+                  if (party.length > 0 && !selectedGiftRecipient) {
+                    setSelectedGiftRecipient(party[0].name);
+                  }
+                  setShowGiftingModal(true);
+                }}
+              />
+            </div>
+          );
+        })()}
       </div>
 
       {renderSaveModal()}
