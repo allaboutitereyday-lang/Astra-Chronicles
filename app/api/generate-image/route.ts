@@ -8,6 +8,8 @@ import {
 import {
   GACHA_QUALITY_PREFIX,
   GACHA_NEGATIVE_PROMPT,
+  WESTERN_COMIC_QUALITY_PREFIX,
+  WESTERN_COMIC_NEGATIVE_PROMPT,
   isComfyUiOnline,
   uploadReferenceToComfyUi,
   generateComfyCharacterSprite,
@@ -70,8 +72,20 @@ async function synthesizeFullScenePrompt(
     : "";
 
   // 1. Attempt LLM Art Director Synthesis if API key is present
+  const isWesternComic = sceneContext?.artStyle === "western_adult_comic";
   if (apiKey) {
-    const artDirectorSystemPrompt = `You are the Lead Visual Novel Art Director & Master CG Concept Artist for "Astra Chronicles".
+    const artDirectorSystemPrompt = isWesternComic
+      ? `You are the Lead Visual Novel Art Director & Master Graphic-Novel Comic Artist for "${storyTitle}".
+Your task is to analyze the FULL scene context provided (dialogue, emotional/romantic tension, domestic or nightlife setting, wardrobe state, and character builds) and write an EXHAUSTIVE Western Adult Graphic-Novel Comic event CG prompt.
+
+Requirements for the output prompt:
+1. Format: A single dense, descriptive prompt paragraph (100 to 160 words).
+2. Composition: Crisp graphic-novel comic panel framing (intimate close two-shot, cozy hallway encounter, or moody late-night room framing).
+3. Character & Body Fidelity: Preserve each heroine's exact body proportions, hair color/style, freckles/beauty marks, and active wardrobe state (casual, kitchen apron, lounge/nightwear, towel, lingerie, etc.).
+4. Atmosphere & Background: Grounded contemporary domestic or nightlife interior (warm kitchen morning sun, steamy hallway bathroom, lamp-lit parlor, smoky amber neon dive bar) rendered with soft shallow-depth-of-field bokeh behind sharp foreground inked characters.
+5. Aesthetic: Polished Western Adult Graphic-Novel Comic style (bold crisp dark ink lineart, smooth cel shading with warm rosy blush gradients, glossy skin highlights, expressive comic eyes — NOT anime, NOT 3D photorealism).
+6. Return STRICTLY valid JSON: { "prompt": "..." } with no markdown code blocks outside JSON.`
+      : `You are the Lead Visual Novel Art Director & Master CG Concept Artist for "Astra Chronicles".
 Your task is to analyze the FULL scene context provided (the dialogue transcript, emotional stakes, character physical traits, environment, and dramatic action) and write an EXHAUSTIVE, cinematic anime visual novel CG illustration prompt.
 
 Requirements for the output prompt:
@@ -443,15 +457,34 @@ export async function POST(req: Request) {
       lowerChar.includes(k)
     )?.[1];
 
+    const ashVelvetSlugMap: Record<string, string> = {
+      "clara": "clara_callahan",
+      "hannah": "hannah_lindqvist",
+      "brianna": "brianna_chen",
+      "sierra": "sierra_holloway",
+      "chloe bellamy": "chloe_bellamy",
+    };
+    const matchedAshVelvetSlug =
+      body.storyId === "ash-and-velvet" || body.artStyle === "western_adult_comic"
+        ? Object.entries(ashVelvetSlugMap).find(([k]) => lowerChar.includes(k))?.[1] ||
+          (lowerChar.includes("chloe") ? "chloe_bellamy" : undefined)
+        : undefined;
+
     if (!body.forceComfyRegenerate && matchedCanon) {
       const expr = expressionKey === "hurt" ? "hurt" : (expressionKey || "neutral");
       generatedImageUrl = `/characters/${matchedCanon}/${matchedCanon}_${expr}.png`;
+    } else if (!body.forceComfyRegenerate && matchedAshVelvetSlug) {
+      const validAvExprs = ["neutral", "intrigued", "flustered", "smug", "hurt", "beckon"];
+      const expr = validAvExprs.includes(expressionKey) ? expressionKey : "base";
+      generatedImageUrl = `/characters/ash-and-velvet/${matchedAshVelvetSlug}/${expr}.png`;
     } else if (!body.forceComfyRegenerate && matchedStarfallSlug) {
       const validStarfallExprs = ["neutral", "intrigued", "flustered", "smug", "combat_ready", "hurt"];
       const expr = validStarfallExprs.includes(expressionKey) ? expressionKey : "neutral";
       generatedImageUrl = `/characters/starfall-labyrinth/${matchedStarfallSlug}/${expr}.png`;
     } else if (body.forceComfyRegenerate || mode === "comfy_sprite" || (!generatedImageUrl && body.useComfyUi !== false)) {
-      // 1. Primary Local ComfyUI Gacha Character Pipeline (illustriousXL_v01 + IPAdapter + RMBG-2.0)
+      // 1. Primary Local ComfyUI Character Pipeline (IllustriousXL for anime, Pony V6 XL + Incase v3.1 for Western comic)
+      const isWesternComicSprite =
+        body.artStyle === "western_adult_comic" || body.sceneContext?.artStyle === "western_adult_comic";
       const comfyAvailable = await isComfyUiOnline();
       if (comfyAvailable) {
         try {
@@ -476,21 +509,29 @@ export async function POST(req: Request) {
             }
           }
 
-          const genderTag = gender === "male" ? "1boy, solo, handsome anime man" : "1girl, solo";
-          const comfyPositive = `${GACHA_QUALITY_PREFIX.replace("1girl", genderTag)}, ${
-            prompt || `${baseVisualAnchor}${characterName}, ${body.role || "gacha adventurer"}`
+          const genderTag = gender === "male" ? "1boy, solo, handsome man" : "1girl, solo";
+          const qualityPrefix = isWesternComicSprite
+            ? WESTERN_COMIC_QUALITY_PREFIX
+            : GACHA_QUALITY_PREFIX;
+          const comfyPositive = `${qualityPrefix.replace("1girl", genderTag)}, ${
+            prompt || `${baseVisualAnchor}${characterName}, ${body.role || "character"}`
           }, ${activeModifier}`;
 
           const spriteOut = await generateComfyCharacterSprite({
             positivePrompt: comfyPositive,
-            negativePrompt: GACHA_NEGATIVE_PROMPT,
+            negativePrompt: isWesternComicSprite
+              ? WESTERN_COMIC_NEGATIVE_PROMPT
+              : GACHA_NEGATIVE_PROMPT,
+            artStyle: isWesternComicSprite ? "western_adult_comic" : "anime_manhwa",
             seed: lockedSeed,
             referenceImageFilename: refFilename,
             filenamePrefix: `live_character/${characterName.toLowerCase().replace(/[^a-z0-9]+/g, "_")}_${expressionKey}`,
           });
 
           generatedImageUrl = `data:image/png;base64,${spriteOut.alphaImageBuffer.toString("base64")}`;
-          controlNetPipelineMetadata.model = "illustriousXL_v01 + RMBG-2.0 (Local ComfyUI)";
+          controlNetPipelineMetadata.model = isWesternComicSprite
+            ? "ponyDiffusionV6XL + incase_style_v3.1 + RMBG-2.0 (Local ComfyUI)"
+            : "illustriousXL_v01 + RMBG-2.0 (Local ComfyUI)";
         } catch (comfyErr: any) {
           console.warn("[ComfyUI Live Sprite] Falling back to OpenRouter:", comfyErr?.message || comfyErr);
         }

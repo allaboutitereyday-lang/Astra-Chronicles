@@ -11,16 +11,33 @@ export const DEFAULT_COMFYUI_URL =
 export const DEFAULT_GACHA_CHECKPOINT =
   process.env.COMFYUI_CHECKPOINT || "illustriousXL_v01.safetensors";
 
+export const WESTERN_COMIC_CHECKPOINT =
+  process.env.COMFYUI_WESTERN_CHECKPOINT ||
+  "ponyDiffusionV6XL_v6StartWithThisOne.safetensors";
+
+export const WESTERN_COMIC_LORA =
+  process.env.COMFYUI_WESTERN_LORA ||
+  "incase_style_v3-1_ponyxl_ilff.safetensors";
+
 export const GACHA_QUALITY_PREFIX =
   "masterpiece, best quality, newest, absurdres, highres, official gacha splash art, korean tower manhwa illustration, visual novel character sprite, clean crisp lineart, cel shaded with soft luminous gradients, glossy hair highlights, expressive detailed jewel-like eyes, intricate costume trim, solo, 1girl, cowboy shot, three-quarter standing portrait, pure solid white background, simple background";
 
 export const GACHA_NEGATIVE_PROMPT =
   "worst quality, low quality, normal quality, lowres, blurry, jpeg artifacts, bad anatomy, bad hands, extra digits, missing fingers, fused fingers, extra limbs, mutated hands, poorly drawn face, deformed, ugly, duplicate, multiple girls, 2girls, crowd, complex background, scenery, text, watermark, signature, username, frame, border, card frame, monochrome, thick cartoon outlines, flat western cartoon";
 
+export const WESTERN_COMIC_QUALITY_PREFIX =
+  "score_9, score_8_up, score_7_up, source_cartoon, western comic, polished finished graphic novel illustration, bold crisp black ink outlines, smooth cel shading with warm blush gradients, luminous glossy skin highlights, expressive comic eyes, solo, 1girl, cowboy shot, standing, pure solid white studio background";
+
+export const WESTERN_COMIC_NEGATIVE_PROMPT =
+  "score_6, score_5, score_4, sketch, rough lines, flat color, unfinished, 3d, realistic, photo, anime, chibi, monochrome, bad anatomy, bad hands, extra fingers, missing fingers, fused fingers, extra limbs, tail, animal ears, furry, ugly face, multiple views, character sheet, complex background, scenery, text, watermark, signature, frame, border";
+
 export interface ComfySpriteRequest {
   positivePrompt: string;
   negativePrompt?: string;
+  artStyle?: "anime_manhwa" | "western_adult_comic" | "dark_painterly";
   checkpoint?: string;
+  loraName?: string;
+  loraStrength?: number;
   width?: number;
   height?: number;
   steps?: number;
@@ -107,17 +124,30 @@ export function buildGachaSpriteWorkflow(opts: ComfySpriteRequest): {
       ? Math.abs(Math.floor(opts.seed))
       : Math.floor(Math.random() * 900_000_000_000) + 100_000;
 
-  const checkpoint = opts.checkpoint || DEFAULT_GACHA_CHECKPOINT;
+  const isWesternComic = opts.artStyle === "western_adult_comic";
+  const checkpoint =
+    opts.checkpoint ||
+    (isWesternComic ? WESTERN_COMIC_CHECKPOINT : DEFAULT_GACHA_CHECKPOINT);
+  const loraName = opts.loraName ?? (isWesternComic ? WESTERN_COMIC_LORA : undefined);
+  const loraStrength = opts.loraStrength ?? 0.7;
   const width = opts.width || 832;
-  const height = opts.height || 1216;
-  const steps = opts.steps || 24;
-  const cfg = opts.cfg ?? 6.0;
-  const samplerName = opts.samplerName || "euler_ancestral";
+  const height = opts.height || (isWesternComic ? 1152 : 1216);
+  const steps = opts.steps || (isWesternComic ? 26 : 24);
+  const cfg = opts.cfg ?? (isWesternComic ? 6.5 : 6.0);
+  const samplerName = opts.samplerName || (isWesternComic ? "dpmpp_2m" : "euler_ancestral");
   const scheduler = opts.scheduler || "karras";
   const filenamePrefix = opts.filenamePrefix || "astra_sprites/sprite";
-  const negativePrompt = opts.negativePrompt || GACHA_NEGATIVE_PROMPT;
+  const negativePrompt =
+    opts.negativePrompt ||
+    (isWesternComic ? WESTERN_COMIC_NEGATIVE_PROMPT : GACHA_NEGATIVE_PROMPT);
 
   const hasRef = Boolean(opts.referenceImageFilename);
+  const baseModelRef: [string, number] = loraName ? ["14", 0] : ["1", 0];
+  const baseClipRef: [string, number] = isWesternComic
+    ? ["15", 0]
+    : loraName
+      ? ["14", 1]
+      : ["1", 1];
 
   const workflow: Record<string, any> = {
     "1": {
@@ -126,17 +156,42 @@ export function buildGachaSpriteWorkflow(opts: ComfySpriteRequest): {
         ckpt_name: checkpoint,
       },
     },
+    ...(loraName
+      ? {
+          "14": {
+            class_type: "LoraLoader",
+            inputs: {
+              model: ["1", 0],
+              clip: ["1", 1],
+              lora_name: loraName,
+              strength_model: loraStrength,
+              strength_clip: loraStrength,
+            },
+          },
+        }
+      : {}),
+    ...(isWesternComic
+      ? {
+          "15": {
+            class_type: "CLIPSetLastLayer",
+            inputs: {
+              clip: loraName ? ["14", 1] : ["1", 1],
+              stop_at_clip_layer: -2,
+            },
+          },
+        }
+      : {}),
     "4": {
       class_type: "CLIPTextEncode",
       inputs: {
-        clip: ["1", 1],
+        clip: baseClipRef,
         text: opts.positivePrompt,
       },
     },
     "3": {
       class_type: "CLIPTextEncode",
       inputs: {
-        clip: ["1", 1],
+        clip: baseClipRef,
         text: negativePrompt,
       },
     },
@@ -151,7 +206,7 @@ export function buildGachaSpriteWorkflow(opts: ComfySpriteRequest): {
     "2": {
       class_type: "KSampler",
       inputs: {
-        model: hasRef ? ["17", 0] : ["1", 0],
+        model: hasRef ? ["17", 0] : baseModelRef,
         positive: ["4", 0],
         negative: ["3", 0],
         latent_image: ["7", 0],
@@ -236,15 +291,15 @@ export function buildGachaSpriteWorkflow(opts: ComfySpriteRequest): {
     workflow["17"] = {
       class_type: "IPAdapterAdvanced",
       inputs: {
-        model: ["1", 0],
+        model: baseModelRef,
         ipadapter: ["25", 0],
         image: ["34", 0],
         clip_vision: ["26", 0],
-        weight: opts.ipAdapterWeight ?? 0.72,
+        weight: opts.ipAdapterWeight ?? (isWesternComic ? 0.36 : 0.72),
         weight_type: "linear",
         combine_embeds: "concat",
         start_at: 0.0,
-        end_at: opts.ipAdapterEndAt ?? 0.92,
+        end_at: opts.ipAdapterEndAt ?? (isWesternComic ? 0.5 : 0.92),
         embeds_scaling: "V only",
       },
     };

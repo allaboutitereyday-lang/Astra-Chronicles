@@ -1,0 +1,809 @@
+{
+  "id": "ash-and-velvet",
+  "title": "Ash & Velvet",
+  "tagline": "Fleeing a violent past into a shared house of warmth, late-night vices, and dangerously close doors.",
+  "description": "An unfiltered 18+ Western graphic-novel visual novel. After walking out of an abusive home with a duffel bag and bruised ribs, you are taken in by Clara Callahan—a warm, fiercely protective landlady running a lively shared house. Between morning coffee tension, steamy hallway run-ins, smoky neon dive bars, alcohol, substances, and raw late-night confessions, navigate deep routes across five unforgettable women.",
+  "coverImage": "/backgrounds/ash-and-velvet/cover.jpg",
+  "genre": "18+ Adult VN / Slice-of-Life Drama",
+  "themes": [
+    "Adult 18+ Romance",
+    "Shared House Dynamics",
+    "Trauma & Recovery",
+    "Nightlife & Vices",
+    "Multiple Outfits & Routes"
+  ],
+  "narrationStyle": "Raw Adult Visual Novel Drama (Intimate, gritty, sensory, emotionally charged)",
+  "artStyle": "western_adult_comic",
+  "contentRating": "adult_18",
+  "panelFrameStyle": "comic_panel",
+  "romancePath": "uncommitted",
+  "createdAt": "2026-11-18T18:00:00.000Z",
+  "author": "Astra Chronicles Originals",
+  "isPreset": true,
+  "worldContext": {
+    "settingName": "Callahan Shared House — Redbridge District",
+    "eraOrPeriod": "Contemporary Modern Nightlife",
+    "loreSummary": "Nestled at the quiet edge of the Redbridge district—ten minutes on foot from neon dive bars, late-night diners, and downtown legal offices—412 Maplewood Ave is a rambling three-story Victorian house run by 41-year-old Clara Callahan. Everyone living under her roof is running from something: debt, burnout, messy exes, or broken homes. Clara's house rules are simple on paper—pay rent on time, keep the hallway civil, and don't bring street trouble through the front door—yet thin walls, cheap bourbon, shared bathroom schedules, and aching late-night loneliness blur every boundary before the month is out.",
+    "locations": [
+      {
+        "name": "Clara's Kitchen & Living Room",
+        "zone": "412 Maplewood — Ground Floor",
+        "danger": "Safe Harbor",
+        "description": "Sun-warmed hardwood floors, the smell of dark roast coffee and cinnamon toast, cluttered counters, and a worn leather couch where house arguments flare at breakfast and soften over midnight wine.",
+        "bgImage": "/backgrounds/ash-and-velvet/shared_kitchen.jpg"
+      },
+      {
+        "name": "Upstairs Hallway & Shared Bath",
+        "zone": "412 Maplewood — Second Floor",
+        "danger": "High Tension",
+        "description": "Narrow oak floorboards that creak outside five bedroom doors and one steamy shared bathroom—prime territory for bathrobe collisions, dropped towels, and whispered midnight dares.",
+        "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway_bath.jpg"
+      },
+      {
+        "name": "Clara's Late-Night Den",
+        "zone": "412 Maplewood — Back Parlor",
+        "danger": "Intimate",
+        "description": "Warm amber floor lamps, bookshelves, rain tapping against tall bay windows, and two half-empty Pinot Noir glasses on a low coffee table when the rest of the house is asleep.",
+        "bgImage": "/backgrounds/ash-and-velvet/claras_den.jpg"
+      },
+      {
+        "name": "The Attic Sanctuary Room",
+        "zone": "412 Maplewood — Third Floor",
+        "danger": "Private Sanctuary",
+        "description": "Your sloped-ceiling refuge above the house—warm string lights, a creaking radiator, a lockable door that finally keeps the old nightmare out, and quiet privacy for whoever knocks after midnight.",
+        "bgImage": "/backgrounds/ash-and-velvet/attic_bedroom.jpg"
+      },
+      {
+        "name": "Velvet Static Dive Bar",
+        "zone": "Redbridge Strip — Nightlife",
+        "danger": "Volatile / Vice",
+        "description": "Sticky mahogany bar tops, amber-and-magenta neon haze, heavy bass humming through the floor, cheap whiskey shots, back-booth pills, and jealous exes looking for a fight.",
+        "bgImage": "/backgrounds/ash-and-velvet/neon_dive_bar.jpg"
+      },
+      {
+        "name": "Backyard Porch & Smoke Patio",
+        "zone": "412 Maplewood — Rear Deck",
+        "danger": "Confessional",
+        "description": "String-lit cedar deck overlooking a quiet alley, folding chairs, shared cigarettes and cold beers after brutal shifts, where armor comes off under cool twilight air.",
+        "bgImage": "/backgrounds/ash-and-velvet/backyard_patio.jpg"
+      },
+      {
+        "name": "Upstairs Shared Bathroom",
+        "zone": "412 Maplewood — Second Floor",
+        "danger": "Steamy Tension",
+        "description": "Fogged vintage mirror, brass sconces, clawfoot tub clouds of steam, and five roommates' shampoo shelves—the epicenter of morning towel collisions and locked-door negotiations.",
+        "bgImage": "/backgrounds/ash-and-velvet/shared_bathroom.jpg"
+      },
+      {
+        "name": "Clara's Master Bedroom (Room 101)",
+        "zone": "412 Maplewood — Ground Floor",
+        "danger": "Private Sanctuary",
+        "description": "Warm mahogany four-poster bed, dusty-rose pillows, twilight bay windows, and the faint scent of vanilla and cedar—only unlocked once Clara trusts you past her landlady guard.",
+        "bgImage": "/backgrounds/ash-and-velvet/claras_bedroom.jpg"
+      },
+      {
+        "name": "Hannah's Studio Bedroom (Room 202)",
+        "zone": "412 Maplewood — Second Floor",
+        "danger": "Intimate / Raw",
+        "description": "Paint-splattered drop cloths, charcoal sketches taped across the walls, crates of vinyl records, and rumpled slate sheets bathed in moonlight and amber fairy lights.",
+        "bgImage": "/backgrounds/ash-and-velvet/hannahs_bedroom.jpg"
+      },
+      {
+        "name": "Brianna's Bedroom (Room 203)",
+        "zone": "412 Maplewood — Second Floor",
+        "danger": "Playful / Flirtatious",
+        "description": "Golden-hour sun across a glowing pen-display desk, iced coffee cups, a gold arched mirror, monstera leaves, and a low platform bed piled with teal pillows and a borrowed hoodie.",
+        "bgImage": "/backgrounds/ash-and-velvet/briannas_bedroom.jpg"
+      },
+      {
+        "name": "Sierra's Bedroom (Room 204)",
+        "zone": "412 Maplewood — Second Floor",
+        "danger": "Warm Sanctuary",
+        "description": "Vintage iron bed draped in a honey-gold and emerald patchwork quilt, trailing pothos vines, soft fairy lights, a bedside radio, and her mint diner apron hung neatly by the door.",
+        "bgImage": "/backgrounds/ash-and-velvet/sierras_bedroom.jpg"
+      },
+      {
+        "name": "Chloe's Executive Bedroom (Room 205)",
+        "zone": "412 Maplewood — Second Floor",
+        "danger": "High-Tension Intimate",
+        "description": "Immaculate charcoal walls, burgundy satin duvet, brushed-brass sconces, legal binders beside a neat glass of bourbon, and tall windows overlooking midnight city lights.",
+        "bgImage": "/backgrounds/ash-and-velvet/chloes_bedroom.jpg"
+      },
+      {
+        "name": "Starlight Retro Diner",
+        "zone": "Redbridge Strip — Late-Night Shift",
+        "danger": "Working Shift",
+        "description": "Mint-turquoise vinyl booths, glowing jukebox, cherry pie under glass, and endless steaming coffee refills where Sierra works double shifts against the neon rain.",
+        "bgImage": "/backgrounds/ash-and-velvet/retro_diner.jpg"
+      },
+      {
+        "name": "After-Hours Bourbon Lounge",
+        "zone": "Downtown — Chloe's Turf",
+        "danger": "High-Stakes Chemistry",
+        "description": "Dim espresso-leather booths, glowing backlit walnut bar, two crystal rocks glasses on dark marble, and rain-streaked skyline glass where Chloe's corporate armor slips.",
+        "bgImage": "/backgrounds/ash-and-velvet/downtown_lounge.jpg"
+      }
+    ],
+    "factions": [
+      {
+        "name": "Callahan House Circle",
+        "description": "The makeshift family inside 412 Maplewood—protective, messy, jealous, and fiercely loyal once you prove you aren't another user passing through.",
+        "influence": "Domestic Trust & Household Harmony"
+      },
+      {
+        "name": "Redbridge Nightlife Strip",
+        "description": "Bartenders, late-night diners, underground party promoters, and shady dealers orbiting Velvet Static—offering fast cash, numbing highs, and ugly fights.",
+        "influence": "Vice, Intoxication & Street Reputation"
+      },
+      {
+        "name": "The Past You Left Behind",
+        "description": "Your abusive household and toxic acquaintances who refuse to let go cleanly—testing your recovery every time your phone lights up at 2 AM.",
+        "influence": "Trauma Triggers & Standing Your Ground"
+      }
+    ]
+  },
+  "rpgRules": {
+    "systemName": "Heart & Edge",
+    "currencyName": "USD",
+    "causalAnchorName": "Emotional Composure",
+    "defaultPlausibility": 85,
+    "statDefinitions": {
+      "str": "Grit & Nerve (Standing your ground, protecting housemates, handling bar fights)",
+      "dex": "Street Reflex & Poise (Reading cues, smooth timing, handling alcohol & chaos)",
+      "int": "Emotional Intuition (Spotting unspoken pain, navigating jealousy & deep intimacy)"
+    },
+    "startingLevel": 1,
+    "baseStats": {
+      "hp": 100,
+      "maxHp": 100,
+      "mp": 80,
+      "maxMp": 80,
+      "exp": 0,
+      "maxExp": 100,
+      "str": 12,
+      "dex": 13,
+      "int": 14
+    },
+    "startingGearOptions": [
+      {
+        "id": "runaway_duffel",
+        "label": "Runaway Duffel & Spare Key",
+        "gear": {
+          "weapon": "Worn Multi-Tool & Heavy Keyring",
+          "armor": "Faded Charcoal Flannel & Dark Jeans",
+          "relic": "Clara's Brass Attic Key"
+        }
+      },
+      {
+        "id": "afterhours_kit",
+        "label": "After-Hours Bartender Kit",
+        "gear": {
+          "weapon": "Silver Zippo & Corkscrew",
+          "armor": "Rolled-Sleeve Black Henley & Leather Jacket",
+          "relic": "Cracked Vintage Watch"
+        }
+      }
+    ]
+  },
+  "startingNodes": [
+    {
+      "id": "av_prologue_rain",
+      "title": "2:14 AM — A Dry Roof & Warm Coffee",
+      "speaker": "Clara Callahan",
+      "location": "Clara's Kitchen & Living Room",
+      "sceneSetup": "Rain lashes the bay windows of 412 Maplewood Ave. Your knuckles are scraped and your duffel bag drips onto the welcome mat, but the kitchen smells of fresh coffee and cedarwood. Clara Callahan leans against the counter in her soft knit wrap, hazel eyes warming with quiet concern—never pity—as she slides a steaming ceramic mug toward you.",
+      "dialogue": "\"Stop staring at the doorway like someone's going to kick it in, sweetheart. The deadbolt's heavy brass, and nobody comes past my porch without my say-so. Drink your coffee before your hands stop shaking—then I'll show you the attic room before the girls wake up and start fighting over the upstairs shower.\"",
+      "expressionKey": "neutral",
+      "bgImage": "/backgrounds/ash-and-velvet/shared_kitchen.jpg",
+      "presentCompanions": [
+        "Clara Callahan"
+      ],
+      "initialAffection": 18,
+      "choices": [
+        "[Heart]: Wrap both hands around the mug and thank Clara honestly, letting your guard drop a fraction.",
+        "[Bold]: Offer to pay off the first week's rent by fixing whatever's broken around the house starting tomorrow.",
+        "[Cool]: Ask quietly who else lives upstairs—and whose muffled music is still pulsing through the ceiling.",
+        "[Dom]: Check your buzzing phone from your old house, then shut it completely off in front of Clara without flinching."
+      ],
+      "initialQuest": {
+        "id": "av_quest_first_week",
+        "title": "A Place of Your Own",
+        "description": "Settle into Clara Callahan's shared house, meet the other housemates, and survive your first unpredictable week without letting your past—or Redbridge's vices—pull you under.",
+        "status": "active",
+        "objectives": [
+          "Settle into the Attic Sanctuary Room and set your terms with Clara",
+          "Meet Hannah, Brianna, Sierra, and Chloe around 412 Maplewood",
+          "Make it through your first Friday night in Redbridge"
+        ],
+        "rewards": "+100 EXP & Housemate Trust Milestone"
+      }
+    },
+    {
+      "id": "av_hallway_morning",
+      "title": "7:40 AM — The Upstairs Bathroom Stand-Off",
+      "speaker": "Brianna Chen",
+      "location": "Upstairs Hallway & Shared Bath",
+      "sceneSetup": "Your first morning in the house starts with hot steam curling out of the second-floor bathroom. The door swings open right as you reach for the handle—and Brianna Chen steps straight into your path wrapped only in a damp white bath towel, dark hair clinging to her flushed shoulders, blinking up at you with an instantly wicked grin.",
+      "dialogue": "\"Well, well—Clara didn't mention the new attic stray actually cleans up nice. Eyes up here, rookie—or at least pretend you're subtle. Unless you want to explain to the landlady why you're hogging my hallway before I've even had espresso?\"",
+      "expressionKey": "smug",
+      "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway_bath.jpg",
+      "presentCompanions": [
+        "Brianna Chen"
+      ],
+      "initialAffection": 12,
+      "choices": [
+        "Hold her gaze without flinching and tease right back about her thirty-minute steam takeover.",
+        "Step aside smoothly with a crooked grin and offer to grab her coffee downstairs.",
+        "Flush slightly and mutter an apology while eyeing the steamy mirror behind her.",
+        "Ask if everyone in this house greets new roommates like this—or just her."
+      ]
+    },
+    {
+      "id": "av_velvet_static_night",
+      "title": "11:50 PM — Neon Smoke & Bad Company",
+      "speaker": "Hannah Lindqvist",
+      "location": "Velvet Static Dive Bar",
+      "sceneSetup": "Magenta neon cuts through the cigarette haze of Velvet Static. Hannah Lindqvist slides onto the barstool beside yours, icy-blue eyes heavy-lidded and sparkling dangerously over a neat whiskey glass while an unruly crowd presses near the back booths.",
+      "dialogue": "\"You've got that 'I escaped a cage and don't know what to do with the noise yet' look, attic boy. Trust me—I know it well. Stay with me tonight? One more drink, maybe something stronger in the back patio... or tell me I'm making a terrible mistake.\"",
+      "expressionKey": "intrigued",
+      "bgImage": "/backgrounds/ash-and-velvet/neon_dive_bar.jpg",
+      "presentCompanions": [
+        "Hannah Lindqvist"
+      ],
+      "initialAffection": 15,
+      "choices": [
+        "Clink glasses with Hannah and match her reckless energy—tonight you want to forget everything.",
+        "Keep one steady hand near her wrist and suggest stepping out to the smoke patio before the crowd gets ugly.",
+        "Buy her a glass of water alongside her whiskey and ask who she's really trying to outrun tonight.",
+        "Spot Chloe Bellamy watching from a corner booth with a neat bourbon and invite both women to share a table."
+      ]
+    }
+  ],
+  "companions": [
+    {
+      "id": "clara_callahan",
+      "name": "Clara Callahan",
+      "title": "Motherly Landlady of 412 Maplewood",
+      "role": "Landlady & Sanctuary Keeper (Age 41)",
+      "gender": "female",
+      "color": "amber",
+      "personality": "Warm, fiercely protective, perceptive, and grounded—yet quietly carrying years of post-divorce loneliness and mortgage stress behind her composed hospitality. She insists on house rules to keep everyone safe, but melts deeply when someone genuinely takes care of her instead of only taking.",
+      "values": [
+        "Honesty & Emotional Safety",
+        "Keeping Your Word",
+        "Quiet Domestic Tenderness",
+        "Standing Up Against Bullies"
+      ],
+      "dislikes": [
+        "Cruelty or Yelling",
+        "Hard Drugs Inside the House",
+        "Being Treated Only Like a Caretaker",
+        "Sneaking Around Dishonestly"
+      ],
+      "highCompatibility": [
+        "Quiet Protector",
+        "Emotional Maturity",
+        "Late-Night Den Talks"
+      ],
+      "baseAffection": 18,
+      "affection": 18,
+      "affectionLevel": 18,
+      "lust": 14,
+      "submission": 32,
+      "trust": 26,
+      "jealousy": 5,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": true,
+      "encountered": true,
+      "relationshipStage": "acquaintance",
+      "affectionTier": "Acquaintance",
+      "intimacyUnlocked": false,
+      "milestonesReached": [],
+      "guardTier": "SELECTIVE",
+      "isBoardingHouseTenant": true,
+      "assignedRoomNumber": 101,
+      "interpersonalDynamics": {
+        "rivalIds": [
+          "chloe_bellamy"
+        ],
+        "allyIds": [
+          "sierra_holloway"
+        ],
+        "jealousyThreshold": 25
+      },
+      "seed": 8219011,
+      "baseImageUrl": "/characters/ash-and-velvet/clara_callahan/base.png",
+      "activeWardrobe": "base",
+      "wardrobeLabels": {
+        "base": "House Hostess (Knit & Trousers)",
+        "kitchen": "Morning Kitchen (Cardigan & Apron)",
+        "lounge": "Weekend Lounge (Sweater & Denim Shorts)",
+        "date": "Night Out (Emerald Velvet Dress)",
+        "nightwear": "Late-Night Den (Rose Satin & Kimono)"
+      },
+      "visualPrompt": "Western adult graphic-novel comic style, mature 41yo lush curvy pear-hourglass woman, wavy chestnut-auburn shoulder-length hair, bright hazel-green eyes, warm freckles across cheeks and chest, gold pendant necklace, bold crisp black ink outlines, smooth cel shading",
+      "expressions": {
+        "neutral": "/characters/ash-and-velvet/clara_callahan/neutral.png",
+        "flustered": "/characters/ash-and-velvet/clara_callahan/flustered.png",
+        "smug": "/characters/ash-and-velvet/clara_callahan/smug.png",
+        "intrigued": "/characters/ash-and-velvet/clara_callahan/intrigued.png",
+        "hurt": "/characters/ash-and-velvet/clara_callahan/hurt.png",
+        "beckon": "/characters/ash-and-velvet/clara_callahan/beckon.png"
+      },
+      "wardrobeExpressions": {
+        "base": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/neutral.png",
+          "flustered": "/characters/ash-and-velvet/clara_callahan/flustered.png",
+          "smug": "/characters/ash-and-velvet/clara_callahan/smug.png",
+          "intrigued": "/characters/ash-and-velvet/clara_callahan/intrigued.png",
+          "hurt": "/characters/ash-and-velvet/clara_callahan/hurt.png",
+          "beckon": "/characters/ash-and-velvet/clara_callahan/beckon.png"
+        },
+        "kitchen": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/kitchen.png"
+        },
+        "lounge": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/lounge.png"
+        },
+        "date": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/date.png"
+        },
+        "nightwear": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/nightwear.png"
+        }
+      }
+    },
+    {
+      "id": "hannah_lindqvist",
+      "name": "Hannah Lindqvist",
+      "title": "Sleepless Art Drop-Out & Nightlife Regular",
+      "role": "Room 202 Tenant (Age 23)",
+      "gender": "female",
+      "color": "sky",
+      "personality": "Willowy, intense, emotionally raw, and tangled in late-night dive bars, alcohol, and impulsive substances to quiet her restless mind. Underneath the eyeliner, sarcasm, and reckless dares is a tender artist terrified of abandonment who bonds fiercely when someone stays through the crash.",
+      "values": [
+        "Unfiltered Honesty",
+        "Loyalty During Bad Nights",
+        "Creative Freedom",
+        "Physical Closeness Without Judgment"
+      ],
+      "dislikes": [
+        "Preachy Moralizing",
+        "Fake Politeness",
+        "Controlling Exes",
+        "Being Left Alone at 3 AM"
+      ],
+      "highCompatibility": [
+        "Reckless Night-Owl",
+        "Emotional Intuition",
+        "Velvet Static Nights"
+      ],
+      "baseAffection": 12,
+      "affection": 12,
+      "affectionLevel": 12,
+      "lust": 28,
+      "submission": 30,
+      "trust": 15,
+      "jealousy": 10,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "relationshipStage": "stranger",
+      "affectionTier": "Stranger",
+      "intimacyUnlocked": false,
+      "milestonesReached": [],
+      "guardTier": "WARM_RIVAL",
+      "isBoardingHouseTenant": true,
+      "assignedRoomNumber": 202,
+      "interpersonalDynamics": {
+        "rivalIds": [
+          "clara_callahan"
+        ],
+        "allyIds": [
+          "brianna_chen"
+        ],
+        "jealousyThreshold": 20
+      },
+      "seed": 8419029,
+      "baseImageUrl": "/characters/ash-and-velvet/hannah_lindqvist/base.png",
+      "activeWardrobe": "base",
+      "wardrobeLabels": {
+        "base": "Off-Shoulder Sweater & Plaid Skirt",
+        "overalls": "Paint-Flecked Studio Overalls",
+        "nightout": "Dive-Bar Flannel & Bandeau",
+        "lounge": "Late-Night Crescent Tee & Shorts",
+        "nightwear": "Slate-Blue Satin & Cardigan"
+      },
+      "visualPrompt": "Western adult graphic-novel comic style, slender willowy tall 23yo woman, small perky breasts, solid platinum-blonde wavy hair with darker roots, heavy-lidded vibrant icy-blue eyes, rosy nose blush, pearl choker, bold crisp black ink outlines, smooth cel shading",
+      "expressions": {
+        "neutral": "/characters/ash-and-velvet/hannah_lindqvist/neutral.png",
+        "flustered": "/characters/ash-and-velvet/hannah_lindqvist/flustered.png",
+        "smug": "/characters/ash-and-velvet/hannah_lindqvist/smug.png",
+        "intrigued": "/characters/ash-and-velvet/hannah_lindqvist/intrigued.png",
+        "hurt": "/characters/ash-and-velvet/hannah_lindqvist/hurt.png",
+        "beckon": "/characters/ash-and-velvet/hannah_lindqvist/beckon.png"
+      },
+      "wardrobeExpressions": {
+        "base": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/neutral.png",
+          "flustered": "/characters/ash-and-velvet/hannah_lindqvist/flustered.png",
+          "smug": "/characters/ash-and-velvet/hannah_lindqvist/smug.png",
+          "intrigued": "/characters/ash-and-velvet/hannah_lindqvist/intrigued.png",
+          "hurt": "/characters/ash-and-velvet/hannah_lindqvist/hurt.png",
+          "beckon": "/characters/ash-and-velvet/hannah_lindqvist/beckon.png"
+        },
+        "overalls": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/overalls.png"
+        },
+        "nightout": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/nightout.png"
+        },
+        "lounge": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/lounge.png"
+        },
+        "nightwear": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/nightwear.png"
+        }
+      }
+    },
+    {
+      "id": "brianna_chen",
+      "name": "Brianna Chen",
+      "title": "Teasing Hallway Freelancer",
+      "role": "Room 203 Tenant (Age 24)",
+      "gender": "female",
+      "color": "rose",
+      "personality": "Sharp-tongued, bold, playful, and shamelessly teasing—turning morning bathroom schedules, borrowed hoodies, and shared hallway space into nonstop flirtatious sparks. Secretly craves someone who matches her banter without getting intimidated or disappearing.",
+      "values": [
+        "Witty Banter & Confidence",
+        "Playful Boldness",
+        "Shared Spontaneous Nights",
+        "Directness"
+      ],
+      "dislikes": [
+        "Timid Stuttering",
+        "Arrogant Controlling Men",
+        "Boring Small Talk",
+        "Being Ignored"
+      ],
+      "highCompatibility": [
+        "Smooth Confidant",
+        "Hallway Banter",
+        "Club Nights"
+      ],
+      "baseAffection": 12,
+      "affection": 12,
+      "affectionLevel": 12,
+      "lust": 24,
+      "submission": 18,
+      "trust": 16,
+      "jealousy": 12,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "relationshipStage": "stranger",
+      "affectionTier": "Stranger",
+      "intimacyUnlocked": false,
+      "milestonesReached": [],
+      "guardTier": "WARM_RIVAL",
+      "isBoardingHouseTenant": true,
+      "assignedRoomNumber": 203,
+      "interpersonalDynamics": {
+        "rivalIds": [
+          "chloe_bellamy"
+        ],
+        "allyIds": [
+          "hannah_lindqvist"
+        ],
+        "jealousyThreshold": 20
+      },
+      "seed": 8219033,
+      "baseImageUrl": "/characters/ash-and-velvet/brianna_chen/base.png",
+      "activeWardrobe": "base",
+      "wardrobeLabels": {
+        "base": "Hallway Shower Towel",
+        "casual": "Lilac Halter & White Shorts",
+        "party": "Crimson Keyhole Mini-Dress",
+        "lounge": "Borrowed Navy Hoodie & Shorts",
+        "nightwear": "Peacock-Teal Satin & Lace Set"
+      },
+      "visualPrompt": "Western adult graphic-novel comic style, petite slim-curvy 24yo East Asian woman, shoulder-length raven black bob hair with bangs, teasing upturned dark brown eyes, warm golden-peach skin, rosy cheek blush, bold crisp black ink outlines, smooth cel shading",
+      "expressions": {
+        "neutral": "/characters/ash-and-velvet/brianna_chen/neutral.png",
+        "flustered": "/characters/ash-and-velvet/brianna_chen/flustered.png",
+        "smug": "/characters/ash-and-velvet/brianna_chen/smug.png",
+        "intrigued": "/characters/ash-and-velvet/brianna_chen/intrigued.png",
+        "hurt": "/characters/ash-and-velvet/brianna_chen/hurt.png",
+        "beckon": "/characters/ash-and-velvet/brianna_chen/beckon.png"
+      },
+      "wardrobeExpressions": {
+        "base": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/neutral.png",
+          "flustered": "/characters/ash-and-velvet/brianna_chen/flustered.png",
+          "smug": "/characters/ash-and-velvet/brianna_chen/smug.png",
+          "intrigued": "/characters/ash-and-velvet/brianna_chen/intrigued.png",
+          "hurt": "/characters/ash-and-velvet/brianna_chen/hurt.png",
+          "beckon": "/characters/ash-and-velvet/brianna_chen/beckon.png"
+        },
+        "casual": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/casual.png"
+        },
+        "party": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/party.png"
+        },
+        "lounge": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/lounge.png"
+        },
+        "nightwear": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/nightwear.png"
+        }
+      }
+    },
+    {
+      "id": "sierra_holloway",
+      "name": "Sierra Holloway",
+      "title": "Warm Runaway Diner Waitress",
+      "role": "Room 204 Tenant (Age 24)",
+      "gender": "female",
+      "color": "emerald",
+      "personality": "Sunny, thick, plush, affectionate, and fiercely hardworking—working double shifts at the retro diner to stay free from her own toxic family. Slow to let her deepest fears show, yet once trust clicks she is overwhelmingly warm, tactile, and passionately devoted.",
+      "values": [
+        "Genuine Kindness",
+        "Mutual Survival & Loyalty",
+        "Physical Warmth & Affection",
+        "Quiet Patio Nights"
+      ],
+      "dislikes": [
+        "Handsy Bar Creeps",
+        "Broken Promises",
+        "Emotional Manipulation",
+        "Self-Destructive Spirals"
+      ],
+      "highCompatibility": [
+        "Quiet Protector",
+        "Night-Shift Escapee",
+        "Backyard Porch Talks"
+      ],
+      "baseAffection": 16,
+      "affection": 16,
+      "affectionLevel": 16,
+      "lust": 18,
+      "submission": 42,
+      "trust": 24,
+      "jealousy": 4,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "relationshipStage": "stranger",
+      "affectionTier": "Stranger",
+      "intimacyUnlocked": false,
+      "milestonesReached": [],
+      "guardTier": "WARM_RIVAL",
+      "isBoardingHouseTenant": true,
+      "assignedRoomNumber": 204,
+      "interpersonalDynamics": {
+        "rivalIds": [],
+        "allyIds": [
+          "clara_callahan"
+        ],
+        "jealousyThreshold": 30
+      },
+      "seed": 8219044,
+      "baseImageUrl": "/characters/ash-and-velvet/sierra_holloway/base.png",
+      "activeWardrobe": "base",
+      "wardrobeLabels": {
+        "base": "Knotted Crop Tee & Denim Shorts",
+        "diner": "Retro Diner Uniform & Apron",
+        "swim": "Emerald Bikini & Sarong",
+        "lounge": "Patio Cardigan & Lounge Shorts",
+        "nightwear": "Honey-Apricot Henley Sleep Set"
+      },
+      "visualPrompt": "Western adult graphic-novel comic style, thick plump plush curvy 24yo woman, long wavy bright copper-ginger redhead hair, bright emerald green eyes, abundant warm freckles across nose cheeks shoulders and thighs, dimpled grin, bold crisp black ink outlines, smooth cel shading",
+      "expressions": {
+        "neutral": "/characters/ash-and-velvet/sierra_holloway/neutral.png",
+        "flustered": "/characters/ash-and-velvet/sierra_holloway/flustered.png",
+        "smug": "/characters/ash-and-velvet/sierra_holloway/smug.png",
+        "intrigued": "/characters/ash-and-velvet/sierra_holloway/intrigued.png",
+        "hurt": "/characters/ash-and-velvet/sierra_holloway/hurt.png",
+        "beckon": "/characters/ash-and-velvet/sierra_holloway/beckon.png"
+      },
+      "wardrobeExpressions": {
+        "base": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/neutral.png",
+          "flustered": "/characters/ash-and-velvet/sierra_holloway/flustered.png",
+          "smug": "/characters/ash-and-velvet/sierra_holloway/smug.png",
+          "intrigued": "/characters/ash-and-velvet/sierra_holloway/intrigued.png",
+          "hurt": "/characters/ash-and-velvet/sierra_holloway/hurt.png",
+          "beckon": "/characters/ash-and-velvet/sierra_holloway/beckon.png"
+        },
+        "diner": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/diner.png"
+        },
+        "swim": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/swim.png"
+        },
+        "lounge": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/lounge.png"
+        },
+        "nightwear": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/nightwear.png"
+        }
+      }
+    },
+    {
+      "id": "chloe_bellamy",
+      "name": "Chloe Bellamy",
+      "title": "After-Hours Corporate Paralegal",
+      "role": "Room 205 Tenant (Age 28)",
+      "gender": "female",
+      "color": "purple",
+      "personality": "Tall, voluptuous, cool-headed, and razor-sharp in the office—yet fiercely passionate and uninhibited once the clock strikes midnight and the bourbon pours. Tests men with icy poise and biting wit, rewarding anyone fearless enough to look straight past her corporate armor.",
+      "values": [
+        "Nerve & Composure",
+        "Discretion & Mutual Respect",
+        "Uninhibited After-Hours Chemistry",
+        "Ambition"
+      ],
+      "dislikes": [
+        "Desperate Clinginess",
+        "Sloppy Gossip",
+        "Cowardice",
+        "Being Underestimated"
+      ],
+      "highCompatibility": [
+        "Smooth Confidant",
+        "After-Hours Bourbon",
+        "High-Stakes Chemistry"
+      ],
+      "baseAffection": 10,
+      "affection": 10,
+      "affectionLevel": 10,
+      "lust": 22,
+      "submission": 12,
+      "trust": 12,
+      "jealousy": 15,
+      "romancePath": "uncommitted",
+      "expressionKey": "neutral",
+      "isPresent": false,
+      "encountered": false,
+      "relationshipStage": "stranger",
+      "affectionTier": "Stranger",
+      "intimacyUnlocked": false,
+      "milestonesReached": [],
+      "guardTier": "IRONCLAD",
+      "isBoardingHouseTenant": true,
+      "assignedRoomNumber": 205,
+      "interpersonalDynamics": {
+        "rivalIds": [
+          "clara_callahan",
+          "brianna_chen"
+        ],
+        "allyIds": [],
+        "jealousyThreshold": 22
+      },
+      "seed": 8219055,
+      "baseImageUrl": "/characters/ash-and-velvet/chloe_bellamy/base.png",
+      "activeWardrobe": "base",
+      "wardrobeLabels": {
+        "base": "Unbuttoned Shirt & Tailored Shorts",
+        "office": "Lavender Blouse & Pencil Skirt",
+        "afterhours": "Burgundy Satin Slip Dress",
+        "lounge": "Cashmere Wrap & Espresso Trousers",
+        "nightwear": "Midnight-Plum Satin & Lace Set"
+      },
+      "visualPrompt": "Western adult graphic-novel comic style, tall voluptuous hourglass 28yo woman, lush dark chocolate-brown chestnut long wavy hair, bright sky-blue eyes, cheek beauty mark, full glossy lips, bold crisp black ink outlines, smooth cel shading",
+      "expressions": {
+        "neutral": "/characters/ash-and-velvet/chloe_bellamy/neutral.png",
+        "flustered": "/characters/ash-and-velvet/chloe_bellamy/flustered.png",
+        "smug": "/characters/ash-and-velvet/chloe_bellamy/smug.png",
+        "intrigued": "/characters/ash-and-velvet/chloe_bellamy/intrigued.png",
+        "hurt": "/characters/ash-and-velvet/chloe_bellamy/hurt.png",
+        "beckon": "/characters/ash-and-velvet/chloe_bellamy/beckon.png"
+      },
+      "wardrobeExpressions": {
+        "base": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/neutral.png",
+          "flustered": "/characters/ash-and-velvet/chloe_bellamy/flustered.png",
+          "smug": "/characters/ash-and-velvet/chloe_bellamy/smug.png",
+          "intrigued": "/characters/ash-and-velvet/chloe_bellamy/intrigued.png",
+          "hurt": "/characters/ash-and-velvet/chloe_bellamy/hurt.png",
+          "beckon": "/characters/ash-and-velvet/chloe_bellamy/beckon.png"
+        },
+        "office": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/office.png"
+        },
+        "afterhours": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/afterhours.png"
+        },
+        "lounge": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/lounge.png"
+        },
+        "nightwear": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/nightwear.png"
+        }
+      }
+    }
+  ],
+  "flowchartTree": [
+    {
+      "id": "av_node_arrival",
+      "title": "Rain on Maplewood Porch",
+      "chapter": "Act I — Sanctuary & Friction",
+      "location": "Clara's Kitchen & Living Room",
+      "description": "Fleeing an abusive home at 2 AM, you accept Clara Callahan's offer of the attic room and hot coffee.",
+      "nodeType": "canon",
+      "connectedTo": [
+        "av_node_house_morning",
+        "av_node_velvet_static"
+      ]
+    },
+    {
+      "id": "av_node_house_morning",
+      "title": "Thin Walls & Shared Steam",
+      "chapter": "Act I — Sanctuary & Friction",
+      "location": "Upstairs Hallway & Shared Bath",
+      "description": "Morning collisions with Brianna in a damp towel, Sierra heading off to her diner shift, and Chloe claiming the coffee pot.",
+      "nodeType": "canon",
+      "connectedTo": [
+        "av_node_patio_confession",
+        "av_node_velvet_static"
+      ]
+    },
+    {
+      "id": "av_node_velvet_static",
+      "title": "Last Call at Velvet Static",
+      "chapter": "Act II — Vices & Fault Lines",
+      "location": "Velvet Static Dive Bar",
+      "description": "Hannah pulls you into Redbridge's neon nightlife—whiskey, party pills, a volatile ex, and a choice between recklessness and control.",
+      "nodeType": "branch",
+      "connectedTo": [
+        "av_node_claras_den",
+        "av_node_attic_knock"
+      ]
+    },
+    {
+      "id": "av_node_patio_confession",
+      "title": "Smoke & Freckles at Midnight",
+      "chapter": "Act II — Vices & Fault Lines",
+      "location": "Backyard Porch & Smoke Patio",
+      "description": "Sierra and you trade quiet scars over cold beers after a brutal double shift, forging a bond that runs deeper than housemates.",
+      "nodeType": "romance_milestone",
+      "unlockRequirement": {
+        "companionName": "Sierra Holloway",
+        "minAffection": 35
+      },
+      "connectedTo": [
+        "av_node_attic_knock"
+      ]
+    },
+    {
+      "id": "av_node_claras_den",
+      "title": "After the House Sleeps",
+      "chapter": "Act III — Crossing the Line",
+      "location": "Clara's Late-Night Den",
+      "description": "Rain on the bay windows, Pinot Noir in her silk kimono, and the moment Clara's landlady rules finally give way.",
+      "nodeType": "romance_milestone",
+      "unlockRequirement": {
+        "companionName": "Clara Callahan",
+        "minAffection": 50
+      },
+      "connectedTo": []
+    },
+    {
+      "id": "av_node_attic_knock",
+      "title": "Midnight Knock on the Attic Door",
+      "chapter": "Act III — Crossing the Line",
+      "location": "The Attic Sanctuary Room",
+      "description": "The past shows up on the porch—and whoever stands beside you when the dust settles stays after the door locks.",
+      "nodeType": "romance_milestone",
+      "unlockRequirement": {
+        "minAffection": 60
+      },
+      "connectedTo": []
+    }
+  ]
+}

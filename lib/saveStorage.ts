@@ -140,7 +140,9 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
     }));
 
   const defaultBgForSave =
-    raw.storyId === "starfall-labyrinth" || Boolean(p.labyrinthState)
+    raw.storyId === "ash-and-velvet" || Boolean(p.ashVelvetState)
+      ? "/backgrounds/ash-and-velvet/shared_kitchen.jpg"
+      : raw.storyId === "starfall-labyrinth" || Boolean(p.labyrinthState)
       ? "/backgrounds/starfall-labyrinth/star_gate_plaza.jpg"
       : raw.storyId === "port-solaris" || Boolean(p.boardingHouse)
       ? "/backgrounds/port-solaris/stray_anchor.jpg"

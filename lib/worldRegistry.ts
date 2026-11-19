@@ -19,16 +19,25 @@ import {
   StarfallOriginPreset,
   StarfallRolePreset,
 } from "@/types/starfall_labyrinth";
+import {
+  ASH_VELVET_ORIGIN_PRESETS,
+  ASH_VELVET_CONDUIT_PRESETS,
+  ASH_VELVET_HEROINE_DOSSIERS,
+  AshVelvetOriginPreset,
+  AshVelvetConduitPreset,
+} from "@/types/ash_and_velvet";
 
 export type AnyWorldOriginPreset =
   | SovereignOriginPreset
   | PortSolarisOriginPreset
-  | StarfallOriginPreset;
+  | StarfallOriginPreset
+  | AshVelvetOriginPreset;
 
 export type AnyWorldConduitPreset =
   | SovereignConduitPreset
   | PortSolarisConduitPreset
-  | StarfallRolePreset;
+  | StarfallRolePreset
+  | AshVelvetConduitPreset;
 
 export interface WorldPresetRegistryEntry {
   storyId: string;
@@ -145,6 +154,35 @@ export const WORLD_PRESETS: Record<string, WorldPresetRegistryEntry> = {
       armorDescription: (wingLabel) =>
         `Battle-worn 1★ deployment gear rigged for ${wingLabel} labyrinth runs.`,
       armorEffect: "+10% Ambush & Boss Cleave Mitigation",
+    },
+  },
+  "ash-and-velvet": {
+    storyId: "ash-and-velvet",
+    origins: ASH_VELVET_ORIGIN_PRESETS,
+    conduits: ASH_VELVET_CONDUIT_PRESETS,
+    defaultTone:
+      "Raw Adult Visual Novel Drama (Intimate, gritty, sensory, emotionally charged)",
+    heroineDossiers: ASH_VELVET_HEROINE_DOSSIERS,
+    uiLabels: {
+      originQuotaPrefix: "Monthly Rent",
+      originFundsSuffix: "USD",
+      originImpactSubtitle: (origin) =>
+        `${origin.rankTierLabel} • Monthly Rent: $${origin.semesterDebtQuota} • Cash on Hand: $${origin.startingCrowns}`,
+      conduitSectionDescription:
+        "Choose how you survive and connect inside Clara Callahan's shared house—quiet reliability, smooth late-night charm, or unfiltered nightlife edge.",
+      relicOrKeepsakeLabel: "Personal Item",
+      rolePlaceholder: "e.g., Night-Shift Bartender & House Handyman...",
+      attributeAllocationLabel: "Grit, Street Reflex & Emotional Intuition Allocation",
+      loadoutSectionLabel: "Everyday Carry, Streetwear & Personal Keepsake",
+      canonLoadoutButtonLabel: "Grounded Starter Pack",
+      flawLabel: "Personal Scar:",
+      partnerTargetLabel: "Closest Housemate:",
+      weaponDescription: (wingLabel, conduit) =>
+        `Everyday pocket gear suited for ${conduit} nights around ${wingLabel}.`,
+      weaponEffect: "+15% Composure & Streetwise Edge",
+      armorDescription: (wingLabel) =>
+        `Worn-in everyday streetwear tailored for ${wingLabel} life.`,
+      armorEffect: "+10% Emotional Guard & Recovery",
     },
   },
 };

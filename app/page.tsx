@@ -86,6 +86,20 @@ export default function StoryCataloguePage() {
   const [cloudUser, setCloudUser] = useState<CloudAccountUser | null>(null);
   const [guidebookStory, setGuidebookStory] = useState<StoryContext | null>(null);
 
+  // 18+ Adult VN Gate & Cover Privacy Blur State
+  const [ageVerified18, setAgeVerified18] = useState<boolean>(false);
+  const [blurAdultCovers, setBlurAdultCovers] = useState<boolean>(false);
+  const [pendingAdultStory, setPendingAdultStory] = useState<StoryContext | null>(null);
+
+  const handleEnterStory = (story: StoryContext) => {
+    soundEffects.playIntroBell();
+    if (story.contentRating === "adult_18" && !ageVerified18) {
+      setPendingAdultStory(story);
+      return;
+    }
+    router.push(`/play/${story.id}`);
+  };
+
   const loadStories = async () => {
     try {
       const all = await getAllStories();
@@ -156,6 +170,10 @@ export default function StoryCataloguePage() {
     const initTimer = setTimeout(() => {
       setIsAudioMuted(soundEffects.isMuted());
       setLlmConfig(getStoredLlmConfig());
+      try {
+        setAgeVerified18(localStorage.getItem("astra_age_verified_18") === "true");
+        setBlurAdultCovers(localStorage.getItem("astra_blur_adult_covers") === "true");
+      } catch {}
       refreshAllProgression();
 
       // Check whether the user is signed in; if not and they haven't dismissed the registration prompt this session,
@@ -307,8 +325,8 @@ export default function StoryCataloguePage() {
             </div>
           </div>
 
-          {/* Unified Right Command Bar (Never wraps onto an orphan line on desktop) */}
-          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
+          {/* Unified Right Command Bar */}
+          <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 min-w-0 max-w-full">
             {/* LLM Engine Selector Pill */}
             <LlmQuickPill
               config={llmConfig}
@@ -318,8 +336,8 @@ export default function StoryCataloguePage() {
               }}
             />
 
-            {/* Grouped Utility Dock */}
-            <div className="flex flex-wrap items-center gap-1 bg-zinc-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-md shadow-lg max-w-full">
+            {/* Grouped Utility Dock (Single-row aligned pill strip) */}
+            <div className="flex flex-nowrap items-center gap-0.5 sm:gap-1 bg-zinc-900/80 border border-white/10 rounded-2xl p-1 backdrop-blur-md shadow-lg max-w-full overflow-x-auto no-scrollbar">
               {/* Account & Roster Dossier (with explicit Google OAuth indicator) */}
               <Link
                 href="/account"
@@ -367,15 +385,15 @@ export default function StoryCataloguePage() {
                   </>
                 ) : (
                   <>
-                    <User className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                    <span className="text-amber-200 sm:hidden">Guest</span>
-                    <span className="text-amber-200 hidden sm:inline">Account (Guest)</span>
+                    <User className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                    <span className="text-amber-200 2xl:hidden">Guest</span>
+                    <span className="text-amber-200 hidden 2xl:inline">Account (Guest)</span>
                   </>
                 )}
               </Link>
 
-              <div className="h-4 w-px bg-white/10" />
+              <div className="h-4 w-px bg-white/10 shrink-0" />
 
               {/* Cloud Sync / Register Quick Modal */}
               <button
@@ -385,21 +403,29 @@ export default function StoryCataloguePage() {
                   setIsFirstVisitPrompt(false);
                   setShowCloudSyncModal(true);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-sky-300 hover:text-white transition-all cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-sky-300 hover:text-white transition-all cursor-pointer whitespace-nowrap shrink-0"
                 title={
                   cloudUser
                     ? "Cross-Save Cloud Sync & Portable .astra Backup"
                     : "Sign In with Google or Register an Astra Chronicles Account"
                 }
               >
-                <Cloud className="w-3.5 h-3.5 text-sky-400" />
-                <span className="hidden sm:inline">{cloudUser ? "Sync" : "Sign In / Register"}</span>
+                <Cloud className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                <span className="hidden sm:inline">
+                  {cloudUser ? (
+                    "Sync"
+                  ) : (
+                    <>
+                      Sign In<span className="hidden 2xl:inline"> / Register</span>
+                    </>
+                  )}
+                </span>
                 {cloudUser && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
                 )}
               </button>
 
-              <div className="h-4 w-px bg-white/10" />
+              <div className="h-4 w-px bg-white/10 shrink-0" />
 
               {/* Access Key / Turn Quota */}
               <button
@@ -408,10 +434,10 @@ export default function StoryCataloguePage() {
                   soundEffects.playClick();
                   setShowAuthModal(true);
                 }}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-zinc-300 hover:text-white transition-all cursor-pointer whitespace-nowrap shrink-0"
                 title="Verify Realm Access Key & Turn Quota"
               >
-                <Key className="w-3.5 h-3.5 text-purple-400" />
+                <Key className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                 <span>
                   {userAuth
                     ? userAuth.remainingTurns === -1
@@ -421,16 +447,16 @@ export default function StoryCataloguePage() {
                 </span>
               </button>
 
-              <div className="h-4 w-px bg-white/10" />
+              <div className="h-4 w-px bg-white/10 shrink-0" />
 
               {/* Multiverse Codex */}
               <Link
                 href="/codex"
                 onClick={() => soundEffects.playClick()}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-amber-300 hover:text-white transition-all whitespace-nowrap"
+                className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl hover:bg-white/10 text-xs font-mono text-amber-300 hover:text-white transition-all whitespace-nowrap shrink-0"
                 title="Multiverse Codex - Scene CGs & Loot Reliquary"
               >
-                <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+                <BookOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span className="hidden xl:inline">Codex</span>
                 {totalCodexCount > 0 && (
                   <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
@@ -439,13 +465,13 @@ export default function StoryCataloguePage() {
                 )}
               </Link>
 
-              <div className="h-4 w-px bg-white/10" />
+              <div className="h-4 w-px bg-white/10 shrink-0" />
 
               {/* Audio Mute Toggle */}
               <button
                 type="button"
                 onClick={handleToggleAudio}
-                className="p-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer"
+                className="p-1.5 rounded-xl hover:bg-white/10 text-zinc-400 hover:text-white transition-all cursor-pointer shrink-0"
                 title={isAudioMuted ? "Unmute Sound" : "Mute Sound"}
               >
                 {isAudioMuted ? (
@@ -524,41 +550,44 @@ export default function StoryCataloguePage() {
             </div>
 
             {/* Right Column (5 cols): Live Latest Chronicle & Traveler Telemetry Card */}
-            <div className="lg:col-span-5">
-              <div className="rounded-2xl bg-zinc-950/85 border border-white/15 p-4 sm:p-5 shadow-2xl space-y-4 backdrop-blur-md">
+            <div className="lg:col-span-5 min-w-0">
+              <div className="rounded-2xl bg-zinc-950/85 border border-white/15 p-4 sm:p-5 shadow-2xl space-y-4 backdrop-blur-md overflow-hidden">
                 {latestSave && latestSave.player ? (
                   <>
-                    <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
-                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                        Continue Latest Chronicle
+                    <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                      <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-emerald-300 flex items-center gap-1.5 truncate">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                        <span className="truncate">Continue Latest Chronicle</span>
                       </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-400">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-zinc-400 shrink-0">
                         {latestSave.slotId === 0 ? "AUTO-SAVE" : `SLOT #${latestSave.slotId}`}
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3.5">
+                    <div className="flex items-center gap-3.5 min-w-0">
                       <img
                         src={sanitizeImageUrl(latestSave.playerAvatar, DEFAULT_AVATAR)}
                         alt={latestSave.player.name}
                         className="w-16 h-16 rounded-2xl object-cover border-2 border-emerald-400/50 bg-black shrink-0 shadow-lg"
                       />
                       <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-base font-bold text-white font-mono truncate">
-                            {latestSave.player.name}
-                          </h3>
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0">
+                        <h3 className="text-base font-bold text-white font-mono truncate">
+                          {latestSave.player.name}
+                        </h3>
+                        <div className="flex items-center min-w-0">
+                          <span
+                            className="inline-block max-w-full truncate text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30"
+                            title={`Lv.${latestSave.player.level || 1} ${latestSave.player.role}`}
+                          >
                             Lv.{latestSave.player.level || 1} {latestSave.player.role}
                           </span>
                         </div>
                         <p className="text-xs font-mono text-sky-300 truncate">
                           {latestSave.storyTitle || "Astra Chronicles"}
                         </p>
-                        <p className="text-[11px] text-zinc-400 truncate flex items-center gap-1">
+                        <p className="text-[11px] text-zinc-400 flex items-center gap-1 min-w-0">
                           <MapPin className="w-3 h-3 text-rose-400 shrink-0" />
-                          <span>{latestSave.gameState?.location || "Imperial Capital"}</span>
+                          <span className="truncate">{latestSave.gameState?.location || "Imperial Capital"}</span>
                         </p>
                       </div>
                     </div>
@@ -782,6 +811,30 @@ export default function StoryCataloguePage() {
                 ))}
               </div>
 
+              {/* 18+ Cover Blur Privacy Toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setBlurAdultCovers((prev) => {
+                    const next = !prev;
+                    try {
+                      localStorage.setItem("astra_blur_adult_covers", String(next));
+                    } catch {}
+                    return next;
+                  });
+                }}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-mono border transition-all flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                  blurAdultCovers
+                    ? "bg-rose-950/60 border-rose-500/40 text-rose-200"
+                    : "bg-black/40 border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                }`}
+                title="Toggle privacy blur on 18+ Adult VN cover art"
+              >
+                {blurAdultCovers ? <EyeOff className="w-3.5 h-3.5 text-rose-400" /> : <Eye className="w-3.5 h-3.5" />}
+                <span>{blurAdultCovers ? "18+ Blurred" : "Blur 18+"}</span>
+              </button>
+
               {/* Search Input */}
               <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
@@ -815,13 +868,11 @@ export default function StoryCataloguePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredStories.map((story) => {
                 const isPreset = story.isPreset || story.id === "astra-chronicles";
+                const isAdult18 = story.contentRating === "adult_18";
                 return (
                   <div
                     key={story.id}
-                    onClick={() => {
-                      soundEffects.playIntroBell();
-                      router.push(`/play/${story.id}`);
-                    }}
+                    onClick={() => handleEnterStory(story)}
                     className="group relative rounded-3xl border border-white/10 hover:border-rose-500/50 bg-zinc-900/75 hover:bg-zinc-900/95 transition-all duration-300 overflow-hidden flex flex-col shadow-xl cursor-pointer hover:shadow-[0_0_35px_rgba(244,63,94,0.2)] hover:-translate-y-1"
                   >
                     {/* Story Cover Image Header */}
@@ -829,7 +880,9 @@ export default function StoryCataloguePage() {
                       <img
                         src={sanitizeImageUrl(story.coverImage, DEFAULT_BG)}
                         alt={story.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 brightness-90 group-hover:brightness-105"
+                        className={`w-full h-full object-cover transition-all duration-700 group-hover:scale-105 brightness-90 group-hover:brightness-105 ${
+                          isAdult18 && blurAdultCovers ? "blur-lg scale-110" : ""
+                        }`}
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/20 to-black/50" />
 
@@ -843,6 +896,11 @@ export default function StoryCataloguePage() {
                         </span>
 
                         <div className="flex items-center gap-1.5 shrink-0">
+                          {isAdult18 && (
+                            <span className="px-2 py-0.5 rounded-full bg-rose-600/85 backdrop-blur-md text-white border border-rose-300/50 text-[9px] font-mono font-bold tracking-wider whitespace-nowrap shadow-sm">
+                              18+ ADULT VN
+                            </span>
+                          )}
                           {isPreset ? (
                             <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 backdrop-blur-md text-amber-300 border border-amber-500/40 text-[9px] font-mono font-bold flex items-center gap-1 whitespace-nowrap">
                               <Shield className="w-2.5 h-2.5 shrink-0" /> CANON REALM
@@ -1078,8 +1136,70 @@ export default function StoryCataloguePage() {
           isOpen={Boolean(guidebookStory)}
           onClose={() => setGuidebookStory(null)}
           story={guidebookStory}
-          onPlayStory={() => router.push(`/play/${guidebookStory.id}`)}
+          onPlayStory={() => {
+            const target = guidebookStory;
+            setGuidebookStory(null);
+            handleEnterStory(target);
+          }}
         />
+      )}
+
+      {/* 18+ Adult Content Confirmation Modal */}
+      {pendingAdultStory && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+          onClick={() => setPendingAdultStory(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl bg-zinc-950 border border-rose-500/40 shadow-[0_0_50px_rgba(244,63,94,0.25)] p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <span className="px-2.5 py-1 rounded-full bg-rose-600/20 border border-rose-500/40 text-rose-300 text-[10px] font-mono font-bold uppercase tracking-widest">
+                18+ Mature Content Warning
+              </span>
+              <button
+                type="button"
+                onClick={() => setPendingAdultStory(null)}
+                className="p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-mono font-bold text-white">
+                Enter {pendingAdultStory.title}?
+              </h3>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                This story is an unfiltered <strong className="text-rose-300">18+ Adult Visual Novel</strong> containing mature themes including domestic conflict, alcohol and substance use, explicit adult artwork, and intimate romance routes. All depicted characters are consenting adults (23+).
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setPendingAdultStory(null)}
+                className="px-4 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-xs font-mono text-zinc-300 cursor-pointer"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const targetId = pendingAdultStory.id;
+                  try {
+                    localStorage.setItem("astra_age_verified_18", "true");
+                  } catch {}
+                  setAgeVerified18(true);
+                  setPendingAdultStory(null);
+                  router.push(`/play/${targetId}`);
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-xs font-mono font-bold text-white shadow-lg cursor-pointer"
+              >
+                I Am 18+ — Enter Story
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

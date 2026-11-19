@@ -4,6 +4,7 @@ import sovereignSpireStory from "@/data/stories/sovereign-spire.json";
 import portSolarisStory from "@/data/stories/port-solaris.json";
 import neonEclipseStory from "@/data/stories/neon-eclipse.json";
 import starfallLabyrinthStory from "@/data/stories/starfall-labyrinth.json";
+import ashAndVelvetStory from "@/data/stories/ash-and-velvet.json";
 
 const STORAGE_KEY = "astra_multi_story_catalog";
 const DB_NAME = "AstraStoryCatalogDB";
@@ -16,6 +17,7 @@ export const PRESET_STORIES: StoryContext[] = [
   portSolarisStory as unknown as StoryContext,
   starfallLabyrinthStory as unknown as StoryContext,
   neonEclipseStory as unknown as StoryContext,
+  ashAndVelvetStory as unknown as StoryContext,
 ];
 
 function openStoryDB(): Promise<IDBDatabase> {

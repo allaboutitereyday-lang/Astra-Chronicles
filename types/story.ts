@@ -23,6 +23,12 @@ import {
   StarfallFaction,
 } from "./starfall_labyrinth";
 
+import {
+  AshVelvetHouseState,
+  AshVelvetHeroineMeters,
+  AshVelvetTimeSlot,
+} from "./ash_and_velvet";
+
 export type {
   TimelineScar,
   CausalCovenantState,
@@ -41,7 +47,16 @@ export type {
   StarfallRole,
   StarfallOrigin,
   StarfallFaction,
+  AshVelvetHouseState,
+  AshVelvetHeroineMeters,
+  AshVelvetTimeSlot,
 };
+
+export type StoryArtStyle = "anime_manhwa" | "western_adult_comic" | "dark_painterly";
+
+export type StoryContentRating = "teen" | "mature" | "adult_18";
+
+export type StoryPanelFrameStyle = "cinematic" | "comic_panel";
 
 export type CompanionExpressionKey =
   | "neutral"
@@ -165,11 +180,20 @@ export interface StoryCompanion {
   exp?: number;
   maxExp?: number;
 
+  // Ash & Velvet Psychological Triad & Shared-House Metrics
+  lust?: number;       // 0-100 physical tension & craving
+  submission?: number; // 0-100 power gradient (0=Dominant/Guarded -> 100=Yielding/Submissive)
+  trust?: number;      // 0-100 psychological safety & bedroom unlock gate
+  jealousy?: number;   // 0-100 rival tension & hallway friction
+
   // Visual AI & Consistency Pipeline Fields (ControlNet & IPAdapter)
   seed: number;
   baseImageUrl: string;
   visualPrompt: string;
   expressions: Record<string, string>;
+  activeWardrobe?: string;
+  wardrobeLabels?: Record<string, string>;
+  wardrobeExpressions?: Record<string, Record<string, string>>;
 }
 
 export interface RelicSynergy {
@@ -541,6 +565,9 @@ export interface StoryContext {
   genre: string;
   themes: string[];
   narrationStyle: string; // e.g. "Grimdark & Atmospheric", "Cyberpunk Noir", "High Fantasy Intrigue"
+  artStyle?: StoryArtStyle;
+  contentRating?: StoryContentRating;
+  panelFrameStyle?: StoryPanelFrameStyle;
   worldContext: StoryWorldContext;
   rpgRules: StoryRPGRules;
   startingNodes: StoryStartingNode[];

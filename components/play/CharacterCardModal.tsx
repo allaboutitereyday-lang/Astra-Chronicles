@@ -49,6 +49,14 @@ import {
   getRequiredExpForLevel,
 } from "@/lib/progressionMechanics";
 import { soundEffects } from "@/lib/audioEngine";
+import { ASH_VELVET_HEROINE_DOSSIERS } from "@/types/ash_and_velvet";
+import {
+  getAffectionBondTier,
+  getLustStateLabel,
+  getSubmissionDynamicLabel,
+  isBedroomKeyUnlocked,
+  resolveHeroineMeters,
+} from "@/lib/ashVelvetEngine";
 
 export interface CharacterCardCompanion {
   id?: string;
@@ -89,6 +97,7 @@ export interface CharacterCardModalProps {
   };
   onSelectRole?: (role: ShopRole) => void;
   starfallRosterEntry?: HeroRosterEntry | null;
+  onSelectWardrobe?: (compName: string, wardrobeKey: string) => void;
 }
 
 export const STARFALL_PORTRAITS: Record<string, string> = {
@@ -486,9 +495,11 @@ export function CharacterCardModal({
   npcKnowledge,
   onSelectRole,
   starfallRosterEntry,
+  onSelectWardrobe,
 }: CharacterCardModalProps) {
   const [activeTab, setActiveTab] = useState<ActiveModalTab>("overview");
   const isStarfall = storyId === "starfall-labyrinth";
+  const isAshVelvet = storyId === "ash-and-velvet";
 
   // Handle ESC key dismiss
   const handleKeyDown = useCallback(
@@ -906,6 +917,152 @@ export function CharacterCardModal({
             {/* TAB 1: OVERVIEW & DYAD PASSIVE */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">
+                {/* Ash & Velvet Dedicated Psychological Telemetry & Wardrobe Dossier */}
+                {isAshVelvet && (() => {
+                  const avMeters = resolveHeroineMeters({
+                    name: companion.name,
+                    affection: compAffection,
+                    lust: (companion as any).lust,
+                    submission: (companion as any).submission,
+                    trust: (companion as any).trust,
+                    jealousy: (companion as any).jealousy,
+                  });
+                  const avMeta = ASH_VELVET_HEROINE_DOSSIERS[companion.name];
+                  const roomUnlocked = isBedroomKeyUnlocked(avMeters);
+                  const wLabels = (companion as any).wardrobeLabels as Record<string, string> | undefined;
+                  const activeW = (companion as any).activeWardrobe || "base";
+
+                  const rows = [
+                    {
+                      label: "Affection",
+                      sub: getAffectionBondTier(avMeters.affection),
+                      val: avMeters.affection,
+                      textCls: "text-rose-300",
+                      segCls: "bg-rose-500",
+                    },
+                    {
+                      label: "Lust",
+                      sub: getLustStateLabel(avMeters.lust),
+                      val: avMeters.lust,
+                      textCls: "text-fuchsia-300",
+                      segCls: "bg-gradient-to-r from-pink-500 to-orange-400",
+                    },
+                    {
+                      label: "Submission",
+                      sub: getSubmissionDynamicLabel(avMeters.submission),
+                      val: avMeters.submission,
+                      textCls: "text-purple-300",
+                      segCls: "bg-gradient-to-r from-purple-500 to-amber-400",
+                    },
+                    {
+                      label: "Trust",
+                      sub: roomUnlocked ? "Bedroom Key Unlocked" : "Key Unlocks at 50",
+                      val: avMeters.trust,
+                      textCls: "text-teal-300",
+                      segCls: "bg-gradient-to-r from-amber-400 to-teal-400",
+                    },
+                    {
+                      label: "Jealousy",
+                      sub: avMeters.jealousy >= 40 ? "Volatile Friction" : avMeters.jealousy >= 20 ? "Simmering" : "Calm",
+                      val: avMeters.jealousy,
+                      textCls: "text-red-300",
+                      segCls: "bg-red-500",
+                    },
+                  ];
+
+                  return (
+                    <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-3">
+                      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                        <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-300">
+                          ✦ Psychological Telemetry
+                        </span>
+                        {avMeta && (
+                          <span
+                            className={`px-2 py-0.5 border text-[10px] font-mono font-black uppercase ${
+                              roomUnlocked
+                                ? "bg-amber-500/20 border-amber-400 text-amber-200"
+                                : "bg-zinc-900 border-zinc-700 text-zinc-400"
+                            }`}
+                          >
+                            {roomUnlocked ? `🔑 ${avMeta.roomLabel} Unlocked` : `🔒 ${avMeta.roomLabel} Locked`}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {rows.map((row) => {
+                          const filled = Math.round((row.val / 100) * 10);
+                          return (
+                            <div key={row.label} className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] font-mono">
+                                <span className="font-black uppercase text-zinc-100">
+                                  {row.label}{" "}
+                                  <span className={`font-semibold normal-case ${row.textCls}`}>
+                                    • {row.sub}
+                                  </span>
+                                </span>
+                                <span className={`font-black tabular-nums ${row.textCls}`}>
+                                  {row.val}/100
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-10 gap-[3px] p-[2px] bg-[#07070A] border border-zinc-800">
+                                {Array.from({ length: 10 }).map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className={`h-2.5 ${idx < filled ? row.segCls : "bg-zinc-900"}`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {wLabels && onSelectWardrobe && (
+                        <div className="pt-2 border-t border-white/10 space-y-1.5">
+                          <div className="text-[10px] font-mono font-black uppercase tracking-wider text-pink-300">
+                            Style A Wardrobe Switcher
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(wLabels).map(([wKey, wLabel]) => (
+                              <button
+                                key={wKey}
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.playClick();
+                                  onSelectWardrobe(companion.name, wKey);
+                                }}
+                                className={`px-2 py-1 border-2 border-[#07070A] text-[10px] font-mono font-bold transition-colors cursor-pointer ${
+                                  activeW === wKey
+                                    ? "bg-pink-600 text-white shadow-[2px_2px_0_#07070A]"
+                                    : "bg-zinc-900 text-zinc-300 hover:border-amber-400 hover:text-amber-200"
+                                }`}
+                              >
+                                {String(wLabel)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {avMeta?.secretBio && (
+                        <div className="pt-2 border-t border-white/10">
+                          <div className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-300 mb-1">
+                            {avMeters.trust >= 45 || avMeters.affection >= 50
+                              ? "🔓 Uncovered Private Truth"
+                              : "🔒 Hidden Truth (Reach 45 Trust or 50 Affection)"}
+                          </div>
+                          <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
+                            {avMeters.trust >= 45 || avMeters.affection >= 50
+                              ? avMeta.secretBio
+                              : "Earn deeper trust or share late-night confessions to uncover what she hides behind closed doors."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Affection, Guard Tier & Dynamic Choice Sentiment */}
                 <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2.5">
                   <div className="flex justify-between items-center gap-2 flex-wrap">

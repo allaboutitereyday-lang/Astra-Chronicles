@@ -67,6 +67,7 @@ export interface ChatMessageItemProps {
   onDeleteMessage?: (id: string) => void;
   onSelectSwipe?: (msgId: string, nextSwipeIdx: number) => void;
   onRewindToMessage?: (msgId: string) => void;
+  panelFrameStyle?: "cinematic" | "comic_panel";
 }
 
 export const ChatMessageItem = memo(function ChatMessageItem({
@@ -92,6 +93,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onDeleteMessage,
   onSelectSwipe,
   onRewindToMessage,
+  panelFrameStyle = "cinematic",
 }: ChatMessageItemProps) {
   const [localEditText, setLocalEditText] = useState(msg.text);
 
@@ -215,11 +217,21 @@ export const ChatMessageItem = memo(function ChatMessageItem({
                 </div>
               )}
               <span
-                className={`text-xs font-semibold select-none truncate ${
-                  isMsgAmbient ? "text-cyan-300" : "text-rose-300"
-                }`}
+                className={
+                  panelFrameStyle === "comic_panel"
+                    ? `px-2.5 py-0.5 text-[11px] font-mono font-black uppercase tracking-wider select-none truncate border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] -skew-x-12 ${
+                        isMsgAmbient
+                          ? "bg-amber-500 text-[#09090D]"
+                          : "bg-gradient-to-r from-pink-600 to-rose-500 text-white"
+                      }`
+                    : `text-xs font-semibold select-none truncate ${
+                        isMsgAmbient ? "text-cyan-300" : "text-rose-300"
+                      }`
+                }
               >
-                {msg.speakerName}
+                <span className={panelFrameStyle === "comic_panel" ? "skew-x-12 inline-block" : ""}>
+                  {msg.speakerName}
+                </span>
               </span>
               <span className="text-[11px] text-zinc-500 font-mono select-none shrink-0">
                 {msg.timestamp}
@@ -313,12 +325,18 @@ export const ChatMessageItem = memo(function ChatMessageItem({
       </div>
 
       <div
-        className={`w-full rounded-2xl px-4 py-3.5 text-sm leading-relaxed shadow-md select-text transition-colors ${
-          msg.sender === "user"
-            ? "bg-gradient-to-r from-sky-950/35 via-zinc-900/95 to-zinc-900/90 border border-sky-500/25 border-l-4 border-l-sky-400 text-zinc-200"
+        className={`w-full px-4 py-3.5 text-sm leading-relaxed select-text transition-colors ${
+          panelFrameStyle === "comic_panel"
+            ? msg.sender === "user"
+              ? "bg-[#171B26] border-2 border-[#07070A] border-l-4 border-l-amber-400 shadow-[4px_4px_0_#07070A] text-zinc-100"
+              : isMsgAmbient
+              ? "bg-[#181620] border-2 border-[#07070A] border-l-4 border-l-amber-500 shadow-[4px_4px_0_#07070A] text-zinc-100"
+              : "bg-[#181721] border-2 border-[#07070A] border-l-4 border-l-pink-500 shadow-[4px_4px_0_#07070A] text-zinc-100"
+            : msg.sender === "user"
+            ? "rounded-2xl bg-gradient-to-r from-sky-950/35 via-zinc-900/95 to-zinc-900/90 border border-sky-500/25 border-l-4 border-l-sky-400 text-zinc-200 shadow-md"
             : isMsgAmbient
-            ? "bg-zinc-900/95 border border-cyan-500/20 border-l-4 border-l-cyan-400/80 text-zinc-200 font-normal"
-            : "bg-zinc-900/95 border border-white/10 border-l-4 border-l-rose-500/80 text-zinc-200 font-normal"
+            ? "rounded-2xl bg-zinc-900/95 border border-cyan-500/20 border-l-4 border-l-cyan-400/80 text-zinc-200 font-normal shadow-md"
+            : "rounded-2xl bg-zinc-900/95 border border-white/10 border-l-4 border-l-rose-500/80 text-zinc-200 font-normal shadow-md"
         }`}
         onClick={() => onSkipTypewriter(msg, isLatestCharacterTurn)}
       >

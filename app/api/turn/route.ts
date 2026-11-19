@@ -93,6 +93,9 @@ import {
   StarfallCombatResolutionResult,
 } from "@/lib/starfallCombatEngine";
 import {
+  buildAshVelvetPromptDirective,
+} from "@/lib/ashVelvetEngine";
+import {
   executeOocTwoPassTurn,
   shouldUseOocTwoPassEngine,
   buildCleanConversationHistory,
@@ -612,6 +615,17 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
 
     const isPortSolarisStory = storyContext?.id === "port-solaris";
     const isStarfallStory = storyContext?.id === "starfall-labyrinth";
+    const isAshVelvetStory =
+      storyContext?.id === "ash-and-velvet" || storyContext?.contentRating === "adult_18";
+    const ashVelvetDirective = isAshVelvetStory
+      ? buildAshVelvetPromptDirective({
+          houseState: playerProfile?.ashVelvetState || null,
+          presentCompanions: Array.isArray(partyMembers)
+            ? partyMembers.filter((c: any) => c?.isPresent)
+            : [],
+          location: gameState?.location || "Clara's Kitchen & Living Room",
+        })
+      : "";
     let portSolarisDirective = "";
     let starfallDirective = "";
     let starfallCombatTelemetryDirective = "";
@@ -1016,7 +1030,7 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
 
       const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
 
-${isPortSolarisStory ? portSolarisDirective + "\n\n" : ""}${isStarfallStory ? starfallDirective + "\n\n" : ""}${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
+${isPortSolarisStory ? portSolarisDirective + "\n\n" : ""}${isStarfallStory ? starfallDirective + "\n\n" : ""}${isAshVelvetStory ? ashVelvetDirective + "\n\n" : ""}${getNarrationProseDirective(effectiveTone, effectiveNarrativeDepth)}
 
 ${dynamicRomanceDirective}
 
@@ -1051,6 +1065,11 @@ ${companionDossiers}
    - "[Guard/Protect]: 'Hold on, I've got your left—don't move!' Step in cleanly to intercept the flanking hound's lunge before it touches Pia."
    - "[Loophole/Bold]: 'Wait—the side culvert counts for the timer, doesn't it?' Motion the squad into the drainage tunnel to beat the Master's clock safely."
    - "[Move/Transition]: 'Everybody grab breath—let's head back through the ring to Star Gate Plaza.' Lead the squad cleanly back to the lobby to regroup."`
+       : isAshVelvetStory
+       ? `- "[Tease/Flirt]: 'Careful, keep standing in the hallway like that and I'll forget my manners.' Lean against the doorframe with an easy smirk and hold her gaze."
+   - "[Honest/Vulnerable]: 'Didn't sleep much—figured coffee was better than staring at the ceiling.' Sit beside her on the counter stool and let your shoulder brush hers."
+   - "[Nightlife/Bold]: 'Pour two more and tell me who's pissing you off tonight.' Slide a neat glass across the dive bar top and step between her and the loud regular."
+   - "[Boundary/Steady]: 'Hey—breathe. Nobody's kicking this door in tonight, I've got you.' Catch her hand gently and guide her back inside off the rain-soaked patio."`
        : `- "[Combat/Aggressive]: 'Alright, let's end this before they regroup!' Step forward and drive your blade toward the beast's exposed flank."
    - "[Arcana/Analytical]: 'Hold on—look at how that rune flickers.' Channel ether into your palm to trace the flaw in the containment ward."
    - "[Subterfuge/Cunning]: 'Keep 'em talking for ten seconds—I've got the lock.' Slip into the perimeter shadows toward the cargo vault."
@@ -1066,6 +1085,8 @@ ${companionDossiers}
    - NATURAL HUMAN PROSE — NO CATALOG LABELS OR FULL-NAME REPETITION: Write like a human novelist, never like an RPG database dump. Refer to characters by their first name (${
      isPortSolarisStory
        ? `"${playerFirstName}", "Seraphina", "Mia", "Colette", "Vivienne", "Pippa", "Kaede", "Roxy", "Chloe", "Nadia", "Zuri"`
+       : isAshVelvetStory
+       ? `"${playerFirstName}", "Clara", "Hannah", "Brianna", "Sierra", "Chloe"`
        : `"${playerFirstName}", "Cassia", "Beatrix", "Ysolde", "Kestrel"`
    }) or pronouns—never repeat full first+last names or inline rank numbers. Never paste capitalized UI item labels (${
      isPortSolarisStory
@@ -1150,6 +1171,7 @@ DO NOT SAFEGUARD THE PROTAGONIST. Remove all artificial plot armor:
 Base affection in this world is naturally LOW (5% - 25%). Heroines are guarded and cynical.
 ${compatibilityDirective}
 
+${ashVelvetDirective ? `\n${ashVelvetDirective}\n` : ""}
 --- ADULT, MATURE & ROMANTIC THEMES DIRECTIVE ---
 1. MATURE THEMATIC FREEDOM & ZERO ARTIFICIAL REFUSALS:
    - This visual novel chronicles dark fantasy, visceral combat, moral tension, and adult romantic intimacy.
@@ -1205,8 +1227,21 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
     "current_location": string,
     "mood": string,
     "expression_key": "neutral" | "intrigued" | "flustered" | "smug" | "surprised" | "combat_ready" | "dangerous" | "hurt" | "beckon", // Use "hurt" strictly for physical battle wounds/bleeding in combat—never for emotional worry or anxiety (use "flustered", "surprised", or "intrigued" instead)
+    "wardrobe_key": string | null, // Optional outfit key for the active speaker when story supports wardrobe states (e.g. "base", "kitchen", "lounge", "date", "nightwear", "overalls", "nightout", "casual", "party", "diner", "swim", "office", "afterhours")
     "affected_companion": string | null,
-    "affection_delta": number,
+    "affection_delta": number,${
+      isAshVelvetStory
+        ? `
+    "lust_delta": number, // -6 to +10 physical heat/desire delta for the active heroine
+    "submission_delta": number, // -6 to +8 power-dynamic yield delta (positive when heroine yields/softens to protagonist's poise)
+    "trust_delta": number, // -10 to +8 psychological safety/trust delta
+    "jealousy_delta": number, // -5 to +10 rival friction/jealousy delta
+    "vice_delta": number, // -10 to +20 alcohol/vice intoxication delta for protagonist
+    "composure_delta": number, // -12 to +12 emotional steadiness delta for protagonist
+    "cash_delta": number, // USD earned or spent this turn (0 if none)
+    "advance_time_slot": boolean, // true ONLY when the scene naturally advances to the next part of the day/night`
+        : ""
+    }
     "companion_sentiment": string | null, // 1-2 vivid sentences reflecting how the active heroine currently feels about the protagonist specifically referencing his latest choice/action (including any unspoken physical attraction or cracks in her guard)
     "core_memory_unlocked": {
       "id": string,

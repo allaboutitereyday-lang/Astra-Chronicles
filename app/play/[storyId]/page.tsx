@@ -217,6 +217,21 @@ import {
   LabyrinthState,
 } from "@/types/starfall_labyrinth";
 import {
+  AshVelvetOrigin,
+  AshVelvetApproach,
+  AshVelvetCircle,
+  AshVelvetHouseState,
+  AshVelvetTurnDeltaSummary,
+} from "@/types/ash_and_velvet";
+import {
+  createInitialAshVelvetState,
+  advanceAshVelvetClock,
+  clampMeter,
+  resolveHeroineMeters,
+} from "@/lib/ashVelvetEngine";
+import { AshVelvetScenePanel, AshVelvetTelemetryRail } from "@/components/play/AshVelvetComicStage";
+import { AshVelvetChoiceDeck } from "@/components/play/AshVelvetChoiceDeck";
+import {
   MAX_DEPLOYED_PARTY,
   SummonPullResult,
   isStarfallLobbyLocation,
@@ -317,6 +332,13 @@ export interface Companion {
   affection: number;
   heartRateBpm?: number;
   affectionLevel?: number;
+  lust?: number;
+  submission?: number;
+  trust?: number;
+  jealousy?: number;
+  activeWardrobe?: string;
+  wardrobeLabels?: Record<string, string>;
+  wardrobeExpressions?: Record<string, Record<string, string>>;
   romancePath?: string;
   expressionKey: string;
   isPresent: boolean;
@@ -384,9 +406,9 @@ interface PlayerProfile {
   behavioralTendencies?: Record<string, number>;
   pinnedMemories?: string[];
   unspentStatPoints?: number;
-  sovereignOrigin?: SovereignOrigin | PortSolarisOrigin | StarfallOrigin;
-  conduit?: ConduitType | FlairConduit | StarfallRole;
-  patronWing?: PatronWing | IslandFaction | StarfallFaction;
+  sovereignOrigin?: SovereignOrigin | PortSolarisOrigin | StarfallOrigin | AshVelvetOrigin;
+  conduit?: ConduitType | FlairConduit | StarfallRole | AshVelvetApproach;
+  patronWing?: PatronWing | IslandFaction | StarfallFaction | AshVelvetCircle;
   matriculationRank?: number;
   semesterDebtQuota?: number;
   boardingHouse?: BoardingHouseState;
@@ -394,6 +416,7 @@ interface PlayerProfile {
   equippedKeepsakes?: KeepsakeItem[];
   labyrinthState?: LabyrinthState;
   starRank?: StarRank;
+  ashVelvetState?: AshVelvetHouseState;
 }
 
 interface RoleplayState {
@@ -1413,9 +1436,14 @@ export default function VisualNovelGame() {
         },
         body: JSON.stringify({
           mode: "scene",
+          storyId: currentStory.id,
+          artStyle: currentStory.artStyle,
           characterSeed: compSeed,
           userAccessKey: accessKey,
-          sceneContext: richContext,
+          sceneContext: {
+            ...richContext,
+            artStyle: currentStory.artStyle,
+          },
         }),
       });
       const data = await res.json();
@@ -1738,6 +1766,8 @@ export default function VisualNovelGame() {
     isCapped?: boolean;
     cap?: number;
   } | null>(null);
+  const [lastAshVelvetDeltas, setLastAshVelvetDeltas] = useState<AshVelvetTurnDeltaSummary | null>(null);
+  const [isAshVelvetStageCollapsed, setIsAshVelvetStageCollapsed] = useState(false);
   const [notifications, setNotifications] = useState<GameNotificationItem[]>([]);
   const [notificationHistory, setNotificationHistory] = useState<GameNotificationItem[]>([]);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState<number>(0);
@@ -4077,6 +4107,19 @@ export default function VisualNovelGame() {
           safeSpeakerLower.includes(c.name.toLowerCase()))
     );
     if (companion) {
+      const liveWardrobeKey =
+        (matchingPartyHero as any)?.activeWardrobe || companion.activeWardrobe;
+      const wardrobeMap =
+        companion.wardrobeExpressions || (matchingPartyHero as any)?.wardrobeExpressions;
+      if (liveWardrobeKey && wardrobeMap && wardrobeMap[liveWardrobeKey]) {
+        const activeOutfitExprs = wardrobeMap[liveWardrobeKey];
+        if (activeOutfitExprs[normalizedKey]) {
+          return activeOutfitExprs[normalizedKey];
+        }
+        if (activeOutfitExprs.neutral) {
+          return activeOutfitExprs.neutral;
+        }
+      }
       if (companion.expressions && companion.expressions[normalizedKey]) {
         return companion.expressions[normalizedKey];
       }
@@ -6313,12 +6356,66 @@ export default function VisualNovelGame() {
           }
         }
 
+        const incomingWardrobeKey =
+          isCurrentSpeaker && typeof data.state_updates?.wardrobe_key === "string"
+            ? data.state_updates.wardrobe_key.trim().toLowerCase()
+            : null;
+        const storyCompDef = currentStory.companions?.find(
+          (sc) => sc.id === comp.id || sc.name.toLowerCase() === compNameLower
+        );
+        const validWardrobeMap =
+          (comp as any).wardrobeExpressions || storyCompDef?.wardrobeExpressions;
+        const updatedWardrobe =
+          incomingWardrobeKey && validWardrobeMap && validWardrobeMap[incomingWardrobeKey]
+            ? incomingWardrobeKey
+            : (comp as any).activeWardrobe || storyCompDef?.activeWardrobe;
+
+        // Ash & Velvet Psychological Triad + Trust + Jealousy updates
+        const isAvTurn = currentStory?.id === "ash-and-velvet";
+        const baseAvMeters = isAvTurn ? resolveHeroineMeters(comp) : null;
+        const isAvAffected =
+          isAvTurn &&
+          (isCurrentSpeaker ||
+            (typeof data.state_updates?.affected_companion === "string" &&
+              data.state_updates.affected_companion.toLowerCase().includes(compNameLower)));
+
+        const rawLustDelta =
+          isAvAffected && typeof data.state_updates?.lust_delta === "number"
+            ? Math.max(-6, Math.min(10, Math.round(data.state_updates.lust_delta)))
+            : 0;
+        const rawSubDelta =
+          isAvAffected && typeof data.state_updates?.submission_delta === "number"
+            ? Math.max(-6, Math.min(8, Math.round(data.state_updates.submission_delta)))
+            : 0;
+        const rawTrustDelta =
+          isAvAffected && typeof data.state_updates?.trust_delta === "number"
+            ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
+            : 0;
+        const rawJealousyDelta =
+          isAvAffected && typeof data.state_updates?.jealousy_delta === "number"
+            ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
+            : 0;
+
+        const updatedLust = baseAvMeters ? clampMeter(baseAvMeters.lust + rawLustDelta) : comp.lust;
+        const updatedSubmission = baseAvMeters
+          ? clampMeter(baseAvMeters.submission + rawSubDelta)
+          : comp.submission;
+        const updatedTrust = baseAvMeters ? clampMeter(baseAvMeters.trust + rawTrustDelta) : comp.trust;
+        const updatedJealousy = baseAvMeters
+          ? clampMeter(baseAvMeters.jealousy + rawJealousyDelta)
+          : comp.jealousy;
+
         return {
           ...comp,
           isPresent,
           encountered: nowEncountered,
           expressionKey: isCurrentSpeaker ? nextExpression : comp.expressionKey,
+          activeWardrobe: updatedWardrobe,
           affection: updatedAffection,
+          lust: updatedLust,
+          submission: updatedSubmission,
+          trust: updatedTrust,
+          jealousy: updatedJealousy,
           heartRateBpm: updatedBpm,
           guardTier: profile.guardTier,
           trustProgress: updatedTrustProgress,
@@ -6330,6 +6427,99 @@ export default function VisualNovelGame() {
       });
 
       let resolvedPartyState = nextPartyState;
+
+      // Sync Ash & Velvet House State (Day/Clock, Composure, Vice, Cash, Live 14-Room Heroine Whereabouts)
+      if (currentStory?.id === "ash-and-velvet") {
+        const curAvState: AshVelvetHouseState =
+          playerRef.current?.ashVelvetState ||
+          createInitialAshVelvetState(currentStory.startingNodes?.[selectedPrologue]?.id, playerRef.current?.gold ?? 65);
+        const rawViceDelta =
+          typeof data.state_updates?.vice_delta === "number"
+            ? Math.max(-10, Math.min(20, Math.round(data.state_updates.vice_delta)))
+            : 0;
+        const rawCompDelta =
+          typeof data.state_updates?.composure_delta === "number"
+            ? Math.max(-12, Math.min(12, Math.round(data.state_updates.composure_delta)))
+            : 0;
+        const rawCashDelta =
+          typeof data.state_updates?.cash_delta === "number"
+            ? Math.max(-300, Math.min(300, Math.round(data.state_updates.cash_delta)))
+            : 0;
+
+        let nextAvState: AshVelvetHouseState = data.state_updates?.advance_time_slot
+          ? advanceAshVelvetClock(curAvState)
+          : { ...curAvState, heroineLocations: { ...curAvState.heroineLocations } };
+
+        nextAvState = {
+          ...nextAvState,
+          viceLevel: clampMeter(nextAvState.viceLevel + rawViceDelta),
+          composure: clampMeter(nextAvState.composure + rawCompDelta),
+          cashUsd: Math.max(0, nextAvState.cashUsd + rawCashDelta),
+        };
+
+        // Update current room for every heroine currently present in this scene
+        for (const pComp of nextPartyState) {
+          if (pComp.isPresent && nextLocation) {
+            nextAvState.heroineLocations[pComp.name] = nextLocation;
+          }
+        }
+
+        const updatedPlayerWithAv = {
+          ...(playerRef.current || player),
+          ashVelvetState: nextAvState,
+          gold: nextAvState.cashUsd,
+        };
+        playerRef.current = updatedPlayerWithAv;
+        setPlayer(updatedPlayerWithAv);
+
+        const targetAvCompName =
+          data.state_updates?.affected_companion ||
+          (typeof data.speaker === "string" ? data.speaker : "");
+        if (targetAvCompName) {
+          const avAffDelta =
+            typeof data.state_updates?.affection_delta === "number"
+              ? Math.max(-8, Math.min(8, Math.round(data.state_updates.affection_delta)))
+              : 0;
+          const avLustDelta =
+            typeof data.state_updates?.lust_delta === "number"
+              ? Math.max(-6, Math.min(10, Math.round(data.state_updates.lust_delta)))
+              : 0;
+          const avSubDelta =
+            typeof data.state_updates?.submission_delta === "number"
+              ? Math.max(-6, Math.min(8, Math.round(data.state_updates.submission_delta)))
+              : 0;
+          const avTrustDelta =
+            typeof data.state_updates?.trust_delta === "number"
+              ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
+              : 0;
+          const avJealousyDelta =
+            typeof data.state_updates?.jealousy_delta === "number"
+              ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
+              : 0;
+
+          if (
+            avAffDelta !== 0 ||
+            avLustDelta !== 0 ||
+            avSubDelta !== 0 ||
+            avTrustDelta !== 0 ||
+            avJealousyDelta !== 0
+          ) {
+            setLastAshVelvetDeltas({
+              companionName: targetAvCompName,
+              affectionDelta: avAffDelta,
+              lustDelta: avLustDelta,
+              submissionDelta: avSubDelta,
+              trustDelta: avTrustDelta,
+              jealousyDelta: avJealousyDelta,
+              viceDelta: rawViceDelta,
+              composureDelta: rawCompDelta,
+              cashDelta: rawCashDelta,
+              timestamp: Date.now(),
+            });
+            setTimeout(() => setLastAshVelvetDeltas(null), 4500);
+          }
+        }
+      }
 
       if (currentStory?.id === "starfall-labyrinth") {
         const baseLs: LabyrinthState =
@@ -11474,10 +11664,20 @@ export default function VisualNovelGame() {
       
       <div 
         key={gameState.bgImage}
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out brightness-75 contrast-105 pointer-events-none select-none"
+        className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out pointer-events-none select-none ${
+          currentStory.id === "ash-and-velvet"
+            ? "blur-2xl brightness-[0.20] scale-110"
+            : "brightness-75 contrast-105"
+        }`}
         style={{ backgroundImage: `url("${gameState.bgImage}")` }}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 pointer-events-none" />
+      <div
+        className={
+          currentStory.id === "ash-and-velvet"
+            ? "absolute inset-0 bg-[#0B0A10]/75 pointer-events-none"
+            : "absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/40 pointer-events-none"
+        }
+      />
       <div className="absolute inset-0 cinematic-vignette pointer-events-none z-10" />
       <AtmosphericParticles location={gameState.location} />
 
@@ -11790,14 +11990,36 @@ export default function VisualNovelGame() {
                   player.name.charAt(0)
                 )}
               </div>
-              <div className="text-left hidden sm:block min-w-[64px] lg:min-w-[82px] max-w-[115px] shrink-0">
-                <p className="font-semibold leading-tight text-white group-hover:text-rose-300 transition-colors truncate">
+              <div className="text-left hidden sm:block min-w-[64px] lg:min-w-[82px] max-w-[130px] shrink-0">
+                <p className="font-semibold leading-tight text-white group-hover:text-amber-300 transition-colors truncate">
                   {player.name}
                 </p>
                 <p className="text-[10px] text-zinc-400 font-mono truncate">
-                  Lv.{player.level} {player.race ? `${player.race} ` : ""}{player.role}
+                  {currentStory.id === "ash-and-velvet"
+                    ? player.role || "Attic Room Tenant"
+                    : `Lv.${player.level} ${player.race ? `${player.race} ` : ""}${player.role}`}
                 </p>
               </div>
+              {currentStory.id === "ash-and-velvet" ? (
+                (() => {
+                  const avTop =
+                    player.ashVelvetState ||
+                    createInitialAshVelvetState(
+                      currentStory.startingNodes?.[selectedPrologue]?.id,
+                      player.gold ?? 65
+                    );
+                  return (
+                    <div className="flex items-center gap-2 pl-2 border-l border-white/10 text-[10px] font-mono font-bold shrink-0">
+                      <span className="text-sky-300" title="Emotional Composure">
+                        {avTop.composure}%
+                      </span>
+                      <span className="text-emerald-300" title="Cash on Hand">
+                        ${avTop.cashUsd}
+                      </span>
+                    </div>
+                  );
+                })()
+              ) : (
               <div className="flex flex-col gap-0.5 pl-1 min-w-[64px] sm:min-w-[74px] shrink-0">
                 <div className="space-y-0.5">
                   <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
@@ -11877,7 +12099,8 @@ export default function VisualNovelGame() {
                   </div>
                 </div>
               </div>
-              {(player.unspentStatPoints || 0) > 0 && (
+              )}
+              {(player.unspentStatPoints || 0) > 0 && currentStory.id !== "ash-and-velvet" && (
                 <div className="hidden xl:flex items-center pl-1.5 border-l border-white/10 shrink-0">
                   <span
                     className="px-1.5 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/60 text-amber-300 text-[9px] font-mono font-bold animate-pulse"
@@ -11920,10 +12143,16 @@ export default function VisualNovelGame() {
                   ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
                   : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
               }`}
-              title="Open System Administrator Interface & Quests"
+              title={currentStory.id === "ash-and-velvet" ? "Open Objectives & Story Journal" : "Open System Administrator Interface & Quests"}
             >
-              <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
-              <span className="text-[11px] font-mono font-bold tracking-wider hidden md:inline">SYSTEM</span>
+              {currentStory.id === "ash-and-velvet" ? (
+                <Scroll className="w-3.5 h-3.5 text-amber-400" />
+              ) : (
+                <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+              )}
+              <span className="text-[11px] font-mono font-bold tracking-wider hidden md:inline">
+                {currentStory.id === "ash-and-velvet" ? "JOURNAL" : "SYSTEM"}
+              </span>
               {systemState.activeQuests.length > 0 && (
                 <span className="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full bg-rose-600 text-white shadow-[0_0_8px_rgba(244,63,94,0.6)]">
                   {systemState.activeQuests.length}
@@ -12070,14 +12299,16 @@ export default function VisualNovelGame() {
                 <GitBranch className="w-4 h-4 text-cyan-400" />
               </button>
 
-              {/* LitRPG Trials Link (Task 4) */}
-              <button
-                onClick={handleNavigateToTrials}
-                className="p-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1"
-                title="LitRPG Daily Roguelite Trials (Auto-saves story progress)"
-              >
-                <Swords className="w-4 h-4 text-blue-400" />
-              </button>
+              {/* LitRPG Trials Link (Hidden for grounded Ash & Velvet VN) */}
+              {currentStory.id !== "ash-and-velvet" && (
+                <button
+                  onClick={handleNavigateToTrials}
+                  className="p-1.5 rounded-xl hover:bg-blue-950/40 text-blue-400 hover:text-blue-300 transition-all cursor-pointer flex items-center gap-1"
+                  title="LitRPG Daily Roguelite Trials (Auto-saves story progress)"
+                >
+                  <Swords className="w-4 h-4 text-blue-400" />
+                </button>
+              )}
 
               {/* Share World & Seed (Task 5) */}
               <button
@@ -12200,9 +12431,22 @@ export default function VisualNovelGame() {
       </header>
 
       {/* DIALOGUE & SPRITE TERMINAL */}
-      <div className="absolute top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-24 md:top-24 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]">
-        {/* MOBILE VISUAL NOVEL SPOTLIGHT STAGE (< sm) */}
-        {!isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
+      <div
+        className={
+          currentStory.id === "ash-and-velvet"
+            ? "absolute top-[calc(3.25rem+env(safe-area-inset-top,0px))] sm:top-[58px] bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-4 lg:inset-x-6 z-30 flex flex-col lg:flex-row gap-2.5 pointer-events-auto pb-[env(safe-area-inset-bottom,0px)] overflow-hidden"
+            : "absolute top-[calc(3.5rem+env(safe-area-inset-top,0px))] sm:top-24 md:top-24 bottom-2 sm:bottom-3 inset-x-2 sm:inset-x-6 md:inset-x-10 lg:inset-x-16 z-30 flex flex-col justify-end gap-1.5 sm:gap-2 pointer-events-none pb-[env(safe-area-inset-bottom,0px)]"
+        }
+      >
+        <div
+          className={
+            currentStory.id === "ash-and-velvet"
+              ? "flex-1 min-w-0 flex flex-col gap-2 min-h-0 h-full overflow-hidden"
+              : "flex flex-col justify-end gap-1.5 sm:gap-2 flex-1 min-h-0"
+          }
+        >
+        {/* MOBILE VISUAL NOVEL SPOTLIGHT STAGE (< sm) — Hidden in Ash & Velvet since AshVelvetScenePanel renders responsively */}
+        {currentStory.id !== "ash-and-velvet" && !isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
           <div className="sm:hidden relative flex-1 min-h-[80px] max-h-[24dvh] w-full flex items-end justify-center overflow-hidden pointer-events-none select-none -mb-2">
             {presentComps.length === 0 ? (
               <div className="relative h-full w-full flex items-end justify-center">
@@ -12291,14 +12535,80 @@ export default function VisualNovelGame() {
           </div>
         )}
 
+        {/* ASH & VELVET UPPER WIDESCREEN COMIC SCENE PANEL */}
+        {currentStory.id === "ash-and-velvet" && (
+          <AshVelvetScenePanel
+            bgImage={gameState.bgImage}
+            location={gameState.location}
+            mood={gameState.mood}
+            speaker={gameState.speaker}
+            houseState={
+              player.ashVelvetState ||
+              createInitialAshVelvetState(
+                currentStory.startingNodes?.[selectedPrologue]?.id,
+                player.gold ?? 65
+              )
+            }
+            presentCompanions={presentComps.map((p) => {
+              const storyDef = currentStory.companions?.find(
+                (sc) => sc.id === p.id || sc.name.toLowerCase() === p.name.toLowerCase()
+              );
+              return {
+                ...p,
+                wardrobeLabels: (p as any).wardrobeLabels || storyDef?.wardrobeLabels,
+                activeWardrobe: (p as any).activeWardrobe || storyDef?.activeWardrobe || "base",
+              };
+            })}
+            spotlightComp={(() => {
+              const rawSpot =
+                resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) ||
+                presentComps[0] ||
+                null;
+              if (!rawSpot) return null;
+              const storyDef = currentStory.companions?.find(
+                (sc) => sc.id === rawSpot.id || sc.name.toLowerCase() === rawSpot.name.toLowerCase()
+              );
+              return {
+                ...rawSpot,
+                wardrobeLabels: (rawSpot as any).wardrobeLabels || storyDef?.wardrobeLabels,
+                activeWardrobe: (rawSpot as any).activeWardrobe || storyDef?.activeWardrobe || "base",
+              };
+            })()}
+            playerName={player.name}
+            playerAvatar={playerAvatar}
+            getSpriteSrc={(name, expr) => getSpriteSrc(name, expr || "neutral")}
+            fallbackSprite={DEFAULT_FALLBACK_SPRITE}
+            isCollapsed={isAshVelvetStageCollapsed}
+            onToggleCollapse={() => {
+              soundEffects.playClick();
+              setIsAshVelvetStageCollapsed((v) => !v);
+            }}
+            onOpenDossier={(comp) => {
+              soundEffects.playClick();
+              const fullComp =
+                party.find((p) => p.name.toLowerCase() === comp.name.toLowerCase()) || (comp as any);
+              setSelectedCharacterCardComp(fullComp);
+            }}
+            onOpenMap={() => {
+              soundEffects.playClick();
+              setShowMap(true);
+            }}
+            onIllustrateCg={() => handleGenerateSceneCG(false)}
+          />
+        )}
+
         <div
-          className={`pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 ${
-            activeClash?.isActive || player.labyrinthState?.activeEncounter?.isActive
-              ? "max-h-[46dvh] sm:max-h-[50vh] md:max-h-[54vh]"
-              : isMobileStageCollapsed
-              ? "max-h-[72dvh] sm:max-h-[50vh] md:max-h-[54vh]"
-              : "max-h-[52dvh] sm:max-h-[50vh] md:max-h-[54vh]"
-          }`}
+          className={
+            currentStory.id === "ash-and-velvet"
+              ? "pointer-events-auto relative bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] overflow-hidden flex flex-col flex-1 min-h-[140px]"
+              : `pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 ${
+                  activeClash?.isActive || player.labyrinthState?.activeEncounter?.isActive
+                    ? "max-h-[46dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+                    : isMobileStageCollapsed
+                    ? "max-h-[72dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+                    : "max-h-[52dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+                }`
+          }
         >
           <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
 
@@ -12325,6 +12635,7 @@ export default function VisualNovelGame() {
             </div>
           )}
 
+          {currentStory.id !== "ash-and-velvet" && (
           <div className="shrink-0 px-3 py-2 sm:px-4 sm:py-2 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-zinc-900/60 select-none">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
               {/* Speaker Badge (Clickable to open Character Card Modal) */}
@@ -12587,9 +12898,11 @@ export default function VisualNovelGame() {
               </button>
             </div>
           </div>
+          )}
 
           <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
             {/* DYNAMIC SPRITE STAGE (REDESIGNED FOR FULL-SIZE SPOTLIGHT & COMPANION SWITCHER) */}
+            {currentStory.id !== "ash-and-velvet" && (
             <div className="hidden sm:flex relative w-56 sm:w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
               {/* SLEEK COMPANION AVATAR SWITCHER STRIP */}
               {presentComps.length > 0 && (
@@ -12747,21 +13060,60 @@ export default function VisualNovelGame() {
                         className={getStageSpriteClasses(isSpeaking)}
                       />
 
-                      {/* Spotlight Character Info Bar / Dossier Trigger */}
-                      <div className="absolute bottom-2 inset-x-2 flex items-center justify-between pointer-events-auto">
+                      {/* Spotlight Character Info Bar / Dossier Trigger & Dynamic Wardrobe Selector */}
+                      <div className="absolute bottom-2 inset-x-2 flex items-center justify-between gap-1.5 pointer-events-auto">
                         <button
                           type="button"
                           onClick={() => {
                             soundEffects.playClick();
                             setSelectedCharacterCardComp(spotlightComp);
                           }}
-                          className="px-2.5 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-white/20 hover:border-rose-400 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all cursor-pointer group"
+                          className="px-2.5 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-white/20 hover:border-rose-400 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all cursor-pointer group min-w-0"
                           title="Click to view full dossier & stats"
                         >
-                          <Sparkles className="w-3 h-3 text-rose-400 group-hover:rotate-12 transition-transform" />
-                          <span className="truncate max-w-[130px]">{spotlightComp.name}</span>
-                          <span className="text-[9px] text-rose-300 opacity-80">• Dossier</span>
+                          <Sparkles className="w-3 h-3 text-rose-400 group-hover:rotate-12 transition-transform shrink-0" />
+                          <span className="truncate max-w-[115px]">{spotlightComp.name}</span>
+                          <span className="text-[9px] text-rose-300 opacity-80 shrink-0">• Dossier</span>
                         </button>
+                        {(() => {
+                          const storyComp = currentStory.companions?.find(
+                            (sc) =>
+                              sc.id === spotlightComp.id ||
+                              sc.name.toLowerCase() === spotlightComp.name.toLowerCase()
+                          );
+                          const wLabels =
+                            (spotlightComp as any).wardrobeLabels || storyComp?.wardrobeLabels;
+                          if (!wLabels || Object.keys(wLabels).length <= 1) return null;
+                          const activeW =
+                            (spotlightComp as any).activeWardrobe ||
+                            storyComp?.activeWardrobe ||
+                            "base";
+                          return (
+                            <select
+                              value={activeW}
+                              onChange={(e) => {
+                                const nextW = e.target.value;
+                                soundEffects.playClick();
+                                setParty((prev) =>
+                                  prev.map((p) =>
+                                    p.name.toLowerCase() === spotlightComp.name.toLowerCase()
+                                      ? { ...p, activeWardrobe: nextW }
+                                      : p
+                                  )
+                                );
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              title="Switch heroine outfit"
+                              className="max-w-[130px] px-2 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-rose-500/40 text-rose-200 text-[10px] font-mono font-bold shadow-lg backdrop-blur-md cursor-pointer focus:outline-none truncate"
+                            >
+                              {Object.entries(wLabels).map(([wKey, wLabel]) => (
+                                <option key={wKey} value={wKey} className="bg-zinc-950 text-zinc-100">
+                                  {String(wLabel)}
+                                </option>
+                              ))}
+                            </select>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -12769,6 +13121,7 @@ export default function VisualNovelGame() {
               </div>
               <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
             </div>
+            )}
 
             {/* MESSAGE FEED (SELECTABLE AND EDITABLE) */}
             <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -12840,6 +13193,7 @@ export default function VisualNovelGame() {
                       onViewPortrait={handleViewMessagePortrait}
                       onSelectSwipe={handleSelectSwipe}
                       onRewindToMessage={handleRewindToMessage}
+                      panelFrameStyle={currentStory.panelFrameStyle}
                     />
                   );
                 });
@@ -12998,6 +13352,7 @@ export default function VisualNovelGame() {
           const showChoiceControls =
             choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive);
           const showCovenantTrigger =
+            currentStory.id !== "ash-and-velvet" &&
             covenantCheck.available &&
             (!activeClash || !activeClash.isActive) &&
             !player.labyrinthState?.activeEncounter?.isActive;
@@ -13007,7 +13362,13 @@ export default function VisualNovelGame() {
             isStarfallLobbyLocation(gameState.location);
 
           return (
-            <div className="pointer-events-auto bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col shrink-0 select-none">
+            <div
+              className={
+                currentStory.id === "ash-and-velvet"
+                  ? "pointer-events-auto bg-[#15141D]/98 backdrop-blur-2xl border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] overflow-hidden flex flex-col shrink-0 select-none"
+                  : "pointer-events-auto bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col shrink-0 select-none"
+              }
+            >
               {/* Compact Single-Row Control Strip Inside Composer */}
               <div className="flex items-center justify-between gap-1.5 px-2 sm:px-2.5 py-1.5 border-b border-white/10 bg-zinc-900/55 overflow-x-auto no-scrollbar">
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -13025,7 +13386,11 @@ export default function VisualNovelGame() {
                       >
                         <Sparkles className="w-2.5 h-2.5 text-rose-400 shrink-0" />
                         <span className="sm:hidden">Choices ({choices.length})</span>
-                        <span className="hidden sm:inline">{choices.length} Tactical Vectors</span>
+                        <span className="hidden sm:inline">
+                          {currentStory.id === "ash-and-velvet"
+                            ? `${choices.length} Choices`
+                            : `${choices.length} Tactical Vectors`}
+                        </span>
                         {isChoicesCollapsed ? (
                           <ChevronUp className="w-3 h-3 text-rose-400 shrink-0" />
                         ) : (
@@ -13088,7 +13453,7 @@ export default function VisualNovelGame() {
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {showChoiceControls && !isChoicesCollapsed && (
+                  {showChoiceControls && !isChoicesCollapsed && currentStory.id !== "ash-and-velvet" && (
                     <span className="text-[10px] font-mono text-zinc-500 hidden lg:inline">
                       Click card to Draft • ⚡ Send Immediately
                     </span>
@@ -13160,7 +13525,8 @@ export default function VisualNovelGame() {
 
               {/* Expandable Choices Tray Inside Unified Box */}
               {showChoiceControls && !isChoicesCollapsed && (
-                <div className="px-2 py-1.5 border-b border-white/10 bg-zinc-950/60 space-y-1.5">
+                <div className={currentStory.id === "ash-and-velvet" ? "" : "px-2 py-1.5 border-b border-white/10 bg-zinc-950/60 space-y-1.5"}>
+                  {currentStory.id !== "ash-and-velvet" && (
                   <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                     <button
                       type="button"
@@ -13190,7 +13556,23 @@ export default function VisualNovelGame() {
                       ⚡ Bold Play
                     </button>
                   </div>
+                  )}
 
+                  {currentStory.id === "ash-and-velvet" ? (
+                    <AshVelvetChoiceDeck
+                      choices={choices}
+                      disabled={isLoading || isDraftingAction}
+                      onSelectChoice={(choice) => {
+                        if (isLoading || isDraftingAction) return;
+                        const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+                        sendAction(clean, false);
+                      }}
+                      onDraftChoice={(choice) => {
+                        const idx = choices.indexOf(choice);
+                        handleSelectPresetChoice(choice, idx >= 0 ? idx : 0);
+                      }}
+                    />
+                  ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-[24dvh] sm:max-h-36 overflow-y-auto pr-0.5">
                     {choices.map((choice, idx) => {
                       const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
@@ -13269,6 +13651,7 @@ export default function VisualNovelGame() {
                       );
                     })}
                   </div>
+                  )}
                 </div>
               )}
 
@@ -13317,6 +13700,90 @@ export default function VisualNovelGame() {
             </div>
           );
         })()}
+        </div>
+
+        {/* ASH & VELVET RIGHT FULL-HEIGHT COMIC TELEMETRY RAIL (Zero Clipping!) */}
+        {currentStory.id === "ash-and-velvet" && (
+          <AshVelvetTelemetryRail
+            location={gameState.location}
+            houseState={
+              player.ashVelvetState ||
+              createInitialAshVelvetState(
+                currentStory.startingNodes?.[selectedPrologue]?.id,
+                player.gold ?? 65
+              )
+            }
+            allCompanions={party.map((p) => {
+              const storyDef = currentStory.companions?.find(
+                (sc) => sc.id === p.id || sc.name.toLowerCase() === p.name.toLowerCase()
+              );
+              return {
+                ...p,
+                wardrobeLabels: (p as any).wardrobeLabels || storyDef?.wardrobeLabels,
+                activeWardrobe: (p as any).activeWardrobe || storyDef?.activeWardrobe || "base",
+              };
+            })}
+            presentCompanions={presentComps.map((p) => {
+              const storyDef = currentStory.companions?.find(
+                (sc) => sc.id === p.id || sc.name.toLowerCase() === p.name.toLowerCase()
+              );
+              return {
+                ...p,
+                wardrobeLabels: (p as any).wardrobeLabels || storyDef?.wardrobeLabels,
+                activeWardrobe: (p as any).activeWardrobe || storyDef?.activeWardrobe || "base",
+              };
+            })}
+            spotlightComp={(() => {
+              const rawSpot =
+                party.find((c) => c.name.toLowerCase() === (spotlightHeroineName || "").toLowerCase()) ||
+                resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) ||
+                presentComps[0] ||
+                party[0] ||
+                null;
+              if (!rawSpot) return null;
+              const storyDef = currentStory.companions?.find(
+                (sc) => sc.id === rawSpot.id || sc.name.toLowerCase() === rawSpot.name.toLowerCase()
+              );
+              return {
+                ...rawSpot,
+                wardrobeLabels: (rawSpot as any).wardrobeLabels || storyDef?.wardrobeLabels,
+                activeWardrobe: (rawSpot as any).activeWardrobe || storyDef?.activeWardrobe || "base",
+              };
+            })()}
+            getSpriteSrc={(name, expr) => getSpriteSrc(name, expr || "neutral")}
+            fallbackSprite={DEFAULT_FALLBACK_SPRITE}
+            lastDeltas={lastAshVelvetDeltas}
+            onSelectSpotlight={(name) => {
+              soundEffects.playClick();
+              setSpotlightHeroineName(name);
+            }}
+            onOpenDossier={(comp) => {
+              soundEffects.playClick();
+              const fullComp =
+                party.find((p) => p.name.toLowerCase() === comp.name.toLowerCase()) || (comp as any);
+              setSelectedCharacterCardComp(fullComp);
+            }}
+            onChangeWardrobe={(compName, nextW) => {
+              soundEffects.playClick();
+              setParty((prev) =>
+                prev.map((p) =>
+                  p.name.toLowerCase() === compName.toLowerCase()
+                    ? { ...p, activeWardrobe: nextW }
+                    : p
+                )
+              );
+            }}
+            onOpenMap={() => {
+              soundEffects.playClick();
+              setShowMap(true);
+            }}
+            onTravelToRoom={(roomName) => {
+              if (isLoading) return;
+              soundEffects.playClick();
+              sendAction(`Head over to ${roomName}.`, true);
+            }}
+          />
+        )}
       </div>
 
       {renderSaveModal()}
@@ -13362,6 +13829,15 @@ export default function VisualNovelGame() {
             roomNumber={(liveCardComp as any)?.assignedRoomNumber}
             starfallRosterEntry={cardRosterEntry}
             npcKnowledge={cardKnowledge}
+            onSelectWardrobe={(compName, nextW) => {
+              setParty((prev) =>
+                prev.map((p) =>
+                  p.name.toLowerCase() === compName.toLowerCase()
+                    ? { ...p, activeWardrobe: nextW }
+                    : p
+                )
+              );
+            }}
           />
         );
       })()}
@@ -13907,6 +14383,20 @@ export default function VisualNovelGame() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {(currentStory.worldContext?.locations || CONTINENT_REGIONS).map((region, idx) => {
                 const isCurrent = gameState.location.toLowerCase().includes(region.name.toLowerCase());
+                const isAvMap = currentStory.id === "ash-and-velvet";
+                const avStateForMap = isAvMap
+                  ? player.ashVelvetState ||
+                    createInitialAshVelvetState(currentStory.startingNodes?.[selectedPrologue]?.id, player.gold ?? 65)
+                  : null;
+                const heroinesHere = isAvMap
+                  ? party.filter((p) => {
+                      const loc = p.isPresent
+                        ? gameState.location
+                        : avStateForMap?.heroineLocations?.[p.name] || "";
+                      return loc.toLowerCase().includes(region.name.toLowerCase());
+                    })
+                  : [];
+
                 return (
                   <button
                     key={idx}
@@ -13914,13 +14404,44 @@ export default function VisualNovelGame() {
                       setShowMap(false);
                       sendAction(`[Move to ${region.name}]`, false);
                     }}
-                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                      isCurrent
-                        ? "bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/50 shadow-lg"
-                        : "bg-zinc-900/80 border-white/10 hover:border-white/20 hover:bg-zinc-900"
+                    className={`overflow-hidden border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
+                      isAvMap
+                        ? isCurrent
+                          ? "bg-[#1C1A26] border-2 border-amber-400 shadow-[4px_4px_0_#07070A]"
+                          : "bg-[#15141E] border-2 border-[#07070A] hover:border-amber-400/80 shadow-[3px_3px_0_#07070A]"
+                        : isCurrent
+                        ? "p-4 rounded-2xl bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/50 shadow-lg"
+                        : "p-4 rounded-2xl bg-zinc-900/80 border-white/10 hover:border-white/20 hover:bg-zinc-900"
                     }`}
                   >
-                    <div>
+                    {isAvMap && (region as any).bgImage && (
+                      <div className="relative h-24 w-full overflow-hidden border-b-2 border-[#07070A]">
+                        <img
+                          src={(region as any).bgImage}
+                          alt={region.name}
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                        {heroinesHere.length > 0 && (
+                          <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
+                            {heroinesHere.map((h) => (
+                              <div
+                                key={h.name}
+                                title={`${h.name} is here`}
+                                className="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-400 bg-[#FDFBF7] shadow-md"
+                              >
+                                <img
+                                  src={getSpriteSrc(h.name, h.expressionKey) || DEFAULT_FALLBACK_SPRITE}
+                                  alt={h.name}
+                                  className="w-full h-full object-cover object-top"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className={isAvMap ? "px-3.5 pt-2" : ""}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono text-zinc-400 uppercase">{region.zone}</span>
                         {isCurrent && (
@@ -13933,7 +14454,7 @@ export default function VisualNovelGame() {
                       <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{region.description}</p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] font-mono">
+                    <div className={`flex items-center justify-between pt-2 border-t border-white/5 text-[11px] font-mono ${isAvMap ? "px-3.5 pb-3" : ""}`}>
                       <span className="text-rose-400">{region.danger}</span>
                       <span className="text-emerald-400 flex items-center gap-1">
                         Travel <Navigation className="w-3 h-3" />
