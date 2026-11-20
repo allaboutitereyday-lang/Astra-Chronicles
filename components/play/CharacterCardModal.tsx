@@ -19,6 +19,10 @@ import {
   Star,
   Skull,
   Shield,
+  Flame,
+  Shirt,
+  Clock,
+  Key,
 } from "lucide-react";
 import { StoryCompanion, CompanionCoreMemory, HeroineGuardTier } from "@/types/story";
 import {
@@ -51,6 +55,9 @@ import {
 import { soundEffects } from "@/lib/audioEngine";
 import { ASH_VELVET_HEROINE_DOSSIERS } from "@/types/ash_and_velvet";
 import {
+  ASH_VELVET_TIME_SLOTS,
+  ASH_VELVET_TIME_SLOT_DISPLAY,
+  HEROINE_SCHEDULE_BY_SLOT,
   getAffectionBondTier,
   getLustStateLabel,
   getSensitivityStageLabel,
@@ -352,6 +359,73 @@ export const CORE_MEMORY_CATALOG: Record<string, { title: string; hint: string }
     title: "The Delacroix Botanical Grimoire",
     hint: "Zuri entrusted you with her grandmother's secret herbal infusion notes.",
   },
+  // Ash & Velvet — 14 Canonical Shared-House & Intimate Breakthrough Memories
+  clara_divorce_mortgage_ledger: {
+    title: "The Midnight Mortgage Ledger",
+    hint: "Found Clara in her den at 2 AM staring at overdue bank notices—and took the ledger out of her hands so she could finally lean on someone else.",
+  },
+  clara_kimono_rule_break: {
+    title: "Breaking Her Own House Rules",
+    hint: "Clara locked her master bedroom door from the inside with you still in the room, letting her rose-satin kimono slip off her shoulders.",
+  },
+  hannah_hidden_charcoal_portraits: {
+    title: "Beneath the Studio Drop Cloth",
+    hint: "Hannah pulled back the canvas sheet in Room 202 to reveal raw charcoal portraits she had been drawing of you since the night you moved in.",
+  },
+  hannah_3am_rooftop_promise: {
+    title: "The 3 AM Smoke Deck Vow",
+    hint: "Caught Hannah trembling after her toxic ex called from Velvet Static, holding her throat and gaze steady until the static in her head went quiet.",
+  },
+  brianna_bluff_called_meltdown: {
+    title: "Calling the Hallway Bluff",
+    hint: "Backed Brianna against the upstairs bathroom doorframe when she tried her usual towel-drop tease, watching her smug grin dissolve into a breathless flush.",
+  },
+  brianna_family_cutoff_truth: {
+    title: "The Unopened Family Envelope",
+    hint: "Sat on the floor of Room 203 while Brianna burned a guilt-tripping check from her parents and pulled you onto her bed instead.",
+  },
+  sierra_mattress_escape_tin: {
+    title: "The Emergency Tip Tin",
+    hint: "Sierra showed you the tin of rolled diner cash hidden under her mattress—and told you she doesn't feel like running anymore.",
+  },
+  sierra_after_shift_backrub: {
+    title: "After-Shift Curve Worship",
+    hint: "Rubbed the ache out of Sierra's shoulders and waist after a brutal double shift at Starlight Diner until her soft sighs turned into desperate clinging.",
+  },
+  chloe_boardroom_burnout_confession: {
+    title: "Two Fingers of Neat Bourbon",
+    hint: "Chloe kicked off her heels in the after-hours lounge and admitted how exhausted she is of commanding every room she walks into.",
+  },
+  chloe_room205_midnight_submission: {
+    title: "The Silk Tie Surrender",
+    hint: "Behind the locked door of Room 205, Chloe placed a silk tie in your palm and asked you to give the orders for the rest of the night.",
+  },
+  jill_honor_student_facade: {
+    title: "Cracks in the Honor-Roll Act",
+    hint: "Jill closed her textbook in the late-night parlor and confessed she transferred here just to escape her parents' suffocating script.",
+  },
+  jill_late_night_tutoring: {
+    title: "Quiet on the Parlor Sofa",
+    hint: "Guided Jill onto your lap in the dim downstairs den, keeping your fingers over her lips so her muffled moans wouldn't wake the house.",
+  },
+  tina_out_of_jills_shadow: {
+    title: "Choosing Her Own Trouble",
+    hint: "Tina cornered you on the attic stairs to prove she isn't just Jill's quiet little sister anymore.",
+  },
+  tina_parlor_dare: {
+    title: "The Next-Room Dare",
+    hint: "Tina dared you to touch her right on the parlor threshold while Jill was studying just around the corner.",
+  },
+};
+
+export const ASH_VELVET_CANONICAL_MEMORIES_BY_HEROINE: Record<string, string[]> = {
+  "Clara Callahan": ["clara_divorce_mortgage_ledger", "clara_kimono_rule_break"],
+  "Hannah Lindqvist": ["hannah_hidden_charcoal_portraits", "hannah_3am_rooftop_promise"],
+  "Brianna Chen": ["brianna_bluff_called_meltdown", "brianna_family_cutoff_truth"],
+  "Sierra Holloway": ["sierra_mattress_escape_tin", "sierra_after_shift_backrub"],
+  "Chloe Bellamy": ["chloe_boardroom_burnout_confession", "chloe_room205_midnight_submission"],
+  "Jill Smith": ["jill_honor_student_facade", "jill_late_night_tutoring"],
+  "Tina Smith": ["tina_out_of_jills_shadow", "tina_parlor_dare"],
 };
 
 export interface CharacterModalState {
@@ -664,6 +738,23 @@ export function CharacterCardModal({
   };
   const factionMeta = factionBadgeStyles[factionName] || factionBadgeStyles.BOARDWALK_GUILD;
 
+  const avDossier = isAshVelvet ? ASH_VELVET_HEROINE_DOSSIERS[companion.name] : undefined;
+  const avMeters = isAshVelvet
+    ? resolveHeroineMeters({
+        name: companion.name,
+        affection: compAffection,
+        lust: (companion as any).lust,
+        sensitivity: (companion as any).sensitivity,
+        submission: (companion as any).submission,
+        trust: (companion as any).trust,
+        jealousy: (companion as any).jealousy,
+      })
+    : null;
+  const avRoomUnlocked = avMeters ? isBedroomKeyUnlocked(avMeters) : false;
+  const avSecretUnlocked = avMeters ? isHeroineSecretUnlocked(companion.name, avMeters) : false;
+  const avWardrobeLabels = (companion as any).wardrobeLabels as Record<string, string> | undefined;
+  const avActiveWardrobe = (companion as any).activeWardrobe || "base";
+
   return (
     <div
       onClick={(e) => handleModalBackdropClick(e, onClose)}
@@ -671,7 +762,11 @@ export function CharacterCardModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-4xl bg-zinc-950/95 border border-white/15 rounded-3xl shadow-2xl flex flex-col md:flex-row overflow-hidden max-h-[92dvh] animate-in zoom-in-95 duration-200"
+        className={`relative w-full max-w-4xl flex flex-col md:flex-row overflow-hidden max-h-[92dvh] animate-in zoom-in-95 duration-200 ${
+          isAshVelvet
+            ? "bg-[#161520] border-2 border-[#07070A] shadow-[8px_8px_0px_#07070A]"
+            : "bg-zinc-950/95 border border-white/15 rounded-3xl shadow-2xl"
+        }`}
       >
         {/* CLOSE BUTTON */}
         <button
@@ -680,18 +775,34 @@ export function CharacterCardModal({
             soundEffects.playClick();
             onClose();
           }}
-          className="absolute top-4 right-4 z-30 p-2 rounded-full bg-black/60 hover:bg-white/10 border border-white/15 text-zinc-400 hover:text-white transition-all cursor-pointer shadow-lg"
+          className={`absolute top-4 right-4 z-30 p-2 text-zinc-400 hover:text-white transition-all cursor-pointer ${
+            isAshVelvet
+              ? "bg-[#09090D] hover:bg-pink-600 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A]"
+              : "rounded-full bg-black/60 hover:bg-white/10 border border-white/15 shadow-lg"
+          }`}
           title="Close Character Dossier (ESC)"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* LEFT COLUMN: HERO VISUAL & LIVE TELEMETRY */}
-        <div className="relative md:w-80 lg:w-96 shrink-0 bg-gradient-to-b from-zinc-900/60 via-zinc-950/80 to-black/95 border-b md:border-b-0 md:border-r border-white/10 flex flex-col items-center justify-end overflow-hidden p-4 min-h-[300px] md:min-h-[560px]">
+        <div
+          className={`relative md:w-80 lg:w-96 shrink-0 flex flex-col items-center justify-end overflow-hidden p-4 min-h-[300px] md:min-h-[560px] ${
+            isAshVelvet
+              ? "bg-gradient-to-b from-[#231F32] via-[#15141F] to-[#0A090F] border-b-2 md:border-b-0 md:border-r-2 border-[#07070A]"
+              : "bg-gradient-to-b from-zinc-900/60 via-zinc-950/80 to-black/95 border-b md:border-b-0 md:border-r border-white/10"
+          }`}
+        >
           {/* Ambient Faction / Blush Aura */}
           <div
             className={`absolute -top-12 -left-12 w-64 h-64 rounded-full blur-3xl opacity-35 pointer-events-none transition-all duration-700 ${
-              isStarfall
+              isAshVelvet
+                ? (avMeters?.sensitivity ?? 15) >= 65 || (avMeters?.lust ?? 0) >= 65
+                  ? "bg-pink-500 animate-pulse"
+                  : (avMeters?.affection ?? 15) >= 50
+                  ? "bg-rose-500"
+                  : "bg-amber-500"
+                : isStarfall
                 ? compAffection >= 80
                   ? "bg-rose-500 animate-pulse"
                   : compAffection >= 50
@@ -726,7 +837,57 @@ export function CharacterCardModal({
 
           {/* Telemetry Overlays at Base of Portrait */}
           <div className="relative z-10 w-full space-y-2 mt-2">
-            {isStarfall ? (
+            {isAshVelvet && avMeters ? (
+              <>
+                {/* Doujin Body Sensitivity & Conditioning Banner */}
+                <div className="w-full py-1.5 px-3 bg-[#100F17] border-2 border-[#07070A] shadow-[3px_3px_0px_#07070A] font-mono flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                    <span className="text-xs font-black tracking-tight text-pink-200">
+                      SENSITIVITY: {avMeters.sensitivity ?? 15}%
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 truncate">
+                    {getSensitivityStageLabel(avMeters.sensitivity ?? 15)}
+                  </span>
+                </div>
+
+                {/* 412 Maplewood Quarters & Active Outfit Badges */}
+                <div className="grid grid-cols-2 gap-1.5 text-[10px] font-mono">
+                  <div className="bg-[#100F17] border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
+                    {avRoomUnlocked ? (
+                      <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    ) : (
+                      <Lock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                    )}
+                    <div className="truncate">
+                      <span className="text-[8px] text-zinc-500 uppercase block leading-none">
+                        {avDossier?.roomLabel || "House Room"}
+                      </span>
+                      <span
+                        className={`font-black truncate block ${
+                          avRoomUnlocked ? "text-amber-300" : "text-zinc-400"
+                        }`}
+                      >
+                        {avRoomUnlocked ? "Key Unlocked" : "Locked (50 Trust)"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#100F17] border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] px-2.5 py-1.5 flex items-center gap-1.5 text-zinc-300">
+                    <Shirt className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+                    <div className="truncate">
+                      <span className="text-[8px] text-zinc-500 uppercase block leading-none">
+                        Active Outfit
+                      </span>
+                      <span className="font-black text-pink-200 truncate block uppercase">
+                        {avWardrobeLabels?.[avActiveWardrobe] || avActiveWardrobe}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : isStarfall ? (
               <>
                 <div
                   className={`w-full py-1.5 px-3 rounded-2xl border text-center font-mono flex items-center justify-between gap-2 shadow-lg backdrop-blur-md transition-all ${
@@ -844,10 +1005,31 @@ export function CharacterCardModal({
           {/* HEADER: NAME, EPITHET, FACTION */}
           <div className="shrink-0 border-b border-white/10 pb-3.5 pr-10">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black text-white font-mono tracking-tight">
+              <h2
+                className={`text-xl sm:text-2xl font-black text-white font-mono tracking-tight ${
+                  isAshVelvet ? "italic uppercase" : ""
+                }`}
+              >
                 {companion.name}
               </h2>
-              {isStarfall ? (
+              {isAshVelvet ? (
+                <>
+                  <span className="text-[10px] font-mono font-black uppercase px-2.5 py-0.5 bg-amber-500 text-[#09090D] border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A]">
+                    412 Maplewood • {avDossier?.roomLabel || "Housemate"}
+                  </span>
+                  <span
+                    className={`text-[10px] font-mono font-black uppercase px-2.5 py-0.5 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] ${
+                      resistanceProfile.guardTier === "IRONCLAD"
+                        ? "bg-purple-950 text-purple-200"
+                        : resistanceProfile.guardTier === "SELECTIVE"
+                        ? "bg-pink-950 text-pink-200"
+                        : "bg-emerald-950 text-emerald-200"
+                    }`}
+                  >
+                    {resistanceProfile.badgeLabel}
+                  </span>
+                </>
+              ) : isStarfall ? (
                 <>
                   <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border bg-amber-950/80 border-amber-400/60 text-amber-200">
                     {effectiveStarRank}★ Summoned Hero (Base {effectiveBaseStarRank}★)
@@ -869,7 +1051,9 @@ export function CharacterCardModal({
             <p className="text-xs sm:text-sm font-mono text-zinc-400 mt-1 flex items-center gap-1.5">
               <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0" />
               <span>
-                {starfallDossier?.epithet || dossier?.epithet || companion.title || "Summoned Companion"}
+                {isAshVelvet
+                  ? companion.title || companion.role || "412 Maplewood Ave Housemate"
+                  : starfallDossier?.epithet || dossier?.epithet || companion.title || "Summoned Companion"}
               </span>
             </p>
           </div>
@@ -878,18 +1062,40 @@ export function CharacterCardModal({
           <div className="shrink-0 flex flex-wrap items-center gap-1.5 my-3 border-b border-white/10 pb-3">
             {(
               [
-                { id: "overview", label: "Overview & Dyad", icon: <Layers className="w-3.5 h-3.5 shrink-0" /> },
-                { id: "dossier", label: "Dossier & Quirks", icon: <Info className="w-3.5 h-3.5 shrink-0" /> },
+                {
+                  id: "overview",
+                  label: isAshVelvet ? "Psychology & Meters" : "Overview & Dyad",
+                  icon: <Layers className="w-3.5 h-3.5 shrink-0" />,
+                },
+                {
+                  id: "dossier",
+                  label: isAshVelvet ? "Kinks, Profile & Secrets" : "Dossier & Quirks",
+                  icon: isAshVelvet ? (
+                    <Flame className="w-3.5 h-3.5 shrink-0" />
+                  ) : (
+                    <Info className="w-3.5 h-3.5 shrink-0" />
+                  ),
+                },
                 {
                   id: "role",
-                  label: isStarfall ? "Star Rank & Cap" : "Stray Anchor Role",
-                  icon: isStarfall ? (
+                  label: isAshVelvet
+                    ? "Wardrobe & Routine"
+                    : isStarfall
+                    ? "Star Rank & Cap"
+                    : "Stray Anchor Role",
+                  icon: isAshVelvet ? (
+                    <Shirt className="w-3.5 h-3.5 shrink-0" />
+                  ) : isStarfall ? (
                     <Star className="w-3.5 h-3.5 shrink-0" />
                   ) : (
                     <Coffee className="w-3.5 h-3.5 shrink-0" />
                   ),
                 },
-                { id: "memories", label: "Core Memories", icon: <Award className="w-3.5 h-3.5 shrink-0" /> },
+                {
+                  id: "memories",
+                  label: isAshVelvet ? "Shared Memories" : "Core Memories",
+                  icon: <Award className="w-3.5 h-3.5 shrink-0" />,
+                },
               ] as const
             ).map((tab) => {
               const isSelected = activeTab === tab.id;
@@ -901,11 +1107,19 @@ export function CharacterCardModal({
                     soundEffects.playClick();
                     setActiveTab(tab.id);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-                    isSelected
-                      ? "bg-rose-500/20 border border-rose-400 text-rose-200 shadow-md"
-                      : "bg-white/5 border border-transparent text-zinc-400 hover:text-white hover:bg-white/10"
-                  }`}
+                  className={
+                    isAshVelvet
+                      ? `px-3 py-1.5 text-xs font-mono font-black uppercase inline-flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap border-2 border-[#07070A] ${
+                          isSelected
+                            ? "bg-pink-600 text-white shadow-[3px_3px_0px_#07070A]"
+                            : "bg-[#100F17] text-zinc-400 hover:text-amber-300 hover:border-amber-400"
+                        }`
+                      : `px-3 py-1.5 rounded-xl text-xs font-mono font-bold inline-flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+                          isSelected
+                            ? "bg-rose-500/20 border border-rose-400 text-rose-200 shadow-md"
+                            : "bg-white/5 border border-transparent text-zinc-400 hover:text-white hover:bg-white/10"
+                        }`
+                  }
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
@@ -919,22 +1133,10 @@ export function CharacterCardModal({
             {/* TAB 1: OVERVIEW & DYAD PASSIVE */}
             {activeTab === "overview" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                {/* Ash & Velvet Dedicated Psychological Telemetry & Wardrobe Dossier */}
-                {isAshVelvet && (() => {
-                  const avMeters = resolveHeroineMeters({
-                    name: companion.name,
-                    affection: compAffection,
-                    lust: (companion as any).lust,
-                    sensitivity: (companion as any).sensitivity,
-                    submission: (companion as any).submission,
-                    trust: (companion as any).trust,
-                    jealousy: (companion as any).jealousy,
-                  });
-                  const avMeta = ASH_VELVET_HEROINE_DOSSIERS[companion.name];
-                  const roomUnlocked = isBedroomKeyUnlocked(avMeters);
-                  const secretUnlocked = isHeroineSecretUnlocked(companion.name, avMeters);
-                  const wLabels = (companion as any).wardrobeLabels as Record<string, string> | undefined;
-                  const activeW = (companion as any).activeWardrobe || "base";
+                {/* Ash & Velvet Dedicated Psychological Telemetry & Guardrail Dossier */}
+                {isAshVelvet && avMeters && (() => {
+                  const avMeta = avDossier;
+                  const roomUnlocked = avRoomUnlocked;
 
                   const rows = [
                     {
@@ -982,110 +1184,129 @@ export function CharacterCardModal({
                   ];
 
                   return (
-                    <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-3">
-                      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
-                        <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-300">
-                          ✦ Psychological Telemetry
-                        </span>
-                        {avMeta && (
-                          <span
-                            className={`px-2 py-0.5 border text-[10px] font-mono font-black uppercase ${
-                              roomUnlocked
-                                ? "bg-amber-500/20 border-amber-400 text-amber-200"
-                                : "bg-zinc-900 border-zinc-700 text-zinc-400"
-                            }`}
-                          >
-                            {roomUnlocked ? `🔑 ${avMeta.roomLabel} Unlocked` : `🔒 ${avMeta.roomLabel} Locked`}
+                    <>
+                      <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-3">
+                        <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                          <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-300">
+                            ✦ Psychological &amp; Physical Telemetry
                           </span>
-                        )}
-                      </div>
+                          {avMeta && (
+                            <span
+                              className={`px-2 py-0.5 border text-[10px] font-mono font-black uppercase ${
+                                roomUnlocked
+                                  ? "bg-amber-500/20 border-amber-400 text-amber-200"
+                                  : "bg-zinc-900 border-zinc-700 text-zinc-400"
+                              }`}
+                            >
+                              {roomUnlocked ? `🔑 ${avMeta.roomLabel} Unlocked` : `🔒 ${avMeta.roomLabel} Locked`}
+                            </span>
+                          )}
+                        </div>
 
-                      <div className="space-y-2.5">
-                        {rows.map((row) => {
-                          const filled = Math.round((row.val / 100) * 10);
-                          return (
-                            <div key={row.label} className="space-y-1">
-                              <div className="flex items-center justify-between text-[11px] font-mono">
-                                <span className="font-black uppercase text-zinc-100">
-                                  {row.label}{" "}
-                                  <span className={`font-semibold normal-case ${row.textCls}`}>
-                                    • {row.sub}
+                        <div className="space-y-2.5">
+                          {rows.map((row) => {
+                            const filled = Math.round((row.val / 100) * 10);
+                            return (
+                              <div key={row.label} className="space-y-1">
+                                <div className="flex items-center justify-between text-[11px] font-mono">
+                                  <span className="font-black uppercase text-zinc-100">
+                                    {row.label}{" "}
+                                    <span className={`font-semibold normal-case ${row.textCls}`}>
+                                      • {row.sub}
+                                    </span>
                                   </span>
-                                </span>
-                                <span className={`font-black tabular-nums ${row.textCls}`}>
-                                  {row.val}/100
-                                </span>
+                                  <span className={`font-black tabular-nums ${row.textCls}`}>
+                                    {row.val}/100
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-10 gap-[3px] p-[2px] bg-[#07070A] border border-zinc-800">
+                                  {Array.from({ length: 10 }).map((_, idx) => (
+                                    <div
+                                      key={idx}
+                                      className={`h-2.5 ${idx < filled ? row.segCls : "bg-zinc-900"}`}
+                                    />
+                                  ))}
+                                </div>
                               </div>
-                              <div className="grid grid-cols-10 gap-[3px] p-[2px] bg-[#07070A] border border-zinc-800">
-                                {Array.from({ length: 10 }).map((_, idx) => (
-                                  <div
-                                    key={idx}
-                                    className={`h-2.5 ${idx < filled ? row.segCls : "bg-zinc-900"}`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      {wLabels && onSelectWardrobe && (
-                        <div className="pt-2 border-t border-white/10 space-y-1.5">
-                          <div className="text-[10px] font-mono font-black uppercase tracking-wider text-pink-300">
-                            Outfit &amp; Intimate State Switcher
-                          </div>
-                          <div className="flex flex-wrap gap-1.5">
-                            {Object.entries(wLabels).map(([wKey, wLabel]) => (
-                              <button
-                                key={wKey}
-                                type="button"
-                                onClick={() => {
-                                  soundEffects.playClick();
-                                  onSelectWardrobe(companion.name, wKey);
-                                }}
-                                className={`px-2 py-1 border-2 border-[#07070A] text-[10px] font-mono font-bold transition-colors cursor-pointer ${
-                                  activeW === wKey
-                                    ? "bg-pink-600 text-white shadow-[2px_2px_0_#07070A]"
-                                    : "bg-zinc-900 text-zinc-300 hover:border-amber-400 hover:text-amber-200"
-                                }`}
-                              >
-                                {String(wLabel)}
-                              </button>
-                            ))}
-                          </div>
+                      {/* Emotional Guard Tier & Choice-Driven Sentiment */}
+                      <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-xs font-mono font-black uppercase tracking-wider text-rose-300 flex items-center gap-1.5">
+                            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                            Emotional Guard &amp; Live Impression
+                          </span>
+                          <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 bg-zinc-900 border border-white/15 text-amber-300">
+                            {resistanceProfile.badgeLabel}
+                          </span>
                         </div>
-                      )}
 
-                      {avMeta?.gazeReactionTell && (
-                        <div className="pt-2 border-t border-white/10">
-                          <div className="text-[10px] font-mono font-black uppercase tracking-wider text-pink-300 mb-1">
-                            🔥 Gaze &amp; Touch Conditioning Tell ({getSensitivityStageLabel(avMeters.sensitivity ?? 15)})
-                          </div>
-                          <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
-                            {avMeta.gazeReactionTell}
+                        {(resistanceProfile.guardTier === "IRONCLAD" ||
+                          resistanceProfile.guardTier === "SELECTIVE") &&
+                          compAffection < resistanceProfile.guardedThreshold && (
+                            <div className="flex items-center justify-between gap-2 text-[10px] px-2.5 py-1.5 bg-[#0C0B11] border border-rose-500/30">
+                              <span className="text-rose-200 font-bold">
+                                ✦ Cracks in {PossPronoun} Guard:{" "}
+                                <strong className="text-rose-400">{companion.armorCrackCount || 0}</strong>
+                              </span>
+                              <span className="text-zinc-400 font-mono">
+                                Next Trust Breakthrough: {Math.round(((companion.trustProgress || 0) % 1) * 100)}%
+                              </span>
+                            </div>
+                          )}
+
+                        <div className="p-2.5 bg-[#0C0B11] border border-white/10 space-y-1">
+                          <span className="text-[9px] uppercase tracking-wider font-black text-pink-300 block">
+                            Current Choice-Driven Impression
+                          </span>
+                          <p className="text-[11px] font-sans text-zinc-200 italic leading-relaxed">
+                            {getDynamicSentiment()}
                           </p>
                         </div>
-                      )}
 
-                      {avMeta?.secretBio && (
-                        <div className="pt-2 border-t border-white/10">
-                          <div className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-300 mb-1">
-                            {secretUnlocked
-                              ? "🔓 Uncovered Private Truth"
-                              : `🔒 Hidden Truth (Reach ${avMeta.secretUnlockRequirement?.minTrust ?? 42} Trust or ${(avMeta.secretUnlockRequirement?.minAffection ?? 38) + 8} Affection)`}
+                        <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
+                          <strong className="text-amber-300 font-mono uppercase text-[10px]">
+                            How to Win {PossPronoun} Over:
+                          </strong>{" "}
+                          {resistanceProfile.whatEarnsAffection}
+                        </p>
+                      </div>
+
+                      {/* House Bond Passive & Underlying Tension */}
+                      {avMeta && (
+                        <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-2">
+                          {avMeta.dyadPassiveName && (
+                            <div>
+                              <span className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                                House Chemistry Perk: {avMeta.dyadPassiveName}
+                              </span>
+                              <p className="text-[11px] font-sans text-zinc-300 mt-0.5 leading-relaxed">
+                                {avMeta.dyadPassiveDescription}
+                              </p>
+                            </div>
+                          )}
+                          <div className="pt-2 border-t border-white/10">
+                            <span className="text-[10px] font-mono font-black uppercase tracking-wider text-zinc-400 block">
+                              412 Maplewood Tension &amp; Conflict
+                            </span>
+                            <p className="text-[11px] font-sans text-zinc-200 mt-0.5 leading-relaxed">
+                              {avMeta.actOneConflict}
+                            </p>
                           </div>
-                          <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
-                            {secretUnlocked
-                              ? avMeta.secretBio
-                              : "Earn deeper emotional trust or share late-night confessions to uncover what she hides behind closed doors."}
-                          </p>
                         </div>
                       )}
-                    </div>
+                    </>
                   );
                 })()}
 
-                {/* Affection, Guard Tier & Dynamic Choice Sentiment */}
+                {/* Non-Ash & Velvet: Affection, Guard Tier & Dynamic Choice Sentiment */}
+                {!isAshVelvet && (
+                  <>
                 <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-2.5">
                   <div className="flex justify-between items-center gap-2 flex-wrap">
                     <span className="text-zinc-300 font-bold flex items-center gap-1.5">
@@ -1223,6 +1444,8 @@ export function CharacterCardModal({
                     </p>
                   </div>
                 )}
+                  </>
+                )}
 
                 {/* Diegetic Knowledge Status (What she knows about protagonist) */}
                 <div className="p-3.5 rounded-2xl bg-zinc-900/60 border border-white/10 space-y-2">
@@ -1290,23 +1513,110 @@ export function CharacterCardModal({
             {activeTab === "dossier" && (
               <div className="space-y-4 animate-in fade-in duration-200">
                 {/* Personality & Backstory */}
-                <div className="p-3.5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-1.5">
-                  <span className="text-zinc-400 uppercase text-[10px] tracking-wider block font-bold">
-                    Persona & Demeanor
+                <div
+                  className={
+                    isAshVelvet
+                      ? "p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-1.5"
+                      : "p-3.5 rounded-2xl bg-zinc-900/70 border border-white/10 space-y-1.5"
+                  }
+                >
+                  <span className="text-amber-300 uppercase text-[10px] tracking-wider block font-black">
+                    Persona &amp; Demeanor
                   </span>
-                  <p className="text-zinc-200 text-[11px] leading-relaxed">
+                  <p className="text-zinc-200 text-[11px] font-sans leading-relaxed">
                     {companion.personality ||
+                      avDossier?.actOneConflict ||
                       starfallDossier?.personality ||
                       starfallDossier?.actOneConflict ||
                       dossier?.archetype ||
                       (isStarfall
                         ? "A summoned hero fighting to survive the Starfall Labyrinth."
-                        : "A key figure on Port Solaris.")}
+                        : "A key resident at 412 Maplewood Ave.")}
                   </p>
                 </div>
 
+                {/* ASH & VELVET: KINKS, FETISHES & AROUSAL TRIGGERS */}
+                {isAshVelvet && avDossier && (
+                  <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-3">
+                    <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2 flex-wrap">
+                      <span className="text-xs font-mono font-black uppercase tracking-wider text-pink-300 flex items-center gap-1.5">
+                        <Flame className="w-3.5 h-3.5 text-pink-400 fill-pink-400" />
+                        Kinks, Fetishes &amp; Erotic Dynamics
+                      </span>
+                      <span className="text-[10px] font-mono font-bold text-amber-300">
+                        {avDossier.kinkDynamicSummary}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {avDossier.kinks.map((kink, kIdx) => (
+                        <div
+                          key={kIdx}
+                          className="p-3 bg-[#0E0D14] border border-pink-500/30 space-y-1"
+                        >
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-xs font-mono font-black uppercase text-white">
+                              ✦ {kink.name}
+                            </span>
+                            <span
+                              className={`text-[9px] font-mono font-black uppercase px-2 py-0.5 border ${
+                                kink.intensity === "Core Fetish"
+                                  ? "bg-pink-600/30 border-pink-400 text-pink-200"
+                                  : kink.intensity === "Secret Craving"
+                                  ? "bg-purple-950/80 border-purple-400/70 text-purple-200"
+                                  : "bg-amber-950/80 border-amber-400/70 text-amber-200"
+                              }`}
+                            >
+                              {kink.intensity}
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
+                            {kink.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {avDossier.gazeReactionTell && (
+                      <div className="pt-2 border-t border-white/10">
+                        <span className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-300 block mb-1">
+                          🔥 Doujin Gaze &amp; Touch Conditioning Tell (
+                          {getSensitivityStageLabel(avMeters?.sensitivity ?? 15)})
+                        </span>
+                        <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
+                          {avDossier.gazeReactionTell}
+                        </p>
+                      </div>
+                    )}
+
+                    {avDossier.preferredPersonalities?.length > 0 && (
+                      <div className="pt-2 border-t border-white/10">
+                        <span className="text-[10px] font-mono font-black uppercase tracking-wider text-teal-300 block mb-1.5">
+                          ⚡ Preferred Protagonist Vibes (Receptive Chemistry Match)
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {avDossier.preferredPersonalities.map((pref, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 bg-teal-950/70 border border-teal-500/40 text-teal-200 text-[10px] font-mono font-bold"
+                            >
+                              {pref}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* What She Has Learned About You */}
-                <div className="p-3.5 rounded-2xl bg-cyan-950/25 border border-cyan-500/30 space-y-2">
+                <div
+                  className={
+                    isAshVelvet
+                      ? "p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-2"
+                      : "p-3.5 rounded-2xl bg-cyan-950/25 border border-cyan-500/30 space-y-2"
+                  }
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-cyan-300 uppercase text-[10px] tracking-wider font-bold flex items-center gap-1.5">
                       <Eye className="w-3.5 h-3.5 text-cyan-400" />
@@ -1345,15 +1655,27 @@ export function CharacterCardModal({
 
                 {/* Likes / Values vs. Dislikes */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 space-y-1.5">
+                  <div
+                    className={
+                      isAshVelvet
+                        ? "p-3 bg-[#15141E] border-2 border-[#07070A] shadow-[3px_3px_0_#07070A] space-y-1.5"
+                        : "p-3 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 space-y-1.5"
+                    }
+                  >
                     <span className="text-emerald-300 font-bold uppercase text-[10px] flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Values & Likes
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Soft Spots &amp; Likes
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {((companion.values && companion.values.length > 0
                         ? companion.values
                         : starfallDossier?.values) ||
-                        (isStarfall
+                        (isAshVelvet
+                          ? avDossier?.preferredPersonalities || [
+                              "Late-Night Honesty",
+                              "Steady Confidence",
+                              "Unflinching Eye Contact",
+                            ]
+                          : isStarfall
                           ? ["Tactical Competence", "Squad Survival", "Honest Command"]
                           : ["Honesty", "Warm Comfort Food", "Island Loyalty"])
                       ).map((v, i) => (
@@ -1367,15 +1689,23 @@ export function CharacterCardModal({
                     </div>
                   </div>
 
-                  <div className="p-3 rounded-2xl bg-rose-950/30 border border-rose-500/30 space-y-1.5">
+                  <div
+                    className={
+                      isAshVelvet
+                        ? "p-3 bg-[#15141E] border-2 border-[#07070A] shadow-[3px_3px_0_#07070A] space-y-1.5"
+                        : "p-3 rounded-2xl bg-rose-950/30 border border-rose-500/30 space-y-1.5"
+                    }
+                  >
                     <span className="text-rose-300 font-bold uppercase text-[10px] flex items-center gap-1">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Dislikes & Triggers
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-400" /> Hard Boundaries &amp; Turn-Offs
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {((companion.dislikes && companion.dislikes.length > 0
                         ? companion.dislikes
                         : starfallDossier?.dislikes) ||
-                        (isStarfall
+                        (isAshVelvet
+                          ? ["Rushing Without Chemistry", "Fake Flattery", "Breaking House Trust"]
+                          : isStarfall
                           ? ["Reckless Command Seals", "Sacrificial Bait Orders", "Betrayal"]
                           : ["Arrogance", "Unearned Privilege", "Sloppy Recipes"])
                       ).map((d, i) => (
@@ -1390,68 +1720,236 @@ export function CharacterCardModal({
                   </div>
                 </div>
 
-                {/* ROM-COM / LABYRINTH SECRET (GATED) */}
-                <div
-                  className={`p-4 rounded-2xl border transition-all ${
-                    isSecretUnlocked
-                      ? "bg-gradient-to-r from-rose-950/60 via-purple-950/50 to-zinc-900/80 border-rose-500/40"
-                      : "bg-zinc-900/50 border-white/10"
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-bold flex items-center gap-1.5 text-rose-200 uppercase tracking-wide">
-                      {isSecretUnlocked ? (
-                        <>
-                          <Unlock className="w-4 h-4 text-emerald-400" />
-                          {isStarfall
-                            ? "Labyrinth Dossier Unlocked: Hidden Trauma & Secret"
-                            : "Rom-Com Secret Unlocked: Rom-Com Weakness"}
-                        </>
-                      ) : (
-                        <>
-                          <Lock className="w-4 h-4 text-amber-400" />
-                          {isStarfall ? "Labyrinth Secret Locked" : "Rom-Com Secret Locked"}
-                        </>
-                      )}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full border bg-black/50 text-zinc-400 border-white/10">
-                      {isSecretUnlocked ? "Confided" : "Gated"}
-                    </span>
+                {/* DEEPEST SECRET / VULNERABILITY (GATED) */}
+                {isAshVelvet && avDossier ? (
+                  <div
+                    className={`p-4 border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] transition-all ${
+                      avSecretUnlocked ? "bg-rose-950/45" : "bg-[#15141E]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-black flex items-center gap-1.5 text-amber-300 uppercase tracking-wide">
+                        {avSecretUnlocked ? (
+                          <>
+                            <Unlock className="w-4 h-4 text-emerald-400" />
+                            Private Truth Uncovered
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 text-amber-400" />
+                            Hidden Behind Closed Doors
+                          </>
+                        )}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 border border-white/15 bg-[#0A090F] text-zinc-300 font-mono font-bold uppercase">
+                        {avSecretUnlocked
+                          ? "Confided"
+                          : `Requires ${avDossier.secretUnlockRequirement.minTrust} Trust or ${avDossier.secretUnlockRequirement.minAffection + 8} Affection`}
+                      </span>
+                    </div>
+                    <p className="text-[11px] font-sans text-zinc-200 leading-relaxed">
+                      {avSecretUnlocked
+                        ? avDossier.secretBio
+                        : `Earn ${companion.name}'s emotional trust (${avDossier.secretUnlockRequirement.minTrust} Trust) or deepen your bond (${avDossier.secretUnlockRequirement.minAffection + 8} Affection) to uncover what she hides behind closed doors at 412 Maplewood.`}
+                    </p>
                   </div>
+                ) : (
+                  <div
+                    className={`p-4 rounded-2xl border transition-all ${
+                      isSecretUnlocked
+                        ? "bg-gradient-to-r from-rose-950/60 via-purple-950/50 to-zinc-900/80 border-rose-500/40"
+                        : "bg-zinc-900/50 border-white/10"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-bold flex items-center gap-1.5 text-rose-200 uppercase tracking-wide">
+                        {isSecretUnlocked ? (
+                          <>
+                            <Unlock className="w-4 h-4 text-emerald-400" />
+                            {isStarfall
+                              ? "Labyrinth Dossier Unlocked: Hidden Trauma & Secret"
+                              : "Rom-Com Secret Unlocked: Rom-Com Weakness"}
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 text-amber-400" />
+                            {isStarfall ? "Labyrinth Secret Locked" : "Rom-Com Secret Locked"}
+                          </>
+                        )}
+                      </span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full border bg-black/50 text-zinc-400 border-white/10">
+                        {isSecretUnlocked ? "Confided" : "Gated"}
+                      </span>
+                    </div>
 
-                  {isSecretUnlocked && (secretData || starfallDossier) ? (
-                    <div className="space-y-1.5 text-[11px] leading-relaxed text-zinc-200">
-                      <p className="text-zinc-400 font-semibold">
-                        Public Persona: {secretData?.publicFace || starfallDossier?.archetype}
-                      </p>
-                      <p className="text-rose-200 font-bold">
-                        Secret Vulnerability: {secretData?.secret || starfallDossier?.traumaAndSecret}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5 text-[11px] text-zinc-400">
-                      <p>
-                        {secretData?.publicFace ||
-                          starfallDossier?.archetype ||
-                          "A guarded secret known only to those who share genuine intimacy."}
-                      </p>
-                      <div className="p-2 rounded-xl bg-black/40 border border-amber-500/20 text-amber-300 text-[10px] flex items-center gap-1.5">
-                        <Lock className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                        <span>
-                          {secretData?.unlockHint ||
-                            `Reach 50% Affection to unlock ${possPronoun} hidden past.`}
-                        </span>
+                    {isSecretUnlocked && (secretData || starfallDossier) ? (
+                      <div className="space-y-1.5 text-[11px] leading-relaxed text-zinc-200">
+                        <p className="text-zinc-400 font-semibold">
+                          Public Persona: {secretData?.publicFace || starfallDossier?.archetype}
+                        </p>
+                        <p className="text-rose-200 font-bold">
+                          Secret Vulnerability: {secretData?.secret || starfallDossier?.traumaAndSecret}
+                        </p>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    ) : (
+                      <div className="space-y-1.5 text-[11px] text-zinc-400">
+                        <p>
+                          {secretData?.publicFace ||
+                            starfallDossier?.archetype ||
+                            "A guarded secret known only to those who share genuine intimacy."}
+                        </p>
+                        <div className="p-2 rounded-xl bg-black/40 border border-amber-500/20 text-amber-300 text-[10px] flex items-center gap-1.5">
+                          <Lock className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                          <span>
+                            {secretData?.unlockHint ||
+                              `Reach 50% Affection to unlock ${possPronoun} hidden past.`}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
-            {/* TAB 3: STRAY ANCHOR ROLE OR STARFALL ROSTER PROGRESSION */}
+            {/* TAB 3: STRAY ANCHOR ROLE, STARFALL ROSTER PROGRESSION, OR ASH & VELVET WARDROBE & ROUTINE */}
             {activeTab === "role" && (
               <div className="space-y-4 animate-in fade-in duration-200">
-                {isStarfall ? (
+                {isAshVelvet && avMeters ? (
+                  <>
+                    {/* Interactive Wardrobe & Intimate State Switcher */}
+                    <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-3">
+                      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                        <span className="text-xs font-mono font-black uppercase tracking-wider text-pink-300 flex items-center gap-1.5">
+                          <Shirt className="w-3.5 h-3.5 text-pink-400" />
+                          Wardrobe &amp; Intimate State Switcher
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-amber-300 uppercase">
+                          Active: {avWardrobeLabels?.[avActiveWardrobe] || avActiveWardrobe}
+                        </span>
+                      </div>
+
+                      {avWardrobeLabels && onSelectWardrobe ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {Object.entries(avWardrobeLabels).map(([wKey, wLabel]) => {
+                            const isNsfw = wKey.startsWith("nsfw_");
+                            const isSelected = avActiveWardrobe === wKey;
+                            return (
+                              <button
+                                key={wKey}
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.playClick();
+                                  onSelectWardrobe(companion.name, wKey);
+                                }}
+                                className={`p-2 text-left border-2 border-[#07070A] text-[10px] font-mono font-black uppercase transition-all cursor-pointer flex items-center justify-between gap-1 ${
+                                  isSelected
+                                    ? "bg-pink-600 text-white shadow-[3px_3px_0_#07070A]"
+                                    : isNsfw
+                                    ? "bg-rose-950/60 text-rose-200 hover:border-pink-400"
+                                    : "bg-[#0E0D14] text-zinc-300 hover:border-amber-400 hover:text-amber-200"
+                                }`}
+                              >
+                                <span className="truncate">{String(wLabel)}</span>
+                                {isNsfw && <Flame className="w-3 h-3 text-pink-400 shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-[11px] font-sans text-zinc-400">
+                          Outfits change dynamically with time of day, location, and intimate scenes.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* 5-Slot Daily House Schedule at 412 Maplewood */}
+                    <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-3">
+                      <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                        <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                          412 Maplewood Daily Routine
+                        </span>
+                        <span className="text-[10px] font-mono text-zinc-400">
+                          {avDossier?.bedroomLocation || "Callahan Shared House"}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {ASH_VELVET_TIME_SLOTS.map((slot) => {
+                          const roomForSlot =
+                            HEROINE_SCHEDULE_BY_SLOT[slot]?.[companion.name] ||
+                            avDossier?.bedroomLocation ||
+                            "412 Maplewood Ave";
+                          return (
+                            <div
+                              key={slot}
+                              className="px-3 py-2 bg-[#0E0D14] border border-white/10 flex items-center justify-between gap-2 text-[11px] font-mono"
+                            >
+                              <span className="font-black uppercase text-amber-300">
+                                {ASH_VELVET_TIME_SLOT_DISPLAY[slot]}
+                              </span>
+                              <span className="text-zinc-200 truncate">{roomForSlot}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Boundary & Escalation Readiness Breakdown */}
+                    {(() => {
+                      const sens = avMeters.sensitivity ?? 15;
+                      const baseReceptive = Math.round(
+                        Math.max(avMeters.lust, sens) +
+                          avMeters.affection * 0.35 +
+                          avMeters.trust * 0.25
+                      );
+                      const tiers = [
+                        { label: "Tier 1: Gaze & Shameless Tease", req: 0 },
+                        { label: "Tier 2: Close Touch & Flirt", req: 18 },
+                        { label: "Tier 3: Heavy Intimacy & Undress", req: 44 },
+                        { label: "Tier 4: Full Explicit Climax", req: 68 },
+                      ];
+                      return (
+                        <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-2.5">
+                          <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
+                            <span className="text-xs font-mono font-black uppercase tracking-wider text-teal-300">
+                              ✦ Boundary &amp; Escalation Readiness
+                            </span>
+                            <span className="text-xs font-mono font-black text-pink-300">
+                              Receptive Score: {baseReceptive}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {tiers.map((t) => {
+                              const ready = baseReceptive >= t.req;
+                              return (
+                                <div
+                                  key={t.label}
+                                  className={`p-2 border text-[10px] font-mono flex items-center justify-between gap-1.5 ${
+                                    ready
+                                      ? "bg-emerald-950/60 border-emerald-500/50 text-emerald-200"
+                                      : "bg-[#0E0D14] border-zinc-800 text-zinc-400"
+                                  }`}
+                                >
+                                  <span className="font-bold truncate">{t.label}</span>
+                                  <span className="font-black shrink-0">
+                                    {ready ? "✓ READY" : `REQ ${t.req}`}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[10px] font-sans text-zinc-400 leading-relaxed">
+                            Perving on her, matching her personality vibe, or leaning into her kinks builds{" "}
+                            <strong className="text-pink-300">Body Sensitivity</strong> and{" "}
+                            <strong className="text-fuchsia-300">Lust</strong>. Forcing Tier 3–4 before she is ready will backfire and damage her Trust.
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </>
+                ) : isStarfall ? (
                   <>
                     <div className="p-4 rounded-2xl bg-zinc-900/70 border border-amber-500/30 space-y-3">
                       <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -1751,10 +2249,14 @@ export function CharacterCardModal({
                       isStarfall && starfallDossier?.signatureMemories
                         ? starfallDossier.signatureMemories.map((m) => m.id)
                         : [];
+                    const ashVelvetSigIds = isAshVelvet
+                      ? ASH_VELVET_CANONICAL_MEMORIES_BY_HEROINE[companion.name] || []
+                      : [];
                     const canonicalIds = Array.from(
                       new Set([
                         ...starfallSigIds,
-                        ...(!isStarfall ? dossier?.unlockedCoreMemories || [] : []),
+                        ...ashVelvetSigIds,
+                        ...(!isStarfall && !isAshVelvet ? dossier?.unlockedCoreMemories || [] : []),
                         ...(Array.isArray(companion.unlockedCoreMemories)
                           ? companion.unlockedCoreMemories
                           : []),
@@ -1779,20 +2281,25 @@ export function CharacterCardModal({
                           title: memId.replace(/_/g, " ").toUpperCase(),
                           hint: isStarfall
                             ? "A pivotal shared memory forged inside the Starfall Labyrinth."
+                            : isAshVelvet
+                            ? "An intimate late-night memory forged under Clara's roof at 412 Maplewood Ave."
                             : "An unforgettable moment on Port Solaris.",
                         };
 
-                      const requiredAffection = idx === 0 ? 50 : 75;
+                      const requiredAffection = idx === 0 ? 45 : 70;
                       const isDynamicallyUnlockedByStory =
                         Array.isArray(companion.unlockedCoreMemories) &&
                         companion.unlockedCoreMemories.includes(memId);
-                      const isUnlockedByRankOrAffection =
-                        idx === 0
-                          ? isCharacterCardSecretUnlocked(
-                              compAffection,
-                              !isStarfall ? dossier?.intimacyRank ?? 1 : 1
-                            )
-                          : compAffection >= 75 || (!isStarfall && (dossier?.intimacyRank ?? 1) >= 4);
+                      const isUnlockedByRankOrAffection = isAshVelvet
+                        ? idx === 0
+                          ? avSecretUnlocked || compAffection >= 45
+                          : compAffection >= 70 || (avMeters?.trust ?? 0) >= 65
+                        : idx === 0
+                        ? isCharacterCardSecretUnlocked(
+                            compAffection,
+                            !isStarfall ? dossier?.intimacyRank ?? 1 : 1
+                          )
+                        : compAffection >= 75 || (!isStarfall && (dossier?.intimacyRank ?? 1) >= 4);
                       const isMemUnlocked = isDynamicallyUnlockedByStory || isUnlockedByRankOrAffection;
 
                       return (

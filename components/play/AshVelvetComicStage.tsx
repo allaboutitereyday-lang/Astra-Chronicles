@@ -140,6 +140,7 @@ export interface AshVelvetScenePanelProps {
   playerAvatar: string | null;
   getSpriteSrc: (name: string, expressionKey?: string) => string;
   fallbackSprite: string;
+  lastDeltas?: AshVelvetTurnDeltaSummary | null;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onOpenDossier: (comp: AshVelvetStageCompanion) => void;
@@ -165,6 +166,7 @@ export function AshVelvetScenePanel({
   playerAvatar,
   getSpriteSrc,
   fallbackSprite,
+  lastDeltas,
   isCollapsed = false,
   onToggleCollapse,
   onOpenDossier,
@@ -303,6 +305,105 @@ export function AshVelvetScenePanel({
           <span className="text-xs font-mono font-bold text-sky-200 uppercase">
             {playerName} • Solo Scene
           </span>
+        </div>
+      )}
+
+      {/* Floating Turn Stat Change Indicator Strip above Speaker Nameplate */}
+      {lastDeltas && (
+        <div className="absolute bottom-10 left-3 sm:left-5 z-20 flex flex-wrap items-center gap-1.5 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-200">
+          {lastDeltas.affectionDelta !== 0 && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] font-mono text-[10px] font-black uppercase tracking-wider ${
+                lastDeltas.affectionDelta > 0
+                  ? "bg-rose-600 text-white"
+                  : "bg-red-950 text-red-200 border-red-500"
+              }`}
+            >
+              <Heart className="w-3 h-3 fill-current" />
+              <span>
+                {lastDeltas.affectionDelta > 0
+                  ? `+${lastDeltas.affectionDelta}`
+                  : lastDeltas.affectionDelta}{" "}
+                Affection
+              </span>
+            </span>
+          )}
+          {lastDeltas.lustDelta !== 0 && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] font-mono text-[10px] font-black uppercase tracking-wider ${
+                lastDeltas.lustDelta > 0
+                  ? "bg-fuchsia-600 text-white"
+                  : "bg-zinc-900 text-zinc-300"
+              }`}
+            >
+              <Flame className="w-3 h-3 fill-current" />
+              <span>
+                {lastDeltas.lustDelta > 0
+                  ? `+${lastDeltas.lustDelta}`
+                  : lastDeltas.lustDelta}{" "}
+                Lust
+              </span>
+            </span>
+          )}
+          {(lastDeltas.sensitivityDelta ?? 0) !== 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-500 text-[#09090D] border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] font-mono text-[10px] font-black uppercase tracking-wider">
+              <Sparkles className="w-3 h-3" />
+              <span>
+                +{lastDeltas.sensitivityDelta} Sensitivity
+              </span>
+            </span>
+          )}
+          {lastDeltas.trustDelta !== 0 && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] font-mono text-[10px] font-black uppercase tracking-wider ${
+                lastDeltas.trustDelta > 0
+                  ? "bg-teal-600 text-white"
+                  : "bg-red-950 text-red-200 border-red-500"
+              }`}
+            >
+              <Shield className="w-3 h-3" />
+              <span>
+                {lastDeltas.trustDelta > 0
+                  ? `+${lastDeltas.trustDelta}`
+                  : lastDeltas.trustDelta}{" "}
+                Trust
+              </span>
+            </span>
+          )}
+          {lastDeltas.submissionDelta !== 0 && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] font-mono text-[10px] font-black uppercase tracking-wider ${
+                lastDeltas.submissionDelta > 0
+                  ? "bg-purple-600 text-white"
+                  : "bg-indigo-950 text-indigo-200"
+              }`}
+            >
+              <Crown className="w-3 h-3" />
+              <span>
+                {lastDeltas.submissionDelta > 0
+                  ? `+${lastDeltas.submissionDelta}`
+                  : lastDeltas.submissionDelta}{" "}
+                Submission
+              </span>
+            </span>
+          )}
+          {lastDeltas.jealousyDelta !== 0 && (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] font-mono text-[10px] font-black uppercase tracking-wider ${
+                lastDeltas.jealousyDelta > 0
+                  ? "bg-amber-500 text-[#09090D]"
+                  : "bg-emerald-950 text-emerald-200"
+              }`}
+            >
+              <AlertTriangle className="w-3 h-3" />
+              <span>
+                {lastDeltas.jealousyDelta > 0
+                  ? `+${lastDeltas.jealousyDelta}`
+                  : lastDeltas.jealousyDelta}{" "}
+                Jealousy
+              </span>
+            </span>
+          )}
         </div>
       )}
 

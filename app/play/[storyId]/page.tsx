@@ -106,7 +106,7 @@ import {
 } from "@/lib/visionEncoder";
 import { MobileCommandSheet } from "@/components/play/MobileCommandSheet";
 import { ActionInputBar } from "@/components/play/ActionInputBar";
-import { ChatMessageItem, ChatMessageSwipe } from "@/components/play/ChatMessageItem";
+import { ChatMessageItem, ChatMessageSwipe, HeroineStatDeltaPill } from "@/components/play/ChatMessageItem";
 import {
   evaluateDeathAndRegression,
   CURSED_RELIC_TABLE,
@@ -227,6 +227,7 @@ import {
   createInitialAshVelvetState,
   advanceAshVelvetClock,
   clampMeter,
+  clampAshVelvetTurnDelta,
   resolveHeroineMeters,
   inferNaturalWardrobeKey,
   evaluateAshVelvetAdvanceAndBoundary,
@@ -335,6 +336,7 @@ export interface Companion {
   heartRateBpm?: number;
   affectionLevel?: number;
   lust?: number;
+  sensitivity?: number;
   submission?: number;
   trust?: number;
   jealousy?: number;
@@ -442,6 +444,7 @@ interface ChatMessage {
     mpDelta: number;
     reason?: string | null;
   } | null;
+  heroineStatDeltas?: HeroineStatDeltaPill[] | null;
   timestamp: string;
   avatarSrc?: string;
   isPending?: boolean;
@@ -6405,9 +6408,24 @@ export default function VisualNovelGame() {
               })
             : null;
 
+        const isMajorAvTurn =
+          Boolean(
+            avBoundaryEval &&
+              (avBoundaryEval.tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" ||
+                avBoundaryEval.tier === "TIER_4_EXPLICIT_CORRUPTION")
+          ) ||
+          Boolean(data.state_updates?.core_memory_unlocked) ||
+          Boolean(
+            Array.isArray(data.system_updates?.quest_updates) &&
+              data.system_updates.quest_updates.some((qu: any) => qu?.status === "completed")
+          );
+
         const llmLustDelta =
           isAvAffected && typeof data.state_updates?.lust_delta === "number"
-            ? Math.max(-6, Math.min(10, Math.round(data.state_updates.lust_delta)))
+            ? clampAshVelvetTurnDelta(data.state_updates.lust_delta, {
+                isMajorEvent: isMajorAvTurn,
+                isBackfire: Boolean(avBoundaryEval?.didBackfire),
+              })
             : 0;
         const rawLustDelta = avBoundaryEval?.didBackfire
           ? avBoundaryEval.backfirePenalties!.lustDelta
@@ -6417,7 +6435,9 @@ export default function VisualNovelGame() {
 
         const llmSensDelta =
           isAvAffected && typeof (data.state_updates as any)?.sensitivity_delta === "number"
-            ? Math.max(-4, Math.min(10, Math.round((data.state_updates as any).sensitivity_delta)))
+            ? clampAshVelvetTurnDelta((data.state_updates as any).sensitivity_delta, {
+                isMajorEvent: isMajorAvTurn,
+              })
             : 0;
         const rawSensDelta = avBoundaryEval?.didBackfire
           ? 0
@@ -6427,17 +6447,23 @@ export default function VisualNovelGame() {
 
         const rawSubDelta =
           isAvAffected && typeof data.state_updates?.submission_delta === "number"
-            ? Math.max(-6, Math.min(8, Math.round(data.state_updates.submission_delta)))
+            ? clampAshVelvetTurnDelta(data.state_updates.submission_delta, {
+                isMajorEvent: isMajorAvTurn,
+              })
             : 0;
         const rawTrustDelta = avBoundaryEval?.didBackfire
           ? avBoundaryEval.backfirePenalties!.trustDelta
           : isAvAffected && typeof data.state_updates?.trust_delta === "number"
-          ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
+          ? clampAshVelvetTurnDelta(data.state_updates.trust_delta, {
+              isMajorEvent: isMajorAvTurn,
+            })
           : 0;
         const rawJealousyDelta = avBoundaryEval?.didBackfire
           ? avBoundaryEval.backfirePenalties!.jealousyDelta
           : isAvAffected && typeof data.state_updates?.jealousy_delta === "number"
-          ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
+          ? clampAshVelvetTurnDelta(data.state_updates.jealousy_delta, {
+              isMajorEvent: isMajorAvTurn,
+            })
           : 0;
 
         if (avBoundaryEval?.didBackfire) {
@@ -6641,14 +6667,33 @@ export default function VisualNovelGame() {
             });
           }
 
+          const isMajorAvSummaryTurn =
+            Boolean(
+              targetEval &&
+                (targetEval.tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" ||
+                  targetEval.tier === "TIER_4_EXPLICIT_CORRUPTION")
+            ) ||
+            Boolean(data.state_updates?.core_memory_unlocked) ||
+            Boolean(
+              Array.isArray(data.system_updates?.quest_updates) &&
+                data.system_updates.quest_updates.some((qu: any) => qu?.status === "completed")
+            );
+
           const avAffDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.affectionDelta
+            : typeof delta === "number" && delta !== 0
+            ? clampAshVelvetTurnDelta(delta, { isMajorEvent: isMajorAvSummaryTurn })
             : typeof data.state_updates?.affection_delta === "number"
-            ? Math.max(-8, Math.min(8, Math.round(data.state_updates.affection_delta)))
+            ? clampAshVelvetTurnDelta(data.state_updates.affection_delta, {
+                isMajorEvent: isMajorAvSummaryTurn,
+              })
             : 0;
           const llmLustD =
             typeof data.state_updates?.lust_delta === "number"
-              ? Math.max(-6, Math.min(10, Math.round(data.state_updates.lust_delta)))
+              ? clampAshVelvetTurnDelta(data.state_updates.lust_delta, {
+                  isMajorEvent: isMajorAvSummaryTurn,
+                  isBackfire: Boolean(targetEval?.didBackfire),
+                })
               : 0;
           const avLustDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.lustDelta
@@ -6657,7 +6702,9 @@ export default function VisualNovelGame() {
             : llmLustD;
           const llmSensD =
             typeof (data.state_updates as any)?.sensitivity_delta === "number"
-              ? Math.max(-4, Math.min(10, Math.round((data.state_updates as any).sensitivity_delta)))
+              ? clampAshVelvetTurnDelta((data.state_updates as any).sensitivity_delta, {
+                  isMajorEvent: isMajorAvSummaryTurn,
+                })
               : 0;
           const avSensDelta = targetEval?.didBackfire
             ? 0
@@ -6666,17 +6713,23 @@ export default function VisualNovelGame() {
             : llmSensD;
           const avSubDelta =
             typeof data.state_updates?.submission_delta === "number"
-              ? Math.max(-6, Math.min(8, Math.round(data.state_updates.submission_delta)))
+              ? clampAshVelvetTurnDelta(data.state_updates.submission_delta, {
+                  isMajorEvent: isMajorAvSummaryTurn,
+                })
               : 0;
           const avTrustDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.trustDelta
             : typeof data.state_updates?.trust_delta === "number"
-            ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
+            ? clampAshVelvetTurnDelta(data.state_updates.trust_delta, {
+                isMajorEvent: isMajorAvSummaryTurn,
+              })
             : 0;
           const avJealousyDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.jealousyDelta
             : typeof data.state_updates?.jealousy_delta === "number"
-            ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
+            ? clampAshVelvetTurnDelta(data.state_updates.jealousy_delta, {
+                isMajorEvent: isMajorAvSummaryTurn,
+              })
             : 0;
 
           if (
@@ -6701,7 +6754,7 @@ export default function VisualNovelGame() {
               cashDelta: rawCashDelta,
               timestamp: Date.now(),
             });
-            setTimeout(() => setLastAshVelvetDeltas(null), 4500);
+            setTimeout(() => setLastAshVelvetDeltas(null), 9000);
           }
         }
       }
@@ -6995,6 +7048,81 @@ export default function VisualNovelGame() {
             ]
           : undefined;
 
+      const turnHeroineStatDeltas: HeroineStatDeltaPill[] = [];
+      for (const nextComp of nextPartyState) {
+        const prevComp = party.find((p) => p.name === nextComp.name);
+        if (!prevComp) continue;
+        const affD = Math.round((nextComp.affection ?? 0) - (prevComp.affection ?? 0));
+        const lustD = Math.round(((nextComp as any).lust ?? 0) - ((prevComp as any).lust ?? 0));
+        const sensD = Math.round(
+          ((nextComp as any).sensitivity ?? 15) - ((prevComp as any).sensitivity ?? 15)
+        );
+        const trustD = Math.round(((nextComp as any).trust ?? 0) - ((prevComp as any).trust ?? 0));
+        const subD = Math.round(
+          ((nextComp as any).submission ?? 0) - ((prevComp as any).submission ?? 0)
+        );
+        const jealD = Math.round(
+          ((nextComp as any).jealousy ?? 0) - ((prevComp as any).jealousy ?? 0)
+        );
+
+        if (affD !== 0) {
+          turnHeroineStatDeltas.push({
+            heroineName: nextComp.name,
+            stat: "affection",
+            label: "Affection",
+            delta: affD,
+            isMajor: Math.abs(affD) >= 3,
+          });
+        }
+        if (currentStory?.id === "ash-and-velvet") {
+          if (lustD !== 0) {
+            turnHeroineStatDeltas.push({
+              heroineName: nextComp.name,
+              stat: "lust",
+              label: "Lust",
+              delta: lustD,
+              isMajor: Math.abs(lustD) >= 3,
+            });
+          }
+          if (sensD !== 0) {
+            turnHeroineStatDeltas.push({
+              heroineName: nextComp.name,
+              stat: "sensitivity",
+              label: "Sensitivity",
+              delta: sensD,
+              isMajor: Math.abs(sensD) >= 3,
+            });
+          }
+          if (trustD !== 0) {
+            turnHeroineStatDeltas.push({
+              heroineName: nextComp.name,
+              stat: "trust",
+              label: "Trust",
+              delta: trustD,
+              isMajor: Math.abs(trustD) >= 3,
+            });
+          }
+          if (subD !== 0) {
+            turnHeroineStatDeltas.push({
+              heroineName: nextComp.name,
+              stat: "submission",
+              label: "Submission",
+              delta: subD,
+              isMajor: Math.abs(subD) >= 3,
+            });
+          }
+          if (jealD !== 0) {
+            turnHeroineStatDeltas.push({
+              heroineName: nextComp.name,
+              stat: "jealousy",
+              label: "Jealousy",
+              delta: jealD,
+              isMajor: Math.abs(jealD) >= 3,
+            });
+          }
+        }
+      }
+
       const companionMsg: ChatMessage = {
         id: crypto.randomUUID(),
         sender: "character",
@@ -7009,6 +7137,8 @@ export default function VisualNovelGame() {
                 reason: rawVitalsReason,
               }
             : null,
+        heroineStatDeltas:
+          turnHeroineStatDeltas.length > 0 ? turnHeroineStatDeltas : null,
         timestamp: timeString,
         avatarSrc: companionAvatarSrc,
         choicesSnapshot: resolvedChoices,
@@ -12957,6 +13087,7 @@ export default function VisualNovelGame() {
             playerAvatar={playerAvatar}
             getSpriteSrc={(name, expr) => getSpriteSrc(name, expr || "neutral")}
             fallbackSprite={DEFAULT_FALLBACK_SPRITE}
+            lastDeltas={lastAshVelvetDeltas}
             isCollapsed={isAshVelvetStageCollapsed}
             onToggleCollapse={() => {
               soundEffects.playClick();

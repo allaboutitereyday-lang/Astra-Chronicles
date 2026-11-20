@@ -266,6 +266,13 @@ export interface AshVelvetTurnDeltaSummary {
   timestamp: number;
 }
 
+export interface AshVelvetHeroineKink {
+  name: string;
+  intensity: "Core Fetish" | "Secret Craving" | "Conditioned Trigger";
+  description: string;
+  triggerKeywords: string[];
+}
+
 export interface AshVelvetHeroineDossierMeta {
   actOneConflict: string;
   dyadPassiveName?: string;
@@ -278,6 +285,8 @@ export interface AshVelvetHeroineDossierMeta {
   preferredPersonalities: string[];
   preferredApproaches: AshVelvetApproach[];
   gazeReactionTell: string;
+  kinks: AshVelvetHeroineKink[];
+  kinkDynamicSummary: string;
   secretUnlockRequirement: { minTrust: number; minAffection: number };
 }
 
@@ -298,6 +307,30 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["STEADY_GRIT", "SMOOTH_CHARM"],
     gazeReactionTell:
       "Her freckled chest flushes warm beneath her collar as she pretends to adjust her cardigan—only to leave the neckline a fraction looser where your eyes were resting.",
+    kinkDynamicSummary: "Service Top Turned Pampered Submissive • Praise, Collarbone Worship & Breaking Her own House Rules",
+    kinks: [
+      {
+        name: "Overwhelmed Caretaker Surrender",
+        intensity: "Core Fetish",
+        description:
+          "Being firmly told to sit down, stop playing the responsible landlady, and let a younger, commanding man take complete control of her body.",
+        triggerKeywords: ["sit down", "take care of you", "my turn", "stop working", "relax", "let me"],
+      },
+      {
+        name: "Praise & Worship",
+        intensity: "Secret Craving",
+        description:
+          "Hearing raw, reverent praise about her mature curves, freckled skin, and how desirable she is while her hands are held still.",
+        triggerKeywords: ["gorgeous", "beautiful", "perfect", "good girl", "admire", "worship"],
+      },
+      {
+        name: "Forbidden House-Rule Taboo",
+        intensity: "Conditioned Trigger",
+        description:
+          "Being taken against the kitchen counter or inside her private den late at night where any tenant could almost walk past.",
+        triggerKeywords: ["house rule", "counter", "quiet", "someone might hear", "den", "landlady"],
+      },
+    ],
     secretUnlockRequirement: { minTrust: 45, minAffection: 40 },
   },
   "Hannah Lindqvist": {
@@ -316,6 +349,30 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["RAW_EDGE", "SMOOTH_CHARM"],
     gazeReactionTell:
       "Her heavy-lidded icy-blue eyes lock onto yours with a slow shiver, her fingers unconsciously tugging her off-shoulder sweater lower as she leans into your gaze.",
+    kinkDynamicSummary: "Sensory Intensity & Rough Possession • Breath Play, Choking, Biting & Claiming Marks",
+    kinks: [
+      {
+        name: "Breath Play & Throat Grip (Choking)",
+        intensity: "Core Fetish",
+        description:
+          "Having a warm, steady hand wrap firmly around her throat to tilt her chin up—quieting her racing thoughts until her eyelids flutter.",
+        triggerKeywords: ["throat", "choke", "neck", "grip", "chin up", "breathe"],
+      },
+      {
+        name: "Possessive Biting & Marking",
+        intensity: "Secret Craving",
+        description:
+          "Rough kisses, teeth grazing her collarbone and neck, and leaving visible hickeys/bite marks that prove she belongs to someone who won't leave.",
+        triggerKeywords: ["bite", "mark", "hickey", "claim", "mine", "collarbone"],
+      },
+      {
+        name: "Nude Muse Exhibitionism",
+        intensity: "Conditioned Trigger",
+        description:
+          "Posing bare or half-undressed under her studio lamps while you stare intensely at every inch of her body.",
+        triggerKeywords: ["pose", "canvas", "paint", "watch me", "look at me", "strip"],
+      },
+    ],
     secretUnlockRequirement: { minTrust: 42, minAffection: 38 },
   },
   "Brianna Chen": {
@@ -334,6 +391,30 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["SMOOTH_CHARM", "RAW_EDGE"],
     gazeReactionTell:
       "Her wicked smirk falters into a hot pink blush across her ears—her breath catching as she shifts her hips to make sure you keep staring instead of looking away.",
+    kinkDynamicSummary: "Brat Taming & Public Shamelessness • Pinning, Spanking & Semi-Public Exhibitionism",
+    kinks: [
+      {
+        name: "Brat Taming & Physical Pinning",
+        intensity: "Core Fetish",
+        description:
+          "Provoking you with cocky teasing until you call her bluff, back her against the wall or mattress, and pin her wrists so she can't talk her way out.",
+        triggerKeywords: ["call her bluff", "pin", "wall", "wrists", "shut up", "make me", "brat"],
+      },
+      {
+        name: "Exhibitionism & Towel Drop Risks",
+        intensity: "Secret Craving",
+        description:
+          "Showing off her curves in a thin towel or keyhole dress in shared hallways and getting touched where housemates could almost catch her.",
+        triggerKeywords: ["towel", "hallway", "catch us", "peek", "stare", "show off"],
+      },
+      {
+        name: "Over-the-Knee Spanking & Tease Denial",
+        intensity: "Conditioned Trigger",
+        description:
+          "Having her smug attitude punished with a firm smack on her bare hips or being edged until she begs cleanly.",
+        triggerKeywords: ["spank", "smack", "ass", "beg", "tease", "punish"],
+      },
+    ],
     secretUnlockRequirement: { minTrust: 40, minAffection: 38 },
   },
   "Sierra Holloway": {
@@ -352,6 +433,30 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["STEADY_GRIT", "SMOOTH_CHARM"],
     gazeReactionTell:
       "Every freckle on her shoulders and soft cleavage seems to glow warmer under your eyes; she bites her lip and steps closer so your arm brushes against her plush curves.",
+    kinkDynamicSummary: "Devoted Service & Plush Body Worship • Praise Kink, Oral Service & Protective Breeding Heat",
+    kinks: [
+      {
+        name: "Plush Curve Worship & Massage",
+        intensity: "Core Fetish",
+        description:
+          "Having strong hands knead, cup, and worship her soft, full curves after a long shift while whispering how good she feels.",
+        triggerKeywords: ["massage", "rub", "curves", "soft", "hold", "waist", "hips"],
+      },
+      {
+        name: "Devoted Service & Praise Kink",
+        intensity: "Secret Craving",
+        description:
+          "Eagerly pleasing you on her knees or in bed while being stroked on the head and called a good girl.",
+        triggerKeywords: ["good girl", "knees", "please you", "sweet", "praise", "stroke her hair"],
+      },
+      {
+        name: "Deep Claiming & Breeding Intimacy",
+        intensity: "Conditioned Trigger",
+        description:
+          "Being held tight in a protective embrace during deep, slow, possessive intimacy where she feels completely safe and claimed.",
+        triggerKeywords: ["hold tight", "deep", "inside", "breed", "safe", "keep you"],
+      },
+    ],
     secretUnlockRequirement: { minTrust: 42, minAffection: 36 },
   },
   "Chloe Bellamy": {
@@ -370,6 +475,30 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["SMOOTH_CHARM", "STEADY_GRIT"],
     gazeReactionTell:
       "Her throat bobbles as she swallows hard under your unblinking stare—her thighs pressing together beneath her skirt while her cool executive posture trembles at the edges.",
+    kinkDynamicSummary: "Executive Submissive • Silk Bondage, Blindfolds, Strict Orders & Total Power Exchange",
+    kinks: [
+      {
+        name: "Bondage & Wrist Restraint",
+        intensity: "Core Fetish",
+        description:
+          "Having her wrists bound with a silk tie, belt, or grip behind her back or above her head so she is physically stripped of executive control.",
+        triggerKeywords: ["tie", "bind", "bondage", "wrists", "restraint", "belt", "silk", "cuff"],
+      },
+      {
+        name: "Total Domination & Verbal Commands",
+        intensity: "Core Fetish",
+        description:
+          "Being given calm, non-negotiable orders ('kneel', 'strip', 'don't move') by someone who refuses to be intimidated by her status.",
+        triggerKeywords: ["kneel", "order", "command", "obey", "strip", "don't move", "on your knees"],
+      },
+      {
+        name: "Blindfolding & Power-Surrender Degradation",
+        intensity: "Secret Craving",
+        description:
+          "Having her eyes covered and her spotless office attire slowly undone while she is made to beg out loud for release.",
+        triggerKeywords: ["blindfold", "close your eyes", "beg", "office", "skirt", "helpless"],
+      },
+    ],
     secretUnlockRequirement: { minTrust: 50, minAffection: 45 },
   },
   "Jill Smith": {
@@ -388,6 +517,30 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["STEADY_GRIT", "SMOOTH_CHARM"],
     gazeReactionTell:
       "A rosy blush spreads from her cheeks down to her collarbone; she fidgets with the hem of her pleated mini-skirt, secretly thrilled that your eyes keep drifting down her bare thighs.",
+    kinkDynamicSummary: "Good-Girl Corruption • Skirt Lifting, Gentle Domination, Guided Hands & Quiet Moans",
+    kinks: [
+      {
+        name: "Good-Girl Corruption & Praise",
+        intensity: "Core Fetish",
+        description:
+          "Being praised as a 'good girl' while you slowly coax her into doing naughty, shameless things she'd never admit to her strict parents.",
+        triggerKeywords: ["good girl", "honor student", "naughty", "teach", "guide", "innocent"],
+      },
+      {
+        name: "Uniform / Pleated Skirt Play",
+        intensity: "Secret Craving",
+        description:
+          "Having her preppy pleated skirt hiked up around her waist while she stays dressed in her neat sweater vest.",
+        triggerKeywords: ["skirt", "pleated", "thighs", "lift", "sweater", "uniform"],
+      },
+      {
+        name: "Muffled Moans & Hand-Over-Mouth",
+        intensity: "Conditioned Trigger",
+        description:
+          "Having your fingers gently cover her lips or slip into her mouth to keep her quiet on the parlor sofa while Tina or Clara is nearby.",
+        triggerKeywords: ["quiet", "cover her mouth", "shh", "parlor", "fingers", "sofa"],
+      },
+    ],
     secretUnlockRequirement: { minTrust: 38, minAffection: 35 },
   },
   "Tina Smith": {
@@ -406,6 +559,30 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["RAW_EDGE", "SMOOTH_CHARM"],
     gazeReactionTell:
       "She catches you staring and arches her back with a breathless, conspiratorial grin—deliberately leaning closer to steal your attention right in front of Jill.",
+    kinkDynamicSummary: "Voyeuristic Thrill-Seeker • Sister Rivalry, Hair-Pulling, Risk of Getting Caught & Dirty Talk",
+    kinks: [
+      {
+        name: "Risk of Getting Caught & Sister Rivalry",
+        intensity: "Core Fetish",
+        description:
+          "Sneaking touches, kisses, or quiet quickies when her older sister Jill is just in the next room—thrilled that you chose her.",
+        triggerKeywords: ["jill", "sister", "secret", "catch us", "sneak", "next room", "dare"],
+      },
+      {
+        name: "Hair-Pulling & Rough Manhandling",
+        intensity: "Secret Craving",
+        description:
+          "Having her hair tugged back or being lifted effortlessly onto the counter or attic bed when her teasing goes too far.",
+        triggerKeywords: ["hair", "pull", "grab", "lift", "rough", "pin"],
+      },
+      {
+        name: "Shameless Dirty Talk & Dare Escalation",
+        intensity: "Conditioned Trigger",
+        description:
+          "Being talked to dirty in her ear and dared to strip or prove she's bolder than her sister.",
+        triggerKeywords: ["dirty", "whisper", "prove it", "bold", "strip", "naughty"],
+      },
+    ],
     secretUnlockRequirement: { minTrust: 38, minAffection: 35 },
   },
 };

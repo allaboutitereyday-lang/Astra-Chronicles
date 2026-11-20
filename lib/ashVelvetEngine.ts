@@ -382,11 +382,11 @@ export function evaluateAshVelvetAdvanceAndBoundary(params: {
   if (didBackfire) {
     const severity = tier === "TIER_4_EXPLICIT_CORRUPTION" ? 1.5 : 1.0;
     const penalties = {
-      affectionDelta: -Math.round(5 * severity),
-      trustDelta: -Math.round(8 * severity),
-      lustDelta: -Math.round(4 * severity),
-      composureDelta: -Math.round(10 * severity),
-      jealousyDelta: Math.round(6 * severity),
+      affectionDelta: -Math.round(4 * severity),
+      trustDelta: -Math.round(5 * severity),
+      lustDelta: -Math.round(3 * severity),
+      composureDelta: -Math.round(8 * severity),
+      jealousyDelta: Math.round(3 * severity),
     };
     return {
       tier,
@@ -401,26 +401,47 @@ export function evaluateAshVelvetAdvanceAndBoundary(params: {
     };
   }
 
-  // Successful Gaze / Tease / Touch conditioning!
+  // Successful Gaze / Tease / Touch conditioning (Marginal gains by default, larger only on Tier 3/4 or Kink Match!)
   const dossier = ASH_VELVET_HEROINE_DOSSIERS[params.heroineName];
+  const actLower = (params.actionText || "").toLowerCase();
+  const matchedKink = (dossier?.kinks || []).find((k) =>
+    k.triggerKeywords.some((kw) => kw.length >= 3 && actLower.includes(kw.toLowerCase()))
+  );
+  const kinkBonus = matchedKink ? 1 : 0;
+
   const baseSensGain =
     tier === "TIER_4_EXPLICIT_CORRUPTION"
-      ? 8
-      : tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS"
-      ? 6
-      : tier === "TIER_2_LIGHT_TOUCH_AND_FLIRT"
-      ? 5
-      : tier === "TIER_1_GAZE_AND_TEASE"
       ? 4
-      : 1;
-  const sensitivityDelta = Math.max(
-    1,
-    Math.min(10, Math.round(baseSensGain * compatibility.multiplier))
-  );
+      : tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS"
+      ? 3
+      : tier === "TIER_2_LIGHT_TOUCH_AND_FLIRT"
+      ? 1 + (compatibility.synergy === "MATCHED" ? 1 : 0)
+      : tier === "TIER_1_GAZE_AND_TEASE"
+      ? 1
+      : 0;
+  const isMajorEscalation =
+    tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" || tier === "TIER_4_EXPLICIT_CORRUPTION";
+  const maxSensCap = isMajorEscalation ? 5 : 2;
+  const sensitivityDelta =
+    baseSensGain + kinkBonus > 0
+      ? Math.max(1, Math.min(maxSensCap, baseSensGain + kinkBonus))
+      : 0;
+
+  const baseLustGain =
+    tier === "TIER_4_EXPLICIT_CORRUPTION"
+      ? 4
+      : tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS"
+      ? 3
+      : tier === "TIER_2_LIGHT_TOUCH_AND_FLIRT"
+      ? 1 + (compatibility.synergy === "MATCHED" ? 1 : 0)
+      : tier === "TIER_1_GAZE_AND_TEASE"
+      ? 1
+      : 0;
+  const maxLustCap = isMajorEscalation ? 5 : 2;
   const bonusLustDelta =
-    tier === "NONE"
-      ? 0
-      : Math.max(1, Math.min(8, Math.round((baseSensGain - 1) * compatibility.multiplier)));
+    baseLustGain + kinkBonus > 0
+      ? Math.max(1, Math.min(maxLustCap, baseLustGain + kinkBonus))
+      : 0;
 
   const nextSens = clampMeter(sens + sensitivityDelta);
   const stageLabel = getSensitivityStageLabel(nextSens);
@@ -435,12 +456,35 @@ export function evaluateAshVelvetAdvanceAndBoundary(params: {
     bonusLustDelta,
     backfirePenalties: null,
     narrativeOutcomeDirective:
-      tier !== "NONE"
-        ? `🔥 DOUJIN GAZE/TOUCH CONDITIONING ACTIVE (${params.heroineName.toUpperCase()} — Sensitivity ${sens}% -> ${nextSens}% [${stageLabel}] | ${compatibility.summaryLabel}): ${params.heroineName}'s body reacts vividly to the protagonist's gaze/advance (${dossier?.gazeReactionTell || "her skin flushes and her breath catches under his eyes"}). Because her Receptive Score (${effectiveReceptiveScore} >= ${requiredScore}) supports this ${tier.replace(/_/g, " ")} move, she is receptive—her body tingles and craves more of his gaze and touch${nextSens >= 35 || compatibility.synergy === "MATCHED" ? ", and she should actively lean closer or make a bold flirtatious/physical move back on him!" : "."}`
+      tier !== "NONE" || matchedKink
+        ? `🔥 DOUJIN GAZE/TOUCH CONDITIONING ACTIVE (${params.heroineName.toUpperCase()} — Sensitivity ${sens}% -> ${nextSens}% [${stageLabel}] | ${compatibility.summaryLabel}${matchedKink ? ` | KINK TRIGGERED: "${matchedKink.name}"` : ""}): ${params.heroineName}'s body reacts vividly to the protagonist's gaze/advance (${dossier?.gazeReactionTell || "her skin flushes and her breath catches under his eyes"})${matchedKink ? ` — and because his action directly hits her "${matchedKink.name}" kink (${matchedKink.description}), her pulse and arousal spike sharply!` : "."} Because her Receptive Score (${effectiveReceptiveScore} >= ${requiredScore}) supports this ${tier.replace(/_/g, " ")} move, she is receptive—her body tingles and craves more of his gaze and touch${nextSens >= 35 || compatibility.synergy === "MATCHED" || matchedKink ? ", and she should actively lean closer or make a bold flirtatious/physical move back on him!" : "."}`
         : nextSens >= 35 || compatibility.synergy === "MATCHED"
         ? `💓 RECEPTIVE & PROACTIVE CHEMISTRY (${params.heroineName.toUpperCase()} — Sensitivity ${sens}% [${stageLabel}] | ${compatibility.summaryLabel}): ${params.heroineName} is drawn to the protagonist's vibe and conditioned to his gaze—have her actively flirt, show off her figure, or initiate close physical contact with him!`
         : "",
   };
+}
+
+/**
+ * Enforces marginal stat shifts (-2 to +2) on routine turns while allowing larger shifts (-8 to +5)
+ * only on major milestones (Tier 3/4 explicit breakthrough, Core Memory unlocked, Quest completed, or Boundary Backfire).
+ */
+export function clampAshVelvetTurnDelta(
+  rawDelta: number,
+  options?: { isMajorEvent?: boolean; isBackfire?: boolean }
+): number {
+  if (!Number.isFinite(rawDelta) || rawDelta === 0) return 0;
+  const rounded = Math.round(rawDelta);
+  if (options?.isBackfire) {
+    return Math.max(-8, Math.min(5, rounded));
+  }
+  if (options?.isMajorEvent) {
+    return rounded > 0 ? Math.max(1, Math.min(5, rounded)) : Math.max(-5, Math.min(-1, rounded));
+  }
+  // Routine conversational / flirt turn: strictly marginal (-2 to +2)
+  if (rounded > 0) {
+    return rounded >= 4 ? 2 : 1;
+  }
+  return rounded <= -4 ? -2 : -1;
 }
 
 export function getAffectionBondTier(affection: number): string {
@@ -720,7 +764,10 @@ export function buildAshVelvetPromptDirective(params: {
               actionText: params.playerAction || "",
               location: params.location,
             });
-            return `  * ${c.name} [Outfit: ${c.activeWardrobe || "base"} | Synergy: ${evalResult.compatibility.summaryLabel}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Body Sensitivity ${sens}/100 (${getSensitivityStageLabel(sens)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100\n    - Gaze/Body Tell: ${dossier?.gazeReactionTell || "Flushes under your lingering gaze."}\n    - Emotional Guard & Secret Status: ${secretLine}${evalResult.narrativeOutcomeDirective ? `\n    - THIS TURN DIRECTIVE: ${evalResult.narrativeOutcomeDirective}` : ""}`;
+            const kinkSummaryLine = dossier?.kinks?.length
+              ? `Kinks & Fetishes (${dossier.kinkDynamicSummary}): ${dossier.kinks.map((k) => `${k.name} [${k.intensity}]`).join("; ")}`
+              : "";
+            return `  * ${c.name} [Outfit: ${c.activeWardrobe || "base"} | Synergy: ${evalResult.compatibility.summaryLabel}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Body Sensitivity ${sens}/100 (${getSensitivityStageLabel(sens)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100\n    - Gaze/Body Tell: ${dossier?.gazeReactionTell || "Flushes under your lingering gaze."}${kinkSummaryLine ? `\n    - ${kinkSummaryLine}` : ""}\n    - Emotional Guard & Secret Status: ${secretLine}${evalResult.narrativeOutcomeDirective ? `\n    - THIS TURN DIRECTIVE: ${evalResult.narrativeOutcomeDirective}` : ""}`;
           })
           .join("\n")
       : "  * Protagonist is currently alone in this room.";
@@ -728,12 +775,12 @@ export function buildAshVelvetPromptDirective(params: {
   return `--- ASH & VELVET: 18+ SANDBOX CORRUPTION, DOUJIN SENSITIVITY & RELATIONSHIP GUARDRAILS DIRECTIVE ---
 - SETTING & GROUNDED REALISM: Contemporary Western graphic-novel adult drama at 412 Maplewood Ave (Redbridge District). NO fantasy magic, NO swords, NO dungeon spells, NO LitRPG mana jargon. Tension flows from abusive-home recovery, shared-house friction, rent pressure ($${hs.cashUsd} cash on hand; $${hs.rentAmountUsd} rent due Day ${hs.rentDueDay}), alcohol/vice, volatile exes, jealousy, power dynamics, and doujin-style physical conditioning.
 - LIVE HOUSE STATUS: Day ${hs.day} • ${ASH_VELVET_TIME_SLOT_DISPLAY[hs.timeSlot]} (${hs.clockLabel}) | Location: ${params.location} | Protagonist Composure: ${hs.composure}/100 | Vice/Intoxication: ${hs.viceLevel}/100 (${viceInfo.label}).
-- PRESENT HEROINE PSYCHOLOGY, SENSITIVITY & BOUNDARY STATE:
+- PRESENT HEROINE PSYCHOLOGY, SENSITIVITY, KINKS & BOUNDARY STATE:
 ${heroineLines}
 - DUAL-TRACK PROGRESSION (DOUJIN BODY SENSITIVITY vs. PORT SOLARIS EMOTIONAL GUARDRAILS):
   * TRACK 1 — DOUJIN GAZE/TOUCH CONDITIONING & BODY SENSITIVITY (0–100): If the protagonist stares at her curves, checks her out, teases her shamelessly, or brushes against her within her receptive threshold, her body grows physically conditioned ("sensitive") to his gaze and touch. At Sensitivity 20–39% her skin tingles and flushes under his eyes; at 40–64% she craves his gaze, shows off more skin, and starts making bold moves on him; at 65%+ her body trembles and yields to his touch even when her pride tries to resist.
   * TRACK 2 — EARNED AFFECTION, TRUST & SECRETS: True emotional Affection and personal secrets are guarded just like Port Solaris. Do NOT dump her locked secretBio early—he must earn her Trust.
-  * PERSONALITY SYNERGY & PROACTIVE ADVANCES: When the protagonist's personality/vibe matches hers (or Sensitivity/Lust >= 35), she is naturally receptive to his advances and may actively flirt, invade his personal space, or make a move on him first.
+  * PERSONALITY SYNERGY, KINKS & PROACTIVE ADVANCES: When the protagonist's personality/vibe matches hers, or when he leans into her specific Kinks & Fetishes listed above, she responds with heightened arousal and may actively flirt, invade his personal space, or make a move on him first.
   * BOUNDARY OVERSTEP BACKFIRE: If "THIS TURN DIRECTIVE" above flags a 🚨 BOUNDARY OVERSTEP BACKFIRE, you MUST write her rejecting/slapping away his premature advance with sharp consequences—never reward unearned raw escalation!
 - EXACT APPROVED WARDROBE KEYS PER HEROINE (ONLY output keys from this list in "state_updates.wardrobe_key"; ONLY use "nsfw_*" keys when Lust >= 50, Sensitivity >= 50, or in a private/intimate scene):
   * Clara Callahan: "base" (knit & trousers), "kitchen" (cardigan & apron), "lounge" (off-shoulder sweater & denim shorts), "date" (emerald velvet wrap dress), "nightwear" (rose satin & kimono), "lingerie" (black lace lingerie & stockings), "nsfw_1", "nsfw_2", "nsfw_3" (intimate states)
@@ -745,14 +792,15 @@ ${heroineLines}
   * Tina Smith: "base" (everyday casual), "nsfw_1", "nsfw_2" (intimate states)
 - 14 CANON PLAYABLE LOCATIONS:
   "Clara's Kitchen & Living Room", "Upstairs Hallway & Shared Bath", "Upstairs Shared Bathroom", "Clara's Late-Night Den", "The Attic Sanctuary Room", "Velvet Static Dive Bar", "Backyard Porch & Smoke Patio", "Clara's Master Bedroom (Room 101)", "Hannah's Studio Bedroom (Room 202)", "Brianna's Bedroom (Room 203)", "Sierra's Bedroom (Room 204)", "Chloe's Executive Bedroom (Room 205)", "Starlight Retro Diner", "After-Hours Bourbon Lounge".
-- STRUCTURED PSYCHOLOGICAL DELTAS: Always populate realistic integer deltas inside "state_updates" for the active speaker/scene:
-  * "affection_delta": -8 to +8
-  * "lust_delta": -6 to +10
-  * "submission_delta": -6 to +8 (positive when protagonist displays calm commanding confidence or heroine yields; negative if protagonist acts timid or heroine asserts dominance)
-  * "trust_delta": -10 to +8
-  * "jealousy_delta": -5 to +10
-  * "vice_delta": -10 to +20 (positive when drinking/smoking/partying; negative when hydrating/resting)
-  * "composure_delta": -12 to +12
+- STRUCTURED PSYCHOLOGICAL DELTAS (MARGINAL BY DEFAULT — MAJOR GAINS ONLY ON BREAKTHROUGHS):
+  Keep stat changes marginal (+1 or +2, -1 or -2) on routine conversational or flirting turns; reserve +3 to +5 (or -4 to -8 on boundary backfire) ONLY for major emotional/intimate milestones:
+  * "affection_delta": -2 to +2 on normal turns (+3 to +5 ONLY on major heart-to-heart breakthrough or memory unlock; -3 to -6 on betrayal/backfire)
+  * "lust_delta": -1 to +2 on normal turns (+3 to +5 ONLY on heavy physical escalation or kink trigger)
+  * "submission_delta": -2 to +2 on normal turns (positive when protagonist displays calm commanding confidence or triggers her submissive kink; +3 to +4 on major power-exchange climax)
+  * "trust_delta": -2 to +2 on normal turns (+3 to +5 on major protective/honest breakthrough; -4 to -8 on boundary overstep)
+  * "jealousy_delta": -1 to +2 on normal turns (+3 to +5 when flirting with a rival in front of her)
+  * "vice_delta": -5 to +12 (positive when drinking/smoking/partying; negative when hydrating/resting)
+  * "composure_delta": -8 to +8
   * "cash_delta": integer USD earned or spent (0 if none)
   * "advance_time_slot": boolean (true ONLY when a scene genuinely wraps up or transitions to a later part of day/night)
 - SUGGESTED CHOICES FORMATTING: Give 4 distinct, grounded choices tagged with varied intent prefixes such as [Heart], [Flame], [Dom], [Bold], or [Cool] so each option offers a genuinely different emotional/power vector.`;

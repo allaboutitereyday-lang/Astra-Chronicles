@@ -9,6 +9,13 @@ import {
   RotateCcw,
   Check,
   Heart,
+  HeartCrack,
+  Flame,
+  Sparkles,
+  Crown,
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle,
   Zap,
   Bookmark,
   Trash2,
@@ -16,6 +23,14 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+
+export interface HeroineStatDeltaPill {
+  heroineName?: string;
+  stat: "affection" | "lust" | "sensitivity" | "trust" | "submission" | "jealousy";
+  label: string;
+  delta: number;
+  isMajor?: boolean;
+}
 
 export interface ChatMessageSwipe {
   text: string;
@@ -36,6 +51,7 @@ export interface ChatMessageData {
     mpDelta: number;
     reason?: string | null;
   } | null;
+  heroineStatDeltas?: HeroineStatDeltaPill[] | null;
   timestamp: string;
   avatarSrc?: string;
   isPending?: boolean;
@@ -402,6 +418,84 @@ export const ChatMessageItem = memo(function ChatMessageItem({
             mechanics={msg.mechanics}
             isUser={msg.sender === "user"}
           />
+        )}
+
+        {/* Inline Heroine Stat Change Indicator Pills (+1 Affection, -2 Affection, +2 Lust, +1 Sensitivity, etc.) */}
+        {msg.heroineStatDeltas && msg.heroineStatDeltas.length > 0 && (
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 select-none">
+            {msg.heroineStatDeltas.map((pill, idx) => {
+              const isPos = pill.delta > 0;
+              const isJealousy = pill.stat === "jealousy";
+              const isGood = isJealousy ? !isPos : isPos;
+              const signedStr = pill.delta > 0 ? `+${pill.delta}` : `${pill.delta}`;
+              const firstName = pill.heroineName
+                ? pill.heroineName.split(" ")[0]
+                : "";
+
+              const toneClasses =
+                pill.stat === "affection"
+                  ? isPos
+                    ? "bg-rose-950/85 border-rose-400/70 text-rose-200 shadow-[2px_2px_0px_#07070A]"
+                    : "bg-red-950/90 border-red-500/80 text-red-200 shadow-[2px_2px_0px_#07070A]"
+                  : pill.stat === "lust"
+                  ? isPos
+                    ? "bg-fuchsia-950/85 border-fuchsia-400/70 text-fuchsia-200 shadow-[2px_2px_0px_#07070A]"
+                    : "bg-zinc-900/90 border-zinc-600 text-zinc-300 shadow-[2px_2px_0px_#07070A]"
+                  : pill.stat === "sensitivity"
+                  ? "bg-pink-950/85 border-pink-400/75 text-pink-200 shadow-[2px_2px_0px_#07070A]"
+                  : pill.stat === "trust"
+                  ? isPos
+                    ? "bg-teal-950/85 border-teal-400/70 text-teal-200 shadow-[2px_2px_0px_#07070A]"
+                    : "bg-red-950/90 border-red-500/80 text-red-200 shadow-[2px_2px_0px_#07070A]"
+                  : pill.stat === "submission"
+                  ? isPos
+                    ? "bg-purple-950/85 border-purple-400/70 text-purple-200 shadow-[2px_2px_0px_#07070A]"
+                    : "bg-indigo-950/85 border-indigo-400/60 text-indigo-200 shadow-[2px_2px_0px_#07070A]"
+                  : isPos
+                  ? "bg-amber-950/90 border-amber-500/80 text-amber-200 shadow-[2px_2px_0px_#07070A]"
+                  : "bg-emerald-950/85 border-emerald-400/60 text-emerald-200 shadow-[2px_2px_0px_#07070A]";
+
+              const iconNode =
+                pill.stat === "affection" ? (
+                  isPos ? (
+                    <Heart className="w-3 h-3 fill-rose-400 text-rose-300 shrink-0" />
+                  ) : (
+                    <HeartCrack className="w-3 h-3 text-red-400 shrink-0" />
+                  )
+                ) : pill.stat === "lust" ? (
+                  <Flame className="w-3 h-3 fill-fuchsia-400 text-fuchsia-300 shrink-0" />
+                ) : pill.stat === "sensitivity" ? (
+                  <Sparkles className="w-3 h-3 text-pink-300 shrink-0" />
+                ) : pill.stat === "trust" ? (
+                  isPos ? (
+                    <ShieldCheck className="w-3 h-3 text-teal-300 shrink-0" />
+                  ) : (
+                    <ShieldAlert className="w-3 h-3 text-red-400 shrink-0" />
+                  )
+                ) : pill.stat === "submission" ? (
+                  <Crown className="w-3 h-3 text-purple-300 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                );
+
+              return (
+                <span
+                  key={`${pill.stat}_${idx}`}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md border font-mono text-[11px] font-black tracking-wide uppercase transition-all ${toneClasses} ${
+                    pill.isMajor || !isGood ? "ring-1 ring-white/20" : ""
+                  }`}
+                >
+                  {iconNode}
+                  {firstName && (
+                    <span className="opacity-75 mr-0.5">{firstName}:</span>
+                  )}
+                  <span>
+                    {signedStr} {pill.label}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
         )}
 
         {/* Inline Story Vitals Impact Pill (Damage Taken / Healed / Mana Expended) */}
