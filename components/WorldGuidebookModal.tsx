@@ -54,6 +54,11 @@ import {
 import { AUDIT_MILESTONES, DEBT_STAR_THRESHOLDS } from "@/lib/portSolarisEngine";
 import { sanitizeImageUrl, DEFAULT_AVATAR, DEFAULT_BG } from "@/lib/imageUtils";
 import { soundEffects } from "@/lib/audioEngine";
+import {
+  ASH_VELVET_ORIGIN_PRESETS,
+  ASH_VELVET_CONDUIT_PRESETS,
+  ASH_VELVET_HEROINE_DOSSIERS,
+} from "@/types/ash_and_velvet";
 
 interface WorldGuidebookModalProps {
   isOpen: boolean;
@@ -515,6 +520,57 @@ const STARFALL_LABYRINTH_GLOSSARY: GlossaryEntry[] = [
   },
 ];
 
+const ASH_VELVET_GLOSSARY: GlossaryItem[] = [
+  {
+    term: "412 Maplewood Ave (Callahan House)",
+    category: "Setting & Rules",
+    summary:
+      "Clara Callahan's three-story Victorian shared boarding house in the Redbridge District. You rent the third-floor Attic Sanctuary Room above six distinct housemates.",
+  },
+  {
+    term: "Affection, Lust & Submission Triad",
+    category: "Psychology & Romance",
+    summary:
+      "Every heroine tracks Affection (emotional bond), Lust (sensual heat and intimate outfit states), and Submission (0–100 power dynamic from dominant challenge to yielding trust).",
+  },
+  {
+    term: "Private Bedroom Keys (Trust 50+)",
+    category: "Psychology & Romance",
+    summary:
+      "Heroine bedrooms (Rooms 101–205) start locked. Earning 50+ Trust—or 45+ Affection with 40+ Lust—earns an after-hours invitation behind closed doors.",
+  },
+  {
+    term: "Outfit & Intimate States",
+    category: "Wardrobe System",
+    summary:
+      "Housemates change outfits automatically by time of day and room, shift into intimate states when Lust reaches 50+ or in private rooms, and can be switched manually on the stage.",
+  },
+  {
+    term: "Vice & Intoxication (0–100)",
+    category: "House Meters",
+    summary:
+      "Tracks drinks and late-night partying from Sober to Buzzed, Tipsy, and Reckless—lowering inhibitions and sharpening raw desire while risking morning fallout.",
+  },
+  {
+    term: "Composure (0–100)",
+    category: "House Meters",
+    summary:
+      "Your emotional steadiness when facing toxic family pullbacks, bar brawls, or high-voltage bedroom confrontations.",
+  },
+  {
+    term: "5-Slot Daily Clock & Whereabouts",
+    category: "World Schedule",
+    summary:
+      "Each day flows through Morning, Afternoon, Evening, Late Night, and After Midnight (2 AM)—moving housemates between the kitchen, diner, dive bar, bourbon lounge, and bedrooms.",
+  },
+  {
+    term: "Monthly Rent ($450 Due Day 7)",
+    category: "Money & Hustle",
+    summary:
+      "Clara expects $450 rent by Day 7. Earn cash through diner shifts, bartending, or odd jobs around 412 Maplewood.",
+  },
+];
+
 export function WorldGuidebookModal({
   isOpen,
   onClose,
@@ -531,6 +587,7 @@ export function WorldGuidebookModal({
   const isSovereignSpire = story.id === "sovereign-spire";
   const isPortSolaris = story.id === "port-solaris";
   const isStarfall = story.id === "starfall-labyrinth";
+  const isAshVelvet = story.id === "ash-and-velvet";
 
   const glossaryItems = useMemo(() => {
     const base = isSovereignSpire
@@ -539,6 +596,8 @@ export function WorldGuidebookModal({
       ? PORT_SOLARIS_GLOSSARY
       : isStarfall
       ? STARFALL_LABYRINTH_GLOSSARY
+      : isAshVelvet
+      ? ASH_VELVET_GLOSSARY
       : ASTRA_CONTINENT_GLOSSARY;
     if (!searchQuery.trim()) return base;
     const q = searchQuery.toLowerCase();
@@ -548,7 +607,7 @@ export function WorldGuidebookModal({
         item.category.toLowerCase().includes(q) ||
         item.summary.toLowerCase().includes(q)
     );
-  }, [isSovereignSpire, isPortSolaris, isStarfall, searchQuery]);
+  }, [isSovereignSpire, isPortSolaris, isStarfall, isAshVelvet, searchQuery]);
 
   const filteredCompanions = useMemo(() => {
     const list = story.companions || [];
@@ -639,7 +698,11 @@ export function WorldGuidebookModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-6xl max-h-[92dvh] max-sm:h-[92dvh] bg-zinc-950 border border-white/15 rounded-3xl max-sm:rounded-b-none max-sm:rounded-t-3xl shadow-[0_0_70px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden text-zinc-100"
+        className={
+          isAshVelvet
+            ? "relative w-full max-w-6xl max-h-[92dvh] max-sm:h-[92dvh] bg-[#161520] border-2 border-[#07070A] shadow-[8px_8px_0px_#07070A] flex flex-col overflow-hidden text-zinc-100"
+            : "relative w-full max-w-6xl max-h-[92dvh] max-sm:h-[92dvh] bg-zinc-950 border border-white/15 rounded-3xl max-sm:rounded-b-none max-sm:rounded-t-3xl shadow-[0_0_70px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden text-zinc-100"
+        }
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Banner with Cover Image Backdrop */}
@@ -658,10 +721,19 @@ export function WorldGuidebookModal({
             <div className="flex items-start justify-between gap-3 sm:gap-4">
               <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold uppercase tracking-wider">
-                    <BookOpen className="w-3 h-3 text-amber-400" />
-                    Realm Lore & Tactical Guidebook
-                  </span>
+                  {isAshVelvet ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-amber-500 text-[#09090D] border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] -skew-x-12 text-[10px] font-mono font-black uppercase tracking-wider">
+                      <span className="inline-flex items-center gap-1.5 skew-x-12">
+                        <BookOpen className="w-3 h-3 text-[#09090D]" />
+                        412 Maplewood • House Dossier
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-[10px] font-mono font-bold uppercase tracking-wider">
+                      <BookOpen className="w-3 h-3 text-amber-400" />
+                      Realm Lore & Tactical Guidebook
+                    </span>
+                  )}
                   <span className="text-[10px] font-mono uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-zinc-300">
                     {story.genre}
                   </span>
@@ -683,10 +755,14 @@ export function WorldGuidebookModal({
                       onClose();
                       onPlayStory();
                     }}
-                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg transition-all cursor-pointer"
+                    className={
+                      isAshVelvet
+                        ? "px-4 py-2 bg-gradient-to-r from-pink-600 to-rose-500 hover:from-pink-500 hover:to-rose-400 text-white border-2 border-[#07070A] shadow-[3px_3px_0px_#07070A] font-mono text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer"
+                        : "px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white font-mono text-xs font-bold flex items-center gap-1.5 shadow-lg transition-all cursor-pointer"
+                    }
                   >
                     <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>Enter Realm</span>
+                    <span>{isAshVelvet ? "Move In" : "Enter Realm"}</span>
                   </button>
                 )}
                 <button
@@ -709,25 +785,25 @@ export function WorldGuidebookModal({
                 {[
                   {
                     id: "overview" as const,
-                    label: "World & Factions",
+                    label: isAshVelvet ? "House & Circles" : "World & Factions",
                     icon: Layers,
                     count: story.worldContext?.factions?.length || 4,
                   },
                   {
                     id: "characters" as const,
-                    label: "Heroines & Cast",
+                    label: isAshVelvet ? "Housemates" : "Heroines & Cast",
                     icon: Users,
                     count: story.companions?.length || 0,
                   },
                   {
                     id: "locations" as const,
-                    label: "Locations & Strata",
+                    label: isAshVelvet ? "Rooms & Hangouts" : "Locations & Strata",
                     icon: MapPin,
                     count: story.worldContext?.locations?.length || 0,
                   },
                   {
                     id: "mechanics" as const,
-                    label: "Stats & Keywords",
+                    label: isAshVelvet ? "Meters & Vibes" : "Stats & Keywords",
                     icon: Scale,
                     count: isSovereignSpire
                       ? SOVEREIGN_SPIRE_GLOSSARY.length
@@ -735,6 +811,8 @@ export function WorldGuidebookModal({
                       ? PORT_SOLARIS_GLOSSARY.length
                       : isStarfall
                       ? STARFALL_LABYRINTH_GLOSSARY.length
+                      : isAshVelvet
+                      ? ASH_VELVET_GLOSSARY.length
                       : ASTRA_CONTINENT_GLOSSARY.length,
                   },
                 ].map((tab) => {
@@ -748,11 +826,19 @@ export function WorldGuidebookModal({
                         soundEffects.playClick();
                         setActiveTab(tab.id);
                       }}
-                      className={`px-3.5 py-2 rounded-xl font-mono text-xs font-bold flex items-center justify-center sm:justify-start gap-2 border transition-all cursor-pointer ${
-                        isActive
-                          ? "bg-gradient-to-r from-rose-600/90 to-amber-600/80 border-rose-400/60 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)]"
-                          : "bg-zinc-900/85 hover:bg-zinc-900 border-white/10 text-zinc-400 hover:text-white"
-                      }`}
+                      className={
+                        isAshVelvet
+                          ? `px-3.5 py-2 font-mono text-xs font-black uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 border-2 border-[#07070A] transition-all cursor-pointer ${
+                              isActive
+                                ? "bg-gradient-to-r from-pink-600 to-rose-500 text-white shadow-[3px_3px_0px_#07070A]"
+                                : "bg-[#111018] hover:bg-[#1E1C2A] text-zinc-400 hover:text-amber-300 shadow-[2px_2px_0px_#07070A]"
+                            }`
+                          : `px-3.5 py-2 rounded-xl font-mono text-xs font-bold flex items-center justify-center sm:justify-start gap-2 border transition-all cursor-pointer ${
+                              isActive
+                                ? "bg-gradient-to-r from-rose-600/90 to-amber-600/80 border-rose-400/60 text-white shadow-[0_0_20px_rgba(244,63,94,0.3)]"
+                                : "bg-zinc-900/85 hover:bg-zinc-900 border-white/10 text-zinc-400 hover:text-white"
+                            }`
+                      }
                     >
                       <Icon className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">{tab.label}</span>
@@ -1044,7 +1130,7 @@ export function WorldGuidebookModal({
                 <div className="lg:col-span-4 bg-gradient-to-br from-rose-950/30 via-zinc-900/80 to-zinc-950 border border-rose-500/30 rounded-2xl p-5 space-y-3">
                   <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
                     <AlertTriangle className="w-4 h-4 text-amber-400" />
-                    Immutable World Laws
+                    {isAshVelvet ? "412 Maplewood House Rules" : "Immutable World Laws"}
                   </span>
                   <ul className="space-y-2 text-xs text-zinc-300 leading-relaxed">
                     {(isSovereignSpire
@@ -1064,6 +1150,12 @@ export function WorldGuidebookModal({
                           "Lobby-Only Star Gate (1★–5★): Spend 30 Star Shards per pull (90-pull 5★ pity) strictly inside Star Gate Plaza (Main Lobby).",
                           "Hard Star Level Caps & Awakening: 1★ caps at Lv.20 up to 5★ Lv.60. Bond milestones (25/50/75/90%) awaken +1★.",
                           "Irreversible Permadeath & Game Over: Fallen deployed heroines die forever on the Memorial Wall. Protagonist death is immediate Game Over.",
+                        ]
+                      : isAshVelvet
+                      ? [
+                          "Rent & Roof ($450 Due Day 7): Pay Clara on time or earn your keep around 412 Maplewood—nobody rides for free under her roof.",
+                          "Private Bedroom Keys (Rooms 101–205): Doors stay locked until a housemate's Trust (50+) or Affection + Lust earns your late-night invitation.",
+                          "Thin Walls, Bourbon & Jealousy: Open flirtation in shared spaces or late-night vices spark territorial banter and rival tension.",
                         ]
                       : [
                           `System Authority: Governed by ${story.rpgRules?.systemName || "The Celestial System"} and ${story.rpgRules?.causalAnchorName || "Causal Plausibility"}.`,
@@ -1764,12 +1856,69 @@ export function WorldGuidebookModal({
                 </div>
               )}
 
+              {/* Ash & Velvet Specific: Move-In Backstories & House Rhythm */}
+              {isAshVelvet && (
+                <div className="space-y-4">
+                  <div className="space-y-2.5">
+                    <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400" />
+                      Your Three Move-In Backstories (Starting Cash, Rent & Chemistry)
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+                      {ASH_VELVET_ORIGIN_PRESETS.map((origin) => (
+                        <div
+                          key={origin.id}
+                          className="p-4 bg-[#111018] border-2 border-[#07070A] shadow-[3px_3px_0px_#07070A] flex flex-col justify-between space-y-3"
+                        >
+                          <div className="space-y-2">
+                            <span className="text-xs font-mono font-bold text-white block">
+                              {origin.icon} {origin.name}
+                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-mono">
+                              <span className="px-2 py-0.5 bg-pink-500/15 border border-pink-500/40 text-pink-300">
+                                {origin.rankTierLabel}
+                              </span>
+                              <span className="px-2 py-0.5 bg-sky-500/15 border border-sky-500/40 text-sky-300">
+                                Rent: ${origin.semesterDebtQuota}/mo
+                              </span>
+                              <span className="px-2 py-0.5 bg-amber-500/15 border border-amber-500/40 text-amber-300 font-bold">
+                                ${origin.startingCrowns} Cash
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-zinc-300 leading-relaxed">
+                              {origin.defaultDetails}
+                            </p>
+                          </div>
+                          <div className="pt-2 border-t border-white/10 space-y-1">
+                            <span className="text-[9px] font-mono uppercase tracking-wider text-emerald-400 block">
+                              Strongest Chemistry Matches
+                            </span>
+                            <div className="flex flex-wrap gap-1">
+                              {origin.highResonanceHeroines.map((h) => (
+                                <span
+                                  key={h}
+                                  className="px-2 py-0.5 bg-emerald-950/60 border border-emerald-500/30 text-[10px] font-mono text-emerald-200"
+                                >
+                                  ★ {h}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Factions & Patron Wings */}
               <div className="space-y-3">
                 <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-white flex items-center gap-2">
                   <Shield className="w-4 h-4 text-rose-400" />
                   {isSovereignSpire
                     ? "The Four Patron Wings & Ruling Factions"
+                    : isAshVelvet
+                    ? "Social Circles & Outside Pressures"
                     : "Major World Factions & Powers"}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1858,16 +2007,22 @@ export function WorldGuidebookModal({
                 {filteredCompanions.map((comp) => {
                   const portSolarisDossier = PORT_SOLARIS_HEROINE_DOSSIERS[comp.name];
                   const starfallDossier = STARFALL_HEROINE_DOSSIERS[comp.name];
+                  const avDossier = isAshVelvet ? ASH_VELVET_HEROINE_DOSSIERS[comp.name] : undefined;
                   const dossier =
                     SOVEREIGN_HEROINE_DOSSIERS[comp.name] || portSolarisDossier;
                   const portrait = sanitizeImageUrl(
                     comp.baseImageUrl || comp.expressions?.neutral,
                     DEFAULT_AVATAR
                   );
+                  const outfitCount = Object.keys(comp.wardrobeLabels || {}).length;
                   return (
                     <div
                       key={comp.id || comp.name}
-                      className="rounded-2xl bg-zinc-900/80 border border-white/10 hover:border-rose-500/40 transition-all p-4 sm:p-5 flex flex-col justify-between gap-4"
+                      className={
+                        isAshVelvet
+                          ? "bg-[#111018] border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] hover:border-pink-500/70 transition-all p-4 sm:p-5 flex flex-col justify-between gap-4"
+                          : "rounded-2xl bg-zinc-900/80 border border-white/10 hover:border-rose-500/40 transition-all p-4 sm:p-5 flex flex-col justify-between gap-4"
+                      }
                     >
                       <div className="flex items-start gap-4">
                         <img
@@ -1877,6 +2032,18 @@ export function WorldGuidebookModal({
                         />
                         <div className="min-w-0 flex-1 space-y-1.5">
                           <div className="flex items-center gap-1.5 flex-wrap">
+                            {avDossier && (
+                              <>
+                                <span className="text-[10px] font-mono font-bold px-2 py-0.5 border bg-amber-500/20 border-amber-400/50 text-amber-200">
+                                  {avDossier.roomLabel} • {avDossier.bedroomLocation}
+                                </span>
+                                {outfitCount > 0 && (
+                                  <span className="text-[10px] font-mono px-2 py-0.5 bg-pink-500/15 border border-pink-500/35 text-pink-300">
+                                    {outfitCount} Outfits &amp; States
+                                  </span>
+                                )}
+                              </>
+                            )}
                             {starfallDossier && (
                               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border bg-amber-500/20 border-amber-400/50 text-amber-200">
                                 {"★".repeat(starfallDossier.baseStarRank)} ({starfallDossier.baseStarRank}★ Base • Cap Lv.{STAR_LEVEL_CAPS[starfallDossier.baseStarRank]})
@@ -1918,9 +2085,9 @@ export function WorldGuidebookModal({
                             {starfallDossier?.combatRole || dossier?.combatDoctrine || comp.role}
                           </p>
 
-                          {(starfallDossier?.actOneConflict || dossier?.actOneConflict) ? (
+                          {(starfallDossier?.actOneConflict || dossier?.actOneConflict || avDossier?.actOneConflict) ? (
                             <p className="text-xs text-zinc-300 leading-relaxed">
-                              {starfallDossier?.actOneConflict || dossier?.actOneConflict}
+                              {starfallDossier?.actOneConflict || dossier?.actOneConflict || avDossier?.actOneConflict}
                             </p>
                           ) : (
                             comp.values &&
@@ -1987,6 +2154,27 @@ export function WorldGuidebookModal({
                               </span>
                               <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug">
                                 {dossier.rivalBossTieIn}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {avDossier && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            <div className="p-2.5 bg-pink-950/30 border border-pink-500/35">
+                              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-pink-300 block">
+                                ★ Chemistry Spark: {avDossier.dyadPassiveName}
+                              </span>
+                              <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug">
+                                {avDossier.dyadPassiveDescription}
+                              </p>
+                            </div>
+                            <div className="p-2.5 bg-amber-950/25 border border-amber-500/35">
+                              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-amber-300 block">
+                                🔒 Behind Closed Doors
+                              </span>
+                              <p className="text-[11px] text-zinc-200 mt-0.5 leading-snug">
+                                {avDossier.secretBio}
                               </p>
                             </div>
                           </div>
@@ -2152,7 +2340,9 @@ export function WorldGuidebookModal({
                 <div className="lg:col-span-7 bg-zinc-900/75 border border-white/10 rounded-2xl p-5 space-y-3.5">
                   <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-rose-300 flex items-center gap-2">
                     <Swords className="w-4 h-4 text-rose-400" />
-                    Core Attributes & Stat Check Definitions
+                    {isAshVelvet
+                      ? "Grit, Street Reflex & Emotional Intuition"
+                      : "Core Attributes & Stat Check Definitions"}
                   </h3>
                   <div className="space-y-2.5">
                     {[
@@ -2195,7 +2385,11 @@ export function WorldGuidebookModal({
                             {st.desc}
                           </p>
                           <span className="text-[10px] font-mono text-zinc-500 block">
-                            Baseline Starting Score: {st.base} (Modified by Lineage & Class/Conduit)
+                            Baseline Starting Score: {st.base} (
+                            {isAshVelvet
+                              ? "Modified by Backstory & Vibe"
+                              : "Modified by Lineage & Class/Conduit"}
+                            )
                           </span>
                         </div>
                       </div>
@@ -2206,55 +2400,99 @@ export function WorldGuidebookModal({
                 <div className="lg:col-span-5 bg-zinc-900/75 border border-white/10 rounded-2xl p-5 space-y-3.5">
                   <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-amber-300 flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-400" />
-                    Vitals & Tactical Engine Rules
+                    {isAshVelvet ? "House Meters & Daily Rhythm" : "Vitals & Tactical Engine Rules"}
                   </h3>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30">
-                      <span className="text-[10px] font-mono uppercase text-rose-300 flex items-center gap-1 font-bold">
-                        <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
-                        Vitality (HP)
-                      </span>
-                      <p className="text-sm font-mono font-black text-white mt-0.5">
-                        Base {story.rpgRules?.baseStats?.hp ?? 110} HP
-                      </p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">
-                        Physical integrity before unconsciousness or reclamation.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-xl bg-sky-950/30 border border-sky-500/30">
-                      <span className="text-[10px] font-mono uppercase text-sky-300 flex items-center gap-1 font-bold">
-                        <Zap className="w-3 h-3 fill-sky-400 text-sky-400" />
-                        {isSovereignSpire ? "Pulse / Flux (MP)" : "Mana / Reserves (MP)"}
-                      </span>
-                      <p className="text-sm font-mono font-black text-white mt-0.5">
-                        Base {story.rpgRules?.baseStats?.mp ?? 90} MP
-                      </p>
-                      <p className="text-[10px] text-zinc-400 mt-0.5">
-                        {isSovereignSpire
-                          ? "Fuels Somatic Kinetic Pulse & Aetherial Flux skills."
-                          : "Fuels active spellcasting and combat techniques."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5 text-xs">
-                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 block">
-                      System Administrator & Economy
-                    </span>
-                    <p className="text-[11px] text-zinc-300 leading-relaxed">
-                      <strong>System Core:</strong> {story.rpgRules?.systemName || "Astra System"}
-                    </p>
-                    <p className="text-[11px] text-zinc-300 leading-relaxed">
-                      <strong>Primary Currency:</strong> {story.rpgRules?.currencyName || "Imperial Crowns"}
-                    </p>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed pt-1 border-t border-white/5">
-                      <strong>Anchor Metric:</strong> {story.rpgRules?.causalAnchorName || "Resonance Strain / Plausibility"} (Default: {story.rpgRules?.defaultPlausibility ?? 100}%)
-                    </p>
-                  </div>
+                  {isAshVelvet ? (
+                    <>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="p-3 rounded-xl bg-sky-950/30 border border-sky-500/30">
+                          <span className="text-[10px] font-mono uppercase text-sky-300 flex items-center gap-1 font-bold">
+                            <Shield className="w-3 h-3 text-sky-400" />
+                            Composure (0–100)
+                          </span>
+                          <p className="text-sm font-mono font-black text-white mt-0.5">
+                            Starts at 85 / 100
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            Emotional steadiness during bar fights, toxic family calls, and high-tension nights.
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-pink-950/30 border border-pink-500/30">
+                          <span className="text-[10px] font-mono uppercase text-pink-300 flex items-center gap-1 font-bold">
+                            <Flame className="w-3 h-3 text-pink-400" />
+                            Vice &amp; Intoxication
+                          </span>
+                          <p className="text-sm font-mono font-black text-white mt-0.5">
+                            Sober → Reckless
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            Drinks &amp; late nights lower inhibitions and heighten sensual heat.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5 text-xs">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-300 block">
+                          5-Meter Heroine Psychology &amp; Rent
+                        </span>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed">
+                          <strong>Triad &amp; Keys:</strong> Affection (warmth), Lust (unlocks intimate outfit states at 50+), Submission (power dynamic), Trust (unlocks bedrooms at 50+), &amp; Jealousy.
+                        </p>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed">
+                          <strong>House Rent:</strong> $450 USD due Day 7 to Clara Callahan.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        <div className="p-3 rounded-xl bg-rose-950/30 border border-rose-500/30">
+                          <span className="text-[10px] font-mono uppercase text-rose-300 flex items-center gap-1 font-bold">
+                            <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+                            Vitality (HP)
+                          </span>
+                          <p className="text-sm font-mono font-black text-white mt-0.5">
+                            Base {story.rpgRules?.baseStats?.hp ?? 110} HP
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            Physical integrity before unconsciousness or reclamation.
+                          </p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-sky-950/30 border border-sky-500/30">
+                          <span className="text-[10px] font-mono uppercase text-sky-300 flex items-center gap-1 font-bold">
+                            <Zap className="w-3 h-3 fill-sky-400 text-sky-400" />
+                            {isSovereignSpire ? "Pulse / Flux (MP)" : "Mana / Reserves (MP)"}
+                          </span>
+                          <p className="text-sm font-mono font-black text-white mt-0.5">
+                            Base {story.rpgRules?.baseStats?.mp ?? 90} MP
+                          </p>
+                          <p className="text-[10px] text-zinc-400 mt-0.5">
+                            {isSovereignSpire
+                              ? "Fuels Somatic Kinetic Pulse & Aetherial Flux skills."
+                              : "Fuels active spellcasting and combat techniques."}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1.5 text-xs">
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-purple-300 block">
+                          System Administrator & Economy
+                        </span>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed">
+                          <strong>System Core:</strong> {story.rpgRules?.systemName || "Astra System"}
+                        </p>
+                        <p className="text-[11px] text-zinc-300 leading-relaxed">
+                          <strong>Primary Currency:</strong> {story.rpgRules?.currencyName || "Imperial Crowns"}
+                        </p>
+                        <p className="text-[11px] text-zinc-400 leading-relaxed pt-1 border-t border-white/5">
+                          <strong>Anchor Metric:</strong> {story.rpgRules?.causalAnchorName || "Resonance Strain / Plausibility"} (Default: {story.rpgRules?.defaultPlausibility ?? 100}%)
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* Sovereign Spire / Port Solaris / Starfall Playable Conduit & Role Pathways */}
-              {(isSovereignSpire || isPortSolaris || isStarfall) && (
+              {/* Sovereign Spire / Port Solaris / Starfall / Ash & Velvet Playable Pathways */}
+              {(isSovereignSpire || isPortSolaris || isStarfall || isAshVelvet) && (
                 <div className="space-y-3">
                   <h3 className="text-xs sm:text-sm font-mono font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-2">
                     <Flame className="w-4 h-4 text-cyan-400" />
@@ -2262,6 +2500,8 @@ export function WorldGuidebookModal({
                       ? "Playable Flair Conduits, Showdown Styles & Keepsake Loadouts"
                       : isStarfall
                       ? "Playable 1★ Combat Roles, Callout Techniques & Starting Relics"
+                      : isAshVelvet
+                      ? "Playable Vibes, Social Moves & Everyday Carry"
                       : "Playable Astra Conduits, Techniques & Relic Loadouts"}
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -2269,6 +2509,8 @@ export function WorldGuidebookModal({
                       ? PORT_SOLARIS_CONDUIT_PRESETS
                       : isStarfall
                       ? STARFALL_ROLE_PRESETS
+                      : isAshVelvet
+                      ? ASH_VELVET_CONDUIT_PRESETS
                       : SOVEREIGN_CONDUIT_PRESETS
                     ).map((preset) => (
                       <div
@@ -2289,7 +2531,9 @@ export function WorldGuidebookModal({
                         </p>
                         <div className="p-2.5 rounded-xl bg-black/50 border border-white/5 text-[11px] space-y-1">
                           <span className="text-[10px] font-mono text-amber-300 font-bold block">
-                            Signature Item: {preset.canonLoadout.relic} ({"keepsakeSlot" in preset.canonLoadout ? preset.canonLoadout.keepsakeSlot : preset.canonLoadout.relicSlot})
+                            {isAshVelvet
+                              ? `Personal Keepsake: ${preset.canonLoadout.relic} • Attire: ${preset.canonLoadout.armor}`
+                              : `Signature Item: ${preset.canonLoadout.relic} (${"keepsakeSlot" in preset.canonLoadout ? preset.canonLoadout.keepsakeSlot : preset.canonLoadout.relicSlot})`}
                           </span>
                           <p className="text-[10px] text-rose-200/90 font-mono">
                             {"jealousyQuirk" in preset.canonLoadout ? preset.canonLoadout.jealousyQuirk : preset.canonLoadout.whisperFlaw}
