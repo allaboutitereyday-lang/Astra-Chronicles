@@ -131,7 +131,7 @@ export function getHeroineStartingMeters(name: string): AshVelvetHeroineMeters {
   if (key) {
     return { ...ASH_VELVET_HEROINE_DOSSIERS[key].startingMeters };
   }
-  return { affection: 15, lust: 15, submission: 25, trust: 20, jealousy: 5 };
+  return { affection: 15, lust: 15, submission: 25, trust: 20, jealousy: 5, sensitivity: 15 };
 }
 
 export function resolveHeroineMeters(comp: {
@@ -141,6 +141,7 @@ export function resolveHeroineMeters(comp: {
   submission?: number;
   trust?: number;
   jealousy?: number;
+  sensitivity?: number;
 }): AshVelvetHeroineMeters {
   const base = getHeroineStartingMeters(comp.name);
   return {
@@ -149,6 +150,296 @@ export function resolveHeroineMeters(comp: {
     submission: clampMeter(typeof comp.submission === "number" ? comp.submission : base.submission),
     trust: clampMeter(typeof comp.trust === "number" ? comp.trust : base.trust),
     jealousy: clampMeter(typeof comp.jealousy === "number" ? comp.jealousy : base.jealousy),
+    sensitivity: clampMeter(
+      typeof comp.sensitivity === "number" ? comp.sensitivity : base.sensitivity ?? 15
+    ),
+  };
+}
+
+export function getSensitivityStageLabel(sensitivity: number): string {
+  if (sensitivity >= 85) return "Corrupted & Addicted";
+  if (sensitivity >= 65) return "Hypersensitive";
+  if (sensitivity >= 40) return "Craving Gaze & Touch";
+  if (sensitivity >= 20) return "Body Aware & Tingling";
+  return "Unconditioned";
+}
+
+export function isHeroineSecretUnlocked(
+  heroineName: string,
+  meters: AshVelvetHeroineMeters
+): boolean {
+  const dossier = ASH_VELVET_HEROINE_DOSSIERS[heroineName];
+  const req = dossier?.secretUnlockRequirement || { minTrust: 42, minAffection: 38 };
+  return meters.trust >= req.minTrust || meters.affection >= req.minAffection + 8;
+}
+
+export type AshVelvetCompatibilitySynergy = "MATCHED" | "NEUTRAL" | "CLASH";
+
+export function evaluatePersonalityCompatibility(params: {
+  heroineName: string;
+  playerPersonality?: string;
+  playerConduit?: string;
+  playerRole?: string;
+  actionText?: string;
+}): {
+  synergy: AshVelvetCompatibilitySynergy;
+  multiplier: number;
+  thresholdReduction: number;
+  summaryLabel: string;
+} {
+  const dossier = ASH_VELVET_HEROINE_DOSSIERS[params.heroineName];
+  if (!dossier) {
+    return {
+      synergy: "NEUTRAL",
+      multiplier: 1.0,
+      thresholdReduction: 0,
+      summaryLabel: "Neutral Dynamic",
+    };
+  }
+
+  const pText = `${params.playerPersonality || ""} ${params.playerRole || ""}`.toLowerCase();
+  const conduit = (params.playerConduit || "").toUpperCase();
+  const actLower = (params.actionText || "").toLowerCase();
+
+  const matchesPersona = dossier.preferredPersonalities.some((pref) => {
+    const words = pref.toLowerCase().split(/\s+/);
+    return words.some((w) => w.length >= 4 && pText.includes(w));
+  });
+  const matchesApproach = dossier.preferredApproaches.includes(conduit as any);
+
+  const nLower = params.heroineName.toLowerCase();
+  const matchesIntent =
+    ((nLower.includes("chloe") || nLower.includes("brianna")) &&
+      /\[dom\]|\[cool\]|call her bluff|command|hold her gaze|steady/i.test(actLower)) ||
+    ((nLower.includes("clara") || nLower.includes("sierra") || nLower.includes("jill")) &&
+      /\[heart\]|\[dom\]|protect|gentle|tease|warm|close/i.test(actLower)) ||
+    ((nLower.includes("hannah") || nLower.includes("tina")) &&
+      /\[bold\]|\[dom\]|dare|bet|drink|reckless|play along/i.test(actLower));
+
+  if ((matchesPersona && matchesApproach) || (matchesPersona && matchesIntent) || (matchesApproach && matchesIntent)) {
+    return {
+      synergy: "MATCHED",
+      multiplier: 1.4,
+      thresholdReduction: 14,
+      summaryLabel: "High Chemistry Match (1.4x Sensitivity & Receptive)",
+    };
+  }
+  if (matchesPersona || matchesApproach || matchesIntent) {
+    return {
+      synergy: "MATCHED",
+      multiplier: 1.25,
+      thresholdReduction: 10,
+      summaryLabel: "Compatible Vibe (1.25x Sensitivity & Receptive)",
+    };
+  }
+
+  const isClashingCruelty =
+    /\b(insult|mock her trauma|slap|yell at her|humiliate|cruel)\b/i.test(actLower);
+  if (isClashingCruelty) {
+    return {
+      synergy: "CLASH",
+      multiplier: 0.6,
+      thresholdReduction: -15,
+      summaryLabel: "Hostile Clash (Guard Hardened)",
+    };
+  }
+
+  return {
+    synergy: "NEUTRAL",
+    multiplier: 1.0,
+    thresholdReduction: 0,
+    summaryLabel: "Standard Chemistry",
+  };
+}
+
+export type AshVelvetEscalationTier =
+  | "NONE"
+  | "TIER_1_GAZE_AND_TEASE"
+  | "TIER_2_LIGHT_TOUCH_AND_FLIRT"
+  | "TIER_3_HEAVY_ESCALATION_OR_UNDRESS"
+  | "TIER_4_EXPLICIT_CORRUPTION";
+
+export function classifyAshVelvetEscalationTier(actionText: string): AshVelvetEscalationTier {
+  const act = (actionText || "").toLowerCase();
+  if (!act.trim()) return "NONE";
+
+  // Tier 4: Full explicit / raw sexual escalation or demanding full submission/stripping
+  if (
+    /\b(fuck|sex|penetrat|spread her legs|on her knees|strip naked|take off everything|bend her over|ride|oral|blowjob|cunnilingus|inside her|breed|climax|orgasm)\b/i.test(
+      act
+    )
+  ) {
+    return "TIER_4_EXPLICIT_CORRUPTION";
+  }
+
+  // Tier 3: Heavy physical escalation, kissing lips/neck, hands under clothes, groping breasts/ass, pulling off towel/lingerie
+  if (
+    /\b(kiss her|pull off her towel|drop the towel|unbutton|unzip|undress|under her shirt|under her skirt|fondle|grope|squeeze her|cup her breast|grab her ass|straddle|pin her down|push her onto the bed|lick|bite her neck|suck)\b/i.test(
+      act
+    )
+  ) {
+    return "TIER_3_HEAVY_ESCALATION_OR_UNDRESS";
+  }
+
+  // Tier 2: Close flirtatious touch, waist/thigh/hip/chin contact, leaning in close, whispering against ear
+  if (
+    /\b(touch|brush|graze|hand on her waist|hand on her thigh|hand on her hip|stroke her|caress|pull her close|step closer|lean in|whisper in her ear|tuck her hair|chin|hold her hand|arm around her|sit between)\b/i.test(
+      act
+    )
+  ) {
+    return "TIER_2_LIGHT_TOUCH_AND_FLIRT";
+  }
+
+  // Tier 1: Doujin Gaze / Perving / Checking her out / Shameless teasing / Eye contact
+  if (
+    /\b(stare|gaze|look at her|eye her|check her out|checking out|peek|admire|watch her|cleavage|breasts|thighs|hips|legs|towel|curves|blush|tease|flirt|compliment|wink|smirk|shameless|eyes up)\b/i.test(
+      act
+    ) ||
+    /\[flame\]|\[dom\]|\[bold\]/i.test(act)
+  ) {
+    return "TIER_1_GAZE_AND_TEASE";
+  }
+
+  return "NONE";
+}
+
+export function evaluateAshVelvetAdvanceAndBoundary(params: {
+  heroineName: string;
+  meters: AshVelvetHeroineMeters;
+  viceLevel?: number;
+  playerPersonality?: string;
+  playerConduit?: string;
+  playerRole?: string;
+  actionText: string;
+  location?: string;
+}): {
+  tier: AshVelvetEscalationTier;
+  compatibility: ReturnType<typeof evaluatePersonalityCompatibility>;
+  effectiveReceptiveScore: number;
+  requiredScore: number;
+  didBackfire: boolean;
+  sensitivityDelta: number;
+  bonusLustDelta: number;
+  backfirePenalties: {
+    affectionDelta: number;
+    trustDelta: number;
+    lustDelta: number;
+    composureDelta: number;
+    jealousyDelta: number;
+  } | null;
+  narrativeOutcomeDirective: string;
+} {
+  const m = params.meters;
+  const sens = m.sensitivity ?? 15;
+  const vice = params.viceLevel ?? 0;
+  const tier = classifyAshVelvetEscalationTier(params.actionText);
+  const compatibility = evaluatePersonalityCompatibility({
+    heroineName: params.heroineName,
+    playerPersonality: params.playerPersonality,
+    playerConduit: params.playerConduit,
+    playerRole: params.playerRole,
+    actionText: params.actionText,
+  });
+
+  const isPrivateRoom = /room|bedroom|den|bathroom|attic/i.test(params.location || "");
+  const guardPenalty =
+    params.heroineName.includes("Chloe")
+      ? 10
+      : params.heroineName.includes("Clara") ||
+        params.heroineName.includes("Hannah") ||
+        params.heroineName.includes("Brianna")
+      ? 4
+      : 0;
+
+  const effectiveReceptiveScore = Math.round(
+    Math.max(m.lust, sens) +
+      m.affection * 0.35 +
+      m.trust * 0.25 +
+      vice * 0.2 +
+      (isPrivateRoom ? 8 : 0) +
+      compatibility.thresholdReduction -
+      guardPenalty
+  );
+
+  const requiredScore =
+    tier === "TIER_4_EXPLICIT_CORRUPTION"
+      ? 68
+      : tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS"
+      ? 44
+      : tier === "TIER_2_LIGHT_TOUCH_AND_FLIRT"
+      ? 18
+      : 0;
+
+  // Check if player overstepped boundaries on Tier 2/3/4
+  const didBackfire =
+    (tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" ||
+      tier === "TIER_4_EXPLICIT_CORRUPTION" ||
+      (tier === "TIER_2_LIGHT_TOUCH_AND_FLIRT" && compatibility.synergy === "CLASH")) &&
+    effectiveReceptiveScore < requiredScore &&
+    sens < (tier === "TIER_4_EXPLICIT_CORRUPTION" ? 62 : 40) &&
+    m.lust < (tier === "TIER_4_EXPLICIT_CORRUPTION" ? 65 : 45);
+
+  if (didBackfire) {
+    const severity = tier === "TIER_4_EXPLICIT_CORRUPTION" ? 1.5 : 1.0;
+    const penalties = {
+      affectionDelta: -Math.round(5 * severity),
+      trustDelta: -Math.round(8 * severity),
+      lustDelta: -Math.round(4 * severity),
+      composureDelta: -Math.round(10 * severity),
+      jealousyDelta: Math.round(6 * severity),
+    };
+    return {
+      tier,
+      compatibility,
+      effectiveReceptiveScore,
+      requiredScore,
+      didBackfire: true,
+      sensitivityDelta: 0,
+      bonusLustDelta: penalties.lustDelta,
+      backfirePenalties: penalties,
+      narrativeOutcomeDirective: `🚨 BOUNDARY OVERSTEP BACKFIRE (${params.heroineName.toUpperCase()}): The protagonist forced a ${tier.replace(/_/g, " ")} advance while ${params.heroineName}'s Receptive Score (${effectiveReceptiveScore}) & Sensitivity (${sens}/100) are below the required threshold (${requiredScore})! She MUST reject/slap away the advance sharply in character, pull her clothes/guard tight, and call him out for moving way too fast without earning her trust or conditioning her body first. Set affection_delta=${penalties.affectionDelta}, trust_delta=${penalties.trustDelta}, lust_delta=${penalties.lustDelta}, and wardrobe_key to her covered everyday outfit!`,
+    };
+  }
+
+  // Successful Gaze / Tease / Touch conditioning!
+  const dossier = ASH_VELVET_HEROINE_DOSSIERS[params.heroineName];
+  const baseSensGain =
+    tier === "TIER_4_EXPLICIT_CORRUPTION"
+      ? 8
+      : tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS"
+      ? 6
+      : tier === "TIER_2_LIGHT_TOUCH_AND_FLIRT"
+      ? 5
+      : tier === "TIER_1_GAZE_AND_TEASE"
+      ? 4
+      : 1;
+  const sensitivityDelta = Math.max(
+    1,
+    Math.min(10, Math.round(baseSensGain * compatibility.multiplier))
+  );
+  const bonusLustDelta =
+    tier === "NONE"
+      ? 0
+      : Math.max(1, Math.min(8, Math.round((baseSensGain - 1) * compatibility.multiplier)));
+
+  const nextSens = clampMeter(sens + sensitivityDelta);
+  const stageLabel = getSensitivityStageLabel(nextSens);
+
+  return {
+    tier,
+    compatibility,
+    effectiveReceptiveScore,
+    requiredScore,
+    didBackfire: false,
+    sensitivityDelta,
+    bonusLustDelta,
+    backfirePenalties: null,
+    narrativeOutcomeDirective:
+      tier !== "NONE"
+        ? `🔥 DOUJIN GAZE/TOUCH CONDITIONING ACTIVE (${params.heroineName.toUpperCase()} — Sensitivity ${sens}% -> ${nextSens}% [${stageLabel}] | ${compatibility.summaryLabel}): ${params.heroineName}'s body reacts vividly to the protagonist's gaze/advance (${dossier?.gazeReactionTell || "her skin flushes and her breath catches under his eyes"}). Because her Receptive Score (${effectiveReceptiveScore} >= ${requiredScore}) supports this ${tier.replace(/_/g, " ")} move, she is receptive—her body tingles and craves more of his gaze and touch${nextSens >= 35 || compatibility.synergy === "MATCHED" ? ", and she should actively lean closer or make a bold flirtatious/physical move back on him!" : "."}`
+        : nextSens >= 35 || compatibility.synergy === "MATCHED"
+        ? `💓 RECEPTIVE & PROACTIVE CHEMISTRY (${params.heroineName.toUpperCase()} — Sensitivity ${sens}% [${stageLabel}] | ${compatibility.summaryLabel}): ${params.heroineName} is drawn to the protagonist's vibe and conditioned to his gaze—have her actively flirt, show off her figure, or initiate close physical contact with him!`
+        : "",
   };
 }
 
@@ -396,9 +687,14 @@ export function buildAshVelvetPromptDirective(params: {
     submission?: number;
     trust?: number;
     jealousy?: number;
+    sensitivity?: number;
     activeWardrobe?: string;
   }>;
   location: string;
+  playerPersonality?: string;
+  playerConduit?: string;
+  playerRole?: string;
+  playerAction?: string;
 }): string {
   const hs = params.houseState || createInitialAshVelvetState();
   const viceInfo = getViceLabel(hs.viceLevel);
@@ -408,23 +704,38 @@ export function buildAshVelvetPromptDirective(params: {
       ? params.presentCompanions
           .map((c) => {
             const m = resolveHeroineMeters(c);
-            return `  * ${c.name} [Outfit: ${c.activeWardrobe || "base"}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100`;
+            const sens = m.sensitivity ?? 15;
+            const dossier = ASH_VELVET_HEROINE_DOSSIERS[c.name];
+            const secretUnlocked = isHeroineSecretUnlocked(c.name, m);
+            const secretLine = secretUnlocked
+              ? `UNLOCKED SECRET (Can confide): ${dossier?.secretBio}`
+              : `SECRET LOCKED (Requires Trust ${dossier?.secretUnlockRequirement?.minTrust ?? 42}+; do NOT reveal her deepest secret yet—make him earn her emotional trust!)`;
+            const evalResult = evaluateAshVelvetAdvanceAndBoundary({
+              heroineName: c.name,
+              meters: m,
+              viceLevel: hs.viceLevel,
+              playerPersonality: params.playerPersonality,
+              playerConduit: params.playerConduit,
+              playerRole: params.playerRole,
+              actionText: params.playerAction || "",
+              location: params.location,
+            });
+            return `  * ${c.name} [Outfit: ${c.activeWardrobe || "base"} | Synergy: ${evalResult.compatibility.summaryLabel}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Body Sensitivity ${sens}/100 (${getSensitivityStageLabel(sens)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100\n    - Gaze/Body Tell: ${dossier?.gazeReactionTell || "Flushes under your lingering gaze."}\n    - Emotional Guard & Secret Status: ${secretLine}${evalResult.narrativeOutcomeDirective ? `\n    - THIS TURN DIRECTIVE: ${evalResult.narrativeOutcomeDirective}` : ""}`;
           })
           .join("\n")
       : "  * Protagonist is currently alone in this room.";
 
-  return `--- ASH & VELVET: 18+ SHARED HOUSE VN & PSYCHOLOGICAL TRACKING DIRECTIVE ---
-- SETTING & GROUNDED REALISM: Contemporary Western graphic-novel adult drama at 412 Maplewood Ave (Redbridge District). NO fantasy magic, NO swords, NO dungeon spells, NO LitRPG mana jargon. Tension flows from abusive-home recovery, shared-house friction, rent pressure ($${hs.cashUsd} cash on hand; $${hs.rentAmountUsd} rent due Day ${hs.rentDueDay}), alcohol/vice, volatile exes, jealousy, power dynamics, and intimate romance.
+  return `--- ASH & VELVET: 18+ SANDBOX CORRUPTION, DOUJIN SENSITIVITY & RELATIONSHIP GUARDRAILS DIRECTIVE ---
+- SETTING & GROUNDED REALISM: Contemporary Western graphic-novel adult drama at 412 Maplewood Ave (Redbridge District). NO fantasy magic, NO swords, NO dungeon spells, NO LitRPG mana jargon. Tension flows from abusive-home recovery, shared-house friction, rent pressure ($${hs.cashUsd} cash on hand; $${hs.rentAmountUsd} rent due Day ${hs.rentDueDay}), alcohol/vice, volatile exes, jealousy, power dynamics, and doujin-style physical conditioning.
 - LIVE HOUSE STATUS: Day ${hs.day} • ${ASH_VELVET_TIME_SLOT_DISPLAY[hs.timeSlot]} (${hs.clockLabel}) | Location: ${params.location} | Protagonist Composure: ${hs.composure}/100 | Vice/Intoxication: ${hs.viceLevel}/100 (${viceInfo.label}).
-- PRESENT HEROINE PSYCHOLOGY (MUST SHAPE DIALOGUE, BODY LANGUAGE & POWER DYNAMIC):
+- PRESENT HEROINE PSYCHOLOGY, SENSITIVITY & BOUNDARY STATE:
 ${heroineLines}
-- HOW METERS SHAPE BEHAVIOR:
-  * AFFECTION: Governs emotional warmth, loyalty, and willingness to open up about scars/secrets.
-  * LUST: Governs physical closeness, breathiness, flirtatious tension, and sensual escalation. High Lust with low Affection creates sharp, reckless, vice-charged heat; High Lust + High Affection unlocks tender passion.
-  * SUBMISSION (0–100 Power Gradient): Low (0–25) = guarded, challenging, takes charge (especially Chloe & Brianna); Mid (26–55) = charged push-pull banter; High (56–100) = softening, yielding to protagonist's lead, craving his steady control.
-  * TRUST: Distinct from Lust; honest follow-through raises Trust and unlocks private bedroom invitations (Rooms 101–205). Lies or reckless betrayal slash Trust.
-  * JEALOUSY: Flirting openly near rivals (Clara ↔ Chloe, Brianna ↔ Chloe, Hannah ↔ Clara) spikes Jealousy and sparks sharp territorial banter.
-- EXACT APPROVED WARDROBE KEYS PER HEROINE (ONLY output keys from this list in "state_updates.wardrobe_key"; ONLY use "nsfw_*" keys when Lust >= 50 or in a private room/intimate scene):
+- DUAL-TRACK PROGRESSION (DOUJIN BODY SENSITIVITY vs. PORT SOLARIS EMOTIONAL GUARDRAILS):
+  * TRACK 1 — DOUJIN GAZE/TOUCH CONDITIONING & BODY SENSITIVITY (0–100): If the protagonist stares at her curves, checks her out, teases her shamelessly, or brushes against her within her receptive threshold, her body grows physically conditioned ("sensitive") to his gaze and touch. At Sensitivity 20–39% her skin tingles and flushes under his eyes; at 40–64% she craves his gaze, shows off more skin, and starts making bold moves on him; at 65%+ her body trembles and yields to his touch even when her pride tries to resist.
+  * TRACK 2 — EARNED AFFECTION, TRUST & SECRETS: True emotional Affection and personal secrets are guarded just like Port Solaris. Do NOT dump her locked secretBio early—he must earn her Trust.
+  * PERSONALITY SYNERGY & PROACTIVE ADVANCES: When the protagonist's personality/vibe matches hers (or Sensitivity/Lust >= 35), she is naturally receptive to his advances and may actively flirt, invade his personal space, or make a move on him first.
+  * BOUNDARY OVERSTEP BACKFIRE: If "THIS TURN DIRECTIVE" above flags a 🚨 BOUNDARY OVERSTEP BACKFIRE, you MUST write her rejecting/slapping away his premature advance with sharp consequences—never reward unearned raw escalation!
+- EXACT APPROVED WARDROBE KEYS PER HEROINE (ONLY output keys from this list in "state_updates.wardrobe_key"; ONLY use "nsfw_*" keys when Lust >= 50, Sensitivity >= 50, or in a private/intimate scene):
   * Clara Callahan: "base" (knit & trousers), "kitchen" (cardigan & apron), "lounge" (off-shoulder sweater & denim shorts), "date" (emerald velvet wrap dress), "nightwear" (rose satin & kimono), "lingerie" (black lace lingerie & stockings), "nsfw_1", "nsfw_2", "nsfw_3" (intimate states)
   * Hannah Lindqvist: "base" (off-shoulder sweater & plaid skirt), "overalls" (paint-flecked studio overalls), "nightout" (dive-bar flannel & bandeau), "lounge" (crescent tee & sleep shorts), "nightwear" (slate-blue satin & cardigan), "lingerie" (black scalloped lace lingerie), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4" (intimate states)
   * Brianna Chen: "base" (hallway shower towel), "casual" (lilac halter & white shorts), "party" (crimson keyhole mini-dress), "lounge" (borrowed navy hoodie & shorts), "nightwear" (peacock-teal satin & lace), "lingerie" (black lace & garter set), "nsfw_1", "nsfw_2", "nsfw_3" (intimate states)

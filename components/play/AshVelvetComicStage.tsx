@@ -30,6 +30,7 @@ import {
   ASH_VELVET_TIME_SLOT_DISPLAY,
   getAffectionBondTier,
   getLustStateLabel,
+  getSensitivityStageLabel,
   getSubmissionDynamicLabel,
   getViceLabel,
   isBedroomKeyUnlocked,
@@ -43,6 +44,7 @@ export interface AshVelvetStageCompanion {
   title?: string;
   affection?: number;
   lust?: number;
+  sensitivity?: number;
   submission?: number;
   trust?: number;
   jealousy?: number;
@@ -551,6 +553,18 @@ export function AshVelvetTelemetryRail({
               icon={<Flame className="w-3 h-3 text-fuchsia-400 shrink-0" />}
               fillClass={(i) =>
                 i >= 7 ? "bg-orange-400" : i >= 4 ? "bg-pink-500" : "bg-fuchsia-600"
+              }
+            />
+
+            <SegmentedComicGauge
+              label="Sensitivity"
+              value={meters.sensitivity ?? 15}
+              delta={isDeltaForActive ? lastDeltas?.sensitivityDelta : 0}
+              sublabel={getSensitivityStageLabel(meters.sensitivity ?? 15)}
+              accentTextClass="text-pink-300"
+              icon={<Sparkles className="w-3 h-3 text-pink-400 shrink-0" />}
+              fillClass={(i) =>
+                i >= 7 ? "bg-rose-400" : i >= 4 ? "bg-pink-400" : "bg-pink-600"
               }
             />
 

@@ -231,11 +231,12 @@ export type AshVelvetTimeSlot =
   | "AFTER_MIDNIGHT";
 
 export interface AshVelvetHeroineMeters {
-  affection: number;  // 0-100 emotional warmth, romantic bond & loyalty
-  lust: number;       // 0-100 physical heat, craving & late-night tension
-  submission: number; // 0-100 power gradient (0=Guarded/Dominant -> 100=Devotedly Submissive)
-  trust: number;      // 0-100 psychological safety & bedroom key unlock gate
-  jealousy: number;   // 0-100 rival friction & hallway tension
+  affection: number;    // 0-100 emotional warmth, romantic bond & loyalty
+  lust: number;         // 0-100 physical heat, craving & late-night tension
+  submission: number;   // 0-100 power gradient (0=Guarded/Dominant -> 100=Devotedly Submissive)
+  trust: number;        // 0-100 psychological safety & bedroom key unlock gate
+  jealousy: number;     // 0-100 rival friction & hallway tension
+  sensitivity?: number; // 0-100 doujin-style physical conditioning to protagonist's gaze, teasing & touch
 }
 
 export interface AshVelvetHouseState {
@@ -257,6 +258,8 @@ export interface AshVelvetTurnDeltaSummary {
   submissionDelta: number;
   trustDelta: number;
   jealousyDelta: number;
+  sensitivityDelta?: number;
+  boundaryBackfired?: boolean;
   viceDelta: number;
   composureDelta: number;
   cashDelta: number;
@@ -272,6 +275,10 @@ export interface AshVelvetHeroineDossierMeta {
   accentHex: string;
   startingMeters: AshVelvetHeroineMeters;
   secretBio: string;
+  preferredPersonalities: string[];
+  preferredApproaches: AshVelvetApproach[];
+  gazeReactionTell: string;
+  secretUnlockRequirement: { minTrust: number; minAffection: number };
 }
 
 export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossierMeta> = {
@@ -284,9 +291,14 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Clara's Master Bedroom (Room 101)",
     roomLabel: "Room 101",
     accentHex: "#F59E0B",
-    startingMeters: { affection: 18, lust: 14, submission: 32, trust: 26, jealousy: 5 },
+    startingMeters: { affection: 18, lust: 14, submission: 32, trust: 26, jealousy: 5, sensitivity: 12 },
     secretBio:
       "Keeps a stack of overdue mortgage notices hidden inside her den desk—she refuses to let anyone see her cry until someone finally takes care of her instead of leaning on her.",
+    preferredPersonalities: ["Stoic Pragmatist", "Gentle Protector", "Chivalrous Guardian", "Quiet Protector"],
+    preferredApproaches: ["STEADY_GRIT", "SMOOTH_CHARM"],
+    gazeReactionTell:
+      "Her freckled chest flushes warm beneath her collar as she pretends to adjust her cardigan—only to leave the neckline a fraction looser where your eyes were resting.",
+    secretUnlockRequirement: { minTrust: 45, minAffection: 40 },
   },
   "Hannah Lindqvist": {
     actOneConflict:
@@ -297,9 +309,14 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Hannah's Studio Bedroom (Room 202)",
     roomLabel: "Room 202",
     accentHex: "#38BDF8",
-    startingMeters: { affection: 12, lust: 28, submission: 30, trust: 15, jealousy: 10 },
+    startingMeters: { affection: 12, lust: 28, submission: 30, trust: 15, jealousy: 10, sensitivity: 20 },
     secretBio:
       "Never stopped painting—her easel is packed with raw charcoal portraits she hides under drop cloths whenever anyone knocks, terrified of being abandoned again if she lets someone close.",
+    preferredPersonalities: ["Audacious Rebel", "Cynical Rogue", "Charismatic Flirt", "Reckless Night-Owl"],
+    preferredApproaches: ["RAW_EDGE", "SMOOTH_CHARM"],
+    gazeReactionTell:
+      "Her heavy-lidded icy-blue eyes lock onto yours with a slow shiver, her fingers unconsciously tugging her off-shoulder sweater lower as she leans into your gaze.",
+    secretUnlockRequirement: { minTrust: 42, minAffection: 38 },
   },
   "Brianna Chen": {
     actOneConflict:
@@ -310,9 +327,14 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Brianna's Bedroom (Room 203)",
     roomLabel: "Room 203",
     accentHex: "#EC4899",
-    startingMeters: { affection: 12, lust: 24, submission: 18, trust: 16, jealousy: 12 },
+    startingMeters: { affection: 12, lust: 24, submission: 18, trust: 16, jealousy: 12, sensitivity: 18 },
     secretBio:
       "Acts fearless and shameless in the hallway, yet completely melts whenever someone calls her bluff with calm confidence and refuses to back down from her teasing.",
+    preferredPersonalities: ["Charismatic Flirt", "Dominant Sovereign", "Audacious Rebel", "Smooth Talker"],
+    preferredApproaches: ["SMOOTH_CHARM", "RAW_EDGE"],
+    gazeReactionTell:
+      "Her wicked smirk falters into a hot pink blush across her ears—her breath catching as she shifts her hips to make sure you keep staring instead of looking away.",
+    secretUnlockRequirement: { minTrust: 40, minAffection: 38 },
   },
   "Sierra Holloway": {
     actOneConflict:
@@ -323,9 +345,14 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Sierra's Bedroom (Room 204)",
     roomLabel: "Room 204",
     accentHex: "#10B981",
-    startingMeters: { affection: 16, lust: 18, submission: 42, trust: 24, jealousy: 4 },
+    startingMeters: { affection: 16, lust: 18, submission: 42, trust: 24, jealousy: 4, sensitivity: 16 },
     secretBio:
       "Walked out of her own controlling household two years ago with a single suitcase—she still keeps her diner tips rolled in a tin under her mattress just in case she ever has to run again.",
+    preferredPersonalities: ["Gentle Protector", "Stoic Pragmatist", "Chivalrous Guardian", "Quiet Protector"],
+    preferredApproaches: ["STEADY_GRIT", "SMOOTH_CHARM"],
+    gazeReactionTell:
+      "Every freckle on her shoulders and soft cleavage seems to glow warmer under your eyes; she bites her lip and steps closer so your arm brushes against her plush curves.",
+    secretUnlockRequirement: { minTrust: 42, minAffection: 36 },
   },
   "Chloe Bellamy": {
     actOneConflict:
@@ -336,9 +363,14 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Chloe's Executive Bedroom (Room 205)",
     roomLabel: "Room 205",
     accentHex: "#A855F7",
-    startingMeters: { affection: 10, lust: 22, submission: 12, trust: 12, jealousy: 15 },
+    startingMeters: { affection: 10, lust: 22, submission: 12, trust: 12, jealousy: 15, sensitivity: 14 },
     secretBio:
       "Spends twelve hours a day commanding boardrooms and intimidating senior partners—behind closed doors after midnight, she secretly aches for someone strong enough to make her stop being in charge.",
+    preferredPersonalities: ["Dominant Sovereign", "Stoic Pragmatist", "Calculating Tactician", "Smooth Talker"],
+    preferredApproaches: ["SMOOTH_CHARM", "STEADY_GRIT"],
+    gazeReactionTell:
+      "Her throat bobbles as she swallows hard under your unblinking stare—her thighs pressing together beneath her skirt while her cool executive posture trembles at the edges.",
+    secretUnlockRequirement: { minTrust: 50, minAffection: 45 },
   },
   "Jill Smith": {
     actOneConflict:
@@ -349,9 +381,14 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Clara's Late-Night Den",
     roomLabel: "Parlor",
     accentHex: "#F472B6",
-    startingMeters: { affection: 20, lust: 16, submission: 38, trust: 22, jealousy: 6 },
+    startingMeters: { affection: 20, lust: 16, submission: 38, trust: 22, jealousy: 6, sensitivity: 16 },
     secretBio:
       "Keeps her preppy sweater vests and textbook stack spotless to look like an ideal honor student, yet secretly craves someone patient enough to let her drop the polite act after dark.",
+    preferredPersonalities: ["Gentle Protector", "Charismatic Flirt", "Dominant Sovereign", "Quiet Protector"],
+    preferredApproaches: ["STEADY_GRIT", "SMOOTH_CHARM"],
+    gazeReactionTell:
+      "A rosy blush spreads from her cheeks down to her collarbone; she fidgets with the hem of her pleated mini-skirt, secretly thrilled that your eyes keep drifting down her bare thighs.",
+    secretUnlockRequirement: { minTrust: 38, minAffection: 35 },
   },
   "Tina Smith": {
     actOneConflict:
@@ -362,8 +399,13 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Clara's Late-Night Den",
     roomLabel: "Parlor",
     accentHex: "#FB7185",
-    startingMeters: { affection: 16, lust: 18, submission: 34, trust: 20, jealousy: 8 },
+    startingMeters: { affection: 16, lust: 18, submission: 34, trust: 20, jealousy: 8, sensitivity: 18 },
     secretBio:
       "Always followed Jill's shadow at home—at 412 Maplewood she wants to prove she's grown up enough to choose her own trouble and keep a secret of her own.",
+    preferredPersonalities: ["Audacious Rebel", "Charismatic Flirt", "Dominant Sovereign", "Reckless Night-Owl"],
+    preferredApproaches: ["RAW_EDGE", "SMOOTH_CHARM"],
+    gazeReactionTell:
+      "She catches you staring and arches her back with a breathless, conspiratorial grin—deliberately leaning closer to steal your attention right in front of Jill.",
+    secretUnlockRequirement: { minTrust: 38, minAffection: 35 },
   },
 };

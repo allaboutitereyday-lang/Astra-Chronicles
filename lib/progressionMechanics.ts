@@ -1694,6 +1694,182 @@ const HEROINE_RESISTANCE_CATALOG: Record<string, HeroineResistanceProfile> = {
       },
     ],
   },
+  // Ash & Velvet 7-Heroine Guardrail & Secret Memory Catalog
+  "clara callahan": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Protective Landlady",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 0.75,
+    guardedThreshold: 28,
+    whatEarnsAffection:
+      "Showing steady reliability around 412 Maplewood, taking care of her instead of only leaning on her, and holding your gaze on her with warm, unhurried confidence.",
+    armorCrackTell:
+      "Her freckled chest flushes warm beneath her collar as she pretends to tighten her wrap—only to leave it a fraction looser where your eyes were resting.",
+    initialSentiment:
+      "Warm Landlady Watchfulness — She welcomes you under her roof with teasing hospitality, though she keeps her own post-divorce loneliness locked behind house rules.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "clara_divorce_mortgage_ledger",
+        unlockAffection: 40,
+        keywords: /\b(mortgage|overdue|divorce|den\s+desk|bills|rent\s+ledger)\b/i,
+      },
+      {
+        memoryId: "clara_kimono_rule_break",
+        unlockAffection: 65,
+        keywords: /\b(kimono|pinot|room\s*101|house\s+rules|master\s+bedroom)\b/i,
+      },
+    ],
+  },
+  "hannah lindqvist": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Sleepless Night-Owl",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 0.75,
+    guardedThreshold: 26,
+    whatEarnsAffection:
+      "Matching her late-night daring without lecturing her, admiring her figure unabashedly, and standing between her and her toxic ex when the bar gets ugly.",
+    armorCrackTell:
+      "Her heavy-lidded icy-blue eyes lock onto yours with a slow shiver, her fingers unconsciously tugging her off-shoulder sweater lower as she leans into your gaze.",
+    initialSentiment:
+      "Reckless Intrigue — She tests your nerve with bar bets and close proximity, waiting to see if you're bold enough to handle her after midnight.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "hannah_hidden_charcoal_portraits",
+        unlockAffection: 38,
+        keywords: /\b(easel|charcoal|portrait|paint|drop\s+cloth|room\s*202)\b/i,
+      },
+      {
+        memoryId: "hannah_3am_rooftop_promise",
+        unlockAffection: 65,
+        keywords: /\b(abandon|ex[- ]boyfriend|velvet\s+static|patio|3\s*am)\b/i,
+      },
+    ],
+  },
+  "brianna chen": {
+    guardTier: "SELECTIVE",
+    badgeLabel: "Selective Guard • Shameless Hallway Tease",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 0.75,
+    guardedThreshold: 26,
+    whatEarnsAffection:
+      "Refusing to flinch when she corners you in a towel, staring right back at her curves to call her bluff, and matching her razor-sharp banter.",
+    armorCrackTell:
+      "Her wicked smirk falters into a hot pink blush across her ears—her breath catching as she shifts her hips to make sure you keep staring instead of looking away.",
+    initialSentiment:
+      "Playful Provocation — She uses offensive flirting and towel standoffs as armor, secretly daring you to call her bluff.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "brianna_bluff_called_meltdown",
+        unlockAffection: 36,
+        keywords: /\b(towel|hallway|bluff|bathroom|room\s*203|fluster)\b/i,
+      },
+      {
+        memoryId: "brianna_family_cutoff_truth",
+        unlockAffection: 65,
+        keywords: /\b(parents|family|alone|independent|trust)\b/i,
+      },
+    ],
+  },
+  "sierra holloway": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Warm Heart • Soft Diner Runaway",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 20,
+    whatEarnsAffection:
+      "Appreciating her soft plush curves openly, walking her home after exhausting double shifts, and offering a safe shoulder without judgment.",
+    armorCrackTell:
+      "Every freckle on her shoulders and cleavage glows warmer under your eyes; she bites her lip and steps closer so your arm brushes against her plush curves.",
+    initialSentiment:
+      "Sunny Longing — She warms to your attention immediately, her body responding eagerly to your appreciative gaze even while she guards her runaway past.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "sierra_mattress_escape_tin",
+        unlockAffection: 38,
+        keywords: /\b(mattress|tin|tips|suitcase|runaway|room\s*204)\b/i,
+      },
+      {
+        memoryId: "sierra_after_shift_backrub",
+        unlockAffection: 62,
+        keywords: /\b(diner|double\s+shift|apron|milkshake|booth)\b/i,
+      },
+    ],
+  },
+  "chloe bellamy": {
+    guardTier: "IRONCLAD",
+    badgeLabel: "Ironclad Guard • After-Hours Paralegal",
+    lowTierMaxGain: 1,
+    trustStepPerResonance: 0.55,
+    guardedThreshold: 36,
+    whatEarnsAffection:
+      "Meeting her executive stare with dominant poise, never groveling, and taking firm control behind closed doors after midnight when she is exhausted from being in charge.",
+    armorCrackTell:
+      "Her throat bobbles as she swallows hard under your unblinking stare—her thighs pressing together beneath her skirt while her cool executive posture trembles at the edges.",
+    initialSentiment:
+      "Cool Executive Appraisal — She commands the room by habit, yet her eyes linger on your hands and shoulders whenever bourbon lowers her daytime armor.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "chloe_boardroom_burnout_confession",
+        unlockAffection: 44,
+        keywords: /\b(paralegal|firm|partners|boardroom|bourbon|in\s+charge)\b/i,
+      },
+      {
+        memoryId: "chloe_room205_midnight_submission",
+        unlockAffection: 70,
+        keywords: /\b(room\s*205|kneel|yield|control|command|collar|silk)\b/i,
+      },
+    ],
+  },
+  "jill smith": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Warm Spark • Preppy Honor Student",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 20,
+    whatEarnsAffection:
+      "Teasing her gently past her polite honor-student facade, letting your eyes linger on her pleated skirt and bare thighs, and guiding her into late-night mischief.",
+    armorCrackTell:
+      "A rosy blush spreads from her cheeks down to her collarbone; she fidgets with the hem of her pleated mini-skirt, secretly thrilled that your eyes keep drifting down her bare thighs.",
+    initialSentiment:
+      "Flustered Curiosity — She tries to act like the polite preppy transfer student, but her pulse races whenever you look at her like a woman.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "jill_honor_student_facade",
+        unlockAffection: 35,
+        keywords: /\b(textbook|parents|honor\s+student|good\s+girl|parlor|grades)\b/i,
+      },
+      {
+        memoryId: "jill_late_night_tutoring",
+        unlockAffection: 60,
+        keywords: /\b(den|skirt|sweater\s+vest|tina|late\s+night)\b/i,
+      },
+    ],
+  },
+  "tina smith": {
+    guardTier: "WARM_RIVAL",
+    badgeLabel: "Warm Spark • Mischievous Younger Sister",
+    lowTierMaxGain: 2,
+    trustStepPerResonance: 1.0,
+    guardedThreshold: 20,
+    whatEarnsAffection:
+      "Joining her late-night schemes, checking her out right in front of Jill, and treating her as a bold temptation of her own rather than just Jill's kid sister.",
+    armorCrackTell:
+      "She catches you staring and arches her back with a breathless, conspiratorial grin—deliberately leaning closer to steal your attention right in front of Jill.",
+    initialSentiment:
+      "Conspiratorial Heat — She is immediately receptive to your gaze and loves pushing the envelope to see how far you'll go with her.",
+    canonicalMemoryTriggers: [
+      {
+        memoryId: "tina_out_of_jills_shadow",
+        unlockAffection: 35,
+        keywords: /\b(sister|shadow|jill|parents|trouble|grown\s+up)\b/i,
+      },
+      {
+        memoryId: "tina_parlor_dare",
+        unlockAffection: 60,
+        keywords: /\b(wine|dare|sofa|parlor|attic|secret)\b/i,
+      },
+    ],
+  },
 };
 
 export function getHeroineResistanceProfile(
@@ -2254,7 +2430,21 @@ export function buildEarnedRomancePacingDirective(params: {
       ? "STAGE 4: DEEP ROMANTIC TENSION & DEVOTION (75–89%)"
       : "STAGE 5: SWORN DYAD HARMONY (90–100%)";
 
-  const antiSycophancyRule = `--- ANTI-SYCOPHANCY & GROUNDED STANDARDS PROTOCOL (MANDATORY) ---
+  const isAshVelvetHeroine =
+    typeof (companion as any).sensitivity === "number" ||
+    typeof (companion as any).lust === "number" ||
+    /\b(clara callahan|hannah lindqvist|brianna chen|sierra holloway|chloe bellamy|jill smith|tina smith)\b/i.test(
+      companion.name || ""
+    );
+  const avSens = typeof (companion as any).sensitivity === "number" ? (companion as any).sensitivity : 16;
+  const avLust = typeof (companion as any).lust === "number" ? (companion as any).lust : 18;
+
+  const antiSycophancyRule = isAshVelvetHeroine
+    ? `--- ASH & VELVET DUAL-TRACK GUARDRAILS (EMOTIONAL GUARD vs. DOUJIN BODY SENSITIVITY) ---
+- EMOTIONAL AFFECTION & SECRETS (${aff}% Affection): ${companion.name}'s genuine emotional love and deepest personal secrets must be earned step-by-step. At <40% Affection, she will NOT confess deep emotional love or dump her locked trauma/secretBio.
+- DOUJIN GAZE/TOUCH CONDITIONING (Sensitivity: ${avSens}/100 | Lust: ${avLust}/100): Unlike her guarded heart, her BODY reacts like a doujin heroine whenever ${protagonistName} stares at her curves, checks her out, teases her, or touches her within her receptive boundary! Even at <25% Affection, lingering gazes and compatible advances SHOULD trigger physical heat, blushing, hitching breath, and body sensitivity (${profile.armorCrackTell})—and once Sensitivity or Lust reaches 35+, she craves his gaze/touch and may actively make a move on him!
+- BOUNDARY OVERSTEP BACKFIRE: If ${protagonistName} skips the gaze/tease conditioning and forces raw Tier 3–4 physical escalation while her Sensitivity (${avSens}%) and Lust (${avLust}%) are still low, she MUST slap his hand away or shut him down sharply with negative Affection & Trust.`
+    : `--- ANTI-SYCOPHANCY & GROUNDED STANDARDS PROTOCOL (MANDATORY) ---
 - NO HYPERBOLIC WORSHIP OF ROUTINE ACTIONS: ${companion.name} is an intelligent, proud individual with high standards—NOT a sycophant waiting to be dazzled by basic competence. Do NOT write purple prose comparing ${protagonistName}'s basic actions (heating a pan, leaning on a counter, making a cocky remark, or setting down utensils) to world-class legends, and do NOT make her feel his glance "like a blow to her sternum" or flush violently to her ears over ordinary moves.
 - REALISTIC PUSHBACK & AGENCY: ${companion.name} has her own agenda, critiques flaws honestly, calls out arrogance, and makes ${protagonistName} work hard for a single nod of approval.
 ${

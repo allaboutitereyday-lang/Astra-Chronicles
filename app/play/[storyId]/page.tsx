@@ -229,6 +229,7 @@ import {
   clampMeter,
   resolveHeroineMeters,
   inferNaturalWardrobeKey,
+  evaluateAshVelvetAdvanceAndBoundary,
 } from "@/lib/ashVelvetEngine";
 import { AshVelvetScenePanel, AshVelvetTelemetryRail } from "@/components/play/AshVelvetComicStage";
 import { AshVelvetChoiceDeck } from "@/components/play/AshVelvetChoiceDeck";
@@ -6371,9 +6372,9 @@ export default function VisualNovelGame() {
         const compAvMeters = currentStory?.id === "ash-and-velvet" ? resolveHeroineMeters(comp) : null;
         const canAutoNsfw =
           !incomingWardrobeKey?.startsWith("nsfw_") ||
-          (compAvMeters && compAvMeters.lust >= 50) ||
+          (compAvMeters && (compAvMeters.lust >= 50 || (compAvMeters.sensitivity ?? 15) >= 50)) ||
           isAvPrivateOrIntimateRoom;
-        const updatedWardrobe =
+        let updatedWardrobe =
           incomingWardrobeKey &&
           validWardrobeMap &&
           validWardrobeMap[incomingWardrobeKey] &&
@@ -6381,7 +6382,7 @@ export default function VisualNovelGame() {
             ? incomingWardrobeKey
             : (comp as any).activeWardrobe || storyCompDef?.activeWardrobe;
 
-        // Ash & Velvet Psychological Triad + Trust + Jealousy updates
+        // Ash & Velvet Psychological Triad + Doujin Body Sensitivity + Boundary Backfire updates
         const isAvTurn = currentStory?.id === "ash-and-velvet";
         const baseAvMeters = isAvTurn ? resolveHeroineMeters(comp) : null;
         const isAvAffected =
@@ -6390,24 +6391,72 @@ export default function VisualNovelGame() {
             (typeof data.state_updates?.affected_companion === "string" &&
               data.state_updates.affected_companion.toLowerCase().includes(compNameLower)));
 
-        const rawLustDelta =
+        const avBoundaryEval =
+          isAvAffected && baseAvMeters
+            ? evaluateAshVelvetAdvanceAndBoundary({
+                heroineName: comp.name,
+                meters: baseAvMeters,
+                viceLevel: playerRef.current?.ashVelvetState?.viceLevel ?? 0,
+                playerPersonality: playerRef.current?.personality,
+                playerConduit: playerRef.current?.conduit,
+                playerRole: playerRef.current?.role,
+                actionText: rawAction || "",
+                location: nextLocation || gameState.location,
+              })
+            : null;
+
+        const llmLustDelta =
           isAvAffected && typeof data.state_updates?.lust_delta === "number"
             ? Math.max(-6, Math.min(10, Math.round(data.state_updates.lust_delta)))
             : 0;
+        const rawLustDelta = avBoundaryEval?.didBackfire
+          ? avBoundaryEval.backfirePenalties!.lustDelta
+          : avBoundaryEval
+          ? Math.max(llmLustDelta, avBoundaryEval.bonusLustDelta)
+          : llmLustDelta;
+
+        const llmSensDelta =
+          isAvAffected && typeof (data.state_updates as any)?.sensitivity_delta === "number"
+            ? Math.max(-4, Math.min(10, Math.round((data.state_updates as any).sensitivity_delta)))
+            : 0;
+        const rawSensDelta = avBoundaryEval?.didBackfire
+          ? 0
+          : avBoundaryEval
+          ? Math.max(llmSensDelta, avBoundaryEval.sensitivityDelta)
+          : llmSensDelta;
+
         const rawSubDelta =
           isAvAffected && typeof data.state_updates?.submission_delta === "number"
             ? Math.max(-6, Math.min(8, Math.round(data.state_updates.submission_delta)))
             : 0;
-        const rawTrustDelta =
-          isAvAffected && typeof data.state_updates?.trust_delta === "number"
-            ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
-            : 0;
-        const rawJealousyDelta =
-          isAvAffected && typeof data.state_updates?.jealousy_delta === "number"
-            ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
-            : 0;
+        const rawTrustDelta = avBoundaryEval?.didBackfire
+          ? avBoundaryEval.backfirePenalties!.trustDelta
+          : isAvAffected && typeof data.state_updates?.trust_delta === "number"
+          ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
+          : 0;
+        const rawJealousyDelta = avBoundaryEval?.didBackfire
+          ? avBoundaryEval.backfirePenalties!.jealousyDelta
+          : isAvAffected && typeof data.state_updates?.jealousy_delta === "number"
+          ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
+          : 0;
+
+        if (avBoundaryEval?.didBackfire) {
+          updatedAffection = clampMeter(
+            (comp.affection ?? 15) + avBoundaryEval.backfirePenalties!.affectionDelta
+          );
+          updatedTrustProgress = 0;
+          if (
+            typeof updatedWardrobe === "string" &&
+            (updatedWardrobe.startsWith("nsfw_") || updatedWardrobe === "lingerie")
+          ) {
+            updatedWardrobe = "base";
+          }
+        }
 
         const updatedLust = baseAvMeters ? clampMeter(baseAvMeters.lust + rawLustDelta) : comp.lust;
+        const updatedSensitivity = baseAvMeters
+          ? clampMeter((baseAvMeters.sensitivity ?? 15) + rawSensDelta)
+          : (comp as any).sensitivity;
         const updatedSubmission = baseAvMeters
           ? clampMeter(baseAvMeters.submission + rawSubDelta)
           : comp.submission;
@@ -6424,6 +6473,7 @@ export default function VisualNovelGame() {
           activeWardrobe: updatedWardrobe,
           affection: updatedAffection,
           lust: updatedLust,
+          sensitivity: updatedSensitivity,
           submission: updatedSubmission,
           trust: updatedTrust,
           jealousy: updatedJealousy,
@@ -6552,30 +6602,87 @@ export default function VisualNovelGame() {
           data.state_updates?.affected_companion ||
           (typeof data.speaker === "string" ? data.speaker : "");
         if (targetAvCompName) {
-          const avAffDelta =
-            typeof data.state_updates?.affection_delta === "number"
-              ? Math.max(-8, Math.min(8, Math.round(data.state_updates.affection_delta)))
-              : 0;
-          const avLustDelta =
+          const prevTargetComp = (partyRef.current || party).find((c) =>
+            c.name.toLowerCase().includes(targetAvCompName.toLowerCase())
+          );
+          const targetEval = prevTargetComp
+            ? evaluateAshVelvetAdvanceAndBoundary({
+                heroineName: prevTargetComp.name,
+                meters: resolveHeroineMeters(prevTargetComp),
+                viceLevel: curAvState.viceLevel,
+                playerPersonality: playerRef.current?.personality,
+                playerConduit: playerRef.current?.conduit,
+                playerRole: playerRef.current?.role,
+                actionText: rawAction || "",
+                location: nextLocation || gameState.location,
+              })
+            : null;
+
+          if (targetEval?.didBackfire && targetEval.backfirePenalties) {
+            const p = targetEval.backfirePenalties;
+            nextAvState = {
+              ...nextAvState,
+              composure: clampMeter(nextAvState.composure + p.composureDelta),
+            };
+            const syncedBackfirePlayer = {
+              ...updatedPlayerWithAv,
+              ashVelvetState: nextAvState,
+            };
+            playerRef.current = syncedBackfirePlayer;
+            setPlayer(syncedBackfirePlayer);
+
+            soundEffects.playSystemAlert();
+            pushNotification({
+              id: `av_backfire_${Date.now()}`,
+              type: "penalty_quest",
+              title: `BOUNDARY OVERSTEPPED: ${(prevTargetComp?.name || targetAvCompName).toUpperCase()} PULLED BACK`,
+              subtitle: `Moved too fast before conditioning her Sensitivity or earning her Trust (${p.affectionDelta} Affection, ${p.trustDelta} Trust, ${p.composureDelta} Composure).`,
+              difficulty: "C",
+            });
+          }
+
+          const avAffDelta = targetEval?.didBackfire
+            ? targetEval.backfirePenalties!.affectionDelta
+            : typeof data.state_updates?.affection_delta === "number"
+            ? Math.max(-8, Math.min(8, Math.round(data.state_updates.affection_delta)))
+            : 0;
+          const llmLustD =
             typeof data.state_updates?.lust_delta === "number"
               ? Math.max(-6, Math.min(10, Math.round(data.state_updates.lust_delta)))
               : 0;
+          const avLustDelta = targetEval?.didBackfire
+            ? targetEval.backfirePenalties!.lustDelta
+            : targetEval
+            ? Math.max(llmLustD, targetEval.bonusLustDelta)
+            : llmLustD;
+          const llmSensD =
+            typeof (data.state_updates as any)?.sensitivity_delta === "number"
+              ? Math.max(-4, Math.min(10, Math.round((data.state_updates as any).sensitivity_delta)))
+              : 0;
+          const avSensDelta = targetEval?.didBackfire
+            ? 0
+            : targetEval
+            ? Math.max(llmSensD, targetEval.sensitivityDelta)
+            : llmSensD;
           const avSubDelta =
             typeof data.state_updates?.submission_delta === "number"
               ? Math.max(-6, Math.min(8, Math.round(data.state_updates.submission_delta)))
               : 0;
-          const avTrustDelta =
-            typeof data.state_updates?.trust_delta === "number"
-              ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
-              : 0;
-          const avJealousyDelta =
-            typeof data.state_updates?.jealousy_delta === "number"
-              ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
-              : 0;
+          const avTrustDelta = targetEval?.didBackfire
+            ? targetEval.backfirePenalties!.trustDelta
+            : typeof data.state_updates?.trust_delta === "number"
+            ? Math.max(-10, Math.min(8, Math.round(data.state_updates.trust_delta)))
+            : 0;
+          const avJealousyDelta = targetEval?.didBackfire
+            ? targetEval.backfirePenalties!.jealousyDelta
+            : typeof data.state_updates?.jealousy_delta === "number"
+            ? Math.max(-5, Math.min(10, Math.round(data.state_updates.jealousy_delta)))
+            : 0;
 
           if (
             avAffDelta !== 0 ||
             avLustDelta !== 0 ||
+            avSensDelta !== 0 ||
             avSubDelta !== 0 ||
             avTrustDelta !== 0 ||
             avJealousyDelta !== 0
@@ -6584,6 +6691,8 @@ export default function VisualNovelGame() {
               companionName: targetAvCompName,
               affectionDelta: avAffDelta,
               lustDelta: avLustDelta,
+              sensitivityDelta: avSensDelta,
+              boundaryBackfired: Boolean(targetEval?.didBackfire),
               submissionDelta: avSubDelta,
               trustDelta: avTrustDelta,
               jealousyDelta: avJealousyDelta,

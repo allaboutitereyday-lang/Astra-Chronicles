@@ -624,6 +624,10 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
             ? partyMembers.filter((c: any) => c?.isPresent)
             : [],
           location: gameState?.location || "Clara's Kitchen & Living Room",
+          playerPersonality: playerProfile?.personality,
+          playerConduit: playerProfile?.conduit,
+          playerRole: playerProfile?.role,
+          playerAction: String(action || ""),
         })
       : "";
     let portSolarisDirective = "";
@@ -1233,6 +1237,7 @@ Respond strictly in valid JSON matching this schema (escape all internal double 
       isAshVelvetStory
         ? `
     "lust_delta": number, // -6 to +10 physical heat/desire delta for the active heroine
+    "sensitivity_delta": number, // -2 to +10 doujin body sensitivity/conditioning delta when protagonist stares at, teases, or touches the active heroine
     "submission_delta": number, // -6 to +8 power-dynamic yield delta (positive when heroine yields/softens to protagonist's poise)
     "trust_delta": number, // -10 to +8 psychological safety/trust delta
     "jealousy_delta": number, // -5 to +10 rival friction/jealousy delta

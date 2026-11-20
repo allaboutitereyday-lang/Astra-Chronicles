@@ -53,8 +53,10 @@ import { ASH_VELVET_HEROINE_DOSSIERS } from "@/types/ash_and_velvet";
 import {
   getAffectionBondTier,
   getLustStateLabel,
+  getSensitivityStageLabel,
   getSubmissionDynamicLabel,
   isBedroomKeyUnlocked,
+  isHeroineSecretUnlocked,
   resolveHeroineMeters,
 } from "@/lib/ashVelvetEngine";
 
@@ -923,12 +925,14 @@ export function CharacterCardModal({
                     name: companion.name,
                     affection: compAffection,
                     lust: (companion as any).lust,
+                    sensitivity: (companion as any).sensitivity,
                     submission: (companion as any).submission,
                     trust: (companion as any).trust,
                     jealousy: (companion as any).jealousy,
                   });
                   const avMeta = ASH_VELVET_HEROINE_DOSSIERS[companion.name];
                   const roomUnlocked = isBedroomKeyUnlocked(avMeters);
+                  const secretUnlocked = isHeroineSecretUnlocked(companion.name, avMeters);
                   const wLabels = (companion as any).wardrobeLabels as Record<string, string> | undefined;
                   const activeW = (companion as any).activeWardrobe || "base";
 
@@ -946,6 +950,13 @@ export function CharacterCardModal({
                       val: avMeters.lust,
                       textCls: "text-fuchsia-300",
                       segCls: "bg-gradient-to-r from-pink-500 to-orange-400",
+                    },
+                    {
+                      label: "Body Sensitivity",
+                      sub: getSensitivityStageLabel(avMeters.sensitivity ?? 15),
+                      val: avMeters.sensitivity ?? 15,
+                      textCls: "text-pink-300",
+                      segCls: "bg-gradient-to-r from-pink-600 to-rose-400",
                     },
                     {
                       label: "Submission",
@@ -1021,7 +1032,7 @@ export function CharacterCardModal({
                       {wLabels && onSelectWardrobe && (
                         <div className="pt-2 border-t border-white/10 space-y-1.5">
                           <div className="text-[10px] font-mono font-black uppercase tracking-wider text-pink-300">
-                            Style A Wardrobe Switcher
+                            Outfit &amp; Intimate State Switcher
                           </div>
                           <div className="flex flex-wrap gap-1.5">
                             {Object.entries(wLabels).map(([wKey, wLabel]) => (
@@ -1045,17 +1056,28 @@ export function CharacterCardModal({
                         </div>
                       )}
 
+                      {avMeta?.gazeReactionTell && (
+                        <div className="pt-2 border-t border-white/10">
+                          <div className="text-[10px] font-mono font-black uppercase tracking-wider text-pink-300 mb-1">
+                            🔥 Gaze &amp; Touch Conditioning Tell ({getSensitivityStageLabel(avMeters.sensitivity ?? 15)})
+                          </div>
+                          <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
+                            {avMeta.gazeReactionTell}
+                          </p>
+                        </div>
+                      )}
+
                       {avMeta?.secretBio && (
                         <div className="pt-2 border-t border-white/10">
                           <div className="text-[10px] font-mono font-black uppercase tracking-wider text-amber-300 mb-1">
-                            {avMeters.trust >= 45 || avMeters.affection >= 50
+                            {secretUnlocked
                               ? "🔓 Uncovered Private Truth"
-                              : "🔒 Hidden Truth (Reach 45 Trust or 50 Affection)"}
+                              : `🔒 Hidden Truth (Reach ${avMeta.secretUnlockRequirement?.minTrust ?? 42} Trust or ${(avMeta.secretUnlockRequirement?.minAffection ?? 38) + 8} Affection)`}
                           </div>
                           <p className="text-[11px] font-sans text-zinc-300 leading-relaxed">
-                            {avMeters.trust >= 45 || avMeters.affection >= 50
+                            {secretUnlocked
                               ? avMeta.secretBio
-                              : "Earn deeper trust or share late-night confessions to uncover what she hides behind closed doors."}
+                              : "Earn deeper emotional trust or share late-night confessions to uncover what she hides behind closed doors."}
                           </p>
                         </div>
                       )}

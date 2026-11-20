@@ -181,10 +181,11 @@ export interface StoryCompanion {
   maxExp?: number;
 
   // Ash & Velvet Psychological Triad & Shared-House Metrics
-  lust?: number;       // 0-100 physical tension & craving
-  submission?: number; // 0-100 power gradient (0=Dominant/Guarded -> 100=Yielding/Submissive)
-  trust?: number;      // 0-100 psychological safety & bedroom unlock gate
-  jealousy?: number;   // 0-100 rival tension & hallway friction
+  lust?: number;        // 0-100 physical tension & craving
+  submission?: number;  // 0-100 power gradient (0=Dominant/Guarded -> 100=Yielding/Submissive)
+  trust?: number;       // 0-100 psychological safety & bedroom unlock gate
+  jealousy?: number;    // 0-100 rival tension & hallway friction
+  sensitivity?: number; // 0-100 doujin-style physical conditioning to protagonist's gaze, teasing & touch
 
   // Visual AI & Consistency Pipeline Fields (ControlNet & IPAdapter)
   seed: number;
