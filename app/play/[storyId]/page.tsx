@@ -2,19 +2,19 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { 
-  Heart, 
-  MapPin, 
-  Sparkles, 
-  Compass, 
-  User, 
-  Shield, 
-  Zap, 
-  Sword, 
-  Scroll, 
-  X, 
-  Play, 
-  Map as MapIcon, 
+import {
+  Heart,
+  MapPin,
+  Sparkles,
+  Compass,
+  User,
+  Shield,
+  Zap,
+  Sword,
+  Scroll,
+  X,
+  Play,
+  Map as MapIcon,
   Navigation,
   Save,
   FolderOpen,
@@ -58,12 +58,12 @@ import {
 import { soundEffects } from "@/lib/audioEngine";
 import { AtmosphericParticles } from "@/components/AtmosphericParticles";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { 
-  SystemState, 
-  SystemToastNotification, 
-  SystemQuest, 
-  PlausibilityTier, 
-  PenaltyScenarioState, 
+import {
+  SystemState,
+  SystemToastNotification,
+  SystemQuest,
+  PlausibilityTier,
+  PenaltyScenarioState,
   DeathRegressionRecord,
   TimelineScar,
   CausalCovenantState,
@@ -77,11 +77,11 @@ import { resolveCampUltimatum } from "@/lib/companionFriction";
 import { initiateStoryClash, resolveClashTurn } from "@/lib/storyClashEngine";
 import { AcquisitionAlertData } from "@/components/AcquisitionNotification";
 import { GameNotificationStack, GameNotificationItem } from "@/components/GameNotificationStack";
-import { 
-  saveGameSlot, 
-  loadGameSlot, 
-  loadAllGameSlots, 
-  deleteGameSlot, 
+import {
+  saveGameSlot,
+  loadGameSlot,
+  loadAllGameSlots,
+  deleteGameSlot,
   compressAvatarImage,
   appendPersistentTimelineEcho,
   appendPersistentDeathRegression,
@@ -488,7 +488,7 @@ const ARIA_EXPRESSIONS: Record<string, string> = {
   smug: "/characters/aria/aria_smug.png",
   surprised: "/characters/aria/aria_shocked.png",
   combat_ready: "/characters/aria/aria_combat.png",
-  dangerous: "/characters/aria/aria_combat.png", 
+  dangerous: "/characters/aria/aria_combat.png",
   hurt: "/characters/aria/aria_hurt.png",
 };
 
@@ -1154,7 +1154,7 @@ export default function VisualNovelGame() {
                   imageUrl: imgData.imageUrl,
                   model: imgData.model || "Google: Nano Banana 2.1",
                 });
-              } catch {}
+              } catch { }
             }
           } catch (e) {
             console.warn("Failed generating image for gear:", item.name, e);
@@ -1246,9 +1246,9 @@ export default function VisualNovelGame() {
       );
       const restoredInventory = Array.isArray(snap.player.inventory)
         ? snap.player.inventory.map((item: InventoryItem) => ({
-            ...item,
-            imageUrl: item.imageUrl || currentInvMap.get(item.id || item.name),
-          }))
+          ...item,
+          imageUrl: item.imageUrl || currentInvMap.get(item.id || item.name),
+        }))
         : [];
       const restoredPlayer = {
         ...snap.player,
@@ -1488,16 +1488,16 @@ export default function VisualNovelGame() {
     const compName = (rawComp?.name || "").trim();
     const storyComp = Array.isArray(storyCompanions)
       ? storyCompanions.find(
-          (sc) =>
-            (rawComp?.id && sc.id && sc.id === rawComp.id) ||
-            matchesHeroineName(sc.name, compName, sc.id)
-        )
+        (sc) =>
+          (rawComp?.id && sc.id && sc.id === rawComp.id) ||
+          matchesHeroineName(sc.name, compName, sc.id)
+      )
       : undefined;
     const sfDossier = isStarfallStory
       ? STARFALL_HEROINE_DOSSIERS[compName] ||
-        Object.values(STARFALL_HEROINE_DOSSIERS).find((d) =>
-          matchesHeroineName(d.name, compName, rawComp?.id)
-        )
+      Object.values(STARFALL_HEROINE_DOSSIERS).find((d) =>
+        matchesHeroineName(d.name, compName, rawComp?.id)
+      )
       : undefined;
 
     const pickList = (primary?: string[], secondary?: string[], tertiary?: string[]) => {
@@ -1620,26 +1620,26 @@ export default function VisualNovelGame() {
                 abilityDetails: abDetails,
                 ...(isSolaris
                   ? {
-                      boardingHouse:
-                        prev.boardingHouse ||
-                        createInitialBoardingHouseState({
-                          outstandingDebt: (defOrigin as PortSolarisOriginPreset).outstandingDebt ?? 5000,
-                          daysUntilAudit: (defOrigin as PortSolarisOriginPreset).daysUntilAudit ?? 30,
-                          starRating: (defOrigin as PortSolarisOriginPreset).startingStarRating ?? 0,
-                        }),
-                      factionStanding: prev.factionStanding || createInitialFactionStandings(),
-                      equippedKeepsakes: prev.equippedKeepsakes || [],
-                    }
+                    boardingHouse:
+                      prev.boardingHouse ||
+                      createInitialBoardingHouseState({
+                        outstandingDebt: (defOrigin as PortSolarisOriginPreset).outstandingDebt ?? 5000,
+                        daysUntilAudit: (defOrigin as PortSolarisOriginPreset).daysUntilAudit ?? 30,
+                        starRating: (defOrigin as PortSolarisOriginPreset).startingStarRating ?? 0,
+                      }),
+                    factionStanding: prev.factionStanding || createInitialFactionStandings(),
+                    equippedKeepsakes: prev.equippedKeepsakes || [],
+                  }
                   : {}),
                 ...(isStarfall
                   ? {
-                      labyrinthState:
-                        prev.labyrinthState ||
-                        createInitialLabyrinthState(defOrigin.id as StarfallOrigin, {
-                          startingHeroineName: initialStarterName,
-                        }),
-                      starRank: (defOrigin as StarfallOriginPreset).startingStarRank || 1,
-                    }
+                    labyrinthState:
+                      prev.labyrinthState ||
+                      createInitialLabyrinthState(defOrigin.id as StarfallOrigin, {
+                        startingHeroineName: initialStarterName,
+                      }),
+                    starRank: (defOrigin as StarfallOriginPreset).startingStarRank || 1,
+                  }
                   : {}),
                 stats: {
                   ...prev.stats,
@@ -1696,7 +1696,7 @@ export default function VisualNovelGame() {
     }
   }, []);
 
-    const handleToggleAudio = () => {
+  const handleToggleAudio = () => {
     const nextMuted = soundEffects.toggleMute();
     setIsAudioMuted(nextMuted);
     if (!nextMuted) {
@@ -1704,7 +1704,7 @@ export default function VisualNovelGame() {
     }
   };
 
-  
+
 
   const [party, setParty] = useState<Companion[]>([
     {
@@ -1865,7 +1865,7 @@ export default function VisualNovelGame() {
           `astra_notif_history_${params?.storyId || "default"}`,
           JSON.stringify(updated)
         );
-      } catch {}
+      } catch { }
       return updated;
     });
   };
@@ -1947,7 +1947,7 @@ export default function VisualNovelGame() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [displayedText, setDisplayedText] = useState("");
-  
+
   // User Message Typewriter State (for chosen options & custom inputs)
   const [typingUserMsgId, setTypingUserMsgId] = useState<string | null>(null);
   const [displayedUserText, setDisplayedUserText] = useState("");
@@ -1959,7 +1959,7 @@ export default function VisualNovelGame() {
       userTypewriterIntervalRef.current = null;
     }
   };
-  
+
   const [pageLoaded, setPageLoaded] = useState(false);
   const [screenTransition, setScreenTransition] = useState<ScreenTransitionConfig>({
     isOpen: false,
@@ -2111,10 +2111,10 @@ export default function VisualNovelGame() {
         simulatedRank > 450
           ? "The Dross"
           : simulatedRank > 50
-          ? "The Body"
-          : simulatedRank > 10
-          ? "Vanguard Elite"
-          : "Sovereign Candidate";
+            ? "The Body"
+            : simulatedRank > 10
+              ? "Vanguard Elite"
+              : "Sovereign Candidate";
       pills.push({
         label: `Rank #${simulatedRank} (${rankTier})`,
         color:
@@ -2156,14 +2156,14 @@ export default function VisualNovelGame() {
         starRating === 0
           ? `0★ Probation (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
           : starRating === 1
-          ? `1★ Provisional (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
-          : starRating === 2
-          ? `2★ Local Favorite (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
-          : starRating === 3
-          ? `3★ Island Hotspot (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
-          : starRating === 4
-          ? `4★ Premier Lounge (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
-          : "5★ Island Sovereign (Deed Liberated!)";
+            ? `1★ Provisional (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
+            : starRating === 2
+              ? `2★ Local Favorite (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
+              : starRating === 3
+                ? `3★ Island Hotspot (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
+                : starRating === 4
+                  ? `4★ Premier Lounge (${daysLeft}d • ${debtLeft.toLocaleString()} Crowns)`
+                  : "5★ Island Sovereign (Deed Liberated!)";
       pills.push({
         label: starLabel,
         color:
@@ -2203,16 +2203,16 @@ export default function VisualNovelGame() {
           realBpm >= 96
             ? `💥 Short-Circuit (${realBpm} BPM)`
             : isBlushOrHigher
-            ? `💓 Blush Zone (${realBpm} BPM)`
-            : isGuarded
-            ? `😳 Guarded (${realBpm} BPM)`
-            : `😎 Composed (${realBpm} BPM)`,
+              ? `💓 Blush Zone (${realBpm} BPM)`
+              : isGuarded
+                ? `😳 Guarded (${realBpm} BPM)`
+                : `😎 Composed (${realBpm} BPM)`,
         color:
           isBlushOrHigher
             ? "border-rose-400/60 bg-rose-950/80 text-rose-200 animate-pulse"
             : isGuarded
-            ? "border-amber-400/50 bg-amber-950/60 text-amber-200"
-            : "border-emerald-500/40 bg-emerald-950/50 text-emerald-300",
+              ? "border-amber-400/50 bg-amber-950/60 text-amber-200"
+              : "border-emerald-500/40 bg-emerald-950/50 text-emerald-300",
         title: `${activeComp?.name || "Partner"} Heart-Rate Gauge: ${realBpm} BPM (${bpmZoneInfo.label}) — 40-68 Composed, 69-82 Guarded Deflection, 83-95 The Blush Zone, 96-100 Short-Circuit.`,
       });
     } else if (currentStory?.id === "starfall-labyrinth") {
@@ -2227,10 +2227,10 @@ export default function VisualNovelGame() {
         color: inLobby
           ? "border-indigo-400/60 bg-indigo-950/75 text-indigo-200"
           : floorType === "GATE_BOSS"
-          ? "border-rose-500/60 bg-rose-950/80 text-rose-200 animate-pulse"
-          : floorType === "SAFE_ZONE"
-          ? "border-emerald-500/50 bg-emerald-950/60 text-emerald-200"
-          : "border-amber-500/50 bg-amber-950/60 text-amber-200",
+            ? "border-rose-500/60 bg-rose-950/80 text-rose-200 animate-pulse"
+            : floorType === "SAFE_ZONE"
+              ? "border-emerald-500/50 bg-emerald-950/60 text-emerald-200"
+              : "border-amber-500/50 bg-amber-950/60 text-amber-200",
         title: inLobby
           ? "Star Gate Plaza (Main Lobby) — Summoning Altar unlocked! Spend Star Shards to pull 1★–5★ allies before stepping onto Floor 1+."
           : `Starfall Labyrinth Floor ${curFloor} (${getFloorTypeLabel(curFloor)}) — Highest Cleared: Floor ${ls.highestFloorCleared}/100. Summoning is locked until you return to Star Gate Plaza (Main Lobby).`,
@@ -2342,6 +2342,48 @@ export default function VisualNovelGame() {
   const [choices, setChoices] = useState<string[]>([]);
   const dialogueFeedRef = useRef<HTMLDivElement | null>(null);
   const isResumingSaveRef = useRef(false);
+
+  // Self-heal active Ash & Velvet Tina Smith session & latest save slot so Tina's post-prologue turn is in Tina's Bedroom (Room 206)
+  useEffect(() => {
+    if (currentStory?.id !== "ash-and-velvet") return;
+    const activeSpk = (gameState.speaker || "").toLowerCase();
+    const hasTinaInScene =
+      activeSpk.includes("tina") ||
+      (gameState.presentCompanions || []).some((n) => n.toLowerCase().includes("tina")) ||
+      party.some((c) => c.isPresent && c.name.toLowerCase().includes("tina"));
+    if (
+      hasTinaInScene &&
+      !activeSpk.includes("jill") &&
+      chatLog.length > 1 &&
+      gameState.location !== "Tina's Bedroom (Room 206)"
+    ) {
+      const targetLoc = "Tina's Bedroom (Room 206)";
+      const targetBg = "/backgrounds/ash-and-velvet/tinas_bedroom.jpg";
+      const nextGs: RoleplayState = {
+        ...gameState,
+        location: targetLoc,
+        bgImage: targetBg,
+      };
+      gameStateRef.current = nextGs;
+      setGameState(nextGs);
+      setPlayer((prev) => {
+        if (!prev.ashVelvetState) return prev;
+        const nextP: PlayerProfile = {
+          ...prev,
+          ashVelvetState: {
+            ...prev.ashVelvetState,
+            heroineLocations: {
+              ...(prev.ashVelvetState.heroineLocations || {}),
+              "Tina Smith": targetLoc,
+            },
+          },
+        };
+        playerRef.current = nextP;
+        return nextP;
+      });
+      performAutoSaveRef.current?.({ gameState: nextGs });
+    }
+  }, [currentStory?.id, gameState.speaker, gameState.location, gameState.presentCompanions, party, chatLog.length]);
 
   // Self-heal corrupted choice arrays (e.g. from older saves or truncated JSON fragments)
   useEffect(() => {
@@ -2487,8 +2529,8 @@ export default function VisualNovelGame() {
         const nextParty = curParty.map((comp) => {
           const rMatchIdx = updatedRoster
             ? updatedRoster.findIndex((r) =>
-                matchesHeroineName(r.heroineName, comp.name, r.heroineId)
-              )
+              matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+            )
             : -1;
           const rMatch = rMatchIdx >= 0 && updatedRoster ? updatedRoster[rMatchIdx] : null;
           const isFallen = comp.heroStatus === "FALLEN" || rMatch?.status === "FALLEN";
@@ -2513,7 +2555,7 @@ export default function VisualNovelGame() {
             : 60;
           const isFocal = Boolean(
             opts?.focalCompanionName &&
-              matchesHeroineName(comp.name, opts.focalCompanionName, comp.id)
+            matchesHeroineName(comp.name, opts.focalCompanionName, comp.id)
           );
           const compRes = resolveCompanionExpGain({
             level: rMatch?.level ?? comp.level ?? 1,
@@ -2828,10 +2870,10 @@ export default function VisualNovelGame() {
       hpDelta < 0
         ? "Damage Sustained"
         : hpDelta > 0
-        ? "Vitality Restored"
-        : mpDelta < 0
-        ? "Mana Expended"
-        : "Mana Restored";
+          ? "Vitality Restored"
+          : mpDelta < 0
+            ? "Mana Expended"
+            : "Mana Restored";
     setVitalsFeedback({
       id: Date.now(),
       hpDelta,
@@ -2934,22 +2976,22 @@ export default function VisualNovelGame() {
   const prologues = currentStory.startingNodes && currentStory.startingNodes.length > 0
     ? currentStory.startingNodes
     : [
-        {
-          id: "default_prologue",
-          speaker: currentStory.companions[0]?.name || "Guide",
-          title: `${currentStory.title}: Prelude`,
-          location: currentStory.worldContext?.locations[0]?.name || "Starting Point",
-          sceneSetup: currentStory.worldContext?.loreSummary || "A new horizon unfolds before you.",
-          dialogue: "You have arrived. State your intentions.",
-          expressionKey: "neutral" as const,
-          choices: [
-            "[Observe] Survey the surroundings carefully.",
-            "[Engage] Introduce yourself with composure.",
-            "[Tactics] Ready your gear for any incoming danger.",
-            "[Wait] Remain silent and evaluate the atmosphere."
-          ]
-        }
-      ];
+      {
+        id: "default_prologue",
+        speaker: currentStory.companions[0]?.name || "Guide",
+        title: `${currentStory.title}: Prelude`,
+        location: currentStory.worldContext?.locations[0]?.name || "Starting Point",
+        sceneSetup: currentStory.worldContext?.loreSummary || "A new horizon unfolds before you.",
+        dialogue: "You have arrived. State your intentions.",
+        expressionKey: "neutral" as const,
+        choices: [
+          "[Observe] Survey the surroundings carefully.",
+          "[Engage] Introduce yourself with composure.",
+          "[Tactics] Ready your gear for any incoming danger.",
+          "[Wait] Remain silent and evaluate the atmosphere."
+        ]
+      }
+    ];
 
   useEffect(() => {
     loadAllGameSlots()
@@ -2997,10 +3039,10 @@ export default function VisualNovelGame() {
                 const branchChoices: string[] = Array.isArray(snap.choices) && snap.choices.length > 0
                   ? snap.choices.map((c: any) => (typeof c === "string" ? c : c.text || "[Act] Forge a new path"))
                   : [
-                      `[Tactical] Seize control of the situation in ${branchLoc}`,
-                      `[Empathetic] Confer with ${branchSpk} using foresight from the Codex`,
-                      `[Bold] Channel your stance resonance and alter fate`,
-                    ];
+                    `[Tactical] Seize control of the situation in ${branchLoc}`,
+                    `[Empathetic] Confer with ${branchSpk} using foresight from the Codex`,
+                    `[Bold] Channel your stance resonance and alter fate`,
+                  ];
 
                 isResumingSaveRef.current = true;
                 setGameState((prev) => ({
@@ -3100,7 +3142,7 @@ export default function VisualNovelGame() {
       if (storedAutoSave !== null) {
         setAutoSaveEnabled(storedAutoSave === "true");
       }
-    } catch {}
+    } catch { }
   }, [showSaveModal]);
 
   const syncAvatarAnalysisFromServer = async (
@@ -3384,20 +3426,20 @@ export default function VisualNovelGame() {
         gold: preset.startingCrowns,
         ...(isSolarisPreset
           ? {
-              boardingHouse: createInitialBoardingHouseState({
-                outstandingDebt: (preset as PortSolarisOriginPreset).outstandingDebt,
-                daysUntilAudit: (preset as PortSolarisOriginPreset).daysUntilAudit,
-                starRating: (preset as PortSolarisOriginPreset).startingStarRating,
-              }),
-            }
+            boardingHouse: createInitialBoardingHouseState({
+              outstandingDebt: (preset as PortSolarisOriginPreset).outstandingDebt,
+              daysUntilAudit: (preset as PortSolarisOriginPreset).daysUntilAudit,
+              starRating: (preset as PortSolarisOriginPreset).startingStarRating,
+            }),
+          }
           : {}),
         ...(isStarfallPreset
           ? {
-              labyrinthState: createInitialLabyrinthState(preset.id as StarfallOrigin, {
-                startingHeroineName: activeStarterName,
-              }),
-              starRank: (preset as StarfallOriginPreset).startingStarRank,
-            }
+            labyrinthState: createInitialLabyrinthState(preset.id as StarfallOrigin, {
+              startingHeroineName: activeStarterName,
+            }),
+            starRank: (preset as StarfallOriginPreset).startingStarRank,
+          }
           : {}),
       };
       playerRef.current = next;
@@ -3912,7 +3954,7 @@ export default function VisualNovelGame() {
         setPlayer((prev) => {
           const updatedInv = prev.inventory.map((inv) =>
             (inv.id && inv.id === targetItem.id) ||
-            inv.name.trim().toLowerCase() === cleanTargetName
+              inv.name.trim().toLowerCase() === cleanTargetName
               ? { ...inv, imageUrl: finalImageUrl }
               : inv
           );
@@ -3924,8 +3966,8 @@ export default function VisualNovelGame() {
 
         setInspectedItem((prev) =>
           prev &&
-          ((prev.id && prev.id === targetItem.id) ||
-            prev.name.trim().toLowerCase() === cleanTargetName)
+            ((prev.id && prev.id === targetItem.id) ||
+              prev.name.trim().toLowerCase() === cleanTargetName)
             ? { ...prev, imageUrl: finalImageUrl }
             : prev
         );
@@ -3994,7 +4036,7 @@ export default function VisualNovelGame() {
       setPlayer((prev) => {
         const updatedInventory = prev.inventory.map((inv) =>
           (inv.id && inv.id === targetItem.id) ||
-          inv.name.trim().toLowerCase() === oldNameClean
+            inv.name.trim().toLowerCase() === oldNameClean
             ? finalAwakened
             : inv
         );
@@ -4098,9 +4140,9 @@ export default function VisualNovelGame() {
       matchingRosterHero?.status === "WOUNDED";
     const normalizedKey =
       currentStory.id === "starfall-labyrinth" &&
-      rawNormalized === "hurt" &&
-      !isActuallyWounded &&
-      !player.labyrinthState?.activeEncounter?.isActive
+        rawNormalized === "hurt" &&
+        !isActuallyWounded &&
+        !player.labyrinthState?.activeEncounter?.isActive
         ? "flustered"
         : rawNormalized;
     const validStarfallExpr = ["neutral", "intrigued", "flustered", "smug", "combat_ready", "hurt"].includes(
@@ -4251,9 +4293,9 @@ export default function VisualNovelGame() {
         typeof floorOverride === "number" && floorOverride > 0
           ? floorOverride
           : inferFloorFromLocation(
-              locName,
-              playerRef.current?.labyrinthState?.currentFloor || 0
-            );
+            locName,
+            playerRef.current?.labyrinthState?.currentFloor || 0
+          );
       if (inferredFloor > 0) {
         return getStarfallFloorBackgroundUrl(inferredFloor, locName);
       }
@@ -4372,12 +4414,12 @@ export default function VisualNovelGame() {
     const syncedStarfallState =
       currentStory.id === "starfall-labyrinth"
         ? createInitialLabyrinthState(
-            (basePlayer.sovereignOrigin as StarfallOrigin) || "DISCARDED_EX_RANKER",
-            {
-              startingHeroineName: chosen.speaker,
-              seed: basePlayer.labyrinthState?.summonSeed,
-            }
-          )
+          (basePlayer.sovereignOrigin as StarfallOrigin) || "DISCARDED_EX_RANKER",
+          {
+            startingHeroineName: chosen.speaker,
+            seed: basePlayer.labyrinthState?.summonSeed,
+          }
+        )
         : undefined;
     const finalStartingPlayer: PlayerProfile = {
       ...basePlayer,
@@ -4519,8 +4561,8 @@ export default function VisualNovelGame() {
         Array.isArray(chosen.presentCompanions) && chosen.presentCompanions.length > 0
           ? chosen.presentCompanions
           : Array.isArray(data.present_companions) && data.present_companions.length > 0
-          ? data.present_companions
-          : [activeSpeaker];
+            ? data.present_companions
+            : [activeSpeaker];
 
       setParty((prevParty) =>
         prevParty.map((comp) => {
@@ -4571,16 +4613,16 @@ export default function VisualNovelGame() {
         Array.isArray(data.opening_choices) && data.opening_choices.length > 0
           ? data.opening_choices.slice(0, 4)
           : buildPersonalityFallbackChoices({
-              personality: finalStartingPlayer.personality,
-              personalityTraits: finalStartingPlayer.personalityTraits,
-              playerRole: finalStartingPlayer.role,
-              playerRace: finalStartingPlayer.race,
-              activeSpeaker,
-              location: data.location || chosen.location,
-              isProtagonistAlone: false,
-              storyId: currentStory?.id,
-              genre: currentStory?.genre,
-            });
+            personality: finalStartingPlayer.personality,
+            personalityTraits: finalStartingPlayer.personalityTraits,
+            playerRole: finalStartingPlayer.role,
+            playerRace: finalStartingPlayer.race,
+            activeSpeaker,
+            location: data.location || chosen.location,
+            isProtagonistAlone: false,
+            storyId: currentStory?.id,
+            genre: currentStory?.genre,
+          });
       setChoices(activeOpeningChoices);
 
       const initPartyState = party.map((comp) => {
@@ -4622,12 +4664,12 @@ export default function VisualNovelGame() {
           player: playerRef.current || finalStartingPlayer,
           systemState: data.initial_quest
             ? {
-                plausibility: typeof data.plausibility === "number" ? data.plausibility : 80,
-                plausibilityTier: (typeof data.plausibility === "number" ? data.plausibility : 80) >= 70 ? "Stable" : "Strained",
-                activeQuests: [data.initial_quest],
-                completedQuests: [],
-                systemDirectives: [data.system_announcement || `[SYSTEM: Scenario 1 assigned to ${player.name}.]`],
-              }
+              plausibility: typeof data.plausibility === "number" ? data.plausibility : 80,
+              plausibilityTier: (typeof data.plausibility === "number" ? data.plausibility : 80) >= 70 ? "Stable" : "Strained",
+              activeQuests: [data.initial_quest],
+              completedQuests: [],
+              systemDirectives: [data.system_announcement || `[SYSTEM: Scenario 1 assigned to ${player.name}.]`],
+            }
             : systemState,
           memories: [],
           chatLog: [
@@ -4992,7 +5034,7 @@ export default function VisualNovelGame() {
     try {
       sessionStorage.setItem("astra_trials_story_id", currentStory.id);
       sessionStorage.setItem("astra_trials_return_url", returnUrl);
-    } catch {}
+    } catch { }
 
     setTimeout(() => {
       router.push(`/trials?storyId=${encodeURIComponent(currentStory.id)}&returnTo=${encodeURIComponent(returnUrl)}`);
@@ -5071,15 +5113,15 @@ export default function VisualNovelGame() {
 
     const loadedParty = data.party && data.party.length > 0
       ? (data.party as any[]).map((c: any) =>
-          hydrateCompanionMetadata(
-            {
-              ...c,
-              encountered: typeof c.encountered === "boolean" ? c.encountered : (c.isPresent || c.affection !== 50),
-            },
-            activeStoryForSave?.companions,
-            (data.storyId || activeStoryForSave?.id) === "starfall-labyrinth"
-          )
+        hydrateCompanionMetadata(
+          {
+            ...c,
+            encountered: typeof c.encountered === "boolean" ? c.encountered : (c.isPresent || c.affection !== 50),
+          },
+          activeStoryForSave?.companions,
+          (data.storyId || activeStoryForSave?.id) === "starfall-labyrinth"
         )
+      )
       : party;
 
     const loadedPresentComps = loadedParty.filter((c: any) => c.isPresent);
@@ -5128,10 +5170,10 @@ export default function VisualNovelGame() {
 
     const maxLevelCap = isStarfallSave
       ? getStarLevelCap(
-          safeLoadedPlayer.labyrinthState?.protagonistStarRank ||
-            safeLoadedPlayer.starRank ||
-            1
-        )
+        safeLoadedPlayer.labyrinthState?.protagonistStarRank ||
+        safeLoadedPlayer.starRank ||
+        1
+      )
       : 60;
 
     // Normalize maxExp to the steeper 1.35x RPG curve and self-heal only legacy linear-curve (level * 100) S-rank quest surges
@@ -5276,17 +5318,17 @@ export default function VisualNovelGame() {
 
     const sceneDefaultChoices = isLoadedAlone
       ? [
-          `[Survey] Scrutinize the surroundings in ${location} for hidden runes, traps, or anomalies.`,
-          `[Tactics] Stay low and steady your breathing, securing a quiet defensive perimeter.`,
-          `[System] Check the LitRPG interface to analyze causal stability and active directives.`,
-          `[Action] Draw your weapon and advance cautiously into the quiet expanse.`,
-        ]
+        `[Survey] Scrutinize the surroundings in ${location} for hidden runes, traps, or anomalies.`,
+        `[Tactics] Stay low and steady your breathing, securing a quiet defensive perimeter.`,
+        `[System] Check the LitRPG interface to analyze causal stability and active directives.`,
+        `[Action] Draw your weapon and advance cautiously into the quiet expanse.`,
+      ]
       : [
-          `[Inquire] Press ${speaker} on the deeper implications of what was just disclosed in ${location}.`,
-          `[Pragmatism] Evaluate the tactical stakes and propose a calculated compromise with ${speaker}.`,
-          `[Action] Step forward as a ${playerRole} and assert your intent directly.`,
-          `[Empathy] Read ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
-        ];
+        `[Inquire] Press ${speaker} on the deeper implications of what was just disclosed in ${location}.`,
+        `[Pragmatism] Evaluate the tactical stakes and propose a calculated compromise with ${speaker}.`,
+        `[Action] Step forward as a ${playerRole} and assert your intent directly.`,
+        `[Empathy] Read ${speaker}'s expression and look for unspoken motives behind their demeanor.`,
+      ];
 
     const sanitizedSavedChoices = sanitizeAndFilterChoices(data.choices);
     if (sanitizedSavedChoices.length >= 2) {
@@ -5370,7 +5412,7 @@ export default function VisualNovelGame() {
       url.searchParams.delete("loadSlot");
       url.searchParams.delete("rosterCharId");
       window.history.replaceState({}, "", url.pathname + url.search);
-    } catch {}
+    } catch { }
 
     if (loadSlotParam !== null) {
       const slotNum = Number(loadSlotParam);
@@ -5579,14 +5621,14 @@ export default function VisualNovelGame() {
           Array.isArray(prevChar.swipes) && prevChar.swipes.length > 0
             ? prevChar.swipes
             : [
-                {
-                  text: prevChar.text,
-                  speakerName: prevChar.speakerName,
-                  avatarSrc: prevChar.avatarSrc,
-                  mechanics: prevChar.mechanics,
-                  choices: prevChar.choicesSnapshot || choicesRef.current,
-                },
-              ];
+              {
+                text: prevChar.text,
+                speakerName: prevChar.speakerName,
+                avatarSrc: prevChar.avatarSrc,
+                mechanics: prevChar.mechanics,
+                choices: prevChar.choicesSnapshot || choicesRef.current,
+              },
+            ];
         pendingSwipeVariantsRef.current = existingSwipes;
       } else {
         pendingSwipeVariantsRef.current = [];
@@ -5962,8 +6004,8 @@ export default function VisualNovelGame() {
   };
 
   const sendAction = async (
-    rawAction: string, 
-    isCustom: boolean = false, 
+    rawAction: string,
+    isCustom: boolean = false,
     giftContext: any = null,
     covenantContext: { intent: string; targetPlausibility?: number } | null = null,
     isOOC: boolean = false,
@@ -6079,8 +6121,8 @@ export default function VisualNovelGame() {
       const { gearImages: _omittedTurnGearImages, ...playerSansGearImages } = playerWithTendencies;
       const lightInventoryForTurn = Array.isArray(playerSansGearImages.inventory)
         ? playerSansGearImages.inventory.map((item) =>
-            item?.imageUrl && item.imageUrl.length > 500 ? { ...item, imageUrl: undefined } : item
-          )
+          item?.imageUrl && item.imageUrl.length > 500 ? { ...item, imageUrl: undefined } : item
+        )
         : playerSansGearImages.inventory;
       const lightPlayerForTurn = {
         ...playerSansGearImages,
@@ -6093,7 +6135,7 @@ export default function VisualNovelGame() {
 
       const res = await fetch("/api/turn", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "x-user-key": accessKey,
         },
@@ -6187,10 +6229,10 @@ export default function VisualNovelGame() {
       const incomingFallenNames = new Set<string>(
         currentStory?.id === "starfall-labyrinth"
           ? [
-              ...((playerRef.current?.labyrinthState?.memorial || []).map((m) => (m?.name || "").toLowerCase())),
-              ...((starfallUpdates?.labyrinthState?.memorial || []).map((m: any) => (m?.name || "").toLowerCase())),
-              ...((starfallUpdates?.casualtiesResolved || []).map((n: string) => (n || "").toLowerCase())),
-            ].filter(Boolean)
+            ...((playerRef.current?.labyrinthState?.memorial || []).map((m) => (m?.name || "").toLowerCase())),
+            ...((starfallUpdates?.labyrinthState?.memorial || []).map((m: any) => (m?.name || "").toLowerCase())),
+            ...((starfallUpdates?.casualtiesResolved || []).map((n: string) => (n || "").toLowerCase())),
+          ].filter(Boolean)
           : []
       );
       const isNameFallen = (candidate?: string | null) => {
@@ -6224,7 +6266,7 @@ export default function VisualNovelGame() {
         (typeof data.narrative_text === "string" && data.narrative_text.trim()) ||
         (typeof data.narrative === "string" && data.narrative.trim()) ||
         `Across ${data.state_updates?.current_location || gameState.location}, the momentum of ${playerWithTendencies.name}'s maneuver reshapes the immediate encounter.`;
-      
+
       let playerText = "";
       if (isCustom) {
         playerText = formattedPayload;
@@ -6233,7 +6275,7 @@ export default function VisualNovelGame() {
       } else {
         playerText = initialUserText;
       }
-      
+
       const nextExpression = data.state_updates?.expression_key || "neutral";
       const nextLocation = data.state_updates?.current_location || gameState.location;
       let nextBg = getLocationBg(nextLocation);
@@ -6436,9 +6478,9 @@ export default function VisualNovelGame() {
           isAvPrivateOrIntimateRoom;
         let updatedWardrobe =
           incomingWardrobeKey &&
-          validWardrobeMap &&
-          validWardrobeMap[incomingWardrobeKey] &&
-          canAutoNsfw
+            validWardrobeMap &&
+            validWardrobeMap[incomingWardrobeKey] &&
+            canAutoNsfw
             ? incomingWardrobeKey
             : (comp as any).activeWardrobe || storyCompDef?.activeWardrobe;
 
@@ -6454,74 +6496,74 @@ export default function VisualNovelGame() {
         const avBoundaryEval =
           isAvAffected && baseAvMeters
             ? evaluateAshVelvetAdvanceAndBoundary({
-                heroineName: comp.name,
-                meters: baseAvMeters,
-                viceLevel: playerRef.current?.ashVelvetState?.viceLevel ?? 0,
-                playerPersonality: playerRef.current?.personality,
-                playerConduit: playerRef.current?.conduit,
-                playerRole: playerRef.current?.role,
-                actionText: rawAction || "",
-                location: nextLocation || gameState.location,
-              })
+              heroineName: comp.name,
+              meters: baseAvMeters,
+              viceLevel: playerRef.current?.ashVelvetState?.viceLevel ?? 0,
+              playerPersonality: playerRef.current?.personality,
+              playerConduit: playerRef.current?.conduit,
+              playerRole: playerRef.current?.role,
+              actionText: rawAction || "",
+              location: nextLocation || gameState.location,
+            })
             : null;
 
         const isMajorAvTurn =
           Boolean(
             avBoundaryEval &&
-              (avBoundaryEval.tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" ||
-                avBoundaryEval.tier === "TIER_4_EXPLICIT_CORRUPTION")
+            (avBoundaryEval.tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" ||
+              avBoundaryEval.tier === "TIER_4_EXPLICIT_CORRUPTION")
           ) ||
           Boolean(data.state_updates?.core_memory_unlocked) ||
           Boolean(
             Array.isArray(data.system_updates?.quest_updates) &&
-              data.system_updates.quest_updates.some((qu: any) => qu?.status === "completed")
+            data.system_updates.quest_updates.some((qu: any) => qu?.status === "completed")
           );
 
         const llmLustDelta =
           isAvAffected && typeof data.state_updates?.lust_delta === "number"
             ? clampAshVelvetTurnDelta(data.state_updates.lust_delta, {
-                isMajorEvent: isMajorAvTurn,
-                isBackfire: Boolean(avBoundaryEval?.didBackfire),
-              })
+              isMajorEvent: isMajorAvTurn,
+              isBackfire: Boolean(avBoundaryEval?.didBackfire),
+            })
             : 0;
         const rawLustDelta = avBoundaryEval?.didBackfire
           ? avBoundaryEval.backfirePenalties!.lustDelta
           : avBoundaryEval
-          ? Math.max(llmLustDelta, avBoundaryEval.bonusLustDelta)
-          : llmLustDelta;
+            ? Math.max(llmLustDelta, avBoundaryEval.bonusLustDelta)
+            : llmLustDelta;
 
         const llmSensDelta =
           isAvAffected && typeof (data.state_updates as any)?.sensitivity_delta === "number"
             ? clampAshVelvetTurnDelta((data.state_updates as any).sensitivity_delta, {
-                isMajorEvent: isMajorAvTurn,
-              })
+              isMajorEvent: isMajorAvTurn,
+            })
             : 0;
         const rawSensDelta = avBoundaryEval?.didBackfire
           ? 0
           : avBoundaryEval
-          ? Math.max(llmSensDelta, avBoundaryEval.sensitivityDelta)
-          : llmSensDelta;
+            ? Math.max(llmSensDelta, avBoundaryEval.sensitivityDelta)
+            : llmSensDelta;
 
         const rawSubDelta =
           isAvAffected && typeof data.state_updates?.submission_delta === "number"
             ? clampAshVelvetTurnDelta(data.state_updates.submission_delta, {
-                isMajorEvent: isMajorAvTurn,
-              })
+              isMajorEvent: isMajorAvTurn,
+            })
             : 0;
         const rawTrustDelta = avBoundaryEval?.didBackfire
           ? avBoundaryEval.backfirePenalties!.trustDelta
           : isAvAffected && typeof data.state_updates?.trust_delta === "number"
-          ? clampAshVelvetTurnDelta(data.state_updates.trust_delta, {
+            ? clampAshVelvetTurnDelta(data.state_updates.trust_delta, {
               isMajorEvent: isMajorAvTurn,
             })
-          : 0;
+            : 0;
         const rawJealousyDelta = avBoundaryEval?.didBackfire
           ? avBoundaryEval.backfirePenalties!.jealousyDelta
           : isAvAffected && typeof data.state_updates?.jealousy_delta === "number"
-          ? clampAshVelvetTurnDelta(data.state_updates.jealousy_delta, {
+            ? clampAshVelvetTurnDelta(data.state_updates.jealousy_delta, {
               isMajorEvent: isMajorAvTurn,
             })
-          : 0;
+            : 0;
 
         if (avBoundaryEval?.didBackfire) {
           updatedAffection = clampMeter(
@@ -6589,8 +6631,8 @@ export default function VisualNovelGame() {
           typeof data.state_updates?.cash_delta === "number"
             ? data.state_updates.cash_delta
             : typeof (data.state_updates as any)?.gold_delta === "number"
-            ? (data.state_updates as any).gold_delta
-            : 0;
+              ? (data.state_updates as any).gold_delta
+              : 0;
         const rawCashDelta = Math.max(-300, Math.min(300, Math.round(rawCashField)));
 
         const playerActionOnly = String(rawAction || "");
@@ -6690,15 +6732,15 @@ export default function VisualNovelGame() {
           );
           const targetEval = prevTargetComp
             ? evaluateAshVelvetAdvanceAndBoundary({
-                heroineName: prevTargetComp.name,
-                meters: resolveHeroineMeters(prevTargetComp),
-                viceLevel: curAvState.viceLevel,
-                playerPersonality: playerRef.current?.personality,
-                playerConduit: playerRef.current?.conduit,
-                playerRole: playerRef.current?.role,
-                actionText: rawAction || "",
-                location: nextLocation || gameState.location,
-              })
+              heroineName: prevTargetComp.name,
+              meters: resolveHeroineMeters(prevTargetComp),
+              viceLevel: curAvState.viceLevel,
+              playerPersonality: playerRef.current?.personality,
+              playerConduit: playerRef.current?.conduit,
+              playerRole: playerRef.current?.role,
+              actionText: rawAction || "",
+              location: nextLocation || gameState.location,
+            })
             : null;
 
           if (targetEval?.didBackfire && targetEval.backfirePenalties) {
@@ -6727,67 +6769,67 @@ export default function VisualNovelGame() {
           const isMajorAvSummaryTurn =
             Boolean(
               targetEval &&
-                (targetEval.tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" ||
-                  targetEval.tier === "TIER_4_EXPLICIT_CORRUPTION")
+              (targetEval.tier === "TIER_3_HEAVY_ESCALATION_OR_UNDRESS" ||
+                targetEval.tier === "TIER_4_EXPLICIT_CORRUPTION")
             ) ||
             Boolean(data.state_updates?.core_memory_unlocked) ||
             Boolean(
               Array.isArray(data.system_updates?.quest_updates) &&
-                data.system_updates.quest_updates.some((qu: any) => qu?.status === "completed")
+              data.system_updates.quest_updates.some((qu: any) => qu?.status === "completed")
             );
 
           const avAffDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.affectionDelta
             : typeof delta === "number" && delta !== 0
-            ? clampAshVelvetTurnDelta(delta, { isMajorEvent: isMajorAvSummaryTurn })
-            : typeof data.state_updates?.affection_delta === "number"
-            ? clampAshVelvetTurnDelta(data.state_updates.affection_delta, {
-                isMajorEvent: isMajorAvSummaryTurn,
-              })
-            : 0;
+              ? clampAshVelvetTurnDelta(delta, { isMajorEvent: isMajorAvSummaryTurn })
+              : typeof data.state_updates?.affection_delta === "number"
+                ? clampAshVelvetTurnDelta(data.state_updates.affection_delta, {
+                  isMajorEvent: isMajorAvSummaryTurn,
+                })
+                : 0;
           const llmLustD =
             typeof data.state_updates?.lust_delta === "number"
               ? clampAshVelvetTurnDelta(data.state_updates.lust_delta, {
-                  isMajorEvent: isMajorAvSummaryTurn,
-                  isBackfire: Boolean(targetEval?.didBackfire),
-                })
+                isMajorEvent: isMajorAvSummaryTurn,
+                isBackfire: Boolean(targetEval?.didBackfire),
+              })
               : 0;
           const avLustDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.lustDelta
             : targetEval
-            ? Math.max(llmLustD, targetEval.bonusLustDelta)
-            : llmLustD;
+              ? Math.max(llmLustD, targetEval.bonusLustDelta)
+              : llmLustD;
           const llmSensD =
             typeof (data.state_updates as any)?.sensitivity_delta === "number"
               ? clampAshVelvetTurnDelta((data.state_updates as any).sensitivity_delta, {
-                  isMajorEvent: isMajorAvSummaryTurn,
-                })
+                isMajorEvent: isMajorAvSummaryTurn,
+              })
               : 0;
           const avSensDelta = targetEval?.didBackfire
             ? 0
             : targetEval
-            ? Math.max(llmSensD, targetEval.sensitivityDelta)
-            : llmSensD;
+              ? Math.max(llmSensD, targetEval.sensitivityDelta)
+              : llmSensD;
           const avSubDelta =
             typeof data.state_updates?.submission_delta === "number"
               ? clampAshVelvetTurnDelta(data.state_updates.submission_delta, {
-                  isMajorEvent: isMajorAvSummaryTurn,
-                })
+                isMajorEvent: isMajorAvSummaryTurn,
+              })
               : 0;
           const avTrustDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.trustDelta
             : typeof data.state_updates?.trust_delta === "number"
-            ? clampAshVelvetTurnDelta(data.state_updates.trust_delta, {
+              ? clampAshVelvetTurnDelta(data.state_updates.trust_delta, {
                 isMajorEvent: isMajorAvSummaryTurn,
               })
-            : 0;
+              : 0;
           const avJealousyDelta = targetEval?.didBackfire
             ? targetEval.backfirePenalties!.jealousyDelta
             : typeof data.state_updates?.jealousy_delta === "number"
-            ? clampAshVelvetTurnDelta(data.state_updates.jealousy_delta, {
+              ? clampAshVelvetTurnDelta(data.state_updates.jealousy_delta, {
                 isMajorEvent: isMajorAvSummaryTurn,
               })
-            : 0;
+              : 0;
 
           if (
             avAffDelta !== 0 ||
@@ -6845,12 +6887,12 @@ export default function VisualNovelGame() {
           highestCleared >= 75
             ? 5
             : highestCleared >= 50
-            ? 4
-            : highestCleared >= 25
-            ? 3
-            : highestCleared >= 10
-            ? 2
-            : 1;
+              ? 4
+              : highestCleared >= 25
+                ? 3
+                : highestCleared >= 10
+                  ? 2
+                  : 1;
         if (milestoneRank > nextProtagStar) {
           nextProtagStar = milestoneRank;
           pushNotification({
@@ -7039,8 +7081,8 @@ export default function VisualNovelGame() {
 
       const turnMaxExpCap =
         starfallUpdates?.floorCleared ||
-        starfallUpdates?.floor_cleared ||
-        isClashTurn
+          starfallUpdates?.floor_cleared ||
+          isClashTurn
           ? 800
           : 150;
       const isAmbientSpeaker = ["narrator", "system", "inner monologue"].some((s) => speakerName.toLowerCase().includes(s));
@@ -7069,21 +7111,21 @@ export default function VisualNovelGame() {
           filteredChoices.length >= 2
             ? filteredChoices
             : sanitizeAndFilterChoices(
-                buildPersonalityFallbackChoices({
-                  personality: playerRef.current?.personality,
-                  personalityTraits: playerRef.current?.personalityTraits,
-                  playerRole: playerRef.current?.role,
-                  playerRace: playerRef.current?.race,
-                  activeSpeaker: speakerName || "Narrator",
-                  location: nextLocation || "this sector",
-                  isProtagonistAlone:
-                    presentList.length === 0 &&
-                    (!speakerName || speakerName === "Narrator"),
-                  storyId: currentStory?.id,
-                  genre: currentStory?.genre,
-                  narrativeText: narrative,
-                })
-              );
+              buildPersonalityFallbackChoices({
+                personality: playerRef.current?.personality,
+                personalityTraits: playerRef.current?.personalityTraits,
+                playerRole: playerRef.current?.role,
+                playerRace: playerRef.current?.race,
+                activeSpeaker: speakerName || "Narrator",
+                location: nextLocation || "this sector",
+                isProtagonistAlone:
+                  presentList.length === 0 &&
+                  (!speakerName || speakerName === "Narrator"),
+                storyId: currentStory?.id,
+                genre: currentStory?.genre,
+                narrativeText: narrative,
+              })
+            );
         setChoices(finalTurnChoices);
         resolvedChoices = finalTurnChoices;
       }
@@ -7094,15 +7136,15 @@ export default function VisualNovelGame() {
       const combinedSwipes: ChatMessageSwipe[] | undefined =
         inheritedSwipes.length > 0
           ? [
-              ...inheritedSwipes,
-              {
-                text: narrative,
-                speakerName,
-                avatarSrc: companionAvatarSrc,
-                mechanics: data.mechanics || null,
-                choices: resolvedChoices,
-              },
-            ]
+            ...inheritedSwipes,
+            {
+              text: narrative,
+              speakerName,
+              avatarSrc: companionAvatarSrc,
+              mechanics: data.mechanics || null,
+              choices: resolvedChoices,
+            },
+          ]
           : undefined;
 
       const turnHeroineStatDeltas: HeroineStatDeltaPill[] = [];
@@ -7189,10 +7231,10 @@ export default function VisualNovelGame() {
         vitalsImpact:
           rawHpDelta !== 0 || rawMpDelta !== 0
             ? {
-                hpDelta: rawHpDelta,
-                mpDelta: rawMpDelta,
-                reason: rawVitalsReason,
-              }
+              hpDelta: rawHpDelta,
+              mpDelta: rawMpDelta,
+              reason: rawVitalsReason,
+            }
             : null,
         heroineStatDeltas:
           turnHeroineStatDeltas.length > 0 ? turnHeroineStatDeltas : null,
@@ -7201,9 +7243,9 @@ export default function VisualNovelGame() {
         choicesSnapshot: resolvedChoices,
         ...(combinedSwipes
           ? {
-              swipes: combinedSwipes,
-              activeSwipeIndex: combinedSwipes.length - 1,
-            }
+            swipes: combinedSwipes,
+            activeSwipeIndex: combinedSwipes.length - 1,
+          }
           : {}),
       };
 
@@ -7372,7 +7414,7 @@ export default function VisualNovelGame() {
                   const cleanName = droppedItem.name.trim().toLowerCase();
                   const updated = prev.inventory.map((inv) =>
                     (inv.id && inv.id === droppedItem.id) ||
-                    inv.name.trim().toLowerCase() === cleanName
+                      inv.name.trim().toLowerCase() === cleanName
                       ? { ...inv, imageUrl: lootData.imageUrl }
                       : inv
                   );
@@ -7429,8 +7471,8 @@ export default function VisualNovelGame() {
                     slot === "weapon"
                       ? "+8 ATK • Equipped Weapon"
                       : slot === "armor"
-                      ? "+6 DEF • Equipped Armor"
-                      : "+10 MP • Equipped Relic",
+                        ? "+6 DEF • Equipped Armor"
+                        : "+10 MP • Equipped Relic",
                 };
                 updatedInventory.push(syntheticItem);
                 if (!newlyEquippedItems.some((e) => e.name.toLowerCase() === cleanGranted.toLowerCase())) {
@@ -7570,9 +7612,9 @@ export default function VisualNovelGame() {
           !data.death_event?.is_fatal &&
           Boolean(
             starfallUpdates?.full_vitals_restored ||
-              (activeStarfallLs &&
-                (activeStarfallLs.currentFloor === 0 ||
-                  getFloorType(activeStarfallLs.currentFloor || 0) === "SAFE_ZONE"))
+            (activeStarfallLs &&
+              (activeStarfallLs.currentFloor === 0 ||
+                getFloorType(activeStarfallLs.currentFloor || 0) === "SAFE_ZONE"))
           );
         const hpDeltaToApply = isClashTurn
           ? 0
@@ -7896,10 +7938,10 @@ export default function VisualNovelGame() {
             nextPlausibility >= 70
               ? "Stable"
               : nextPlausibility >= 40
-              ? "Strained"
-              : nextPlausibility >= 20
-              ? "Volatile"
-              : "Critical";
+                ? "Strained"
+                : nextPlausibility >= 20
+                  ? "Volatile"
+                  : "Critical";
 
           let activePenalty: PenaltyScenarioState | null = prevSys.penaltyScenario || null;
           if (nextPlausibility < 25 && (!activePenalty || !activePenalty.isActive)) {
@@ -8057,12 +8099,12 @@ export default function VisualNovelGame() {
         gearImages: undefined,
         inventory: Array.isArray(playerRef.current.inventory)
           ? playerRef.current.inventory.map((item) => {
-              if (item.imageUrl && item.imageUrl.length > 500) {
-                const { imageUrl, ...restItem } = item;
-                return restItem;
-              }
-              return item;
-            })
+            if (item.imageUrl && item.imageUrl.length > 500) {
+              const { imageUrl, ...restItem } = item;
+              return restItem;
+            }
+            return item;
+          })
           : [],
       };
 
@@ -8145,19 +8187,19 @@ export default function VisualNovelGame() {
               const isSolarisStory = currentStory.id === "port-solaris";
               const solarisMilestoneQuest = isSolarisStory
                 ? buildPortSolarisRomanceMilestoneQuest(
-                    canonicalName,
-                    threshold as 25 | 50 | 75 | 90 | 100
-                  )
+                  canonicalName,
+                  threshold as 25 | 50 | 75 | 90 | 100
+                )
                 : null;
               const questDifficulty = solarisMilestoneQuest
                 ? solarisMilestoneQuest.difficulty
                 : threshold >= 100
-                ? "S"
-                : threshold >= 75
-                ? "A"
-                : threshold >= 50
-                ? "B"
-                : "C";
+                  ? "S"
+                  : threshold >= 75
+                    ? "A"
+                    : threshold >= 50
+                      ? "B"
+                      : "C";
               const finalQuestTitle = solarisMilestoneQuest
                 ? `[HOUSEMATE QUEST] ${solarisMilestoneQuest.title}`
                 : questTitle;
@@ -8167,16 +8209,16 @@ export default function VisualNovelGame() {
               const questObjectives = solarisMilestoneQuest
                 ? solarisMilestoneQuest.objectives
                 : [
-                    { text: `Share a private one-on-one moment with ${canonicalName}`, completed: false },
-                    { text: `Overcome ${canonicalName}'s guarded defenses at ${threshold}% Favor`, completed: false },
-                  ];
+                  { text: `Share a private one-on-one moment with ${canonicalName}`, completed: false },
+                  { text: `Overcome ${canonicalName}'s guarded defenses at ${threshold}% Favor`, completed: false },
+                ];
               const questRewards = solarisMilestoneQuest
                 ? solarisMilestoneQuest.rewards
                 : {
-                    exp: threshold * 3,
-                    gold: threshold * 6,
-                    items: threshold >= 100 ? [`${canonicalName}'s Keepsake`] : undefined,
-                  };
+                  exp: threshold * 3,
+                  gold: threshold * 6,
+                  items: threshold >= 100 ? [`${canonicalName}'s Keepsake`] : undefined,
+                };
 
               setSystemState((prevSys) => {
                 const existsInSys =
@@ -8426,11 +8468,11 @@ export default function VisualNovelGame() {
       }
       const clashVictoryReward = result.isVictory
         ? calculateClashVictoryExp({
-            threatRank: activeClash.threatRank,
-            enemyMaxHp: activeClash.enemyMaxHp,
-            playerLevel: playerRef.current.level,
-            enemyName: activeClash.enemyName,
-          })
+          threatRank: activeClash.threatRank,
+          enemyMaxHp: activeClash.enemyMaxHp,
+          playerLevel: playerRef.current.level,
+          enemyName: activeClash.enemyName,
+        })
         : null;
 
       if (clashVictoryReward) {
@@ -8470,17 +8512,17 @@ export default function VisualNovelGame() {
           netHpDelta < 0
             ? `${activeClash.enemyName} Counter-Attack`
             : netHpDelta > 0
-            ? "Tactical Synergy Heal"
-            : `${actionType.toUpperCase()} Stance Exchange`
+              ? "Tactical Synergy Heal"
+              : `${actionType.toUpperCase()} Stance Exchange`
         );
       }
 
       const unsealAfterClash = result.isVictory
         ? updateInventoryUnsealingProgress(
-            ensureInventoryRelicConditions(playerRef.current.inventory || []),
-            "clash_victory",
-            3
-          )
+          ensureInventoryRelicConditions(playerRef.current.inventory || []),
+          "clash_victory",
+          3
+        )
         : { updatedInventory: playerRef.current.inventory || [], newlyReadyItems: [] };
 
       let updatedPlayerState: PlayerProfile = {
@@ -9251,262 +9293,261 @@ export default function VisualNovelGame() {
 
   const renderSaveModal = () => (
     <>
-    {showSaveModal && (
-      <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
-        <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
-              <FolderOpen className="w-4 h-4 text-sky-400" /> Character Save Slots
-            </h2>
-            <button onClick={() => { setShowSaveModal(false); setConfirmDeleteSlot(null); }} className="text-zinc-400 hover:text-white cursor-pointer">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+      {showSaveModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-lg bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h2 className="text-base font-bold text-white font-mono flex items-center gap-2">
+                <FolderOpen className="w-4 h-4 text-sky-400" /> Character Save Slots
+              </h2>
+              <button onClick={() => { setShowSaveModal(false); setConfirmDeleteSlot(null); }} className="text-zinc-400 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-          {/* Cross-Save Cloud Vault & Portable .astra Backup Banner */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gradient-to-r from-sky-950/35 via-zinc-900/70 to-amber-950/25 border border-sky-500/30 px-3.5 py-2.5 rounded-2xl">
-            <div className="flex items-center gap-2.5">
-              <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
-              <div>
-                <span className="text-xs font-mono font-bold text-white block">Cross-Save Progression Vault</span>
-                <span className="text-[10px] text-zinc-400 font-sans">Cloud Account Sync & Portable .astra Backup</span>
+            {/* Cross-Save Cloud Vault & Portable .astra Backup Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-gradient-to-r from-sky-950/35 via-zinc-900/70 to-amber-950/25 border border-sky-500/30 px-3.5 py-2.5 rounded-2xl">
+              <div className="flex items-center gap-2.5">
+                <Cloud className="w-4 h-4 text-sky-400 shrink-0" />
+                <div>
+                  <span className="text-xs font-mono font-bold text-white block">Cross-Save Progression Vault</span>
+                  <span className="text-[10px] text-zinc-400 font-sans">Cloud Account Sync & Portable .astra Backup</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 self-end sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    downloadAstraBundleFile();
+                  }}
+                  className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer flex items-center gap-1"
+                  title="Download .astra Master Save File"
+                >
+                  <Download className="w-3 h-3" /> .astra
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundEffects.playClick();
+                    setShowCloudSyncModal(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl text-[10px] font-mono font-bold bg-sky-500/20 hover:bg-sky-500/35 text-sky-200 border border-sky-400/40 shadow-[0_0_12px_rgba(56,189,248,0.25)] transition-all cursor-pointer flex items-center gap-1"
+                >
+                  <Cloud className="w-3 h-3" /> Cloud Sync Hub
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 self-end sm:self-center">
+
+            {/* Auto-Save Status & Preference Toggle */}
+            <div className="flex items-center justify-between bg-black/40 border border-white/10 px-4 py-2.5 rounded-2xl">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <div>
+                  <span className="text-xs font-mono font-bold text-zinc-200 block">Auto-Save Matrix</span>
+                  <span className="text-[10px] text-zinc-400 font-sans">Saves journey progress after every turn</span>
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   soundEffects.playClick();
-                  downloadAstraBundleFile();
+                  const next = !autoSaveEnabled;
+                  setAutoSaveEnabled(next);
+                  try {
+                    localStorage.setItem("astra_autosave_enabled", String(next));
+                  } catch { }
                 }}
-                className="px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer flex items-center gap-1"
-                title="Download .astra Master Save File"
-              >
-                <Download className="w-3 h-3" /> .astra
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  soundEffects.playClick();
-                  setShowCloudSyncModal(true);
-                }}
-                className="px-3 py-1.5 rounded-xl text-[10px] font-mono font-bold bg-sky-500/20 hover:bg-sky-500/35 text-sky-200 border border-sky-400/40 shadow-[0_0_12px_rgba(56,189,248,0.25)] transition-all cursor-pointer flex items-center gap-1"
-              >
-                <Cloud className="w-3 h-3" /> Cloud Sync Hub
-              </button>
-            </div>
-          </div>
-
-          {/* Auto-Save Status & Preference Toggle */}
-          <div className="flex items-center justify-between bg-black/40 border border-white/10 px-4 py-2.5 rounded-2xl">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-emerald-400" />
-              <div>
-                <span className="text-xs font-mono font-bold text-zinc-200 block">Auto-Save Matrix</span>
-                <span className="text-[10px] text-zinc-400 font-sans">Saves journey progress after every turn</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                soundEffects.playClick();
-                const next = !autoSaveEnabled;
-                setAutoSaveEnabled(next);
-                try {
-                  localStorage.setItem("astra_autosave_enabled", String(next));
-                } catch {}
-              }}
-              className={`px-3 py-1 rounded-xl text-[10px] font-mono font-bold border transition-all cursor-pointer ${
-                autoSaveEnabled
+                className={`px-3 py-1 rounded-xl text-[10px] font-mono font-bold border transition-all cursor-pointer ${autoSaveEnabled
                   ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(52,211,153,0.3)]"
                   : "bg-white/5 text-zinc-500 border-white/10 hover:text-zinc-300"
-              }`}
-            >
-              {autoSaveEnabled ? "ENABLED" : "DISABLED"}
-            </button>
-          </div>
-
-          <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-            {/* AUTO-SAVE (SLOT 0) */}
-            {(() => {
-              const autoSave = savedSlots[0];
-              return (
-                <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative overflow-hidden shadow-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
-                        <Zap className="w-3.5 h-3.5" /> AUTO-SAVE
-                      </span>
-                      <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        System Slot
-                      </span>
-                    </div>
-                    {autoSave ? (
-                      <div className="mt-1">
-                        <p className="text-sm font-bold text-white">
-                          {autoSave.player.name}{" "}
-                          <span className="text-xs text-zinc-400 font-normal">
-                            (Lv.{autoSave.player.level} {autoSave.player.role})
-                          </span>
-                        </p>
-                        <p className="text-[11px] text-zinc-400 font-mono">
-                          {autoSave.storyTitle ? `${autoSave.storyTitle} • ` : ""}
-                          {autoSave.gameState.speaker} • {autoSave.gameState.location}
-                        </p>
-                        {autoSave.savedAt && (
-                          <p className="text-[10px] text-emerald-400/90 font-mono mt-0.5">
-                            Auto-saved: {autoSave.savedAt}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-zinc-500 mt-1 italic">
-                        No auto-save recorded yet. Auto-save triggers after every turn.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2">
-                    {autoSave && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => handleLoadSlot(0)}
-                          className="px-3.5 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/50 rounded-xl text-xs font-semibold text-emerald-200 cursor-pointer transition-all shadow-md active:scale-95"
-                        >
-                          Resume
-                        </button>
-
-                        {confirmDeleteSlot === 0 ? (
-                          <div className="flex items-center gap-1 animate-in fade-in duration-150">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSlot(0)}
-                              className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
-                            >
-                              Clear?
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteSlot(null)}
-                              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition-all cursor-pointer"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              soundEffects.playClick();
-                              setConfirmDeleteSlot(0);
-                            }}
-                            className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
-                            title="Clear Auto-Save Slot"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Divider */}
-            <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 pt-1">
-              <div className="h-[1px] flex-1 bg-white/10" />
-              <span>MANUAL CHRONICLE SLOTS</span>
-              <div className="h-[1px] flex-1 bg-white/10" />
+                  }`}
+              >
+                {autoSaveEnabled ? "ENABLED" : "DISABLED"}
+              </button>
             </div>
 
-            {/* MANUAL SLOTS 1, 2, 3 */}
-            {[1, 2, 3].map((slot) => {
-              const s = savedSlots[slot];
-              return (
-                <div key={slot} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-                  <div className="flex-1">
-                    <span className="text-xs font-mono font-bold text-rose-400">SLOT 0{slot}</span>
-                    {s ? (
-                      <div className="mt-0.5">
-                        <p className="text-sm font-bold text-white">{s.player.name} <span className="text-xs text-zinc-400 font-normal">(Lv.{s.player.level} {s.player.role})</span></p>
-                        <p className="text-[11px] text-zinc-500 font-mono">{s.storyTitle ? `${s.storyTitle} • ` : ""}{s.gameState.speaker} • {s.gameState.location}</p>
-                        {s.savedAt && (
-                          <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Saved: {s.savedAt}</p>
-                        )}
+            <div className="space-y-3 overflow-y-auto pr-1 flex-1">
+              {/* AUTO-SAVE (SLOT 0) */}
+              {(() => {
+                const autoSave = savedSlots[0];
+                return (
+                  <div className="bg-emerald-950/20 border border-emerald-500/30 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 relative overflow-hidden shadow-lg">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
+                          <Zap className="w-3.5 h-3.5" /> AUTO-SAVE
+                        </span>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          System Slot
+                        </span>
                       </div>
-                    ) : (
-                      <p className="text-xs text-zinc-500 mt-1 italic">Empty Save Slot</p>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-end gap-2">
-                    {isConfigured && (
-                      <button
-                        onClick={() => handleSaveSlot(slot)}
-                        className="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 rounded-xl text-xs font-semibold text-amber-200 cursor-pointer transition-all active:scale-95"
-                      >
-                        Save
-                      </button>
-                    )}
-                    {s && (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleLoadSlot(slot)}
-                          className="px-3 py-1.5 bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 rounded-xl text-xs font-semibold text-sky-200 cursor-pointer transition-all active:scale-95"
-                        >
-                          Load
-                        </button>
+                      {autoSave ? (
+                        <div className="mt-1">
+                          <p className="text-sm font-bold text-white">
+                            {autoSave.player.name}{" "}
+                            <span className="text-xs text-zinc-400 font-normal">
+                              (Lv.{autoSave.player.level} {autoSave.player.role})
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-zinc-400 font-mono">
+                            {autoSave.storyTitle ? `${autoSave.storyTitle} • ` : ""}
+                            {autoSave.gameState.speaker} • {autoSave.gameState.location}
+                          </p>
+                          {autoSave.savedAt && (
+                            <p className="text-[10px] text-emerald-400/90 font-mono mt-0.5">
+                              Auto-saved: {autoSave.savedAt}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-500 mt-1 italic">
+                          No auto-save recorded yet. Auto-save triggers after every turn.
+                        </p>
+                      )}
+                    </div>
 
-                        {confirmDeleteSlot === slot ? (
-                          <div className="flex items-center gap-1 animate-in fade-in duration-150">
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSlot(slot)}
-                              className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
-                              title="Confirm Permanent Deletion"
-                            >
-                              Delete?
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setConfirmDeleteSlot(null)}
-                              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition-all cursor-pointer"
-                              title="Cancel"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
+                    <div className="flex items-center justify-end gap-2">
+                      {autoSave && (
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => {
-                              soundEffects.playClick();
-                              setConfirmDeleteSlot(slot);
-                            }}
-                            className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
-                            title="Delete Save Slot"
+                            onClick={() => handleLoadSlot(0)}
+                            className="px-3.5 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-400/50 rounded-xl text-xs font-semibold text-emerald-200 cursor-pointer transition-all shadow-md active:scale-95"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            Resume
                           </button>
-                        )}
-                      </div>
-                    )}
+
+                          {confirmDeleteSlot === 0 ? (
+                            <div className="flex items-center gap-1 animate-in fade-in duration-150">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSlot(0)}
+                                className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
+                              >
+                                Clear?
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteSlot(null)}
+                                className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition-all cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundEffects.playClick();
+                                setConfirmDeleteSlot(0);
+                              }}
+                              className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
+                              title="Clear Auto-Save Slot"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })()}
+
+              {/* Divider */}
+              <div className="flex items-center gap-2 text-[10px] font-mono text-zinc-500 pt-1">
+                <div className="h-[1px] flex-1 bg-white/10" />
+                <span>MANUAL CHRONICLE SLOTS</span>
+                <div className="h-[1px] flex-1 bg-white/10" />
+              </div>
+
+              {/* MANUAL SLOTS 1, 2, 3 */}
+              {[1, 2, 3].map((slot) => {
+                const s = savedSlots[slot];
+                return (
+                  <div key={slot} className="bg-zinc-900/80 border border-white/10 p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                    <div className="flex-1">
+                      <span className="text-xs font-mono font-bold text-rose-400">SLOT 0{slot}</span>
+                      {s ? (
+                        <div className="mt-0.5">
+                          <p className="text-sm font-bold text-white">{s.player.name} <span className="text-xs text-zinc-400 font-normal">(Lv.{s.player.level} {s.player.role})</span></p>
+                          <p className="text-[11px] text-zinc-500 font-mono">{s.storyTitle ? `${s.storyTitle} • ` : ""}{s.gameState.speaker} • {s.gameState.location}</p>
+                          {s.savedAt && (
+                            <p className="text-[10px] text-zinc-500 font-mono mt-0.5">Saved: {s.savedAt}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-500 mt-1 italic">Empty Save Slot</p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      {isConfigured && (
+                        <button
+                          onClick={() => handleSaveSlot(slot)}
+                          className="px-3 py-1.5 bg-amber-600/30 hover:bg-amber-600/50 border border-amber-400/40 rounded-xl text-xs font-semibold text-amber-200 cursor-pointer transition-all active:scale-95"
+                        >
+                          Save
+                        </button>
+                      )}
+                      {s && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => handleLoadSlot(slot)}
+                            className="px-3 py-1.5 bg-sky-600/30 hover:bg-sky-600/50 border border-sky-400/40 rounded-xl text-xs font-semibold text-sky-200 cursor-pointer transition-all active:scale-95"
+                          >
+                            Load
+                          </button>
+
+                          {confirmDeleteSlot === slot ? (
+                            <div className="flex items-center gap-1 animate-in fade-in duration-150">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSlot(slot)}
+                                className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
+                                title="Confirm Permanent Deletion"
+                              >
+                                Delete?
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmDeleteSlot(null)}
+                                className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition-all cursor-pointer"
+                                title="Cancel"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundEffects.playClick();
+                                setConfirmDeleteSlot(slot);
+                              }}
+                              className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-500/30 rounded-xl transition-all cursor-pointer"
+                              title="Delete Save Slot"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
-    )}
-    <CloudSyncModal
-      isOpen={showCloudSyncModal}
-      onClose={() => setShowCloudSyncModal(false)}
-      onProgressionRestored={() => {
-        loadAllGameSlots().then((slots) => setSavedSlots(slots as any));
-      }}
-    />
+      )}
+      <CloudSyncModal
+        isOpen={showCloudSyncModal}
+        onClose={() => setShowCloudSyncModal(false)}
+        onProgressionRestored={() => {
+          loadAllGameSlots().then((slots) => setSavedSlots(slots as any));
+        }}
+      />
     </>
   );
 
@@ -9542,8 +9583,8 @@ export default function VisualNovelGame() {
                       {revealActiveKey
                         ? userAuth.key
                         : userAuth.key.length > 8
-                        ? `${userAuth.key.slice(0, 4)}••••••••${userAuth.key.slice(-3)}`
-                        : "••••••••••••"}
+                          ? `${userAuth.key.slice(0, 4)}••••••••${userAuth.key.slice(-3)}`
+                          : "••••••••••••"}
                     </span>
                   </p>
                   <button
@@ -9734,11 +9775,10 @@ export default function VisualNovelGame() {
               <Sparkles className="w-5 h-5 text-rose-400" />
               <h2 className="text-base font-bold font-mono text-white">Cinematic Scene Canvas</h2>
               <span
-                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                  isCachedScene
-                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                    : "bg-rose-500/20 text-rose-300 border-rose-500/30"
-                }`}
+                className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${isCachedScene
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                  : "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                  }`}
               >
                 {isCachedScene ? "Codex Archived" : "Nano Banana 2.1"}
               </span>
@@ -9990,11 +10030,10 @@ export default function VisualNovelGame() {
                       type="button"
                       disabled={isAwakeningRelic}
                       onClick={() => handlePurifyAndAwakenRelic(preparedRelic)}
-                      className={`px-3 py-1.5 rounded-xl font-mono text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-                        cond.isMet
-                          ? "bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-black shadow-[0_0_15px_rgba(245,158,11,0.45)]"
-                          : "bg-purple-950/70 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200"
-                      }`}
+                      className={`px-3 py-1.5 rounded-xl font-mono text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${cond.isMet
+                        ? "bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-black shadow-[0_0_15px_rgba(245,158,11,0.45)]"
+                        : "bg-purple-950/70 hover:bg-purple-900/80 border border-purple-500/40 text-purple-200"
+                        }`}
                       title={cond.isMet ? "Unsealing condition met! Awaken Mythic Form" : "Channel Astral Resonance to force-purify and awaken now"}
                     >
                       <Sparkles className={`w-3.5 h-3.5 ${isAwakeningRelic ? "animate-spin" : ""}`} />
@@ -10002,8 +10041,8 @@ export default function VisualNovelGame() {
                         {isAwakeningRelic
                           ? "Awakening..."
                           : cond.isMet
-                          ? "Purify & Awaken Relic"
-                          : "Force Purify & Awaken"}
+                            ? "Purify & Awaken Relic"
+                            : "Force Purify & Awaken"}
                       </span>
                     </button>
                   </div>
@@ -10037,22 +10076,22 @@ export default function VisualNovelGame() {
 
   const renderAbilityModal = () =>
     inspectedAbility && (
-      <div 
+      <div
         className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150"
         onClick={() => setInspectedAbility(null)}
       >
-        <div 
+        <div
           onClick={(e) => e.stopPropagation()}
           className="relative w-full max-w-md bg-zinc-950 border border-white/15 rounded-3xl p-4 sm:p-6 shadow-2xl flex flex-col gap-3 sm:gap-4 max-h-[90dvh] overflow-y-auto animate-in zoom-in-95 duration-150"
         >
           <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500/70 to-transparent" />
-          
+
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <span className="text-xs font-mono uppercase text-amber-400 tracking-wider flex items-center gap-1.5 font-bold">
               <Zap className="w-3.5 h-3.5 text-amber-400" /> Ability Dossier
             </span>
-            <button 
-              onClick={() => setInspectedAbility(null)} 
+            <button
+              onClick={() => setInspectedAbility(null)}
               className="text-zinc-400 hover:text-white cursor-pointer p-1 rounded-lg hover:bg-white/10 transition-colors"
             >
               <X className="w-5 h-5" />
@@ -10222,10 +10261,9 @@ export default function VisualNovelGame() {
   // 1. OPENING / WELCOME SPLASH SCREEN (FIRST LOAD)
   if (!isConfigured && !hasSeenWelcome) {
     return (
-      <div className={`relative h-[100dvh] w-screen overflow-hidden bg-black font-sans flex flex-col items-center justify-center select-none transition-all duration-300 ease-out ${
-        pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
-      }`}>
-        <div 
+      <div className={`relative h-[100dvh] w-screen overflow-hidden bg-black font-sans flex flex-col items-center justify-center select-none transition-all duration-300 ease-out ${pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+        }`}>
+        <div
           className="fixed inset-0 bg-cover bg-center transition-all duration-1000 brightness-[0.38] contrast-125 scale-105 pointer-events-none select-none z-0"
           style={{ backgroundImage: `url("${currentStory.coverImage || DEFAULT_BG}")` }}
         />
@@ -10374,10 +10412,9 @@ export default function VisualNovelGame() {
     }
 
     return (
-      <div className={`relative min-h-screen w-full bg-zinc-950 flex items-center justify-center p-4 py-8 md:py-12 overflow-y-auto transition-all duration-300 ease-out ${
-        pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
-      }`}>
-        <div 
+      <div className={`relative min-h-screen w-full bg-zinc-950 flex items-center justify-center p-4 py-8 md:py-12 overflow-y-auto transition-all duration-300 ease-out ${pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+        }`}>
+        <div
           className="fixed inset-0 bg-cover bg-center brightness-[0.22] contrast-125 pointer-events-none select-none z-0"
           style={{ backgroundImage: `url("${currentStory.coverImage || DEFAULT_BG}")` }}
         />
@@ -10505,22 +10542,22 @@ export default function VisualNovelGame() {
                       currentStory.id === "sovereign-spire"
                         ? "Matriculation Origin"
                         : currentStory.id === "port-solaris"
-                        ? "Proprietor Background"
-                        : currentStory.id === "starfall-labyrinth"
-                        ? "Summoned Origin"
-                        : currentStory.id === "ash-and-velvet"
-                        ? "Your Backstory"
-                        : "World Origin",
+                          ? "Proprietor Background"
+                          : currentStory.id === "starfall-labyrinth"
+                            ? "Summoned Origin"
+                            : currentStory.id === "ash-and-velvet"
+                              ? "Your Backstory"
+                              : "World Origin",
                     sub:
                       currentStory.id === "sovereign-spire"
                         ? `Rank #${player.matriculationRank || 488}`
                         : currentStory.id === "port-solaris"
-                        ? `0★ Probation • ${player.semesterDebtQuota || 1200} Crowns`
-                        : currentStory.id === "starfall-labyrinth"
-                        ? `${player.labyrinthState?.isHiddenRarity ? "?★" : `${player.labyrinthState?.protagonistStarRank || 1}★`} • ${player.labyrinthState?.starShards ?? 60} Shards`
-                        : currentStory.id === "ash-and-velvet"
-                        ? `${player.worldOrigin?.split("(")[0]?.trim() || "Runaway"} • $${player.gold ?? 65} Cash`
-                        : player.worldOrigin?.split("(")[0]?.trim() || "Native",
+                          ? `0★ Probation • ${player.semesterDebtQuota || 1200} Crowns`
+                          : currentStory.id === "starfall-labyrinth"
+                            ? `${player.labyrinthState?.isHiddenRarity ? "?★" : `${player.labyrinthState?.protagonistStarRank || 1}★`} • ${player.labyrinthState?.starShards ?? 60} Shards`
+                            : currentStory.id === "ash-and-velvet"
+                              ? `${player.worldOrigin?.split("(")[0]?.trim() || "Runaway"} • $${player.gold ?? 65} Cash`
+                              : player.worldOrigin?.split("(")[0]?.trim() || "Native",
                   },
                   {
                     id: "conduit" as const,
@@ -10529,18 +10566,18 @@ export default function VisualNovelGame() {
                       currentStory.id === "sovereign-spire"
                         ? "Conduit & Wing"
                         : currentStory.id === "port-solaris"
-                        ? "Flair & Faction"
-                        : currentStory.id === "starfall-labyrinth"
-                        ? "Squad Role & Kit"
-                        : currentStory.id === "ash-and-velvet"
-                        ? "Vibe & Approach"
-                        : "Class & Arsenal",
+                          ? "Flair & Faction"
+                          : currentStory.id === "starfall-labyrinth"
+                            ? "Squad Role & Kit"
+                            : currentStory.id === "ash-and-velvet"
+                              ? "Vibe & Approach"
+                              : "Class & Arsenal",
                     sub:
                       currentStory.id === "ash-and-velvet"
                         ? player.role || "Quiet Protector"
                         : hasCustomWorldPresets(currentStory.id)
-                        ? `${(player.conduit || "SOMATIC").replace(/_/g, " ")} • ${gearPreference.toUpperCase()}`
-                        : player.role || "Choose Class",
+                          ? `${(player.conduit || "SOMATIC").replace(/_/g, " ")} • ${gearPreference.toUpperCase()}`
+                          : player.role || "Choose Class",
                   },
                   {
                     id: "prologue" as const,
@@ -10549,8 +10586,8 @@ export default function VisualNovelGame() {
                       currentStory.id === "ash-and-velvet"
                         ? "Opening Scene"
                         : hasCustomWorldPresets(currentStory.id)
-                        ? "Act I Prelude"
-                        : "Starting Scenario",
+                          ? "Act I Prelude"
+                          : "Starting Scenario",
                     sub: prologues[selectedPrologue]?.speaker || "Pick Opener",
                   },
                 ]
@@ -10567,16 +10604,14 @@ export default function VisualNovelGame() {
                     }}
                     className={
                       isAv
-                        ? `px-3 py-2 border-2 border-[#07070A] text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${
-                            isActive
-                              ? "bg-gradient-to-r from-pink-600 to-rose-500 text-white shadow-[3px_3px_0px_#07070A]"
-                              : "bg-[#111018] text-zinc-400 hover:text-amber-300 shadow-[2px_2px_0px_#07070A]"
-                          }`
-                        : `px-3 py-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${
-                            isActive
-                              ? "bg-gradient-to-br from-rose-950/70 via-zinc-900 to-amber-950/50 border-rose-500/80 text-white shadow-lg ring-1 ring-rose-500/30"
-                              : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
-                          }`
+                        ? `px-3 py-2 border-2 border-[#07070A] text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${isActive
+                          ? "bg-gradient-to-r from-pink-600 to-rose-500 text-white shadow-[3px_3px_0px_#07070A]"
+                          : "bg-[#111018] text-zinc-400 hover:text-amber-300 shadow-[2px_2px_0px_#07070A]"
+                        }`
+                        : `px-3 py-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${isActive
+                          ? "bg-gradient-to-br from-rose-950/70 via-zinc-900 to-amber-950/50 border-rose-500/80 text-white shadow-lg ring-1 ring-rose-500/30"
+                          : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
+                        }`
                     }
                   >
                     <div className="flex items-center justify-between gap-1">
@@ -10679,11 +10714,10 @@ export default function VisualNovelGame() {
                             <div
                               key={bp.id}
                               onClick={() => handleLoadCharacterFromRoster(bp)}
-                              className={`group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${
-                                isActiveMatch
-                                  ? "bg-indigo-950/60 border-indigo-400/80 text-white shadow-md"
-                                  : "bg-zinc-900/85 hover:bg-zinc-900 border-white/10 hover:border-indigo-500/50 text-zinc-300"
-                              }`}
+                              className={`group p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5 ${isActiveMatch
+                                ? "bg-indigo-950/60 border-indigo-400/80 text-white shadow-md"
+                                : "bg-zinc-900/85 hover:bg-zinc-900 border-white/10 hover:border-indigo-500/50 text-zinc-300"
+                                }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
                                 <div
@@ -10765,11 +10799,10 @@ export default function VisualNovelGame() {
                         ? "Click to view full character image"
                         : "Upload a character portrait to preview"
                     }
-                    className={`group relative w-16 h-16 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 transition-all ${
-                      playerAvatar && playerAvatar.trim()
-                        ? "cursor-pointer hover:border-rose-500/70 hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
-                        : "cursor-default"
-                    }`}
+                    className={`group relative w-16 h-16 rounded-2xl overflow-hidden bg-zinc-900 border border-white/15 flex items-center justify-center shrink-0 transition-all ${playerAvatar && playerAvatar.trim()
+                      ? "cursor-pointer hover:border-rose-500/70 hover:shadow-[0_0_15px_rgba(244,63,94,0.3)]"
+                      : "cursor-default"
+                      }`}
                   >
                     {playerAvatar && playerAvatar.trim() ? (
                       <>
@@ -10845,11 +10878,10 @@ export default function VisualNovelGame() {
                             key={g.id}
                             type="button"
                             onClick={() => handleSelectGenderPreset(g)}
-                            className={`px-1.5 py-1.5 rounded-xl border text-xs font-mono transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                              isSelected
-                                ? "bg-sky-950/40 border-sky-500/80 text-sky-200 font-bold"
-                                : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20"
-                            }`}
+                            className={`px-1.5 py-1.5 rounded-xl border text-xs font-mono transition-all flex items-center justify-center gap-1 cursor-pointer ${isSelected
+                              ? "bg-sky-950/40 border-sky-500/80 text-sky-200 font-bold"
+                              : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20"
+                              }`}
                           >
                             <span className="text-xs leading-none">{g.icon}</span>
                             <span className="text-[10px] truncate">{g.shortLabel}</span>
@@ -10908,71 +10940,70 @@ export default function VisualNovelGame() {
 
               {/* LINEAGE & ANATOMICAL VISION PROFILE (Hidden in grounded contemporary stories) */}
               {currentStory.id !== "ash-and-velvet" && (
-              <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>Lineage &amp; Anatomical Physiology</span>
-                    </label>
-                    <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
-                      Heroines react to non-human anatomy (fangs, wolf ears, draconic scales, abyssal eyes) during close-quarters sensory scenes.
-                    </p>
+                <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>Lineage &amp; Anatomical Physiology</span>
+                      </label>
+                      <p className="text-[11px] text-zinc-500 font-sans mt-0.5 leading-relaxed">
+                        Heroines react to non-human anatomy (fangs, wolf ears, draconic scales, abyssal eyes) during close-quarters sensory scenes.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 self-start shrink-0 whitespace-nowrap font-bold">
+                      Race: {player.race || "Human"}
+                    </span>
                   </div>
-                  <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 self-start shrink-0 whitespace-nowrap font-bold">
-                    Race: {player.race || "Human"}
-                  </span>
-                </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
-                  {RACE_PRESETS.map((p) => {
-                    const isSelected = selectedRacePreset === p.id || (!selectedRacePreset && p.id === "human" && player.race === "Human");
-                    const displayLabel = (p as any).shortLabel || p.name.split("/")[0].trim();
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => handleSelectRacePreset(p)}
-                        className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                          isSelected
+                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5">
+                    {RACE_PRESETS.map((p) => {
+                      const isSelected = selectedRacePreset === p.id || (!selectedRacePreset && p.id === "human" && player.race === "Human");
+                      const displayLabel = (p as any).shortLabel || p.name.split("/")[0].trim();
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => handleSelectRacePreset(p)}
+                          className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${isSelected
                             ? "bg-amber-950/40 border-amber-500/80 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
                             : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                        }`}
-                        title={p.description}
-                      >
-                        <span className="text-base leading-none">{p.icon}</span>
-                        <span className="text-[10px] leading-tight whitespace-nowrap">{displayLabel}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                            }`}
+                          title={p.description}
+                        >
+                          <span className="text-base leading-none">{p.icon}</span>
+                          <span className="text-[10px] leading-tight whitespace-nowrap">{displayLabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
-                  <div>
-                    <label className="text-xs font-mono text-zinc-400 block mb-1">Lineage / Race Name</label>
-                    <input
-                      type="text"
-                      value={player.race || ""}
-                      onChange={(e) => handleCustomRaceChange(e.target.value)}
-                      placeholder="e.g. Human, Lycan, Void Chimera..."
-                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between gap-1 mb-1">
-                      <label className="text-xs font-mono text-zinc-400 truncate">Anatomical Traits</label>
-                      <span className="text-[10px] text-zinc-500 font-mono">Comma-separated</span>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 items-end">
+                    <div>
+                      <label className="text-xs font-mono text-zinc-400 block mb-1">Lineage / Race Name</label>
+                      <input
+                        type="text"
+                        value={player.race || ""}
+                        onChange={(e) => handleCustomRaceChange(e.target.value)}
+                        placeholder="e.g. Human, Lycan, Void Chimera..."
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
+                      />
                     </div>
-                    <input
-                      type="text"
-                      value={racialTraitsInput}
-                      onChange={(e) => handleRacialTraitsChange(e.target.value)}
-                      placeholder="e.g. sharp canine fangs, silver eyes..."
-                      className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
-                    />
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <label className="text-xs font-mono text-zinc-400 truncate">Anatomical Traits</label>
+                        <span className="text-[10px] text-zinc-500 font-mono">Comma-separated</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={racialTraitsInput}
+                        onChange={(e) => handleRacialTraitsChange(e.target.value)}
+                        placeholder="e.g. sharp canine fangs, silver eyes..."
+                        className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2 text-sm text-white focus:border-amber-500 focus:outline-none font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
               )}
 
               {/* CHARACTER DEMEANOR & CRAFTED PERSONA */}
@@ -11000,11 +11031,10 @@ export default function VisualNovelGame() {
                         key={p.id}
                         type="button"
                         onClick={() => handleSelectPersonalityPreset(p)}
-                        className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                          isSelected
-                            ? "bg-rose-950/40 border-rose-500/80 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
-                            : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                        }`}
+                        className={`px-1.5 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${isSelected
+                          ? "bg-rose-950/40 border-rose-500/80 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
+                          : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                          }`}
                         title={p.description}
                       >
                         <span className="text-base leading-none">{p.icon}</span>
@@ -11051,12 +11081,12 @@ export default function VisualNovelGame() {
                     {currentStory.id === "sovereign-spire"
                       ? "Matriculation Origin & Standing"
                       : currentStory.id === "port-solaris"
-                      ? "Proprietor Background & Lease Stakes"
-                      : currentStory.id === "starfall-labyrinth"
-                      ? "Summoned Origin & Master Account"
-                      : currentStory.id === "ash-and-velvet"
-                      ? "Your Backstory"
-                      : "World Origin"}{" "}
+                        ? "Proprietor Background & Lease Stakes"
+                        : currentStory.id === "starfall-labyrinth"
+                          ? "Summoned Origin & Master Account"
+                          : currentStory.id === "ash-and-velvet"
+                            ? "Your Backstory"
+                            : "World Origin"}{" "}
                     →
                   </span>
                 </button>
@@ -11078,24 +11108,24 @@ export default function VisualNovelGame() {
                         {currentStory.id === "sovereign-spire"
                           ? "Matriculation Origin & Blood-Ledger Standing"
                           : currentStory.id === "port-solaris"
-                          ? "Proprietor Background & The Stray Anchor Lease Stakes"
-                          : currentStory.id === "starfall-labyrinth"
-                          ? "Summoned Origin & Master Account Standing"
-                          : currentStory.id === "ash-and-velvet"
-                          ? "Your Backstory & Move-In Situation"
-                          : "World Origin & System Familiarity"}
+                            ? "Proprietor Background & The Stray Anchor Lease Stakes"
+                            : currentStory.id === "starfall-labyrinth"
+                              ? "Summoned Origin & Master Account Standing"
+                              : currentStory.id === "ash-and-velvet"
+                                ? "Your Backstory & Move-In Situation"
+                                : "World Origin & System Familiarity"}
                       </span>
                     </label>
                     <p className="text-xs text-zinc-400 font-sans mt-1 leading-relaxed">
                       {currentStory.id === "sovereign-spire"
                         ? "Select how you were enrolled into the Sovereign Spire. Each origin shapes your starting Matriculation Rank (#500–#1), semester Aether Core debt quota, faculty scrutiny, and which Heroines naturally trust or test you in Act I."
                         : currentStory.id === "port-solaris"
-                        ? "Select how you inherited the deed and debt to The Stray Anchor in Driftwood Cove. Each background shapes your starting Solar Crowns, weekly rent quota, island reputation, and which Heroines naturally gravitate toward your boarding house."
-                        : currentStory.id === "starfall-labyrinth"
-                        ? "Select how your consciousness was pulled into Celestia Summons as a 1★ Lv.1 hero. Shapes your starting Star Shards (for Main Lobby summons), Unseen Master trust, meta-knowledge floor ceiling, and opening squad synergy."
-                        : currentStory.id === "ash-and-velvet"
-                        ? "Choose how you ended up knocking on Clara Callahan's porch at 412 Maplewood Ave. Shapes your starting cash on hand, monthly rent pressure, and which housemates click with you first."
-                        : "Choose how you entered this world and how deeply you understand the System and its factions."}
+                          ? "Select how you inherited the deed and debt to The Stray Anchor in Driftwood Cove. Each background shapes your starting Solar Crowns, weekly rent quota, island reputation, and which Heroines naturally gravitate toward your boarding house."
+                          : currentStory.id === "starfall-labyrinth"
+                            ? "Select how your consciousness was pulled into Celestia Summons as a 1★ Lv.1 hero. Shapes your starting Star Shards (for Main Lobby summons), Unseen Master trust, meta-knowledge floor ceiling, and opening squad synergy."
+                            : currentStory.id === "ash-and-velvet"
+                              ? "Choose how you ended up knocking on Clara Callahan's porch at 412 Maplewood Ave. Shapes your starting cash on hand, monthly rent pressure, and which housemates click with you first."
+                              : "Choose how you entered this world and how deeply you understand the System and its factions."}
                     </p>
                   </div>
                   {hasCustomWorldPresets(currentStory.id) && (
@@ -11104,10 +11134,10 @@ export default function VisualNovelGame() {
                         {currentStory.id === "port-solaris"
                           ? `0★ Probation • ${player.semesterDebtQuota || 1200} Crowns Rent`
                           : currentStory.id === "starfall-labyrinth"
-                          ? `1★ Cap Lv.20 • 💠 ${player.labyrinthState?.starShards ?? 60} Shards`
-                          : currentStory.id === "ash-and-velvet"
-                          ? `Attic Room • $${player.semesterDebtQuota || 450}/mo Rent • $${player.gold ?? 65} Cash`
-                          : `Rank #${player.matriculationRank || 488} • ${player.semesterDebtQuota || 400} Core Quota`}
+                            ? `1★ Cap Lv.20 • 💠 ${player.labyrinthState?.starShards ?? 60} Shards`
+                            : currentStory.id === "ash-and-velvet"
+                              ? `Attic Room • $${player.semesterDebtQuota || 450}/mo Rent • $${player.gold ?? 65} Cash`
+                              : `Rank #${player.matriculationRank || 488} • ${player.semesterDebtQuota || 400} Core Quota`}
                       </span>
                     </div>
                   )}
@@ -11127,11 +11157,10 @@ export default function VisualNovelGame() {
                               key={o.id}
                               type="button"
                               onClick={() => handleSelectWorldOriginPreset(o)}
-                              className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${
-                                isSelected
-                                  ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
-                                  : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
-                              }`}
+                              className={`px-2 py-2 rounded-xl border text-xs font-mono transition-all flex flex-col items-center justify-center gap-1 cursor-pointer text-center ${isSelected
+                                ? "bg-emerald-950/40 border-emerald-500/80 text-emerald-200 shadow-md ring-1 ring-emerald-500/30 font-bold"
+                                : "bg-zinc-900/80 border-white/5 text-zinc-400 hover:border-white/20 hover:text-zinc-200"
+                                }`}
                               title={o.description}
                             >
                               <span className="text-base leading-none">{o.icon}</span>
@@ -11163,11 +11192,10 @@ export default function VisualNovelGame() {
                               key={so.id}
                               type="button"
                               onClick={() => handleSelectSovereignOriginPreset(so)}
-                              className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
-                                isSelected
-                                  ? "bg-emerald-950/50 border-emerald-400 text-white shadow-xl ring-1 ring-emerald-400/40"
-                                  : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
-                              }`}
+                              className={`p-3.5 sm:p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${isSelected
+                                ? "bg-emerald-950/50 border-emerald-400 text-white shadow-xl ring-1 ring-emerald-400/40"
+                                : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-emerald-500/40"
+                                }`}
                             >
                               <div className="space-y-2">
                                 <div className="space-y-1.5">
@@ -11188,10 +11216,10 @@ export default function VisualNovelGame() {
                                   {currentStory.id === "port-solaris"
                                     ? `Rent: ${so.semesterDebtQuota} Crowns`
                                     : currentStory.id === "starfall-labyrinth"
-                                    ? `Memory: F1–F${(so as StarfallOriginPreset).metaKnowledgeCeiling ?? 40}`
-                                    : currentStory.id === "ash-and-velvet"
-                                    ? `Rent: $${so.semesterDebtQuota}/mo`
-                                    : `Quota: ${so.semesterDebtQuota} Cores`}
+                                      ? `Memory: F1–F${(so as StarfallOriginPreset).metaKnowledgeCeiling ?? 40}`
+                                      : currentStory.id === "ash-and-velvet"
+                                        ? `Rent: $${so.semesterDebtQuota}/mo`
+                                        : `Quota: ${so.semesterDebtQuota} Cores`}
                                 </span>
                                 <span className="text-amber-300 font-bold">
                                   {currentStory.id === "ash-and-velvet"
@@ -11350,12 +11378,12 @@ export default function VisualNovelGame() {
                     {currentStory.id === "sovereign-spire"
                       ? "Conduit, Wing & Relic Loadout"
                       : currentStory.id === "port-solaris"
-                      ? "Flair Conduit, Faction & Keepsakes"
-                      : currentStory.id === "starfall-labyrinth"
-                      ? "1★ Squad Role & Deployment Kit"
-                      : currentStory.id === "ash-and-velvet"
-                      ? "Vibe & Approach"
-                      : "Class & Arsenal"}{" "}
+                        ? "Flair Conduit, Faction & Keepsakes"
+                        : currentStory.id === "starfall-labyrinth"
+                          ? "1★ Squad Role & Deployment Kit"
+                          : currentStory.id === "ash-and-velvet"
+                            ? "Vibe & Approach"
+                            : "Class & Arsenal"}{" "}
                     →
                   </span>
                 </button>
@@ -11381,10 +11409,10 @@ export default function VisualNovelGame() {
                             {currentStory.id === "port-solaris"
                               ? "Showdown Flair Conduit & Island Faction"
                               : currentStory.id === "starfall-labyrinth"
-                              ? "1★ Squad Combat Role & Labyrinth Faction"
-                              : currentStory.id === "ash-and-velvet"
-                              ? "Your Vibe & House Dynamic"
-                              : "Dual-Conduit & Patron Wing Doctrine"}
+                                ? "1★ Squad Combat Role & Labyrinth Faction"
+                                : currentStory.id === "ash-and-velvet"
+                                  ? "Your Vibe & House Dynamic"
+                                  : "Dual-Conduit & Patron Wing Doctrine"}
                           </span>
                         </label>
                         <p className="text-xs text-zinc-400 font-sans mt-0.5 leading-relaxed">
@@ -11406,11 +11434,10 @@ export default function VisualNovelGame() {
                             key={preset.id}
                             type="button"
                             onClick={() => handleSelectSovereignConduitPreset(preset)}
-                            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                              isSelected
-                                ? "bg-amber-950/50 border-amber-400 text-white shadow-xl ring-1 ring-amber-400/35"
-                                : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-amber-500/40"
-                            }`}
+                            className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${isSelected
+                              ? "bg-amber-950/50 border-amber-400 text-white shadow-xl ring-1 ring-amber-400/35"
+                              : "bg-zinc-900/85 border-white/10 text-zinc-300 hover:border-amber-500/40"
+                              }`}
                           >
                             <div>
                               <div className="flex items-center justify-between gap-2 mb-1">
@@ -11450,8 +11477,8 @@ export default function VisualNovelGame() {
                   {currentStory.id === "ash-and-velvet"
                     ? "Your Day Job / House Role (Editable)"
                     : hasCustomWorldPresets(currentStory.id)
-                    ? "Active Specialty / Conduit Title (Editable)"
-                    : "Custom Class / Archetype"}
+                      ? "Active Specialty / Conduit Title (Editable)"
+                      : "Custom Class / Archetype"}
                 </label>
                 <input
                   type="text"
@@ -11482,10 +11509,10 @@ export default function VisualNovelGame() {
                     const shortTitle = customDef
                       ? customDef.split("(")[0].trim()
                       : stat === "str"
-                      ? "Strength"
-                      : stat === "dex"
-                      ? "Dexterity"
-                      : "Intelligence";
+                        ? "Strength"
+                        : stat === "dex"
+                          ? "Dexterity"
+                          : "Intelligence";
                     return (
                       <div
                         key={stat}
@@ -11536,11 +11563,10 @@ export default function VisualNovelGame() {
                     <button
                       type="button"
                       onClick={() => setGearPreference("canon")}
-                      className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                        gearPreference === "canon"
-                          ? "bg-indigo-900/50 border-indigo-400 text-indigo-100 shadow-md ring-1 ring-indigo-400/30 font-bold"
-                          : "bg-zinc-900 border-white/10 text-zinc-400 hover:border-white/30"
-                      }`}
+                      className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${gearPreference === "canon"
+                        ? "bg-indigo-900/50 border-indigo-400 text-indigo-100 shadow-md ring-1 ring-indigo-400/30 font-bold"
+                        : "bg-zinc-900 border-white/10 text-zinc-400 hover:border-white/30"
+                        }`}
                     >
                       <Swords className="w-3.5 h-3.5 text-indigo-400" />
                       <span>
@@ -11551,11 +11577,10 @@ export default function VisualNovelGame() {
                   <button
                     type="button"
                     onClick={() => setGearPreference("system")}
-                    className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      gearPreference === "system"
-                        ? "bg-rose-900/40 border-rose-500 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
-                        : "bg-zinc-900 border-white/10 text-zinc-500 hover:border-white/30"
-                    }`}
+                    className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${gearPreference === "system"
+                      ? "bg-rose-900/40 border-rose-500 text-rose-200 shadow-md ring-1 ring-rose-500/30 font-bold"
+                      : "bg-zinc-900 border-white/10 text-zinc-500 hover:border-white/30"
+                      }`}
                   >
                     <Sparkles className="w-3.5 h-3.5 text-rose-400" />
                     <span>
@@ -11567,11 +11592,10 @@ export default function VisualNovelGame() {
                   <button
                     type="button"
                     onClick={() => setGearPreference("none")}
-                    className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                      gearPreference === "none"
-                        ? "bg-amber-900/40 border-amber-500 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
-                        : "bg-zinc-900 border-white/10 text-zinc-500 hover:border-white/30"
-                    }`}
+                    className={`py-2.5 px-3 text-xs font-mono rounded-xl border transition-all cursor-pointer flex items-center justify-center gap-2 ${gearPreference === "none"
+                      ? "bg-amber-900/40 border-amber-500 text-amber-200 shadow-md ring-1 ring-amber-500/30 font-bold"
+                      : "bg-zinc-900 border-white/10 text-zinc-500 hover:border-white/30"
+                      }`}
                   >
                     <Shield className="w-3.5 h-3.5 text-amber-400" />
                     <span>
@@ -11661,8 +11685,8 @@ export default function VisualNovelGame() {
                         {isRollingAbilities
                           ? "Generating..."
                           : currentStory.id === "ash-and-velvet"
-                          ? "Roll Custom Moves"
-                          : "Roll Custom Abilities"}
+                            ? "Roll Custom Moves"
+                            : "Roll Custom Abilities"}
                       </span>
                     </button>
                   </div>
@@ -11770,10 +11794,10 @@ export default function VisualNovelGame() {
                   : undefined;
                 const isResonant = Boolean(
                   activeNode &&
-                    (activeNode.id === "prologue_act1_seal_gate" ||
-                      activeNode.id === "prologue_act1_article9_wager" ||
-                      activeNode.id === "prologue_starfall_synthesis_bench" ||
-                      activeOrigin.highResonanceHeroines.includes(activeNode.speaker))
+                  (activeNode.id === "prologue_act1_seal_gate" ||
+                    activeNode.id === "prologue_act1_article9_wager" ||
+                    activeNode.id === "prologue_starfall_synthesis_bench" ||
+                    activeOrigin.highResonanceHeroines.includes(activeNode.speaker))
                 );
 
                 return (
@@ -11842,12 +11866,12 @@ export default function VisualNovelGame() {
                         {currentStory.id === "sovereign-spire"
                           ? "Act I Introduction Scenario & Dyad Partner"
                           : currentStory.id === "port-solaris"
-                          ? "Act I Opening Scenario & Boarding House Heroine"
-                          : currentStory.id === "starfall-labyrinth"
-                          ? "Act I Star Gate Arrival & Starting Squadmate"
-                          : currentStory.id === "ash-and-velvet"
-                          ? "Pick Your Opening Scene & Housemate"
-                          : "Select Starting Scenario & Companion"}
+                            ? "Act I Opening Scenario & Boarding House Heroine"
+                            : currentStory.id === "starfall-labyrinth"
+                              ? "Act I Star Gate Arrival & Starting Squadmate"
+                              : currentStory.id === "ash-and-velvet"
+                                ? "Pick Your Opening Scene & Housemate"
+                                : "Select Starting Scenario & Companion"}
                       </span>
                     </label>
                     {hasCustomWorldPresets(currentStory.id) && (
@@ -11874,8 +11898,8 @@ export default function VisualNovelGame() {
                       currentStory.id === "port-solaris"
                         ? PORT_SOLARIS_HEROINE_DOSSIERS[p.speaker]
                         : currentStory.id === "sovereign-spire"
-                        ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
-                        : undefined;
+                          ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
+                          : undefined;
                     const avDossier =
                       currentStory.id === "ash-and-velvet"
                         ? getWorldPresets("ash-and-velvet")?.heroineDossiers[p.speaker]
@@ -11895,16 +11919,16 @@ export default function VisualNovelGame() {
                     const originPool = activeWorldPreset ? activeWorldPreset.origins : SOVEREIGN_ORIGIN_PRESETS;
                     const activeOriginPreset = activeWorldPreset
                       ? originPool.find(
-                          (so) =>
-                            so.id === selectedWorldOriginPreset ||
-                            so.id === player.sovereignOrigin
-                        )
+                        (so) =>
+                          so.id === selectedWorldOriginPreset ||
+                          so.id === player.sovereignOrigin
+                      )
                       : undefined;
                     const isOriginResonant = Boolean(
                       activeOriginPreset &&
-                        (isColdOpen ||
-                          isEntranceCeremony ||
-                          activeOriginPreset.highResonanceHeroines.includes(p.speaker))
+                      (isColdOpen ||
+                        isEntranceCeremony ||
+                        activeOriginPreset.highResonanceHeroines.includes(p.speaker))
                     );
                     const spriteUrl = getSpriteSrc(
                       p.speaker,
@@ -11919,15 +11943,13 @@ export default function VisualNovelGame() {
                           soundEffects.playClick();
                           setSelectedPrologue(i);
                         }}
-                        className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                          isSelected
-                            ? "bg-rose-950/45 border-rose-500 text-white shadow-lg ring-1 ring-rose-500/35"
-                            : "bg-zinc-950/90 border-white/10 text-zinc-400 hover:border-white/25"
-                        } ${
-                          isColdOpen || isEntranceCeremony
+                        className={`p-3.5 text-left rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${isSelected
+                          ? "bg-rose-950/45 border-rose-500 text-white shadow-lg ring-1 ring-rose-500/35"
+                          : "bg-zinc-950/90 border-white/10 text-zinc-400 hover:border-white/25"
+                          } ${isColdOpen || isEntranceCeremony
                             ? "sm:col-span-2 bg-gradient-to-r from-rose-950/50 via-zinc-950/95 to-amber-950/40"
                             : ""
-                        }`}
+                          }`}
                       >
                         <div className="flex items-start gap-3">
                           {ensembleHeroines ? (
@@ -11984,8 +12006,8 @@ export default function VisualNovelGame() {
                                     {sfDossier
                                       ? `${sfDossier.baseStarRank}★ ${sfDossier.combatRole.split("&")[0].trim()}`
                                       : avDossier
-                                      ? avDossier.roomLabel || "412 Maplewood"
-                                      : dossier!.conduit.replace(/_/g, " ")}
+                                        ? avDossier.roomLabel || "412 Maplewood"
+                                        : dossier!.conduit.replace(/_/g, " ")}
                                   </span>
                                 )}
                               </div>
@@ -12023,15 +12045,15 @@ export default function VisualNovelGame() {
                               ? currentStory.id === "port-solaris"
                                 ? "All 4 Island Factions Present • 30-Day Star Audit & Roommate Stampede"
                                 : currentStory.id === "ash-and-velvet"
-                                ? `Featuring ${ensembleHeroines.join(" & ")}`
-                                : "All 4 Patron Wings Present • High Sovereign Vane & Proctor Sallow Presiding"
+                                  ? `Featuring ${ensembleHeroines.join(" & ")}`
+                                  : "All 4 Patron Wings Present • High Sovereign Vane & Proctor Sallow Presiding"
                               : sfDossier
-                              ? `Hook: ${sfDossier.actOneConflict}`
-                              : avDossier
-                              ? `${avDossier.actOneConflict}`
-                              : dossier
-                              ? `Hook: ${dossier.rivalBossTieIn}`
-                              : `Companion: ${p.speaker}`}
+                                ? `Hook: ${sfDossier.actOneConflict}`
+                                : avDossier
+                                  ? `${avDossier.actOneConflict}`
+                                  : dossier
+                                    ? `Hook: ${dossier.rivalBossTieIn}`
+                                    : `Companion: ${p.speaker}`}
                           </span>
                           <span className="text-rose-300/90 shrink-0 ml-2">
                             {p.choices.length} {currentStory.id === "ash-and-velvet" ? "Opening Moves" : "Entry Vectors"}
@@ -12060,7 +12082,7 @@ export default function VisualNovelGame() {
                           <span className="text-[11px] font-mono text-rose-300">
                             Location: {activeNode.location} •{" "}
                             {Array.isArray(activeNode.presentCompanions) &&
-                            activeNode.presentCompanions.length > 1
+                              activeNode.presentCompanions.length > 1
                               ? `In Scene: ${activeNode.presentCompanions.join(", ")}`
                               : `With: ${activeNode.speaker}`}
                           </span>
@@ -12166,7 +12188,7 @@ export default function VisualNovelGame() {
 
                 <div className="flex-1">
                   {gearPreference === "canon" &&
-                  hasCustomWorldPresets(currentStory.id) ? (
+                    hasCustomWorldPresets(currentStory.id) ? (
                     <button
                       onClick={handleStartWithCanonWingLoadout}
                       className={
@@ -12183,10 +12205,10 @@ export default function VisualNovelGame() {
                       {currentStory.id === "port-solaris"
                         ? "Open The Stray Anchor (Equip Canon Faction Loadout) →"
                         : currentStory.id === "starfall-labyrinth"
-                        ? "Materialize at Star Gate Plaza (Equip 1★ Squad Kit) →"
-                        : currentStory.id === "ash-and-velvet"
-                        ? "Move Into 412 Maplewood Ave →"
-                        : "Enter The Sovereign Spire (Equip Canon Wing Loadout) →"}
+                          ? "Materialize at Star Gate Plaza (Equip 1★ Squad Kit) →"
+                          : currentStory.id === "ash-and-velvet"
+                            ? "Move Into 412 Maplewood Ave →"
+                            : "Enter The Sovereign Spire (Equip Canon Wing Loadout) →"}
                     </button>
                   ) : gearPreference === "system" ? (
                     <button
@@ -12235,17 +12257,15 @@ export default function VisualNovelGame() {
   }
 
   return (
-    <div className={`relative h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-zinc-950 font-sans transition-all duration-300 ease-out ${
-      pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
-    }`}>
-      
-      <div 
+    <div className={`relative h-[100dvh] min-h-[100dvh] max-h-[100dvh] w-screen overflow-hidden bg-zinc-950 font-sans transition-all duration-300 ease-out ${pageLoaded && !screenTransition.isOpen ? "opacity-100 scale-100" : "opacity-0 scale-[0.99]"
+      }`}>
+
+      <div
         key={getLocationBg(gameState.location) || gameState.bgImage}
-        className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out pointer-events-none select-none ${
-          currentStory.id === "ash-and-velvet"
-            ? "blur-2xl brightness-[0.20] scale-110"
-            : "brightness-75 contrast-105"
-        }`}
+        className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out pointer-events-none select-none ${currentStory.id === "ash-and-velvet"
+          ? "blur-2xl brightness-[0.20] scale-110"
+          : "brightness-75 contrast-105"
+          }`}
         style={{ backgroundImage: `url("${getLocationBg(gameState.location) || gameState.bgImage}")` }}
       />
       <div
@@ -12302,13 +12322,12 @@ export default function VisualNovelGame() {
             />
           )}
           <div
-            className={`relative px-4 py-1.5 rounded-2xl border backdrop-blur-xl font-mono text-xs font-black tracking-wider shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200 ${
-              vitalsFeedback.hpDelta < 0
-                ? "bg-red-950/95 border-red-500 text-red-100 shadow-[0_0_30px_rgba(239,68,68,0.5)]"
-                : vitalsFeedback.hpDelta > 0
+            className={`relative px-4 py-1.5 rounded-2xl border backdrop-blur-xl font-mono text-xs font-black tracking-wider shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-top-3 duration-200 ${vitalsFeedback.hpDelta < 0
+              ? "bg-red-950/95 border-red-500 text-red-100 shadow-[0_0_30px_rgba(239,68,68,0.5)]"
+              : vitalsFeedback.hpDelta > 0
                 ? "bg-emerald-950/95 border-emerald-400 text-emerald-100 shadow-[0_0_25px_rgba(16,185,129,0.4)]"
                 : "bg-sky-950/95 border-sky-400 text-sky-100 shadow-[0_0_25px_rgba(56,189,248,0.4)]"
-            }`}
+              }`}
           >
             {vitalsFeedback.hpDelta !== 0 && (
               <span className="flex items-center gap-1">
@@ -12358,28 +12377,26 @@ export default function VisualNovelGame() {
             {/* Compact Mobile Player Pill */}
             <button
               onClick={() => setShowPlayerSheet(true)}
-              className={`relative h-9 px-2 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border shadow-lg flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
-                vitalsFeedback && vitalsFeedback.hpDelta < 0
-                  ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
-                  : vitalsFeedback && vitalsFeedback.hpDelta > 0
+              className={`relative h-9 px-2 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border shadow-lg flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${vitalsFeedback && vitalsFeedback.hpDelta < 0
+                ? "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.6)]"
+                : vitalsFeedback && vitalsFeedback.hpDelta > 0
                   ? "border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.4)]"
                   : player.stats.hp <= player.stats.maxHp * 0.35
-                  ? "border-red-500/70 shadow-[0_0_12px_rgba(239,68,68,0.3)]"
-                  : "border-white/10 hover:border-rose-500/50"
-              }`}
+                    ? "border-red-500/70 shadow-[0_0_12px_rgba(239,68,68,0.3)]"
+                    : "border-white/10 hover:border-rose-500/50"
+                }`}
               title="Open Character Sheet"
             >
               {/* Floating Delta Badge */}
               {vitalsFeedback && (
                 <div
                   key={`mobile_hud_delta_${vitalsFeedback.id}`}
-                  className={`pointer-events-none absolute -bottom-6 left-1 z-30 px-1.5 py-0.5 rounded-md border font-mono text-[9px] font-black shadow-xl animate-bounce ${
-                    vitalsFeedback.hpDelta < 0
-                      ? "bg-red-950 border-red-400 text-red-200"
-                      : vitalsFeedback.hpDelta > 0
+                  className={`pointer-events-none absolute -bottom-6 left-1 z-30 px-1.5 py-0.5 rounded-md border font-mono text-[9px] font-black shadow-xl animate-bounce ${vitalsFeedback.hpDelta < 0
+                    ? "bg-red-950 border-red-400 text-red-200"
+                    : vitalsFeedback.hpDelta > 0
                       ? "bg-emerald-950 border-emerald-400 text-emerald-200"
                       : "bg-sky-950 border-sky-400 text-sky-200"
-                  }`}
+                    }`}
                 >
                   {vitalsFeedback.hpDelta !== 0
                     ? `${vitalsFeedback.hpDelta > 0 ? "+" : ""}${vitalsFeedback.hpDelta} HP`
@@ -12431,11 +12448,10 @@ export default function VisualNovelGame() {
                 {/* Mini EXP progress track */}
                 <div className="w-12 h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
                   <div
-                    className={`h-full transition-all duration-700 ${
-                      expFeedback
-                        ? "bg-gradient-to-r from-amber-400 to-yellow-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
-                        : "bg-gradient-to-r from-amber-600 to-yellow-500"
-                    }`}
+                    className={`h-full transition-all duration-700 ${expFeedback
+                      ? "bg-gradient-to-r from-amber-400 to-yellow-300 shadow-[0_0_8px_rgba(245,158,11,0.8)]"
+                      : "bg-gradient-to-r from-amber-600 to-yellow-500"
+                      }`}
                     style={{
                       width: `${Math.max(0, Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100))}%`,
                     }}
@@ -12482,11 +12498,10 @@ export default function VisualNovelGame() {
                 soundEffects.playClick();
                 setShowSystemModal(true);
               }}
-              className={`w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative ${
-                systemState.activeQuests.length > 0
-                  ? "border-rose-500/60 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
-                  : "border-white/10 text-zinc-300"
-              }`}
+              className={`w-9 h-9 rounded-xl bg-black/85 hover:bg-black/95 backdrop-blur-md border flex items-center justify-center cursor-pointer active:scale-95 shadow-lg shrink-0 relative ${systemState.activeQuests.length > 0
+                ? "border-rose-500/60 text-rose-300 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                : "border-white/10 text-zinc-300"
+                }`}
               title="Open System Administrator Interface & Quests"
             >
               <Terminal className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
@@ -12537,28 +12552,26 @@ export default function VisualNovelGame() {
             {/* Character Identity & Status Card with Live Vitals Bars & Hit Feedback */}
             <button
               onClick={() => setShowPlayerSheet(true)}
-              className={`relative flex items-center gap-1.5 sm:gap-2 bg-black/85 hover:bg-black/95 backdrop-blur-md p-1 pr-2.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group shrink-0 overflow-hidden max-w-[220px] lg:max-w-[250px] xl:max-w-[285px] ${
-                vitalsFeedback && vitalsFeedback.hpDelta < 0
-                  ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
-                  : vitalsFeedback && vitalsFeedback.hpDelta > 0
+              className={`relative flex items-center gap-1.5 sm:gap-2 bg-black/85 hover:bg-black/95 backdrop-blur-md p-1 pr-2.5 rounded-2xl border shadow-lg text-xs text-zinc-200 transition-all cursor-pointer group shrink-0 overflow-hidden max-w-[220px] lg:max-w-[250px] xl:max-w-[285px] ${vitalsFeedback && vitalsFeedback.hpDelta < 0
+                ? "border-red-500 shadow-[0_0_25px_rgba(239,68,68,0.65)] translate-x-[2px]"
+                : vitalsFeedback && vitalsFeedback.hpDelta > 0
                   ? "border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.45)]"
                   : player.stats.hp <= player.stats.maxHp * 0.35
-                  ? "border-red-500/70 shadow-[0_0_16px_rgba(239,68,68,0.3)]"
-                  : "border-white/10 hover:border-rose-500/50"
-              }`}
+                    ? "border-red-500/70 shadow-[0_0_16px_rgba(239,68,68,0.3)]"
+                    : "border-white/10 hover:border-rose-500/50"
+                }`}
               title={`Open Character Sheet & Inventory (${player.name} — Lv.${player.level} ${player.race ? `${player.race} ` : ""}${player.role})`}
             >
               {/* Floating Delta Badge on Top HUD Player Card */}
               {vitalsFeedback && (
                 <div
                   key={`hud_delta_${vitalsFeedback.id}`}
-                  className={`pointer-events-none absolute -bottom-6 left-2 z-30 px-2 py-0.5 rounded-lg border font-mono text-[10px] font-black shadow-xl animate-bounce ${
-                    vitalsFeedback.hpDelta < 0
-                      ? "bg-red-950 border-red-400 text-red-200"
-                      : vitalsFeedback.hpDelta > 0
+                  className={`pointer-events-none absolute -bottom-6 left-2 z-30 px-2 py-0.5 rounded-lg border font-mono text-[10px] font-black shadow-xl animate-bounce ${vitalsFeedback.hpDelta < 0
+                    ? "bg-red-950 border-red-400 text-red-200"
+                    : vitalsFeedback.hpDelta > 0
                       ? "bg-emerald-950 border-emerald-400 text-emerald-200"
                       : "bg-sky-950 border-sky-400 text-sky-200"
-                  }`}
+                    }`}
                 >
                   {vitalsFeedback.hpDelta !== 0
                     ? `${vitalsFeedback.hpDelta > 0 ? "+" : ""}${vitalsFeedback.hpDelta} HP`
@@ -12615,85 +12628,83 @@ export default function VisualNovelGame() {
                   );
                 })()
               ) : (
-              <div className="flex flex-col gap-0.5 pl-1 min-w-[64px] sm:min-w-[74px] shrink-0">
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
-                    <span className="flex items-center gap-1 text-rose-400 font-bold">
-                      <Heart className="w-2.5 h-2.5 fill-rose-500" />
-                      {player.stats.hp}/{player.stats.maxHp}
-                    </span>
-                  </div>
-                  <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                    <div
-                      className={`h-full transition-all duration-300 ${
-                        player.stats.hp <= player.stats.maxHp * 0.35
+                <div className="flex flex-col gap-0.5 pl-1 min-w-[64px] sm:min-w-[74px] shrink-0">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
+                      <span className="flex items-center gap-1 text-rose-400 font-bold">
+                        <Heart className="w-2.5 h-2.5 fill-rose-500" />
+                        {player.stats.hp}/{player.stats.maxHp}
+                      </span>
+                    </div>
+                    <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                      <div
+                        className={`h-full transition-all duration-300 ${player.stats.hp <= player.stats.maxHp * 0.35
                           ? "bg-gradient-to-r from-red-600 to-rose-400 animate-pulse"
                           : "bg-gradient-to-r from-rose-600 to-emerald-400"
-                      }`}
-                      style={{
-                        width: `${Math.max(
-                          0,
-                          Math.min(100, (player.stats.hp / Math.max(1, player.stats.maxHp)) * 100)
-                        )}%`,
-                      }}
-                    />
+                          }`}
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(100, (player.stats.hp / Math.max(1, player.stats.maxHp)) * 100)
+                          )}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
-                    <span className="flex items-center gap-1 text-sky-400 font-bold">
-                      <Zap className="w-2.5 h-2.5 fill-sky-500" />
-                      {player.stats.mp}/{player.stats.maxMp}
-                    </span>
-                  </div>
-                  <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
-                    <div
-                      className="h-full bg-gradient-to-r from-sky-600 to-cyan-400 transition-all duration-300"
-                      style={{
-                        width: `${Math.max(
-                          0,
-                          Math.min(100, (player.stats.mp / Math.max(1, player.stats.maxMp)) * 100)
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-0.5">
-                  <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
-                    <span className="flex items-center gap-1 text-amber-400 font-bold">
-                      <Sparkles className="w-2.5 h-2.5 text-amber-400" />
-                      {player.stats.exp}/{player.stats.maxExp}
-                    </span>
-                    {expFeedback && (
-                      <span
-                        className="text-[9px] font-mono font-bold text-amber-300 animate-bounce drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]"
-                        title={expFeedback.reason || "Earned Experience"}
-                      >
-                        +{expFeedback.amount} EXP
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
+                      <span className="flex items-center gap-1 text-sky-400 font-bold">
+                        <Zap className="w-2.5 h-2.5 fill-sky-500" />
+                        {player.stats.mp}/{player.stats.maxMp}
                       </span>
-                    )}
+                    </div>
+                    <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10">
+                      <div
+                        className="h-full bg-gradient-to-r from-sky-600 to-cyan-400 transition-all duration-300"
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(100, (player.stats.mp / Math.max(1, player.stats.maxMp)) * 100)
+                          )}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
-                    <div
-                      className={`h-full transition-all duration-1000 ease-out relative ${
-                        expFeedback
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between gap-1 text-[9px] font-mono leading-none">
+                      <span className="flex items-center gap-1 text-amber-400 font-bold">
+                        <Sparkles className="w-2.5 h-2.5 text-amber-400" />
+                        {player.stats.exp}/{player.stats.maxExp}
+                      </span>
+                      {expFeedback && (
+                        <span
+                          className="text-[9px] font-mono font-bold text-amber-300 animate-bounce drop-shadow-[0_0_8px_rgba(245,158,11,0.9)]"
+                          title={expFeedback.reason || "Earned Experience"}
+                        >
+                          +{expFeedback.amount} EXP
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-full h-1 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative">
+                      <div
+                        className={`h-full transition-all duration-1000 ease-out relative ${expFeedback
                           ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 shadow-[0_0_12px_rgba(245,158,11,0.8)]"
                           : "bg-gradient-to-r from-amber-600 to-yellow-500"
-                      }`}
-                      style={{
-                        width: `${Math.max(
-                          0,
-                          Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100)
-                        )}%`,
-                      }}
-                    >
-                      {expFeedback && (
-                        <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#f59e0b] rounded-full animate-pulse" />
-                      )}
+                          }`}
+                        style={{
+                          width: `${Math.max(
+                            0,
+                            Math.min(100, (player.stats.exp / Math.max(1, player.stats.maxExp)) * 100)
+                          )}%`,
+                        }}
+                      >
+                        {expFeedback && (
+                          <div className="absolute right-0 top-0 bottom-0 w-1 bg-white shadow-[0_0_6px_#f59e0b] rounded-full animate-pulse" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
               )}
               {(player.unspentStatPoints || 0) > 0 && currentStory.id !== "ash-and-velvet" && (
                 <div className="hidden xl:flex items-center pl-1.5 border-l border-white/10 shrink-0">
@@ -12733,11 +12744,10 @@ export default function VisualNovelGame() {
                 soundEffects.playClick();
                 setShowSystemModal(true);
               }}
-              className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-2 lg:px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${
-                systemState.activeQuests.length > 0
-                  ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
-                  : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
-              }`}
+              className={`bg-black/80 hover:bg-black/95 backdrop-blur-md px-2 lg:px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${systemState.activeQuests.length > 0
+                ? "border-rose-500/60 text-rose-300 shadow-[0_0_18px_rgba(244,63,94,0.3)] hover:border-rose-400"
+                : "border-white/10 text-zinc-300 hover:border-rose-500/40 hover:text-white"
+                }`}
               title={currentStory.id === "ash-and-velvet" ? "Open Objectives & Story Journal" : "Open System Administrator Interface & Quests"}
             >
               {currentStory.id === "ash-and-velvet" ? (
@@ -12777,11 +12787,10 @@ export default function VisualNovelGame() {
                       soundEffects.playClick();
                       setShowSummonModal(true);
                     }}
-                    className={`backdrop-blur-md px-2 lg:px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${
-                      inLobby
-                        ? "bg-indigo-950/90 hover:bg-indigo-900/95 border-indigo-400/70 text-indigo-100 shadow-[0_0_18px_rgba(99,102,241,0.35)] hover:border-amber-300"
-                        : "bg-black/80 hover:bg-black/95 border-white/15 text-zinc-400 hover:border-white/30"
-                    }`}
+                    className={`backdrop-blur-md px-2 lg:px-2.5 py-1.5 rounded-2xl border transition-all cursor-pointer flex items-center gap-1.5 relative shadow-lg shrink-0 ${inLobby
+                      ? "bg-indigo-950/90 hover:bg-indigo-900/95 border-indigo-400/70 text-indigo-100 shadow-[0_0_18px_rgba(99,102,241,0.35)] hover:border-amber-300"
+                      : "bg-black/80 hover:bg-black/95 border-white/15 text-zinc-400 hover:border-white/30"
+                      }`}
                     title={
                       inLobby
                         ? `Open Star Gate Summoning Altar (${shards} Star Shards Available)`
@@ -12797,11 +12806,10 @@ export default function VisualNovelGame() {
                       SUMMON
                     </span>
                     <span
-                      className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full ${
-                        inLobby
-                          ? "bg-amber-500/25 border border-amber-300/60 text-amber-200"
-                          : "bg-zinc-800 text-zinc-400"
-                      }`}
+                      className={`px-1.5 py-0.2 text-[9px] font-mono font-bold rounded-full ${inLobby
+                        ? "bg-amber-500/25 border border-amber-300/60 text-amber-200"
+                        : "bg-zinc-800 text-zinc-400"
+                        }`}
                     >
                       💠 {shards}
                     </span>
@@ -13040,859 +13048,852 @@ export default function VisualNovelGame() {
               : "flex flex-col justify-end gap-1.5 sm:gap-2 flex-1 min-h-0"
           }
         >
-        {/* MOBILE VISUAL NOVEL SPOTLIGHT STAGE (< sm) — Hidden in Ash & Velvet since AshVelvetScenePanel renders responsively */}
-        {currentStory.id !== "ash-and-velvet" && !isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
-          <div className="sm:hidden relative flex-1 min-h-[80px] max-h-[24dvh] w-full flex items-end justify-center overflow-hidden pointer-events-none select-none -mb-2">
-            {presentComps.length === 0 ? (
-              <div className="relative h-full w-full flex items-end justify-center">
-                {playerAvatar && playerAvatar.trim() ? (
-                  <img
-                    src={playerAvatar}
-                    alt={player.name}
-                    onClick={(e) => handleOpenPlayerFullPortrait(e)}
-                    className="h-full w-auto max-w-[82vw] object-contain object-bottom filter drop-shadow-[0_10px_22px_rgba(0,0,0,0.92)] pointer-events-auto cursor-pointer"
-                  />
-                ) : (
-                  <div className="mb-3 px-3 py-1.5 rounded-full bg-black/75 border border-sky-500/35 text-sky-300 text-[10px] font-mono inline-flex items-center gap-1.5 shadow-lg">
-                    <Shield className="w-3 h-3 text-sky-400" />
-                    <span>{player.name} • Solo</span>
-                  </div>
-                )}
-              </div>
-            ) : (
-              (() => {
-                const mobileSpotlightComp =
-                  resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) || presentComps[0];
-                const mobileIsSpeaking = gameState.speaker.toLowerCase().includes(mobileSpotlightComp.name.toLowerCase());
-                const mobileSpriteSrc = getSpriteSrc(mobileSpotlightComp.name, mobileSpotlightComp.expressionKey);
-                return (
-                  <div className="relative h-full w-full flex items-end justify-center">
-                    <div
-                      className="absolute bottom-2 w-40 h-40 rounded-full blur-3xl pointer-events-none opacity-35"
-                      style={{ background: getStageHeroineAura(mobileSpotlightComp.name).background }}
-                    />
+          {/* MOBILE VISUAL NOVEL SPOTLIGHT STAGE (< sm) — Hidden in Ash & Velvet since AshVelvetScenePanel renders responsively */}
+          {currentStory.id !== "ash-and-velvet" && !isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
+            <div className="sm:hidden relative flex-1 min-h-[80px] max-h-[24dvh] w-full flex items-end justify-center overflow-hidden pointer-events-none select-none -mb-2">
+              {presentComps.length === 0 ? (
+                <div className="relative h-full w-full flex items-end justify-center">
+                  {playerAvatar && playerAvatar.trim() ? (
                     <img
-                      src={(mobileSpriteSrc && mobileSpriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
-                      alt={mobileSpotlightComp.name}
-                      decoding="async"
-                      onClick={() => {
-                        soundEffects.playClick();
-                        setSelectedCharacterCardComp(mobileSpotlightComp);
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
-                      }}
-                      className={`h-full w-auto max-w-[85vw] object-contain object-bottom filter drop-shadow-[0_10px_24px_rgba(0,0,0,0.95)] pointer-events-auto cursor-pointer transition-all duration-300 ${
-                        mobileIsSpeaking ? "scale-[1.02] brightness-105" : "opacity-95"
-                      }`}
+                      src={playerAvatar}
+                      alt={player.name}
+                      onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                      className="h-full w-auto max-w-[82vw] object-contain object-bottom filter drop-shadow-[0_10px_22px_rgba(0,0,0,0.92)] pointer-events-auto cursor-pointer"
                     />
-                    {presentComps.length > 1 && (
-                      <div className="absolute bottom-3 left-1 flex flex-col gap-1 pointer-events-auto max-h-[80%] overflow-y-auto no-scrollbar">
-                        {presentComps.slice(0, 4).map((comp) => {
-                          const isActive = comp.name === mobileSpotlightComp.name;
-                          return (
-                            <button
-                              key={comp.name}
-                              type="button"
-                              onClick={() => {
-                                soundEffects.playClick();
-                                setSpotlightHeroineName(comp.name);
-                              }}
-                              className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold border backdrop-blur-md transition-all cursor-pointer truncate max-w-[92px] ${
-                                isActive
-                                  ? "bg-rose-950/90 border-rose-400 text-rose-100 shadow-md"
-                                  : "bg-black/75 border-white/15 text-zinc-300"
-                              }`}
-                            >
-                              {comp.name.split(" ")[0]}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })()
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                soundEffects.playClick();
-                setIsMobileStageCollapsed(true);
-              }}
-              className="pointer-events-auto absolute bottom-3 right-1 px-2 py-1 rounded-full bg-black/80 border border-white/15 text-[9px] font-mono text-zinc-300 hover:text-white flex items-center gap-1 shadow-lg backdrop-blur-md"
-              title="Minimize portrait art for more story space"
-            >
-              <ChevronDown className="w-3 h-3 text-zinc-400" />
-              <span>Hide Art</span>
-            </button>
-          </div>
-        )}
-
-        {/* ASH & VELVET UPPER WIDESCREEN COMIC SCENE PANEL */}
-        {currentStory.id === "ash-and-velvet" && (
-          <AshVelvetScenePanel
-            bgImage={getLocationBg(gameState.location) || gameState.bgImage}
-            location={gameState.location}
-            mood={gameState.mood}
-            speaker={gameState.speaker}
-            houseState={
-              player.ashVelvetState ||
-              createInitialAshVelvetState(
-                currentStory.startingNodes?.[selectedPrologue]?.id,
-                player.gold ?? 65
-              )
-            }
-            presentCompanions={presentComps.map((p) => {
-              const storyDef = currentStory.companions?.find(
-                (sc) => sc.id === p.id || sc.name.toLowerCase() === p.name.toLowerCase()
-              );
-              return {
-                ...p,
-                wardrobeLabels: (p as any).wardrobeLabels || storyDef?.wardrobeLabels,
-                activeWardrobe: (p as any).activeWardrobe || storyDef?.activeWardrobe || "base",
-              };
-            })}
-            spotlightComp={(() => {
-              const rawSpot =
-                resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) ||
-                presentComps[0] ||
-                null;
-              if (!rawSpot) return null;
-              const storyDef = currentStory.companions?.find(
-                (sc) => sc.id === rawSpot.id || sc.name.toLowerCase() === rawSpot.name.toLowerCase()
-              );
-              return {
-                ...rawSpot,
-                wardrobeLabels: (rawSpot as any).wardrobeLabels || storyDef?.wardrobeLabels,
-                activeWardrobe: (rawSpot as any).activeWardrobe || storyDef?.activeWardrobe || "base",
-              };
-            })()}
-            playerName={player.name}
-            playerAvatar={playerAvatar}
-            getSpriteSrc={(name, expr) => getSpriteSrc(name, expr || "neutral")}
-            fallbackSprite={DEFAULT_FALLBACK_SPRITE}
-            lastDeltas={lastAshVelvetDeltas}
-            isCollapsed={isAshVelvetStageCollapsed}
-            onToggleCollapse={() => {
-              soundEffects.playClick();
-              setIsAshVelvetStageCollapsed((v) => !v);
-            }}
-            onOpenDossier={(comp) => {
-              soundEffects.playClick();
-              const fullComp =
-                party.find((p) => p.name.toLowerCase() === comp.name.toLowerCase()) || (comp as any);
-              setSelectedCharacterCardComp(fullComp);
-            }}
-            onOpenMap={() => {
-              soundEffects.playClick();
-              setShowMap(true);
-            }}
-            onIllustrateCg={() => handleGenerateSceneCG(false)}
-            onChangeWardrobe={(compName, nextW) => {
-              soundEffects.playClick();
-              setParty((prev) =>
-                prev.map((p) =>
-                  p.name.toLowerCase() === compName.toLowerCase()
-                    ? { ...p, activeWardrobe: nextW }
-                    : p
-                )
-              );
-            }}
-          />
-        )}
-
-        <div
-          className={
-            currentStory.id === "ash-and-velvet"
-              ? "pointer-events-auto relative bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] overflow-hidden flex flex-col flex-1 min-h-[140px]"
-              : `pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 ${
-                  activeClash?.isActive || player.labyrinthState?.activeEncounter?.isActive
-                    ? "max-h-[46dvh] sm:max-h-[50vh] md:max-h-[54vh]"
-                    : isMobileStageCollapsed
-                    ? "max-h-[72dvh] sm:max-h-[50vh] md:max-h-[54vh]"
-                    : "max-h-[52dvh] sm:max-h-[50vh] md:max-h-[54vh]"
-                }`
-          }
-        >
-          <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
-
-          {/* Pillar 3: Penalty Scenario Warning Banner */}
-          {systemState.penaltyScenario?.isActive && (
-            <div className="bg-gradient-to-r from-red-950/90 via-rose-950/90 to-purple-950/90 border-b border-red-500/40 px-4 py-2 flex items-center justify-between text-xs animate-pulse select-none">
-              <div className="flex items-center gap-2 text-rose-300">
-                <Skull className="w-4 h-4 text-red-400 shrink-0 animate-bounce" />
-                <span className="font-mono font-bold tracking-wider text-rose-100 uppercase text-[11px] sm:text-xs">
-                  [PENALTY SCENARIO: {systemState.penaltyScenario.scenarioTitle}]
-                </span>
-                <span className="text-zinc-300 text-[11px] hidden md:inline truncate max-w-md">
-                  {systemState.penaltyScenario.hazardEffectDescription}
-                </span>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="font-mono text-amber-300 bg-black/70 px-2 py-0.5 rounded border border-amber-500/40 text-[11px]">
-                  Survival Turn: {systemState.penaltyScenario.currentSurvivalTurn} / {systemState.penaltyScenario.survivalTurnsRequired}
-                </span>
-                <span className="font-mono text-red-300 font-bold bg-red-900/60 px-2 py-0.5 rounded border border-red-500/50 text-[10px]">
-                  CALAMITY
-                </span>
-              </div>
-            </div>
-          )}
-
-          {currentStory.id !== "ash-and-velvet" && (
-          <div className="shrink-0 px-3 py-2 sm:px-4 sm:py-2 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-zinc-900/60 select-none">
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
-              {/* Speaker Badge (Clickable to open Character Card Modal) */}
-              {isSpeakingHeroine ? (
-                <div
-                  onClick={() => {
-                    soundEffects.playClick();
-                    setSelectedCharacterCardComp(isSpeakingHeroine);
-                  }}
-                  className="inline-flex items-center gap-1.5 bg-rose-600/25 border border-rose-500/40 hover:border-rose-400 hover:bg-rose-600/35 px-2.5 py-1 rounded-xl shadow-sm shrink-0 max-w-[150px] sm:max-w-[190px] cursor-pointer transition-all group"
-                  title={`Click to open ${isSpeakingHeroine.name}'s Character Card Dossier`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-semibold tracking-wide text-rose-200 uppercase font-mono truncate">
-                    {isSpeakingHeroine.name}
-                  </span>
-                </div>
-              ) : isProtagonistAlone ? (
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-sky-950/60 border border-sky-500/40 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0">
-                  <User className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="text-xs sm:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono truncate">
-                    {gameState.speaker || "Narrator"}
-                  </span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-sky-950/60 border border-sky-500/30 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0">
-                  <BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="text-xs sm:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono truncate">
-                    {gameState.speaker || "Narrator"}
-                  </span>
-                </div>
-              )}
-
-              {/* Status / Presence Indicator */}
-              {isSpeakingHeroine ? (
-                <div
-                  onClick={() => {
-                    soundEffects.playClick();
-                    setSelectedCharacterCardComp(isSpeakingHeroine);
-                  }}
-                  className="relative inline-flex items-center gap-1.5 bg-black/60 border border-white/10 hover:border-rose-400/50 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0 cursor-pointer transition-colors"
-                  title={`Heart Resonance (${isSpeakingHeroine.name}: ${isSpeakingHeroine.affection}%) • Click to open Dossier`}
-                >
-                  {lastAffectionDelta !== null && lastAffectionDelta.companion.toLowerCase().includes(isSpeakingHeroine.name.toLowerCase()) && (
-                    <div 
-                      className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 flex items-center gap-1 whitespace-nowrap ${
-                        lastAffectionDelta.isCapped
-                          ? "bg-amber-950 text-amber-300 border border-amber-500/60"
-                          : lastAffectionDelta.delta > 0 
-                          ? "bg-rose-600/90 text-white border border-rose-400" 
-                          : "bg-zinc-800 text-zinc-400 border border-zinc-600"
-                      }`}
-                    >
-                      {lastAffectionDelta.isCapped ? (
-                        <>
-                          <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-                          <span>Locked at {lastAffectionDelta.cap}%</span>
-                        </>
-                      ) : lastAffectionDelta.delta > 0 ? (
-                        `+${lastAffectionDelta.delta} Favor`
-                      ) : (
-                        `${lastAffectionDelta.delta} Favor`
-                      )}
-                    </div>
-                  )}
-                  <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500 fill-rose-500/80 shrink-0" />
-                  <span className="text-[10px] font-mono font-medium text-rose-300 hidden xl:inline">Favor:</span>
-                  {isSpeakingHeroine.encountered ? (
-                    <>
-                      <div className="w-10 sm:w-14 md:w-16 bg-zinc-800 rounded-full h-1.5 overflow-hidden border border-white/5">
-                        <div 
-                          className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500" 
-                          style={{ width: `${isSpeakingHeroine.affection}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 flex items-center gap-0.5">
-                        {isSpeakingHeroine.affection}%
-                        {(() => {
-                          const cap = getCompanionCap(isSpeakingHeroine.name);
-                          return isSpeakingHeroine.affection >= cap && cap < 100 ? (
-                            <span title={`Favor locked at ${cap}%. Complete her Companion Quest to break through.`}>
-                              <Lock className="w-2.5 h-2.5 text-amber-400 inline" />
-                            </span>
-                          ) : null;
-                        })()}
-                      </span>
-                    </>
                   ) : (
-                    <span className="text-[10px] font-mono text-zinc-500 italic px-1">???</span>
+                    <div className="mb-3 px-3 py-1.5 rounded-full bg-black/75 border border-sky-500/35 text-sky-300 text-[10px] font-mono inline-flex items-center gap-1.5 shadow-lg">
+                      <Shield className="w-3 h-3 text-sky-400" />
+                      <span>{player.name} • Solo</span>
+                    </div>
                   )}
                 </div>
-              ) : isProtagonistAlone ? (
-                <div className="inline-flex items-center gap-1.5 bg-sky-950/40 border border-sky-500/30 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
-                  <Shield className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="text-[10px] font-mono font-bold text-sky-300">Solo</span>
-                </div>
               ) : (
-                <div className="inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
-                  <Users className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                  <span className="text-[10px] font-mono font-medium text-rose-300 hidden md:inline">With:</span>
-                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                    {presentComps.map((c) => (
-                      <button
-                        key={c.name}
-                        type="button"
-                        onClick={() => {
-                          soundEffects.playClick();
-                          setSpotlightHeroineName(c.name);
-                          setSelectedCharacterCardComp(c);
-                        }}
-                        className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 hover:text-white hover:underline cursor-pointer truncate max-w-[90px] sm:max-w-none"
-                        title={`Focus ${c.name} on stage / View Dossier`}
-                      >
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Port Solaris Live BPM & Blush Badge in Speaker Bar */}
-              {isSpeakingHeroine && currentStory.id === "port-solaris" && (() => {
-                const solarisMeta = PORT_SOLARIS_HEROINE_DOSSIERS[isSpeakingHeroine.name];
-                const speakingProfile = getHeroineResistanceProfile(isSpeakingHeroine as StoryCompanion);
-                const bpmCeiling = getAffectionBpmCeiling(isSpeakingHeroine.affection, speakingProfile.guardTier);
-                const rawBpm =
-                  (isSpeakingHeroine as any).heartRateBpm ??
-                  (solarisMeta ? Math.round(solarisMeta.heartRateBpm + Math.max(0, isSpeakingHeroine.affection - 20) * 0.35) : 55);
-                const liveBpm = Math.max(40, Math.min(bpmCeiling, rawBpm));
-                const bpmZoneInfo = getBpmZone(liveBpm);
-                const isShortCircuit = bpmZoneInfo.zone === "SHORT_CIRCUIT";
-                const isBlush = bpmZoneInfo.zone === "BLUSH_ZONE" || bpmZoneInfo.zone === "FEVER_PITCH";
-                const isGuardedIntrigued = bpmZoneInfo.zone === "GUARDED_DEFLECTION";
-
-                return (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      soundEffects.playClick();
-                      setSelectedCharacterCardComp(isSpeakingHeroine);
-                    }}
-                    className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-mono text-[10px] font-bold shadow-inner shrink-0 transition-all cursor-pointer ${
-                      isShortCircuit
-                        ? "bg-amber-950/90 border-amber-400 text-amber-200 animate-bounce"
-                        : isBlush
-                        ? "bg-pink-950/85 border-pink-400/70 text-pink-200 animate-pulse"
-                        : isGuardedIntrigued
-                        ? "bg-amber-950/70 border-amber-500/40 text-amber-200"
-                        : "bg-black/60 border-white/10 text-zinc-300 hover:border-white/20"
-                    }`}
-                    title={`Live Heart-Rate: ${liveBpm} BPM (${bpmZoneInfo.label}) • Click to open Dossier`}
-                  >
-                    <Heart className={`w-3 h-3 text-rose-400 fill-rose-400 shrink-0 ${liveBpm >= 83 ? "animate-pulse" : ""}`} />
-                    <span className="whitespace-nowrap">{liveBpm} BPM</span>
-                    <span className="hidden xl:inline">•</span>
-                    <span className="hidden xl:inline uppercase whitespace-nowrap">
-                      {isShortCircuit ? "Short-Circuit!" : isBlush ? "Blush Zone" : isGuardedIntrigued ? "Intrigued" : "Composed"}
-                    </span>
-                  </button>
-                );
-              })()}
-            </div>
-
-            <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 min-w-0 ml-auto">
-              {/* Relocated Area Map / Sector Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  soundEffects.playClick();
-                  setShowMap(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-950/45 hover:bg-emerald-900/65 border border-emerald-500/35 hover:border-emerald-400/75 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold transition-all cursor-pointer shadow-sm group min-w-0 max-w-[140px] sm:max-w-[210px]"
-                title={`Current Location: ${gameState.location} (Click to View Area Map)`}
-              >
-                <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
-                <span className="truncate">{gameState.location}</span>
-                <Compass className="w-3 h-3 text-emerald-400/70 shrink-0 group-hover:text-emerald-200 transition-colors hidden sm:inline" />
-              </button>
-
-              {isSpeakingHeroine && (() => {
-                const rawExpr = isSpeakingHeroine.expressionKey || "neutral";
-                const resolvedExpr =
-                  currentStory.id === "starfall-labyrinth" &&
-                  rawExpr === "hurt" &&
-                  isSpeakingHeroine.heroStatus !== "WOUNDED" &&
-                  !player.labyrinthState?.activeEncounter?.isActive
-                    ? "flustered"
-                    : rawExpr;
-                return (
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2 py-1 rounded-lg border border-white/5 hidden md:inline-block shrink-0">
-                    {resolvedExpr}
-                  </span>
-                );
-              })()}
-              {isProtagonistAlone && (
-                <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-1 rounded-lg border border-sky-500/20 hidden md:inline-block shrink-0">
-                  Solitary Arc
-                </span>
-              )}
-              {isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundEffects.playClick();
-                    setIsMobileStageCollapsed(false);
-                  }}
-                  className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-zinc-900/90 border border-white/15 text-[10px] font-mono text-zinc-300 hover:text-white shrink-0"
-                  title="Show character stage portrait"
-                >
-                  <ChevronUp className="w-3 h-3 text-rose-400" />
-                  <span>Art</span>
-                </button>
-              )}
-              <div className="relative inline-block min-w-0">
-                <button
-                  type="button"
-                  onClick={() => setShowSubtextPopover((v) => !v)}
-                  title={`Mood: ${gameState.mood} — Click to inspect companion micro-expression & psychological subtext`}
-                  className="text-[10px] sm:text-[11px] text-amber-400 hover:text-amber-300 font-mono inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-xl bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/25 transition-all cursor-pointer max-w-[120px] sm:max-w-[180px] xl:max-w-[260px]"
-                >
-                  <span className="truncate sm:hidden">{gameState.mood}</span>
-                  <span className="truncate hidden sm:inline">• Mood: {gameState.mood}</span>
-                  <Eye className="w-3 h-3 text-amber-400/80 shrink-0" />
-                </button>
-                {showSubtextPopover && (
-                  <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-auto sm:top-full mt-2 sm:w-72 p-3 rounded-xl bg-zinc-950/95 border border-amber-500/40 shadow-2xl backdrop-blur-xl z-40 text-left space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-1">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
-                        👁️ Subtext & Micro-Expression
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowSubtextPopover(false)}
-                        className="text-zinc-400 hover:text-white text-[10px]"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-zinc-200 leading-relaxed">
-                      <span className="text-amber-300 font-semibold">{gameState.speaker || "Scene"}:</span>{" "}
-                      Surface demeanor projects <span className="italic text-amber-200">{gameState.mood}</span>
-                      {isSpeakingHeroine
-                        ? ` (${isSpeakingHeroine.expressionKey} posture, ${isSpeakingHeroine.affection}% Bond). ${
-                            (isSpeakingHeroine as any).currentSentiment ||
-                            "Guarded curiosity beneath the outward composure."
-                          }`
-                        : ". Ambient tension lingers across the sector."}
-                    </p>
-                  </div>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => handleGenerateSceneCG(false)}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 text-[10px] font-mono font-bold transition-all cursor-pointer shadow-sm hover:border-rose-400 shrink-0"
-                title="Illustrate this scene in real-time with Nano Banana 2.1"
-              >
-                <Camera className="w-3 h-3 text-rose-400 shrink-0" />
-                <span className="whitespace-nowrap">Illustrate CG</span>
-              </button>
-            </div>
-          </div>
-          )}
-
-          <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
-            {/* DYNAMIC SPRITE STAGE (REDESIGNED FOR FULL-SIZE SPOTLIGHT & COMPANION SWITCHER) */}
-            {currentStory.id !== "ash-and-velvet" && (
-            <div className="hidden sm:flex relative w-56 sm:w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
-              {/* SLEEK COMPANION AVATAR SWITCHER STRIP */}
-              {presentComps.length > 0 && (
-                <div className="absolute top-2 inset-x-2 z-20 flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/15 overflow-x-auto no-scrollbar shadow-xl pointer-events-auto">
-                  {presentComps.map((comp) => {
-                    const isSpotlighted = isCompanionSpotlighted(comp.name, presentComps, gameState.speaker, spotlightHeroineName);
-                    const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
-                    const thumbSrc = getSpriteSrc(comp.name, comp.expressionKey);
-                    const solarisMeta = currentStory.id === "port-solaris" ? PORT_SOLARIS_HEROINE_DOSSIERS[comp.name] : undefined;
-                    const compBpm =
-                      currentStory.id === "port-solaris"
-                        ? (comp as any).heartRateBpm ??
-                          (solarisMeta
-                            ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (comp.affection - 20) * 0.45))
-                            : undefined)
-                        : undefined;
-
-                    return (
-                      <div
-                        key={comp.name}
-                        onClick={() => {
-                          soundEffects.playClick();
-                          setSpotlightHeroineName(comp.name);
-                        }}
-                        onDoubleClick={() => {
-                          soundEffects.playClick();
-                          setSelectedCharacterCardComp(comp);
-                        }}
-                        className={`group relative flex items-center gap-1.5 px-2 py-1 rounded-xl transition-all cursor-pointer shrink-0 border select-none ${
-                          isSpotlighted
-                            ? "bg-rose-950/80 border-rose-400/80 shadow-[0_0_12px_rgba(244,63,94,0.35)] scale-102"
-                            : "bg-zinc-900/60 border-white/10 hover:border-white/30 hover:bg-zinc-800/80"
-                        }`}
-                        title={`Click to focus ${comp.name} on stage • Double-click to open Dossier`}
-                      >
-                        <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-white/20 bg-zinc-950 shrink-0">
-                          <img
-                            src={(thumbSrc && thumbSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
-                            alt={comp.name}
-                            className="w-full h-full object-cover object-top"
-                          />
-                          {isSpeaking && (
-                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
-                          )}
-                        </div>
-
-                        <div className="flex flex-col min-w-0 pr-0.5">
-                          <div className="flex items-center gap-1">
-                            <span className={`text-[10px] font-mono font-bold truncate max-w-[65px] ${isSpotlighted ? "text-rose-200" : "text-zinc-300"}`}>
-                              {comp.name.split(" ")[0]}
-                            </span>
-                            {isSpeaking && <Sparkles className="w-2.5 h-2.5 text-rose-400 shrink-0" />}
-                          </div>
-                          {compBpm !== undefined ? (
-                            <span className="text-[8px] font-mono text-rose-300 leading-none">
-                              ♥ {compBpm}
-                            </span>
-                          ) : (
-                            <span className="text-[8px] font-mono text-rose-300/90 leading-none">
-                              {comp.starRank ? `${comp.starRank}★ • ` : ""}♥ {comp.affection}%
-                            </span>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            soundEffects.playClick();
-                            setSelectedCharacterCardComp(comp);
-                          }}
-                          className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                          title={`Open ${comp.name}'s Dossier`}
-                        >
-                          <Info className="w-3 h-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <div className="relative w-full h-full flex items-end justify-center px-2 pt-14">
-                {(() => {
-                  if (presentComps.length === 0) {
-                    return (
-                      /* SOLO / NO HEROINE SCENE: DISPLAY PROTAGONIST SPRITE */
-                      <div className="relative h-full w-full flex items-end justify-center animate-in fade-in duration-500">
-                        <div 
-                          className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-30"
-                          style={{
-                            background: "radial-gradient(circle, rgba(14,165,233,0.5) 0%, transparent 70%)"
-                          }}
-                        />
-                        {playerAvatar && playerAvatar.trim() ? (
-                          <img
-                            src={playerAvatar}
-                            alt={player.name}
-                            onClick={(e) => handleOpenPlayerFullPortrait(e)}
-                            title="Click to view full character image"
-                            className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] cursor-pointer hover:brightness-110 transition-all"
-                          />
-                        ) : (
-                          <div className="h-full w-full flex flex-col items-center justify-center text-center p-4">
-                            <div className="w-24 h-24 rounded-full bg-zinc-800/80 border-2 border-white/10 flex items-center justify-center text-zinc-500 mb-2 shadow-inner">
-                              <User className="w-12 h-12 text-zinc-500" />
-                            </div>
-                            <span className="text-xs font-mono text-zinc-300 font-semibold">{player.name}</span>
-                            <span className="text-[10px] font-mono text-zinc-500">{player.role || "Protagonist"}</span>
-                          </div>
-                        )}
-                        <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
-                          <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-black/80 border border-sky-500/30 text-sky-300 shadow-md inline-flex items-center justify-center gap-1.5 mx-auto">
-                            <Shield className="w-3 h-3 text-sky-400" />
-                            <span>{player.name} • Solo in {gameState.location}</span>
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  // Multi-character scene: Spotlight active speaker or player-selected heroine at FULL SIZE!
-                  const spotlightComp = resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) || presentComps[0];
-
-                  const isSpeaking = gameState.speaker.toLowerCase().includes(spotlightComp.name.toLowerCase());
-                  const spriteSrc = getSpriteSrc(spotlightComp.name, spotlightComp.expressionKey);
-
+                (() => {
+                  const mobileSpotlightComp =
+                    resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) || presentComps[0];
+                  const mobileIsSpeaking = gameState.speaker.toLowerCase().includes(mobileSpotlightComp.name.toLowerCase());
+                  const mobileSpriteSrc = getSpriteSrc(mobileSpotlightComp.name, mobileSpotlightComp.expressionKey);
                   return (
-                    <div 
-                      key={spotlightComp.name}
-                      className="relative h-full w-full flex items-end justify-center transition-all duration-500"
-                    >
-                      {/* Ambient Heroine Aura */}
-                      <div 
-                        className="absolute bottom-6 w-56 h-56 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
-                        style={{
-                          background: getStageHeroineAura(spotlightComp.name).background
-                        }}
+                    <div className="relative h-full w-full flex items-end justify-center">
+                      <div
+                        className="absolute bottom-2 w-40 h-40 rounded-full blur-3xl pointer-events-none opacity-35"
+                        style={{ background: getStageHeroineAura(mobileSpotlightComp.name).background }}
                       />
-
-                      {/* Full-Size Spotlight Sprite (Never shrinks to thumbnail sliver) */}
                       <img
-                        src={(spriteSrc && spriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
-                        alt={spotlightComp.name}
+                        src={(mobileSpriteSrc && mobileSpriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
+                        alt={mobileSpotlightComp.name}
                         decoding="async"
                         onClick={() => {
                           soundEffects.playClick();
-                          setSelectedCharacterCardComp(spotlightComp);
+                          setSelectedCharacterCardComp(mobileSpotlightComp);
                         }}
                         onError={(e) => {
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
                         }}
-                        title={`Click to open ${spotlightComp.name}'s Character Card Dossier`}
-                        className={getStageSpriteClasses(isSpeaking)}
+                        className={`h-full w-auto max-w-[85vw] object-contain object-bottom filter drop-shadow-[0_10px_24px_rgba(0,0,0,0.95)] pointer-events-auto cursor-pointer transition-all duration-300 ${mobileIsSpeaking ? "scale-[1.02] brightness-105" : "opacity-95"
+                          }`}
                       />
-
-                      {/* Spotlight Character Info Bar / Dossier Trigger & Dynamic Wardrobe Selector */}
-                      <div className="absolute bottom-2 inset-x-2 flex items-center justify-between gap-1.5 pointer-events-auto">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            soundEffects.playClick();
-                            setSelectedCharacterCardComp(spotlightComp);
-                          }}
-                          className="px-2.5 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-white/20 hover:border-rose-400 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all cursor-pointer group min-w-0"
-                          title="Click to view full dossier & stats"
-                        >
-                          <Sparkles className="w-3 h-3 text-rose-400 group-hover:rotate-12 transition-transform shrink-0" />
-                          <span className="truncate max-w-[115px]">{spotlightComp.name}</span>
-                          <span className="text-[9px] text-rose-300 opacity-80 shrink-0">• Dossier</span>
-                        </button>
-                        {(() => {
-                          const storyComp = currentStory.companions?.find(
-                            (sc) =>
-                              sc.id === spotlightComp.id ||
-                              sc.name.toLowerCase() === spotlightComp.name.toLowerCase()
-                          );
-                          const wLabels =
-                            (spotlightComp as any).wardrobeLabels || storyComp?.wardrobeLabels;
-                          if (!wLabels || Object.keys(wLabels).length <= 1) return null;
-                          const activeW =
-                            (spotlightComp as any).activeWardrobe ||
-                            storyComp?.activeWardrobe ||
-                            "base";
-                          return (
-                            <select
-                              value={activeW}
-                              onChange={(e) => {
-                                const nextW = e.target.value;
-                                soundEffects.playClick();
-                                setParty((prev) =>
-                                  prev.map((p) =>
-                                    p.name.toLowerCase() === spotlightComp.name.toLowerCase()
-                                      ? { ...p, activeWardrobe: nextW }
-                                      : p
-                                  )
-                                );
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              title="Switch heroine outfit"
-                              className="max-w-[130px] px-2 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-rose-500/40 text-rose-200 text-[10px] font-mono font-bold shadow-lg backdrop-blur-md cursor-pointer focus:outline-none truncate"
-                            >
-                              {Object.entries(wLabels).map(([wKey, wLabel]) => (
-                                <option key={wKey} value={wKey} className="bg-zinc-950 text-zinc-100">
-                                  {String(wLabel)}
-                                </option>
-                              ))}
-                            </select>
-                          );
-                        })()}
-                      </div>
+                      {presentComps.length > 1 && (
+                        <div className="absolute bottom-3 left-1 flex flex-col gap-1 pointer-events-auto max-h-[80%] overflow-y-auto no-scrollbar">
+                          {presentComps.slice(0, 4).map((comp) => {
+                            const isActive = comp.name === mobileSpotlightComp.name;
+                            return (
+                              <button
+                                key={comp.name}
+                                type="button"
+                                onClick={() => {
+                                  soundEffects.playClick();
+                                  setSpotlightHeroineName(comp.name);
+                                }}
+                                className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold border backdrop-blur-md transition-all cursor-pointer truncate max-w-[92px] ${isActive
+                                  ? "bg-rose-950/90 border-rose-400 text-rose-100 shadow-md"
+                                  : "bg-black/75 border-white/15 text-zinc-300"
+                                  }`}
+                              >
+                                {comp.name.split(" ")[0]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
-                })()}
-              </div>
-              <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
-            </div>
-            )}
-
-            {/* MESSAGE FEED (SELECTABLE AND EDITABLE) */}
-            <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div 
-                ref={dialogueFeedRef}
-                className="flex-1 p-3 sm:p-4 md:p-5 overflow-y-auto space-y-3 sm:space-y-4 select-text pb-14"
+                })()
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  soundEffects.playClick();
+                  setIsMobileStageCollapsed(true);
+                }}
+                className="pointer-events-auto absolute bottom-3 right-1 px-2 py-1 rounded-full bg-black/80 border border-white/15 text-[9px] font-mono text-zinc-300 hover:text-white flex items-center gap-1 shadow-lg backdrop-blur-md"
+                title="Minimize portrait art for more story space"
               >
-              {(() => {
-                let latestCharIdx = -1;
-                let latestUserIdx = -1;
-                for (let i = chatLog.length - 1; i >= 0; i--) {
-                  if (latestCharIdx === -1 && chatLog[i].sender === "character") latestCharIdx = i;
-                  if (latestUserIdx === -1 && chatLog[i].sender === "user") latestUserIdx = i;
-                  if (latestCharIdx !== -1 && latestUserIdx !== -1) break;
-                }
+                <ChevronDown className="w-3 h-3 text-zinc-400" />
+                <span>Hide Art</span>
+              </button>
+            </div>
+          )}
 
-                return chatLog.map((msg, idx) => {
-                  const isLatestCharacterTurn = idx === latestCharIdx;
-                  const isLatestUserTurn = idx === latestUserIdx;
-                  const isTypingUser = msg.id === typingUserMsgId;
-                  const isEditing = editingMessageId === msg.id;
-
-                  const isMsgAmbient =
-                    msg.sender === "character" &&
-                    ["narrator", "system", "inner monologue"].some((s) =>
-                      msg.speakerName.toLowerCase().includes(s)
-                    );
-                  const resolvedSpriteSrc =
-                    msg.sender === "character" && !isMsgAmbient
-                      ? (msg.avatarSrc && msg.avatarSrc.trim()) ||
-                        getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) ||
-                        DEFAULT_FALLBACK_SPRITE
-                      : DEFAULT_FALLBACK_SPRITE;
-
-                  return (
-                    <ChatMessageItem
-                      key={msg.id}
-                      msg={msg}
-                      isLatestCharacterTurn={isLatestCharacterTurn}
-                      isLatestUserTurn={isLatestUserTurn}
-                      isTypingUser={isTypingUser}
-                      isEditing={isEditing}
-                      isLoading={isLoading}
-                      playerAvatar={playerAvatar}
-                      playerName={player.name}
-                      resolvedSpriteSrc={resolvedSpriteSrc}
-                      defaultFallbackSprite={DEFAULT_FALLBACK_SPRITE}
-                      streamedContent={
-                        isLatestCharacterTurn
-                          ? displayedText
-                          : isTypingUser
-                          ? displayedUserText
-                          : undefined
-                      }
-                      isStreaming={
-                        isLatestCharacterTurn
-                          ? displayedText.length < gameState.dialogue.length
-                          : isTypingUser
-                          ? displayedUserText.length < msg.text.length
-                          : false
-                      }
-                      onStartEdit={handleStartEdit}
-                      onCancelEdit={handleCancelEdit}
-                      onSaveEdit={handleSaveEdit}
-                      onDeleteMessage={handleDeleteMessage}
-                      onRegenerateTurn={handleRegenerateTurn}
-                      onSkipTypewriter={handleSkipTypewriter}
-                      onPinMemory={handlePinTurnMessage}
-                      onViewPortrait={handleViewMessagePortrait}
-                      onSelectSwipe={handleSelectSwipe}
-                      onRewindToMessage={handleRewindToMessage}
-                      panelFrameStyle={currentStory.panelFrameStyle}
-                    />
-                  );
-                });
+          {/* ASH & VELVET UPPER WIDESCREEN COMIC SCENE PANEL */}
+          {currentStory.id === "ash-and-velvet" && (
+            <AshVelvetScenePanel
+              bgImage={getLocationBg(gameState.location) || gameState.bgImage}
+              location={gameState.location}
+              mood={gameState.mood}
+              speaker={gameState.speaker}
+              houseState={
+                player.ashVelvetState ||
+                createInitialAshVelvetState(
+                  currentStory.startingNodes?.[selectedPrologue]?.id,
+                  player.gold ?? 65
+                )
+              }
+              presentCompanions={presentComps.map((p) => {
+                const storyDef = currentStory.companions?.find(
+                  (sc) => sc.id === p.id || sc.name.toLowerCase() === p.name.toLowerCase()
+                );
+                return {
+                  ...p,
+                  wardrobeLabels: (p as any).wardrobeLabels || storyDef?.wardrobeLabels,
+                  activeWardrobe: (p as any).activeWardrobe || storyDef?.activeWardrobe || "base",
+                };
+              })}
+              spotlightComp={(() => {
+                const rawSpot =
+                  resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) ||
+                  presentComps[0] ||
+                  null;
+                if (!rawSpot) return null;
+                const storyDef = currentStory.companions?.find(
+                  (sc) => sc.id === rawSpot.id || sc.name.toLowerCase() === rawSpot.name.toLowerCase()
+                );
+                return {
+                  ...rawSpot,
+                  wardrobeLabels: (rawSpot as any).wardrobeLabels || storyDef?.wardrobeLabels,
+                  activeWardrobe: (rawSpot as any).activeWardrobe || storyDef?.activeWardrobe || "base",
+                };
               })()}
+              playerName={player.name}
+              playerAvatar={playerAvatar}
+              getSpriteSrc={(name, expr) => getSpriteSrc(name, expr || "neutral")}
+              fallbackSprite={DEFAULT_FALLBACK_SPRITE}
+              lastDeltas={lastAshVelvetDeltas}
+              isCollapsed={isAshVelvetStageCollapsed}
+              onToggleCollapse={() => {
+                soundEffects.playClick();
+                setIsAshVelvetStageCollapsed((v) => !v);
+              }}
+              onOpenDossier={(comp) => {
+                soundEffects.playClick();
+                const fullComp =
+                  party.find((p) => p.name.toLowerCase() === comp.name.toLowerCase()) || (comp as any);
+                setSelectedCharacterCardComp(fullComp);
+              }}
+              onOpenMap={() => {
+                soundEffects.playClick();
+                setShowMap(true);
+              }}
+              onIllustrateCg={() => handleGenerateSceneCG(false)}
+              onChangeWardrobe={(compName, nextW) => {
+                soundEffects.playClick();
+                setParty((prev) =>
+                  prev.map((p) =>
+                    p.name.toLowerCase() === compName.toLowerCase()
+                      ? { ...p, activeWardrobe: nextW }
+                      : p
+                  )
+                );
+              }}
+            />
+          )}
 
-              {/* DIEGETIC ROTATING LOADING STATUS BANNER */}
-              {isLoading && (
-                <div className="w-full rounded-2xl border border-rose-500/30 bg-zinc-950/90 px-4 py-3 flex items-center justify-between gap-3 animate-pulse shadow-lg">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Sparkles className="w-4 h-4 text-rose-400 animate-spin shrink-0" />
-                    <span className="text-xs font-mono text-zinc-200 truncate">
-                      {loadingPhaseIdx === 0 &&
-                        `Weaving ${gameState.speaker && gameState.speaker !== "Narrator" ? `${gameState.speaker}'s` : "world"} response in ${gameState.location}...`}
-                      {loadingPhaseIdx === 1 &&
-                        `Evaluating ${player.name}'s ${player.race || "Human"} instincts & active stance...`}
-                      {loadingPhaseIdx === 2 &&
-                        `Consulting ${ (player.pinnedMemories || []).length > 0 ? `${player.pinnedMemories!.length} Pinned Core Memories & ` : "" }Chronicle Canon...`}
-                      {loadingPhaseIdx === 3 &&
-                        `Synthesizing multi-paragraph literary prose & tactical vectors...`}
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-mono text-rose-400/80 uppercase tracking-wider shrink-0">
-                    {llmConfig.narrativeDepth === "deep_novelistic"
-                      ? "5-7+ Paragraphs"
-                      : llmConfig.narrativeDepth === "expansive"
-                      ? "3-5 Paragraphs"
-                      : "2-3 Paragraphs"}
+          <div
+            className={
+              currentStory.id === "ash-and-velvet"
+                ? "pointer-events-auto relative bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] overflow-hidden flex flex-col flex-1 min-h-[140px]"
+                : `pointer-events-auto relative bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col flex-1 min-h-0 ${activeClash?.isActive || player.labyrinthState?.activeEncounter?.isActive
+                  ? "max-h-[46dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+                  : isMobileStageCollapsed
+                    ? "max-h-[72dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+                    : "max-h-[52dvh] sm:max-h-[50vh] md:max-h-[54vh]"
+                }`
+            }
+          >
+            <div className="absolute -top-1 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/70 to-transparent" />
+
+            {/* Pillar 3: Penalty Scenario Warning Banner */}
+            {systemState.penaltyScenario?.isActive && (
+              <div className="bg-gradient-to-r from-red-950/90 via-rose-950/90 to-purple-950/90 border-b border-red-500/40 px-4 py-2 flex items-center justify-between text-xs animate-pulse select-none">
+                <div className="flex items-center gap-2 text-rose-300">
+                  <Skull className="w-4 h-4 text-red-400 shrink-0 animate-bounce" />
+                  <span className="font-mono font-bold tracking-wider text-rose-100 uppercase text-[11px] sm:text-xs">
+                    [PENALTY SCENARIO: {systemState.penaltyScenario.scenarioTitle}]
+                  </span>
+                  <span className="text-zinc-300 text-[11px] hidden md:inline truncate max-w-md">
+                    {systemState.penaltyScenario.hazardEffectDescription}
                   </span>
                 </div>
-              )}
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="font-mono text-amber-300 bg-black/70 px-2 py-0.5 rounded border border-amber-500/40 text-[11px]">
+                    Survival Turn: {systemState.penaltyScenario.currentSurvivalTurn} / {systemState.penaltyScenario.survivalTurnsRequired}
+                  </span>
+                  <span className="font-mono text-red-300 font-bold bg-red-900/60 px-2 py-0.5 rounded border border-red-500/50 text-[10px]">
+                    CALAMITY
+                  </span>
+                </div>
               </div>
+            )}
 
-              {/* RETURN TO TOP & RETURN TO BOTTOM QUICK SCROLL BUTTONS */}
-              {chatLog.length > 0 && (
-                <div className="absolute right-2 bottom-2 sm:right-3.5 sm:bottom-3.5 flex items-center gap-1 sm:gap-1.5 z-20 pointer-events-auto opacity-85 hover:opacity-100 transition-opacity">
+            {currentStory.id !== "ash-and-velvet" && (
+              <div className="shrink-0 px-3 py-2 sm:px-4 sm:py-2 border-b border-white/10 flex flex-wrap items-center justify-between gap-2 bg-zinc-900/60 select-none">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 min-w-0">
+                  {/* Speaker Badge (Clickable to open Character Card Modal) */}
+                  {isSpeakingHeroine ? (
+                    <div
+                      onClick={() => {
+                        soundEffects.playClick();
+                        setSelectedCharacterCardComp(isSpeakingHeroine);
+                      }}
+                      className="inline-flex items-center gap-1.5 bg-rose-600/25 border border-rose-500/40 hover:border-rose-400 hover:bg-rose-600/35 px-2.5 py-1 rounded-xl shadow-sm shrink-0 max-w-[150px] sm:max-w-[190px] cursor-pointer transition-all group"
+                      title={`Click to open ${isSpeakingHeroine.name}'s Character Card Dossier`}
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-rose-400 shrink-0 group-hover:scale-110 transition-transform" />
+                      <span className="text-xs font-semibold tracking-wide text-rose-200 uppercase font-mono truncate">
+                        {isSpeakingHeroine.name}
+                      </span>
+                    </div>
+                  ) : isProtagonistAlone ? (
+                    <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-sky-950/60 border border-sky-500/40 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0">
+                      <User className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span className="text-xs sm:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono truncate">
+                        {gameState.speaker || "Narrator"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-sky-950/60 border border-sky-500/30 px-2.5 sm:px-3 py-1 rounded-xl shadow-sm shrink-0">
+                      <BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span className="text-xs sm:text-sm font-semibold tracking-wide text-sky-200 uppercase font-mono truncate">
+                        {gameState.speaker || "Narrator"}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Status / Presence Indicator */}
+                  {isSpeakingHeroine ? (
+                    <div
+                      onClick={() => {
+                        soundEffects.playClick();
+                        setSelectedCharacterCardComp(isSpeakingHeroine);
+                      }}
+                      className="relative inline-flex items-center gap-1.5 bg-black/60 border border-white/10 hover:border-rose-400/50 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0 cursor-pointer transition-colors"
+                      title={`Heart Resonance (${isSpeakingHeroine.name}: ${isSpeakingHeroine.affection}%) • Click to open Dossier`}
+                    >
+                      {lastAffectionDelta !== null && lastAffectionDelta.companion.toLowerCase().includes(isSpeakingHeroine.name.toLowerCase()) && (
+                        <div
+                          className={`absolute -top-7 left-2 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold animate-bounce shadow-lg z-20 flex items-center gap-1 whitespace-nowrap ${lastAffectionDelta.isCapped
+                            ? "bg-amber-950 text-amber-300 border border-amber-500/60"
+                            : lastAffectionDelta.delta > 0
+                              ? "bg-rose-600/90 text-white border border-rose-400"
+                              : "bg-zinc-800 text-zinc-400 border border-zinc-600"
+                            }`}
+                        >
+                          {lastAffectionDelta.isCapped ? (
+                            <>
+                              <Lock className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                              <span>Locked at {lastAffectionDelta.cap}%</span>
+                            </>
+                          ) : lastAffectionDelta.delta > 0 ? (
+                            `+${lastAffectionDelta.delta} Favor`
+                          ) : (
+                            `${lastAffectionDelta.delta} Favor`
+                          )}
+                        </div>
+                      )}
+                      <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-rose-500 fill-rose-500/80 shrink-0" />
+                      <span className="text-[10px] font-mono font-medium text-rose-300 hidden xl:inline">Favor:</span>
+                      {isSpeakingHeroine.encountered ? (
+                        <>
+                          <div className="w-10 sm:w-14 md:w-16 bg-zinc-800 rounded-full h-1.5 overflow-hidden border border-white/5">
+                            <div
+                              className="bg-gradient-to-r from-rose-500 to-pink-400 h-full rounded-full transition-all duration-500"
+                              style={{ width: `${isSpeakingHeroine.affection}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 flex items-center gap-0.5">
+                            {isSpeakingHeroine.affection}%
+                            {(() => {
+                              const cap = getCompanionCap(isSpeakingHeroine.name);
+                              return isSpeakingHeroine.affection >= cap && cap < 100 ? (
+                                <span title={`Favor locked at ${cap}%. Complete her Companion Quest to break through.`}>
+                                  <Lock className="w-2.5 h-2.5 text-amber-400 inline" />
+                                </span>
+                              ) : null;
+                            })()}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[10px] font-mono text-zinc-500 italic px-1">???</span>
+                      )}
+                    </div>
+                  ) : isProtagonistAlone ? (
+                    <div className="inline-flex items-center gap-1.5 bg-sky-950/40 border border-sky-500/30 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
+                      <Shield className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span className="text-[10px] font-mono font-bold text-sky-300">Solo</span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 bg-black/60 border border-white/10 px-2 sm:px-2.5 py-1 rounded-xl shadow-inner shrink-0">
+                      <Users className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span className="text-[10px] font-mono font-medium text-rose-300 hidden md:inline">With:</span>
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                        {presentComps.map((c) => (
+                          <button
+                            key={c.name}
+                            type="button"
+                            onClick={() => {
+                              soundEffects.playClick();
+                              setSpotlightHeroineName(c.name);
+                              setSelectedCharacterCardComp(c);
+                            }}
+                            className="text-[10px] sm:text-[11px] font-mono font-bold text-rose-300 hover:text-white hover:underline cursor-pointer truncate max-w-[90px] sm:max-w-none"
+                            title={`Focus ${c.name} on stage / View Dossier`}
+                          >
+                            {c.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Port Solaris Live BPM & Blush Badge in Speaker Bar */}
+                  {isSpeakingHeroine && currentStory.id === "port-solaris" && (() => {
+                    const solarisMeta = PORT_SOLARIS_HEROINE_DOSSIERS[isSpeakingHeroine.name];
+                    const speakingProfile = getHeroineResistanceProfile(isSpeakingHeroine as StoryCompanion);
+                    const bpmCeiling = getAffectionBpmCeiling(isSpeakingHeroine.affection, speakingProfile.guardTier);
+                    const rawBpm =
+                      (isSpeakingHeroine as any).heartRateBpm ??
+                      (solarisMeta ? Math.round(solarisMeta.heartRateBpm + Math.max(0, isSpeakingHeroine.affection - 20) * 0.35) : 55);
+                    const liveBpm = Math.max(40, Math.min(bpmCeiling, rawBpm));
+                    const bpmZoneInfo = getBpmZone(liveBpm);
+                    const isShortCircuit = bpmZoneInfo.zone === "SHORT_CIRCUIT";
+                    const isBlush = bpmZoneInfo.zone === "BLUSH_ZONE" || bpmZoneInfo.zone === "FEVER_PITCH";
+                    const isGuardedIntrigued = bpmZoneInfo.zone === "GUARDED_DEFLECTION";
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundEffects.playClick();
+                          setSelectedCharacterCardComp(isSpeakingHeroine);
+                        }}
+                        className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded-xl border font-mono text-[10px] font-bold shadow-inner shrink-0 transition-all cursor-pointer ${isShortCircuit
+                          ? "bg-amber-950/90 border-amber-400 text-amber-200 animate-bounce"
+                          : isBlush
+                            ? "bg-pink-950/85 border-pink-400/70 text-pink-200 animate-pulse"
+                            : isGuardedIntrigued
+                              ? "bg-amber-950/70 border-amber-500/40 text-amber-200"
+                              : "bg-black/60 border-white/10 text-zinc-300 hover:border-white/20"
+                          }`}
+                        title={`Live Heart-Rate: ${liveBpm} BPM (${bpmZoneInfo.label}) • Click to open Dossier`}
+                      >
+                        <Heart className={`w-3 h-3 text-rose-400 fill-rose-400 shrink-0 ${liveBpm >= 83 ? "animate-pulse" : ""}`} />
+                        <span className="whitespace-nowrap">{liveBpm} BPM</span>
+                        <span className="hidden xl:inline">•</span>
+                        <span className="hidden xl:inline uppercase whitespace-nowrap">
+                          {isShortCircuit ? "Short-Circuit!" : isBlush ? "Blush Zone" : isGuardedIntrigued ? "Intrigued" : "Composed"}
+                        </span>
+                      </button>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 min-w-0 ml-auto">
+                  {/* Relocated Area Map / Sector Button */}
                   <button
                     type="button"
-                    onClick={scrollToTop}
-                    className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/top"
-                    title="Return to Top of dialogue"
+                    onClick={() => {
+                      soundEffects.playClick();
+                      setShowMap(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-950/45 hover:bg-emerald-900/65 border border-emerald-500/35 hover:border-emerald-400/75 text-emerald-300 text-[10px] sm:text-xs font-mono font-semibold transition-all cursor-pointer shadow-sm group min-w-0 max-w-[140px] sm:max-w-[210px]"
+                    title={`Current Location: ${gameState.location} (Click to View Area Map)`}
                   >
-                    <ChevronsUp className="w-3.5 h-3.5 text-zinc-400 group-hover/top:text-rose-400 group-hover/top:-translate-y-0.5 transition-all" />
-                    <span className="hidden sm:inline">Top</span>
+                    <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="truncate">{gameState.location}</span>
+                    <Compass className="w-3 h-3 text-emerald-400/70 shrink-0 group-hover:text-emerald-200 transition-colors hidden sm:inline" />
                   </button>
+
+                  {isSpeakingHeroine && (() => {
+                    const rawExpr = isSpeakingHeroine.expressionKey || "neutral";
+                    const resolvedExpr =
+                      currentStory.id === "starfall-labyrinth" &&
+                        rawExpr === "hurt" &&
+                        isSpeakingHeroine.heroStatus !== "WOUNDED" &&
+                        !player.labyrinthState?.activeEncounter?.isActive
+                        ? "flustered"
+                        : rawExpr;
+                    return (
+                      <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider bg-white/5 px-2 py-1 rounded-lg border border-white/5 hidden md:inline-block shrink-0">
+                        {resolvedExpr}
+                      </span>
+                    );
+                  })()}
+                  {isProtagonistAlone && (
+                    <span className="text-[10px] font-mono text-sky-400 uppercase tracking-wider bg-sky-950/40 px-2 py-1 rounded-lg border border-sky-500/20 hidden md:inline-block shrink-0">
+                      Solitary Arc
+                    </span>
+                  )}
+                  {isMobileStageCollapsed && !activeClash?.isActive && !player.labyrinthState?.activeEncounter?.isActive && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        soundEffects.playClick();
+                        setIsMobileStageCollapsed(false);
+                      }}
+                      className="sm:hidden inline-flex items-center gap-1 px-2 py-1 rounded-xl bg-zinc-900/90 border border-white/15 text-[10px] font-mono text-zinc-300 hover:text-white shrink-0"
+                      title="Show character stage portrait"
+                    >
+                      <ChevronUp className="w-3 h-3 text-rose-400" />
+                      <span>Art</span>
+                    </button>
+                  )}
+                  <div className="relative inline-block min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => setShowSubtextPopover((v) => !v)}
+                      title={`Mood: ${gameState.mood} — Click to inspect companion micro-expression & psychological subtext`}
+                      className="text-[10px] sm:text-[11px] text-amber-400 hover:text-amber-300 font-mono inline-flex items-center gap-1 px-2 sm:px-2.5 py-1 rounded-xl bg-amber-950/30 hover:bg-amber-900/40 border border-amber-500/25 transition-all cursor-pointer max-w-[120px] sm:max-w-[180px] xl:max-w-[260px]"
+                    >
+                      <span className="truncate sm:hidden">{gameState.mood}</span>
+                      <span className="truncate hidden sm:inline">• Mood: {gameState.mood}</span>
+                      <Eye className="w-3 h-3 text-amber-400/80 shrink-0" />
+                    </button>
+                    {showSubtextPopover && (
+                      <div className="fixed sm:absolute left-3 right-3 sm:left-auto sm:right-0 top-auto sm:top-full mt-2 sm:w-72 p-3 rounded-xl bg-zinc-950/95 border border-amber-500/40 shadow-2xl backdrop-blur-xl z-40 text-left space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-1">
+                          <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 font-bold">
+                            👁️ Subtext & Micro-Expression
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowSubtextPopover(false)}
+                            className="text-zinc-400 hover:text-white text-[10px]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-zinc-200 leading-relaxed">
+                          <span className="text-amber-300 font-semibold">{gameState.speaker || "Scene"}:</span>{" "}
+                          Surface demeanor projects <span className="italic text-amber-200">{gameState.mood}</span>
+                          {isSpeakingHeroine
+                            ? ` (${isSpeakingHeroine.expressionKey} posture, ${isSpeakingHeroine.affection}% Bond). ${(isSpeakingHeroine as any).currentSentiment ||
+                            "Guarded curiosity beneath the outward composure."
+                            }`
+                            : ". Ambient tension lingers across the sector."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                   <button
                     type="button"
-                    onClick={scrollToBottom}
-                    className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/bottom"
-                    title="Return to Bottom of dialogue"
+                    onClick={() => handleGenerateSceneCG(false)}
+                    className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 text-rose-300 text-[10px] font-mono font-bold transition-all cursor-pointer shadow-sm hover:border-rose-400 shrink-0"
+                    title="Illustrate this scene in real-time with Nano Banana 2.1"
                   >
-                    <ChevronsDown className="w-3.5 h-3.5 text-zinc-400 group-hover/bottom:text-rose-400 group-hover/bottom:translate-y-0.5 transition-all" />
-                    <span className="hidden sm:inline">Bottom</span>
+                    <Camera className="w-3 h-3 text-rose-400 shrink-0" />
+                    <span className="whitespace-nowrap">Illustrate CG</span>
                   </button>
                 </div>
+              </div>
+            )}
+
+            <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
+              {/* DYNAMIC SPRITE STAGE (REDESIGNED FOR FULL-SIZE SPOTLIGHT & COMPANION SWITCHER) */}
+              {currentStory.id !== "ash-and-velvet" && (
+                <div className="hidden sm:flex relative w-56 sm:w-64 md:w-80 lg:w-96 bg-gradient-to-b from-zinc-900/40 via-zinc-950/60 to-black/90 border-r border-white/10 items-end justify-center overflow-hidden shrink-0 select-none">
+                  {/* SLEEK COMPANION AVATAR SWITCHER STRIP */}
+                  {presentComps.length > 0 && (
+                    <div className="absolute top-2 inset-x-2 z-20 flex items-center gap-1.5 p-1.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/15 overflow-x-auto no-scrollbar shadow-xl pointer-events-auto">
+                      {presentComps.map((comp) => {
+                        const isSpotlighted = isCompanionSpotlighted(comp.name, presentComps, gameState.speaker, spotlightHeroineName);
+                        const isSpeaking = gameState.speaker.toLowerCase().includes(comp.name.toLowerCase());
+                        const thumbSrc = getSpriteSrc(comp.name, comp.expressionKey);
+                        const solarisMeta = currentStory.id === "port-solaris" ? PORT_SOLARIS_HEROINE_DOSSIERS[comp.name] : undefined;
+                        const compBpm =
+                          currentStory.id === "port-solaris"
+                            ? (comp as any).heartRateBpm ??
+                            (solarisMeta
+                              ? Math.min(100, Math.round(solarisMeta.heartRateBpm + (comp.affection - 20) * 0.45))
+                              : undefined)
+                            : undefined;
+
+                        return (
+                          <div
+                            key={comp.name}
+                            onClick={() => {
+                              soundEffects.playClick();
+                              setSpotlightHeroineName(comp.name);
+                            }}
+                            onDoubleClick={() => {
+                              soundEffects.playClick();
+                              setSelectedCharacterCardComp(comp);
+                            }}
+                            className={`group relative flex items-center gap-1.5 px-2 py-1 rounded-xl transition-all cursor-pointer shrink-0 border select-none ${isSpotlighted
+                              ? "bg-rose-950/80 border-rose-400/80 shadow-[0_0_12px_rgba(244,63,94,0.35)] scale-102"
+                              : "bg-zinc-900/60 border-white/10 hover:border-white/30 hover:bg-zinc-800/80"
+                              }`}
+                            title={`Click to focus ${comp.name} on stage • Double-click to open Dossier`}
+                          >
+                            <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-white/20 bg-zinc-950 shrink-0">
+                              <img
+                                src={(thumbSrc && thumbSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
+                                alt={comp.name}
+                                className="w-full h-full object-cover object-top"
+                              />
+                              {isSpeaking && (
+                                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+                              )}
+                            </div>
+
+                            <div className="flex flex-col min-w-0 pr-0.5">
+                              <div className="flex items-center gap-1">
+                                <span className={`text-[10px] font-mono font-bold truncate max-w-[65px] ${isSpotlighted ? "text-rose-200" : "text-zinc-300"}`}>
+                                  {comp.name.split(" ")[0]}
+                                </span>
+                                {isSpeaking && <Sparkles className="w-2.5 h-2.5 text-rose-400 shrink-0" />}
+                              </div>
+                              {compBpm !== undefined ? (
+                                <span className="text-[8px] font-mono text-rose-300 leading-none">
+                                  ♥ {compBpm}
+                                </span>
+                              ) : (
+                                <span className="text-[8px] font-mono text-rose-300/90 leading-none">
+                                  {comp.starRank ? `${comp.starRank}★ • ` : ""}♥ {comp.affection}%
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                soundEffects.playClick();
+                                setSelectedCharacterCardComp(comp);
+                              }}
+                              className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                              title={`Open ${comp.name}'s Dossier`}
+                            >
+                              <Info className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="relative w-full h-full flex items-end justify-center px-2 pt-14">
+                    {(() => {
+                      if (presentComps.length === 0) {
+                        return (
+                          /* SOLO / NO HEROINE SCENE: DISPLAY PROTAGONIST SPRITE */
+                          <div className="relative h-full w-full flex items-end justify-center animate-in fade-in duration-500">
+                            <div
+                              className="absolute bottom-6 w-52 h-52 rounded-full blur-3xl pointer-events-none opacity-30"
+                              style={{
+                                background: "radial-gradient(circle, rgba(14,165,233,0.5) 0%, transparent 70%)"
+                              }}
+                            />
+                            {playerAvatar && playerAvatar.trim() ? (
+                              <img
+                                src={playerAvatar}
+                                alt={player.name}
+                                onClick={(e) => handleOpenPlayerFullPortrait(e)}
+                                title="Click to view full character image"
+                                className="h-full w-full object-contain object-bottom filter drop-shadow-[0_12px_24px_rgba(0,0,0,0.95)] cursor-pointer hover:brightness-110 transition-all"
+                              />
+                            ) : (
+                              <div className="h-full w-full flex flex-col items-center justify-center text-center p-4">
+                                <div className="w-24 h-24 rounded-full bg-zinc-800/80 border-2 border-white/10 flex items-center justify-center text-zinc-500 mb-2 shadow-inner">
+                                  <User className="w-12 h-12 text-zinc-500" />
+                                </div>
+                                <span className="text-xs font-mono text-zinc-300 font-semibold">{player.name}</span>
+                                <span className="text-[10px] font-mono text-zinc-500">{player.role || "Protagonist"}</span>
+                              </div>
+                            )}
+                            <div className="absolute bottom-2 left-2 right-2 text-center pointer-events-none">
+                              <span className="text-[10px] font-mono px-2.5 py-1 rounded-full bg-black/80 border border-sky-500/30 text-sky-300 shadow-md inline-flex items-center justify-center gap-1.5 mx-auto">
+                                <Shield className="w-3 h-3 text-sky-400" />
+                                <span>{player.name} • Solo in {gameState.location}</span>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      // Multi-character scene: Spotlight active speaker or player-selected heroine at FULL SIZE!
+                      const spotlightComp = resolveSpotlightCompanion(presentComps, gameState.speaker, spotlightHeroineName) || presentComps[0];
+
+                      const isSpeaking = gameState.speaker.toLowerCase().includes(spotlightComp.name.toLowerCase());
+                      const spriteSrc = getSpriteSrc(spotlightComp.name, spotlightComp.expressionKey);
+
+                      return (
+                        <div
+                          key={spotlightComp.name}
+                          className="relative h-full w-full flex items-end justify-center transition-all duration-500"
+                        >
+                          {/* Ambient Heroine Aura */}
+                          <div
+                            className="absolute bottom-6 w-56 h-56 rounded-full blur-3xl pointer-events-none opacity-40 transition-all duration-700"
+                            style={{
+                              background: getStageHeroineAura(spotlightComp.name).background
+                            }}
+                          />
+
+                          {/* Full-Size Spotlight Sprite (Never shrinks to thumbnail sliver) */}
+                          <img
+                            src={(spriteSrc && spriteSrc.trim()) || DEFAULT_FALLBACK_SPRITE}
+                            alt={spotlightComp.name}
+                            decoding="async"
+                            onClick={() => {
+                              soundEffects.playClick();
+                              setSelectedCharacterCardComp(spotlightComp);
+                            }}
+                            onError={(e) => {
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = DEFAULT_FALLBACK_SPRITE;
+                            }}
+                            title={`Click to open ${spotlightComp.name}'s Character Card Dossier`}
+                            className={getStageSpriteClasses(isSpeaking)}
+                          />
+
+                          {/* Spotlight Character Info Bar / Dossier Trigger & Dynamic Wardrobe Selector */}
+                          <div className="absolute bottom-2 inset-x-2 flex items-center justify-between gap-1.5 pointer-events-auto">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundEffects.playClick();
+                                setSelectedCharacterCardComp(spotlightComp);
+                              }}
+                              className="px-2.5 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-white/20 hover:border-rose-400 text-white text-[10px] font-mono font-bold flex items-center gap-1.5 shadow-lg backdrop-blur-md transition-all cursor-pointer group min-w-0"
+                              title="Click to view full dossier & stats"
+                            >
+                              <Sparkles className="w-3 h-3 text-rose-400 group-hover:rotate-12 transition-transform shrink-0" />
+                              <span className="truncate max-w-[115px]">{spotlightComp.name}</span>
+                              <span className="text-[9px] text-rose-300 opacity-80 shrink-0">• Dossier</span>
+                            </button>
+                            {(() => {
+                              const storyComp = currentStory.companions?.find(
+                                (sc) =>
+                                  sc.id === spotlightComp.id ||
+                                  sc.name.toLowerCase() === spotlightComp.name.toLowerCase()
+                              );
+                              const wLabels =
+                                (spotlightComp as any).wardrobeLabels || storyComp?.wardrobeLabels;
+                              if (!wLabels || Object.keys(wLabels).length <= 1) return null;
+                              const activeW =
+                                (spotlightComp as any).activeWardrobe ||
+                                storyComp?.activeWardrobe ||
+                                "base";
+                              return (
+                                <select
+                                  value={activeW}
+                                  onChange={(e) => {
+                                    const nextW = e.target.value;
+                                    soundEffects.playClick();
+                                    setParty((prev) =>
+                                      prev.map((p) =>
+                                        p.name.toLowerCase() === spotlightComp.name.toLowerCase()
+                                          ? { ...p, activeWardrobe: nextW }
+                                          : p
+                                      )
+                                    );
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  title="Switch heroine outfit"
+                                  className="max-w-[130px] px-2 py-1 rounded-full bg-black/85 hover:bg-zinc-900 border border-rose-500/40 text-rose-200 text-[10px] font-mono font-bold shadow-lg backdrop-blur-md cursor-pointer focus:outline-none truncate"
+                                >
+                                  {Object.entries(wLabels).map(([wKey, wLabel]) => (
+                                    <option key={wKey} value={wKey} className="bg-zinc-950 text-zinc-100">
+                                      {String(wLabel)}
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-zinc-950 to-transparent pointer-events-none" />
+                </div>
               )}
+
+              {/* MESSAGE FEED (SELECTABLE AND EDITABLE) */}
+              <div className="relative flex-1 flex flex-col min-h-0 overflow-hidden">
+                <div
+                  ref={dialogueFeedRef}
+                  className="flex-1 p-3 sm:p-4 md:p-5 overflow-y-auto space-y-3 sm:space-y-4 select-text pb-14"
+                >
+                  {(() => {
+                    let latestCharIdx = -1;
+                    let latestUserIdx = -1;
+                    for (let i = chatLog.length - 1; i >= 0; i--) {
+                      if (latestCharIdx === -1 && chatLog[i].sender === "character") latestCharIdx = i;
+                      if (latestUserIdx === -1 && chatLog[i].sender === "user") latestUserIdx = i;
+                      if (latestCharIdx !== -1 && latestUserIdx !== -1) break;
+                    }
+
+                    return chatLog.map((msg, idx) => {
+                      const isLatestCharacterTurn = idx === latestCharIdx;
+                      const isLatestUserTurn = idx === latestUserIdx;
+                      const isTypingUser = msg.id === typingUserMsgId;
+                      const isEditing = editingMessageId === msg.id;
+
+                      const isMsgAmbient =
+                        msg.sender === "character" &&
+                        ["narrator", "system", "inner monologue"].some((s) =>
+                          msg.speakerName.toLowerCase().includes(s)
+                        );
+                      const resolvedSpriteSrc =
+                        msg.sender === "character" && !isMsgAmbient
+                          ? (msg.avatarSrc && msg.avatarSrc.trim()) ||
+                          getSpriteSrc(msg.speakerName, activeSpeakerComp.expressionKey) ||
+                          DEFAULT_FALLBACK_SPRITE
+                          : DEFAULT_FALLBACK_SPRITE;
+
+                      return (
+                        <ChatMessageItem
+                          key={msg.id}
+                          msg={msg}
+                          isLatestCharacterTurn={isLatestCharacterTurn}
+                          isLatestUserTurn={isLatestUserTurn}
+                          isTypingUser={isTypingUser}
+                          isEditing={isEditing}
+                          isLoading={isLoading}
+                          playerAvatar={playerAvatar}
+                          playerName={player.name}
+                          resolvedSpriteSrc={resolvedSpriteSrc}
+                          defaultFallbackSprite={DEFAULT_FALLBACK_SPRITE}
+                          streamedContent={
+                            isLatestCharacterTurn
+                              ? displayedText
+                              : isTypingUser
+                                ? displayedUserText
+                                : undefined
+                          }
+                          isStreaming={
+                            isLatestCharacterTurn
+                              ? displayedText.length < gameState.dialogue.length
+                              : isTypingUser
+                                ? displayedUserText.length < msg.text.length
+                                : false
+                          }
+                          onStartEdit={handleStartEdit}
+                          onCancelEdit={handleCancelEdit}
+                          onSaveEdit={handleSaveEdit}
+                          onDeleteMessage={handleDeleteMessage}
+                          onRegenerateTurn={handleRegenerateTurn}
+                          onSkipTypewriter={handleSkipTypewriter}
+                          onPinMemory={handlePinTurnMessage}
+                          onViewPortrait={handleViewMessagePortrait}
+                          onSelectSwipe={handleSelectSwipe}
+                          onRewindToMessage={handleRewindToMessage}
+                          panelFrameStyle={currentStory.panelFrameStyle}
+                        />
+                      );
+                    });
+                  })()}
+
+                  {/* DIEGETIC ROTATING LOADING STATUS BANNER */}
+                  {isLoading && (
+                    <div className="w-full rounded-2xl border border-rose-500/30 bg-zinc-950/90 px-4 py-3 flex items-center justify-between gap-3 animate-pulse shadow-lg">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <Sparkles className="w-4 h-4 text-rose-400 animate-spin shrink-0" />
+                        <span className="text-xs font-mono text-zinc-200 truncate">
+                          {loadingPhaseIdx === 0 &&
+                            `Weaving ${gameState.speaker && gameState.speaker !== "Narrator" ? `${gameState.speaker}'s` : "world"} response in ${gameState.location}...`}
+                          {loadingPhaseIdx === 1 &&
+                            `Evaluating ${player.name}'s ${player.race || "Human"} instincts & active stance...`}
+                          {loadingPhaseIdx === 2 &&
+                            `Consulting ${(player.pinnedMemories || []).length > 0 ? `${player.pinnedMemories!.length} Pinned Core Memories & ` : ""}Chronicle Canon...`}
+                          {loadingPhaseIdx === 3 &&
+                            `Synthesizing multi-paragraph literary prose & tactical vectors...`}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-rose-400/80 uppercase tracking-wider shrink-0">
+                        {llmConfig.narrativeDepth === "deep_novelistic"
+                          ? "5-7+ Paragraphs"
+                          : llmConfig.narrativeDepth === "expansive"
+                            ? "3-5 Paragraphs"
+                            : "2-3 Paragraphs"}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* RETURN TO TOP & RETURN TO BOTTOM QUICK SCROLL BUTTONS */}
+                {chatLog.length > 0 && (
+                  <div className="absolute right-2 bottom-2 sm:right-3.5 sm:bottom-3.5 flex items-center gap-1 sm:gap-1.5 z-20 pointer-events-auto opacity-85 hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={scrollToTop}
+                      className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/top"
+                      title="Return to Top of dialogue"
+                    >
+                      <ChevronsUp className="w-3.5 h-3.5 text-zinc-400 group-hover/top:text-rose-400 group-hover/top:-translate-y-0.5 transition-all" />
+                      <span className="hidden sm:inline">Top</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={scrollToBottom}
+                      className="flex items-center gap-1 p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-zinc-950/90 hover:bg-zinc-900 border border-white/10 hover:border-rose-500/40 text-zinc-400 hover:text-white backdrop-blur-md shadow-xl text-[11px] font-mono transition-all cursor-pointer active:scale-95 group/bottom"
+                      title="Return to Bottom of dialogue"
+                    >
+                      <ChevronsDown className="w-3.5 h-3.5 text-zinc-400 group-hover/bottom:text-rose-400 group-hover/bottom:translate-y-0.5 transition-all" />
+                      <span className="hidden sm:inline">Bottom</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Starfall Labyrinth Turn-Based Tactical Combat HUD & Field Dock */}
-        {currentStory.id === "starfall-labyrinth" &&
-          player.labyrinthState &&
-          (player.labyrinthState.activeEncounter?.isActive ||
-            ((player.labyrinthState.currentFloor || 0) > 0 &&
-              !isStarfallLobbyLocation(gameState.location))) && (
-            <div className="pointer-events-auto mb-1.5">
-              <StarfallTacticalCombatHud
-                encounter={player.labyrinthState.activeEncounter || null}
-                labyrinthState={player.labyrinthState}
-                protagonistName={player.name}
-                protagonistRole={player.role}
-                protagonistAbilities={player.abilityDetails}
-                protagonistHp={player.stats.hp}
-                protagonistMaxHp={player.stats.maxHp}
-                protagonistMp={player.stats.mp}
-                protagonistMaxMp={player.stats.maxMp}
-                partyMembers={party as StoryCompanion[]}
-                isSending={isLoading}
-                onExecuteCombatCommand={(cmd) => sendAction(cmd, true)}
-                onSelectTargetUnit={(unitId) => {
-                  const updatePlayerTarget = (prev: PlayerProfile): PlayerProfile => {
-                    const enc = prev.labyrinthState?.activeEncounter;
-                    if (!prev.labyrinthState || !enc) return prev;
-                    const chosen = enc.enemyUnits?.find((u) => u.unitId === unitId && u.hp > 0);
-                    return {
-                      ...prev,
-                      labyrinthState: {
-                        ...prev.labyrinthState,
-                        activeEncounter: {
-                          ...enc,
-                          activeTargetUnitId: unitId,
-                          ...(chosen
-                            ? {
+          {/* Starfall Labyrinth Turn-Based Tactical Combat HUD & Field Dock */}
+          {currentStory.id === "starfall-labyrinth" &&
+            player.labyrinthState &&
+            (player.labyrinthState.activeEncounter?.isActive ||
+              ((player.labyrinthState.currentFloor || 0) > 0 &&
+                !isStarfallLobbyLocation(gameState.location))) && (
+              <div className="pointer-events-auto mb-1.5">
+                <StarfallTacticalCombatHud
+                  encounter={player.labyrinthState.activeEncounter || null}
+                  labyrinthState={player.labyrinthState}
+                  protagonistName={player.name}
+                  protagonistRole={player.role}
+                  protagonistAbilities={player.abilityDetails}
+                  protagonistHp={player.stats.hp}
+                  protagonistMaxHp={player.stats.maxHp}
+                  protagonistMp={player.stats.mp}
+                  protagonistMaxMp={player.stats.maxMp}
+                  partyMembers={party as StoryCompanion[]}
+                  isSending={isLoading}
+                  onExecuteCombatCommand={(cmd) => sendAction(cmd, true)}
+                  onSelectTargetUnit={(unitId) => {
+                    const updatePlayerTarget = (prev: PlayerProfile): PlayerProfile => {
+                      const enc = prev.labyrinthState?.activeEncounter;
+                      if (!prev.labyrinthState || !enc) return prev;
+                      const chosen = enc.enemyUnits?.find((u) => u.unitId === unitId && u.hp > 0);
+                      return {
+                        ...prev,
+                        labyrinthState: {
+                          ...prev.labyrinthState,
+                          activeEncounter: {
+                            ...enc,
+                            activeTargetUnitId: unitId,
+                            ...(chosen
+                              ? {
                                 enemyId: chosen.templateId,
                                 enemyName: chosen.name,
                                 enemyTitle: chosen.title,
@@ -13903,409 +13904,406 @@ export default function VisualNovelGame() {
                                 enemyMaxPoise: chosen.maxPoise,
                                 isEnemyBroken: chosen.isBroken,
                               }
-                            : {}),
+                              : {}),
+                          },
                         },
-                      },
+                      };
                     };
-                  };
-                  playerRef.current = updatePlayerTarget(playerRef.current || player);
-                  setPlayer((prev) => {
-                    const next = updatePlayerTarget(prev);
-                    playerRef.current = next;
-                    return next;
-                  });
-                }}
-                onOpenBarracks={() => setShowBarracksModal(true)}
-              />
-            </div>
+                    playerRef.current = updatePlayerTarget(playerRef.current || player);
+                    setPlayer((prev) => {
+                      const next = updatePlayerTarget(prev);
+                      playerRef.current = next;
+                      return next;
+                    });
+                  }}
+                  onOpenBarracks={() => setShowBarracksModal(true)}
+                />
+              </div>
+            )}
+
+          {/* Pitch C & Upgrade 2A: Integrated Sector Clash Tactical Combat Dock with Universal 6-Stance Matrix */}
+          {currentStory.id !== "starfall-labyrinth" && activeClash && activeClash.isActive && (
+            <SectorClashHud
+              activeClash={activeClash}
+              storyId={currentStory.id}
+              isPortSolaris={currentStory.id === "port-solaris"}
+              playerName={player.name}
+              playerRole={player.role || "Voidstrider"}
+              playerHp={player.stats.hp}
+              playerMaxHp={player.stats.maxHp}
+              playerMp={player.stats.mp}
+              playerMaxMp={player.stats.maxMp}
+              activeStance={(player.activeStance as any) || "neutral"}
+              onSelectStance={(nextStance) => {
+                setPlayer((prev) => {
+                  const updated = { ...prev, activeStance: nextStance };
+                  playerRef.current = updated;
+                  return updated;
+                });
+              }}
+              assistingCompanion={party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)) || null}
+              isLoading={isLoading}
+              isExecutingClashAction={isExecutingClashAction}
+              onExecuteClashAction={handleExecuteClashAction}
+              onGenerateEnemyImage={(customPrompt) => handleGenerateEnemyImage(customPrompt)}
+              isGeneratingEnemyImage={isGeneratingEnemyImage}
+              combatPopups={clashCombatPopups}
+              lastHitEvent={lastClashHitEvent}
+              playerAbilities={player.abilities}
+              abilityDetails={player.abilityDetails}
+            />
           )}
 
-        {/* Pitch C & Upgrade 2A: Integrated Sector Clash Tactical Combat Dock with Universal 6-Stance Matrix */}
-        {currentStory.id !== "starfall-labyrinth" && activeClash && activeClash.isActive && (
-          <SectorClashHud
-            activeClash={activeClash}
-            storyId={currentStory.id}
-            isPortSolaris={currentStory.id === "port-solaris"}
-            playerName={player.name}
-            playerRole={player.role || "Voidstrider"}
-            playerHp={player.stats.hp}
-            playerMaxHp={player.stats.maxHp}
-            playerMp={player.stats.mp}
-            playerMaxMp={player.stats.maxMp}
-            activeStance={(player.activeStance as any) || "neutral"}
-            onSelectStance={(nextStance) => {
-              setPlayer((prev) => {
-                const updated = { ...prev, activeStance: nextStance };
-                playerRef.current = updated;
-                return updated;
-              });
-            }}
-            assistingCompanion={party.find((c) => c.isPresent && (c.name === activeClash.companionAssistingName || true)) || null}
-            isLoading={isLoading}
-            isExecutingClashAction={isExecutingClashAction}
-            onExecuteClashAction={handleExecuteClashAction}
-            onGenerateEnemyImage={(customPrompt) => handleGenerateEnemyImage(customPrompt)}
-            isGeneratingEnemyImage={isGeneratingEnemyImage}
-            combatPopups={clashCombatPopups}
-            lastHitEvent={lastClashHitEvent}
-            playerAbilities={player.abilities}
-            abilityDetails={player.abilityDetails}
-          />
-        )}
+          {/* UNIFIED COMPOSER & TACTICAL CONTROL DOCK */}
+          {(() => {
+            const showChoiceControls =
+              choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive);
+            const showCovenantTrigger =
+              currentStory.id !== "ash-and-velvet" &&
+              covenantCheck.available &&
+              (!activeClash || !activeClash.isActive) &&
+              !player.labyrinthState?.activeEncounter?.isActive;
+            const showStarfallDeploy =
+              currentStory.id === "starfall-labyrinth" &&
+              !player.labyrinthState?.activeEncounter?.isActive &&
+              isStarfallLobbyLocation(gameState.location);
 
-        {/* UNIFIED COMPOSER & TACTICAL CONTROL DOCK */}
-        {(() => {
-          const showChoiceControls =
-            choices.length > 0 && !isLoading && (!activeClash || !activeClash.isActive);
-          const showCovenantTrigger =
-            currentStory.id !== "ash-and-velvet" &&
-            covenantCheck.available &&
-            (!activeClash || !activeClash.isActive) &&
-            !player.labyrinthState?.activeEncounter?.isActive;
-          const showStarfallDeploy =
-            currentStory.id === "starfall-labyrinth" &&
-            !player.labyrinthState?.activeEncounter?.isActive &&
-            isStarfallLobbyLocation(gameState.location);
-
-          return (
-            <div
-              className={
-                currentStory.id === "ash-and-velvet"
-                  ? "pointer-events-auto bg-[#15141D]/98 backdrop-blur-2xl border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] overflow-hidden flex flex-col shrink-0 select-none"
-                  : "pointer-events-auto bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col shrink-0 select-none"
-              }
-            >
-              {/* Compact Single-Row Control Strip Inside Composer */}
-              <div className="flex items-center justify-between gap-1.5 px-2 sm:px-2.5 py-1.5 border-b border-white/10 bg-zinc-900/55 overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {showChoiceControls && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setIsChoicesCollapsed((v) => !v)}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono font-semibold transition-all cursor-pointer shrink-0 ${
-                          !isChoicesCollapsed
-                            ? "bg-rose-950/70 border-rose-500/45 text-rose-200"
-                            : "bg-zinc-950/80 border-white/10 text-zinc-300 hover:text-white hover:border-white/25"
-                        }`}
-                        title={isChoicesCollapsed ? "Expand suggested choices" : "Minimize suggested choices to view more story"}
-                      >
-                        <Sparkles className="w-2.5 h-2.5 text-rose-400 shrink-0" />
-                        <span className="sm:hidden">Choices ({choices.length})</span>
-                        <span className="hidden sm:inline">
-                          {currentStory.id === "ash-and-velvet"
-                            ? `${choices.length} Choices`
-                            : `${choices.length} Tactical Vectors`}
-                        </span>
-                        {isChoicesCollapsed ? (
-                          <ChevronUp className="w-3 h-3 text-rose-400 shrink-0" />
-                        ) : (
-                          <ChevronDown className="w-3 h-3 text-zinc-400 shrink-0" />
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleRerollChoices()}
-                        disabled={isRerollingChoices || isDraftingAction || isLoading}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-950/80 hover:bg-zinc-800 border border-white/10 hover:border-amber-500/40 text-[10px] font-mono text-zinc-300 hover:text-amber-300 transition-all cursor-pointer disabled:opacity-50 shrink-0"
-                        title="Generate 4 alternative protagonist choices for this scene"
-                      >
-                        <RefreshCw className={`w-2.5 h-2.5 ${isRerollingChoices ? "animate-spin text-amber-400" : ""}`} />
-                        <span>{isRerollingChoices ? "Rerolling..." : "Reroll"}</span>
-                      </button>
-                    </>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => setShowOocDrawer((v) => !v)}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono transition-all cursor-pointer shrink-0 ${
-                      directorNotes.trim()
-                        ? "bg-indigo-950/85 border-indigo-400/60 text-indigo-200 shadow-[0_0_10px_rgba(99,102,241,0.25)]"
-                        : showOocDrawer
-                        ? "bg-indigo-950/50 border-indigo-500/40 text-indigo-200"
-                        : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:text-indigo-200 hover:border-indigo-500/40"
-                    }`}
-                    title="Steer pacing, subtext, or scene mood out-of-character without breaking immersion"
-                  >
-                    <Sparkles className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
-                    <span className="sm:hidden">{directorNotes.trim() ? "OOC Active" : "OOC Note"}</span>
-                    <span className="hidden sm:inline">
-                      {directorNotes.trim() ? "OOC Director Note Active" : "OOC Stage Direction"}
-                    </span>
-                    {showOocDrawer ? (
-                      <ChevronDown className="w-2.5 h-2.5 opacity-70 shrink-0" />
-                    ) : (
-                      <ChevronUp className="w-2.5 h-2.5 opacity-70 shrink-0" />
-                    )}
-                  </button>
-
-                  {showCovenantTrigger && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        soundEffects.playClick();
-                        setShowCovenantModal(true);
-                      }}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-purple-500/60 bg-purple-950/75 hover:border-purple-400 text-purple-200 hover:text-white font-mono text-[10px] font-semibold shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all cursor-pointer shrink-0"
-                      title={covenantCheck.reason}
-                    >
-                      <Zap className="w-3 h-3 text-purple-400 animate-pulse shrink-0" />
-                      <span className="sm:hidden">Covenant</span>
-                      <span className="hidden sm:inline">[COVENANT: REALITY SEVERANCE]</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  {showChoiceControls && !isChoicesCollapsed && currentStory.id !== "ash-and-velvet" && (
-                    <span className="text-[10px] font-mono text-zinc-500 hidden lg:inline">
-                      Click card to Draft • ⚡ Send Immediately
-                    </span>
-                  )}
-
-                  {showStarfallDeploy && (() => {
-                    const frontierFloor = Math.min(
-                      100,
-                      Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)
-                    );
-                    const targetDeployFloor =
-                      selectedDeployFloor === null
-                        ? frontierFloor
-                        : Math.max(1, Math.min(frontierFloor, selectedDeployFloor));
-                    const availableFloors = Array.from(
-                      { length: frontierFloor },
-                      (_, idx) => frontierFloor - idx
-                    );
-                    return (
-                      <div className="inline-flex items-center gap-1 shrink-0">
-                        <select
-                          aria-label="Select Starfall Labyrinth deploy floor"
-                          value={targetDeployFloor}
-                          disabled={isLoading}
-                          onChange={(e) => {
-                            const val = Number(e.target.value);
-                            setSelectedDeployFloor(val >= frontierFloor ? null : val);
-                          }}
-                          className="px-1.5 py-0.5 rounded-lg bg-zinc-950/90 border border-amber-500/35 text-[10px] font-mono font-bold text-amber-200 focus:outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50"
-                          title="Select frontier floor or any previously cleared floor to replay"
-                        >
-                          {availableFloors.map((f) => {
-                            const ft = getFloorType(f);
-                            const tag =
-                              f === frontierFloor
-                                ? " • Frontier"
-                                : ft === "GATE_BOSS"
-                                  ? " • Boss"
-                                  : ft === "SAFE_ZONE"
-                                    ? " • Safe"
-                                    : "";
-                            return (
-                              <option key={f} value={f} className="bg-zinc-950 text-amber-100">
-                                F{f}{tag}
-                              </option>
-                            );
-                          })}
-                        </select>
+            return (
+              <div
+                className={
+                  currentStory.id === "ash-and-velvet"
+                    ? "pointer-events-auto bg-[#15141D]/98 backdrop-blur-2xl border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] overflow-hidden flex flex-col shrink-0 select-none"
+                    : "pointer-events-auto bg-zinc-950/95 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl overflow-hidden flex flex-col shrink-0 select-none"
+                }
+              >
+                {/* Compact Single-Row Control Strip Inside Composer */}
+                <div className="flex items-center justify-between gap-1.5 px-2 sm:px-2.5 py-1.5 border-b border-white/10 bg-zinc-900/55 overflow-x-auto no-scrollbar">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {showChoiceControls && (
+                      <>
                         <button
                           type="button"
-                          onClick={() =>
-                            sendAction(
-                              `Enter Floor ${targetDeployFloor} with the deployed vanguard.`,
-                              true
-                            )
-                          }
-                          disabled={isLoading}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer disabled:opacity-50"
-                          title="Step directly through the Star Gate into the selected Labyrinth floor"
+                          onClick={() => setIsChoicesCollapsed((v) => !v)}
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono font-semibold transition-all cursor-pointer shrink-0 ${!isChoicesCollapsed
+                            ? "bg-rose-950/70 border-rose-500/45 text-rose-200"
+                            : "bg-zinc-950/80 border-white/10 text-zinc-300 hover:text-white hover:border-white/25"
+                            }`}
+                          title={isChoicesCollapsed ? "Expand suggested choices" : "Minimize suggested choices to view more story"}
                         >
-                          <span className="sm:hidden">⚔ F{targetDeployFloor}</span>
-                          <span className="hidden sm:inline">⚔ Deploy to Floor {targetDeployFloor}</span>
+                          <Sparkles className="w-2.5 h-2.5 text-rose-400 shrink-0" />
+                          <span className="sm:hidden">Choices ({choices.length})</span>
+                          <span className="hidden sm:inline">
+                            {currentStory.id === "ash-and-velvet"
+                              ? `${choices.length} Choices`
+                              : `${choices.length} Tactical Vectors`}
+                          </span>
+                          {isChoicesCollapsed ? (
+                            <ChevronUp className="w-3 h-3 text-rose-400 shrink-0" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3 text-zinc-400 shrink-0" />
+                          )}
                         </button>
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
 
-              {/* Expandable Choices Tray Inside Unified Box */}
-              {showChoiceControls && !isChoicesCollapsed && (
-                <div className={currentStory.id === "ash-and-velvet" ? "" : "px-2 py-1.5 border-b border-white/10 bg-zinc-950/60 space-y-1.5"}>
-                  {currentStory.id !== "ash-and-velvet" && (
-                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-                    <button
-                      type="button"
-                      onClick={() => handleRerollChoices("romantic")}
-                      disabled={isRerollingChoices || isDraftingAction || isLoading}
-                      className="px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-[10px] font-mono text-rose-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
-                      title="Reroll 4 choices steered toward romance, flirting, and personal connection"
-                    >
-                      ♥ Bond/Flirt
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRerollChoices("objective")}
-                      disabled={isRerollingChoices || isDraftingAction || isLoading}
-                      className="px-2 py-0.5 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-[10px] font-mono text-sky-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
-                      title="Reroll 4 choices steered toward active objectives and advancing the plot"
-                    >
-                      ⚔ Push Plot
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRerollChoices("bold")}
-                      disabled={isRerollingChoices || isDraftingAction || isLoading}
-                      className="px-2 py-0.5 rounded-lg bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 hover:border-purple-400/60 text-[10px] font-mono text-purple-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
-                      title="Reroll 4 choices steered toward bold moves, confrontational gambits, or signature skills"
-                    >
-                      ⚡ Bold Play
-                    </button>
-                  </div>
-                  )}
-
-                  {currentStory.id === "ash-and-velvet" ? (
-                    <AshVelvetChoiceDeck
-                      choices={choices}
-                      disabled={isLoading || isDraftingAction}
-                      onSelectChoice={(choice) => {
-                        if (isLoading || isDraftingAction) return;
-                        const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
-                        sendAction(clean, false);
-                      }}
-                      onDraftChoice={(choice) => {
-                        const idx = choices.indexOf(choice);
-                        handleSelectPresetChoice(choice, idx >= 0 ? idx : 0);
-                      }}
-                    />
-                  ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-[24dvh] sm:max-h-36 overflow-y-auto pr-0.5">
-                    {choices.map((choice, idx) => {
-                      const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
-                      const tag = tagMatch ? tagMatch[1] : null;
-                      const text = tagMatch ? tagMatch[2] : choice;
-                      const isThisChoiceDrafting = isDraftingAction && draftingChoiceIdx === idx;
-                      const resonanceBadge = getChoiceResonanceBadge(choice);
-
-                      return (
-                        <div
-                          key={`${idx}_${choice.slice(0, 16)}`}
-                          className={`group bg-zinc-900/90 hover:bg-zinc-900 border px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-left transition-all duration-150 shadow-sm flex items-center justify-between gap-2 ${
-                            isThisChoiceDrafting
-                              ? "border-sky-400 ring-1 ring-sky-500/40 bg-sky-950/30"
-                              : "border-white/10 hover:border-sky-500/50"
-                          }`}
+                        <button
+                          type="button"
+                          onClick={() => handleRerollChoices()}
+                          disabled={isRerollingChoices || isDraftingAction || isLoading}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-950/80 hover:bg-zinc-800 border border-white/10 hover:border-amber-500/40 text-[10px] font-mono text-zinc-300 hover:text-amber-300 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                          title="Generate 4 alternative protagonist choices for this scene"
                         >
+                          <RefreshCw className={`w-2.5 h-2.5 ${isRerollingChoices ? "animate-spin text-amber-400" : ""}`} />
+                          <span>{isRerollingChoices ? "Rerolling..." : "Reroll"}</span>
+                        </button>
+                      </>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setShowOocDrawer((v) => !v)}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg border text-[10px] font-mono transition-all cursor-pointer shrink-0 ${directorNotes.trim()
+                        ? "bg-indigo-950/85 border-indigo-400/60 text-indigo-200 shadow-[0_0_10px_rgba(99,102,241,0.25)]"
+                        : showOocDrawer
+                          ? "bg-indigo-950/50 border-indigo-500/40 text-indigo-200"
+                          : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:text-indigo-200 hover:border-indigo-500/40"
+                        }`}
+                      title="Steer pacing, subtext, or scene mood out-of-character without breaking immersion"
+                    >
+                      <Sparkles className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+                      <span className="sm:hidden">{directorNotes.trim() ? "OOC Active" : "OOC Note"}</span>
+                      <span className="hidden sm:inline">
+                        {directorNotes.trim() ? "OOC Director Note Active" : "OOC Stage Direction"}
+                      </span>
+                      {showOocDrawer ? (
+                        <ChevronDown className="w-2.5 h-2.5 opacity-70 shrink-0" />
+                      ) : (
+                        <ChevronUp className="w-2.5 h-2.5 opacity-70 shrink-0" />
+                      )}
+                    </button>
+
+                    {showCovenantTrigger && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundEffects.playClick();
+                          setShowCovenantModal(true);
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-purple-500/60 bg-purple-950/75 hover:border-purple-400 text-purple-200 hover:text-white font-mono text-[10px] font-semibold shadow-[0_0_12px_rgba(168,85,247,0.25)] transition-all cursor-pointer shrink-0"
+                        title={covenantCheck.reason}
+                      >
+                        <Zap className="w-3 h-3 text-purple-400 animate-pulse shrink-0" />
+                        <span className="sm:hidden">Covenant</span>
+                        <span className="hidden sm:inline">[COVENANT: REALITY SEVERANCE]</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {showChoiceControls && !isChoicesCollapsed && currentStory.id !== "ash-and-velvet" && (
+                      <span className="text-[10px] font-mono text-zinc-500 hidden lg:inline">
+                        Click card to Draft • ⚡ Send Immediately
+                      </span>
+                    )}
+
+                    {showStarfallDeploy && (() => {
+                      const frontierFloor = Math.min(
+                        100,
+                        Math.max(1, (player.labyrinthState?.highestFloorCleared || 0) + 1)
+                      );
+                      const targetDeployFloor =
+                        selectedDeployFloor === null
+                          ? frontierFloor
+                          : Math.max(1, Math.min(frontierFloor, selectedDeployFloor));
+                      const availableFloors = Array.from(
+                        { length: frontierFloor },
+                        (_, idx) => frontierFloor - idx
+                      );
+                      return (
+                        <div className="inline-flex items-center gap-1 shrink-0">
+                          <select
+                            aria-label="Select Starfall Labyrinth deploy floor"
+                            value={targetDeployFloor}
+                            disabled={isLoading}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              setSelectedDeployFloor(val >= frontierFloor ? null : val);
+                            }}
+                            className="px-1.5 py-0.5 rounded-lg bg-zinc-950/90 border border-amber-500/35 text-[10px] font-mono font-bold text-amber-200 focus:outline-none focus:border-amber-400 cursor-pointer disabled:opacity-50"
+                            title="Select frontier floor or any previously cleared floor to replay"
+                          >
+                            {availableFloors.map((f) => {
+                              const ft = getFloorType(f);
+                              const tag =
+                                f === frontierFloor
+                                  ? " • Frontier"
+                                  : ft === "GATE_BOSS"
+                                    ? " • Boss"
+                                    : ft === "SAFE_ZONE"
+                                      ? " • Safe"
+                                      : "";
+                              return (
+                                <option key={f} value={f} className="bg-zinc-950 text-amber-100">
+                                  F{f}{tag}
+                                </option>
+                              );
+                            })}
+                          </select>
                           <button
                             type="button"
-                            onClick={() => handleSelectPresetChoice(choice, idx)}
-                            disabled={isLoading || isDraftingAction}
-                            title="Click to expand into a 2-paragraph draft in the text box for editing before sending"
-                            className="flex-1 min-w-0 text-left cursor-pointer disabled:opacity-60"
+                            onClick={() =>
+                              sendAction(
+                                `Enter Floor ${targetDeployFloor} with the deployed vanguard.`,
+                                true
+                              )
+                            }
+                            disabled={isLoading}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-950/80 hover:bg-amber-900/90 border border-amber-500/40 text-[10px] font-mono font-bold text-amber-200 transition-all cursor-pointer disabled:opacity-50"
+                            title="Step directly through the Star Gate into the selected Labyrinth floor"
                           >
-                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                              {tag && (
-                                <span className="font-mono text-[10px] font-semibold text-rose-400/90 group-hover:text-rose-300 shrink-0">
-                                  {tag}
-                                </span>
-                              )}
-                              {resonanceBadge && (
-                                <span
-                                  className={`px-1.5 py-0.2 rounded border text-[9px] font-mono font-semibold ${resonanceBadge.color}`}
-                                >
-                                  {resonanceBadge.label}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs sm:text-[13px] text-zinc-200 group-hover:text-white line-clamp-2 leading-snug">
-                              {isThisChoiceDrafting
-                                ? `Drafting 2-paragraph response for ${player.name}...`
-                                : text}
-                            </p>
+                            <span className="sm:hidden">⚔ F{targetDeployFloor}</span>
+                            <span className="hidden sm:inline">⚔ Deploy to Floor {targetDeployFloor}</span>
                           </button>
-
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleSelectPresetChoice(choice, idx)}
-                              disabled={isLoading || isDraftingAction}
-                              title="Draft & Edit in text box"
-                              className="p-1.5 rounded-lg bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-400/50 text-zinc-400 hover:text-sky-300 transition-all cursor-pointer"
-                            >
-                              {isThisChoiceDrafting ? (
-                                <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-spin" />
-                              ) : (
-                                <Edit3 className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isLoading || isDraftingAction) return;
-                                const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
-                                sendAction(clean, false);
-                              }}
-                              disabled={isLoading || isDraftingAction}
-                              title="⚡ Send Immediately (Skip Drafting)"
-                              className="p-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-400 text-rose-300 hover:text-white transition-all cursor-pointer"
-                            >
-                              <Zap className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
                         </div>
                       );
-                    })}
+                    })()}
                   </div>
-                  )}
                 </div>
-              )}
 
-              {/* Expandable OOC Director Note Inside Unified Box */}
-              {showOocDrawer && (
-                <div className="flex items-center gap-2 bg-indigo-950/20 border-b border-indigo-500/30 px-2.5 py-1.5">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300 shrink-0">
-                    OOC:
-                  </span>
-                  <input
-                    type="text"
-                    value={directorNotes}
-                    onChange={(e) => setDirectorNotes(e.target.value)}
-                    placeholder='e.g. "Slow burn tension—have her notice my bandaged hand." (Or (OOC: ...) inline)'
-                    className="flex-1 bg-transparent text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none select-text"
-                  />
-                  {directorNotes.trim() && (
-                    <button
-                      type="button"
-                      onClick={() => setDirectorNotes("")}
-                      className="text-[10px] font-mono text-zinc-400 hover:text-rose-300 cursor-pointer shrink-0"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              )}
+                {/* Expandable Choices Tray Inside Unified Box */}
+                {showChoiceControls && !isChoicesCollapsed && (
+                  <div className={currentStory.id === "ash-and-velvet" ? "" : "px-2 py-1.5 border-b border-white/10 bg-zinc-950/60 space-y-1.5"}>
+                    {currentStory.id !== "ash-and-velvet" && (
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                        <button
+                          type="button"
+                          onClick={() => handleRerollChoices("romantic")}
+                          disabled={isRerollingChoices || isDraftingAction || isLoading}
+                          className="px-2 py-0.5 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-[10px] font-mono text-rose-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
+                          title="Reroll 4 choices steered toward romance, flirting, and personal connection"
+                        >
+                          ♥ Bond/Flirt
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRerollChoices("objective")}
+                          disabled={isRerollingChoices || isDraftingAction || isLoading}
+                          className="px-2 py-0.5 rounded-lg bg-sky-950/50 hover:bg-sky-900/60 border border-sky-500/30 hover:border-sky-400/60 text-[10px] font-mono text-sky-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
+                          title="Reroll 4 choices steered toward active objectives and advancing the plot"
+                        >
+                          ⚔ Push Plot
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRerollChoices("bold")}
+                          disabled={isRerollingChoices || isDraftingAction || isLoading}
+                          className="px-2 py-0.5 rounded-lg bg-purple-950/50 hover:bg-purple-900/60 border border-purple-500/30 hover:border-purple-400/60 text-[10px] font-mono text-purple-200 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap shrink-0"
+                          title="Reroll 4 choices steered toward bold moves, confrontational gambits, or signature skills"
+                        >
+                          ⚡ Bold Play
+                        </button>
+                      </div>
+                    )}
 
-              {/* Integrated Text Entry Bar */}
-              <ActionInputBar
-                embedded
-                onSend={handleSendCustomAction}
-                isLoading={isLoading}
-                isDraftingAction={isDraftingAction}
-                draftText={draftActionText}
-                draftVersion={draftActionVersion}
-                playerName={player.name}
-                hasParty={party.length > 0}
-                onOpenGifting={() => {
-                  if (party.length > 0 && !selectedGiftRecipient) {
-                    setSelectedGiftRecipient(party[0].name);
-                  }
-                  setShowGiftingModal(true);
-                }}
-              />
-            </div>
-          );
-        })()}
+                    {currentStory.id === "ash-and-velvet" ? (
+                      <AshVelvetChoiceDeck
+                        choices={choices}
+                        disabled={isLoading || isDraftingAction}
+                        onSelectChoice={(choice) => {
+                          if (isLoading || isDraftingAction) return;
+                          const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+                          sendAction(clean, false);
+                        }}
+                        onDraftChoice={(choice) => {
+                          const idx = choices.indexOf(choice);
+                          handleSelectPresetChoice(choice, idx >= 0 ? idx : 0);
+                        }}
+                      />
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 sm:gap-2 max-h-[24dvh] sm:max-h-36 overflow-y-auto pr-0.5">
+                        {choices.map((choice, idx) => {
+                          const tagMatch = choice.match(/^(\[[^\]]+\](?::)?)\s*(.*)$/);
+                          const tag = tagMatch ? tagMatch[1] : null;
+                          const text = tagMatch ? tagMatch[2] : choice;
+                          const isThisChoiceDrafting = isDraftingAction && draftingChoiceIdx === idx;
+                          const resonanceBadge = getChoiceResonanceBadge(choice);
+
+                          return (
+                            <div
+                              key={`${idx}_${choice.slice(0, 16)}`}
+                              className={`group bg-zinc-900/90 hover:bg-zinc-900 border px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-left transition-all duration-150 shadow-sm flex items-center justify-between gap-2 ${isThisChoiceDrafting
+                                ? "border-sky-400 ring-1 ring-sky-500/40 bg-sky-950/30"
+                                : "border-white/10 hover:border-sky-500/50"
+                                }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleSelectPresetChoice(choice, idx)}
+                                disabled={isLoading || isDraftingAction}
+                                title="Click to expand into a 2-paragraph draft in the text box for editing before sending"
+                                className="flex-1 min-w-0 text-left cursor-pointer disabled:opacity-60"
+                              >
+                                <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                                  {tag && (
+                                    <span className="font-mono text-[10px] font-semibold text-rose-400/90 group-hover:text-rose-300 shrink-0">
+                                      {tag}
+                                    </span>
+                                  )}
+                                  {resonanceBadge && (
+                                    <span
+                                      className={`px-1.5 py-0.2 rounded border text-[9px] font-mono font-semibold ${resonanceBadge.color}`}
+                                    >
+                                      {resonanceBadge.label}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-xs sm:text-[13px] text-zinc-200 group-hover:text-white line-clamp-2 leading-snug">
+                                  {isThisChoiceDrafting
+                                    ? `Drafting 2-paragraph response for ${player.name}...`
+                                    : text}
+                                </p>
+                              </button>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSelectPresetChoice(choice, idx)}
+                                  disabled={isLoading || isDraftingAction}
+                                  title="Draft & Edit in text box"
+                                  className="p-1.5 rounded-lg bg-white/5 hover:bg-sky-500/20 border border-white/10 hover:border-sky-400/50 text-zinc-400 hover:text-sky-300 transition-all cursor-pointer"
+                                >
+                                  {isThisChoiceDrafting ? (
+                                    <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-spin" />
+                                  ) : (
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isLoading || isDraftingAction) return;
+                                    const clean = choice.replace(/^\[[^\]]+\](?::)?\s*/, "").trim();
+                                    sendAction(clean, false);
+                                  }}
+                                  disabled={isLoading || isDraftingAction}
+                                  title="⚡ Send Immediately (Skip Drafting)"
+                                  className="p-1.5 rounded-lg bg-rose-950/50 hover:bg-rose-600 border border-rose-500/30 hover:border-rose-400 text-rose-300 hover:text-white transition-all cursor-pointer"
+                                >
+                                  <Zap className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Expandable OOC Director Note Inside Unified Box */}
+                {showOocDrawer && (
+                  <div className="flex items-center gap-2 bg-indigo-950/20 border-b border-indigo-500/30 px-2.5 py-1.5">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-indigo-300 shrink-0">
+                      OOC:
+                    </span>
+                    <input
+                      type="text"
+                      value={directorNotes}
+                      onChange={(e) => setDirectorNotes(e.target.value)}
+                      placeholder='e.g. "Slow burn tension—have her notice my bandaged hand." (Or (OOC: ...) inline)'
+                      className="flex-1 bg-transparent text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none select-text"
+                    />
+                    {directorNotes.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => setDirectorNotes("")}
+                        className="text-[10px] font-mono text-zinc-400 hover:text-rose-300 cursor-pointer shrink-0"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Integrated Text Entry Bar */}
+                <ActionInputBar
+                  embedded
+                  onSend={handleSendCustomAction}
+                  isLoading={isLoading}
+                  isDraftingAction={isDraftingAction}
+                  draftText={draftActionText}
+                  draftVersion={draftActionVersion}
+                  playerName={player.name}
+                  hasParty={party.length > 0}
+                  onOpenGifting={() => {
+                    if (party.length > 0 && !selectedGiftRecipient) {
+                      setSelectedGiftRecipient(party[0].name);
+                    }
+                    setShowGiftingModal(true);
+                  }}
+                />
+              </div>
+            );
+          })()}
         </div>
 
         {/* ASH & VELVET RIGHT FULL-HEIGHT COMIC TELEMETRY RAIL (Zero Clipping!) */}
@@ -14403,17 +14401,17 @@ export default function VisualNovelGame() {
       {(() => {
         const rawCardComp = selectedCharacterCardComp
           ? party.find(
-              (c) =>
-                (selectedCharacterCardComp.id && c.id === selectedCharacterCardComp.id) ||
-                c.name.toLowerCase() === selectedCharacterCardComp.name.toLowerCase()
-            ) || selectedCharacterCardComp
+            (c) =>
+              (selectedCharacterCardComp.id && c.id === selectedCharacterCardComp.id) ||
+              c.name.toLowerCase() === selectedCharacterCardComp.name.toLowerCase()
+          ) || selectedCharacterCardComp
           : null;
         const liveCardComp = rawCardComp
           ? hydrateCompanionMetadata(
-              rawCardComp,
-              currentStory?.companions,
-              currentStory.id === "starfall-labyrinth"
-            )
+            rawCardComp,
+            currentStory?.companions,
+            currentStory.id === "starfall-labyrinth"
+          )
           : null;
         const cardKnowledge = liveCardComp
           ? getCompanionKnowledge(gameState.npcKnowledgeMap, liveCardComp.name)
@@ -14421,8 +14419,8 @@ export default function VisualNovelGame() {
         const cardRosterEntry =
           liveCardComp && currentStory.id === "starfall-labyrinth"
             ? (player.labyrinthState?.roster || []).find((r) =>
-                matchesHeroineName(r.heroineName, liveCardComp.name, r.heroineId)
-              ) || null
+              matchesHeroineName(r.heroineName, liveCardComp.name, r.heroineId)
+            ) || null
             : null;
         return (
           <CharacterCardModal
@@ -14520,11 +14518,11 @@ export default function VisualNovelGame() {
 
       {/* PARTY ROSTER DRAWER */}
       {showPartyDrawer && (
-        <div 
+        <div
           onClick={() => setShowPartyDrawer(false)}
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end max-sm:justify-end max-sm:flex-col select-none animate-in fade-in duration-200"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="w-full sm:max-w-md bg-zinc-950/95 sm:border-l border-white/10 sm:h-full max-sm:h-[88dvh] max-sm:rounded-t-3xl max-sm:border-t border-rose-500/30 flex flex-col p-6 overflow-y-auto space-y-4 animate-in sm:slide-in-from-right max-sm:slide-in-from-bottom duration-300 ease-out shadow-2xl"
           >
@@ -14537,10 +14535,10 @@ export default function VisualNovelGame() {
                   {currentStory.id === "port-solaris"
                     ? "Housemates & Blush Matrix"
                     : currentStory.id === "sovereign-spire"
-                    ? "Dyad Cohort & Resonance"
-                    : currentStory.id === "starfall-labyrinth"
-                    ? "Squad Roster & Memorial"
-                    : "Party & Affection"}
+                      ? "Dyad Cohort & Resonance"
+                      : currentStory.id === "starfall-labyrinth"
+                        ? "Squad Roster & Memorial"
+                        : "Party & Affection"}
                 </h2>
               </div>
               <button onClick={() => setShowPartyDrawer(false)} className="text-zinc-400 hover:text-white cursor-pointer">
@@ -14552,10 +14550,10 @@ export default function VisualNovelGame() {
               {currentStory.id === "port-solaris"
                 ? "Boarding house tenants & island heroines across Port Solaris:"
                 : currentStory.id === "sovereign-spire"
-                ? "Cadet heroines & Dyad candidates of The Sovereign Spire:"
-                : currentStory.id === "starfall-labyrinth"
-                ? "Summoned allies in Account #0419 (Deploy up to 4 + Protagonist • Permadeath active on Floors):"
-                : "Companions traveling alongside you across Astra:"}
+                  ? "Cadet heroines & Dyad candidates of The Sovereign Spire:"
+                  : currentStory.id === "starfall-labyrinth"
+                    ? "Summoned allies in Account #0419 (Deploy up to 4 + Protagonist • Permadeath active on Floors):"
+                    : "Companions traveling alongside you across Astra:"}
             </p>
 
             {currentStory.id === "starfall-labyrinth" && (() => {
@@ -14594,11 +14592,10 @@ export default function VisualNovelGame() {
                       setShowPartyDrawer(false);
                       setShowSummonModal(true);
                     }}
-                    className={`w-full py-2 px-3 rounded-xl border text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                      inLobby
-                        ? "bg-indigo-600/30 hover:bg-indigo-600/45 border-indigo-400/70 text-indigo-100"
-                        : "bg-zinc-900/80 hover:bg-zinc-800 border-white/15 text-zinc-400"
-                    }`}
+                    className={`w-full py-2 px-3 rounded-xl border text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${inLobby
+                      ? "bg-indigo-600/30 hover:bg-indigo-600/45 border-indigo-400/70 text-indigo-100"
+                      : "bg-zinc-900/80 hover:bg-zinc-800 border-white/15 text-zinc-400"
+                      }`}
                   >
                     {inLobby ? (
                       <>
@@ -14694,8 +14691,8 @@ export default function VisualNovelGame() {
                 const starfallRosterEntry =
                   currentStory.id === "starfall-labyrinth"
                     ? (player.labyrinthState?.roster || []).find((r) =>
-                        matchesHeroineName(r.heroineName, comp.name, r.heroineId)
-                      )
+                      matchesHeroineName(r.heroineName, comp.name, r.heroineId)
+                    )
                     : undefined;
                 const isFallenHero =
                   comp.heroStatus === "FALLEN" || starfallRosterEntry?.status === "FALLEN";
@@ -14718,10 +14715,10 @@ export default function VisualNovelGame() {
                     title={`Click to open ${comp.name}'s Character Card Dossier`}
                   >
                     <div className="w-14 h-14 rounded-2xl overflow-hidden border border-white/15 bg-zinc-950 shrink-0">
-                      <img 
-                        src={(sprite && sprite.trim()) || DEFAULT_FALLBACK_SPRITE} 
-                        alt={comp.name} 
-                        className={`w-full h-full object-cover object-top ${!comp.encountered ? "brightness-30 grayscale contrast-150" : ""}`} 
+                      <img
+                        src={(sprite && sprite.trim()) || DEFAULT_FALLBACK_SPRITE}
+                        alt={comp.name}
+                        className={`w-full h-full object-cover object-top ${!comp.encountered ? "brightness-30 grayscale contrast-150" : ""}`}
                       />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -14736,22 +14733,21 @@ export default function VisualNovelGame() {
                               <span>Card</span>
                             </span>
                           )}
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded shrink-0 ${
-                            isFallenHero
-                              ? "bg-rose-950/90 text-rose-300 border border-rose-500/50 font-bold"
-                              : !comp.encountered 
-                              ? "bg-zinc-800 text-zinc-500" 
-                              : comp.isPresent 
-                              ? "bg-emerald-500/20 text-emerald-300" 
-                              : "bg-zinc-800 text-zinc-400"
-                          }`}>
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded shrink-0 ${isFallenHero
+                            ? "bg-rose-950/90 text-rose-300 border border-rose-500/50 font-bold"
+                            : !comp.encountered
+                              ? "bg-zinc-800 text-zinc-500"
+                              : comp.isPresent
+                                ? "bg-emerald-500/20 text-emerald-300"
+                                : "bg-zinc-800 text-zinc-400"
+                            }`}>
                             {isFallenHero
                               ? `✝ Fallen (F${starfallRosterEntry?.fallenOnFloor || comp.fallenOnFloor || 1})`
                               : !comp.encountered
-                              ? "Unmet"
-                              : comp.isPresent
-                              ? "Deployed"
-                              : "Benched"}
+                                ? "Unmet"
+                                : comp.isPresent
+                                  ? "Deployed"
+                                  : "Benched"}
                           </span>
                         </div>
                       </div>
@@ -14795,11 +14791,10 @@ export default function VisualNovelGame() {
                                 return nextPlayer;
                               });
                             }}
-                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
-                              isAssignedShift
-                                ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-200 font-bold"
-                                : "bg-sky-500/15 hover:bg-sky-500/25 border-sky-500/30 text-sky-200"
-                            }`}
+                            className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all cursor-pointer ${isAssignedShift
+                              ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-200 font-bold"
+                              : "bg-sky-500/15 hover:bg-sky-500/25 border-sky-500/30 text-sky-200"
+                              }`}
                             title="Click to assign this heroine to her preferred Café Shift under Article 8"
                           >
                             {isAssignedShift
@@ -14808,11 +14803,10 @@ export default function VisualNovelGame() {
                           </button>
                           {liveBpm !== undefined && (
                             <span
-                              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border font-bold ${
-                                isBlushZone
-                                  ? "bg-rose-500/20 border-rose-400/50 text-rose-200 animate-pulse"
-                                  : "bg-zinc-800/80 border-white/10 text-zinc-300"
-                              }`}
+                              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border font-bold ${isBlushZone
+                                ? "bg-rose-500/20 border-rose-400/50 text-rose-200 animate-pulse"
+                                : "bg-zinc-800/80 border-white/10 text-zinc-300"
+                                }`}
                             >
                               ♥ {liveBpm} BPM {isBlushZone ? "(Blush Zone)" : ""}
                             </span>
@@ -14846,11 +14840,10 @@ export default function VisualNovelGame() {
                                 e.stopPropagation();
                                 handleToggleStarfallDeployment(comp.name);
                               }}
-                              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all cursor-pointer ${
-                                starfallRosterEntry.status === "DEPLOYED"
-                                  ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-200 font-bold"
-                                  : "bg-zinc-800 hover:bg-zinc-700 border-white/15 text-zinc-300"
-                              }`}
+                              className={`text-[9px] font-mono px-1.5 py-0.5 rounded border transition-all cursor-pointer ${starfallRosterEntry.status === "DEPLOYED"
+                                ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-200 font-bold"
+                                : "bg-zinc-800 hover:bg-zinc-700 border-white/15 text-zinc-300"
+                                }`}
                               title="Toggle Deployed / Benched squad status (Available in Main Lobby or Safe Zones)"
                             >
                               {starfallRosterEntry.status === "DEPLOYED" ? "✓ Deployed (Bench)" : "+ Deploy to Squad"}
@@ -14858,7 +14851,7 @@ export default function VisualNovelGame() {
                           )}
                         </div>
                       )}
-                      
+
                       <div className="mt-2">
                         {comp.encountered ? (
                           <>
@@ -14883,13 +14876,12 @@ export default function VisualNovelGame() {
                                     </span>
                                   </div>
                                   <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                    <div 
-                                      className={`h-full rounded-full transition-all duration-500 ${
-                                        isLocked 
-                                          ? "bg-gradient-to-r from-amber-500 to-rose-500" 
-                                          : "bg-gradient-to-r from-rose-500 to-pink-400"
-                                      }`} 
-                                      style={{ width: `${comp.affection}%` }} 
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-500 ${isLocked
+                                        ? "bg-gradient-to-r from-amber-500 to-rose-500"
+                                        : "bg-gradient-to-r from-rose-500 to-pink-400"
+                                        }`}
+                                      style={{ width: `${comp.affection}%` }}
                                     />
                                   </div>
                                   {isLocked && (
@@ -14907,10 +14899,10 @@ export default function VisualNovelGame() {
                                       getRequiredExpForLevel(compLvl);
                                     const compCap = starfallMeta
                                       ? getStarLevelCap(
-                                          starfallRosterEntry?.starRank ||
-                                            comp.starRank ||
-                                            starfallMeta.baseStarRank
-                                        )
+                                        starfallRosterEntry?.starRank ||
+                                        comp.starRank ||
+                                        starfallMeta.baseStarRank
+                                      )
                                       : 60;
                                     const atLvlCap = compLvl >= compCap;
                                     const expPct = atLvlCap
@@ -14969,11 +14961,11 @@ export default function VisualNovelGame() {
 
       {/* REGION MAP MODAL */}
       {showMap && (
-        <div 
+        <div
           onClick={() => setShowMap(false)}
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center max-sm:items-end justify-center sm:p-4 select-none animate-in fade-in duration-200"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-2xl bg-zinc-950 border border-white/15 rounded-3xl max-sm:rounded-b-none max-sm:rounded-t-3xl max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:border-emerald-500/30 p-5 sm:p-6 shadow-2xl flex flex-col gap-4 sm:gap-5 max-h-[88dvh] overflow-y-auto animate-in sm:zoom-in-95 max-sm:slide-in-from-bottom duration-300 ease-out"
           >
@@ -14997,15 +14989,15 @@ export default function VisualNovelGame() {
                 const isAvMap = currentStory.id === "ash-and-velvet";
                 const avStateForMap = isAvMap
                   ? player.ashVelvetState ||
-                    createInitialAshVelvetState(currentStory.startingNodes?.[selectedPrologue]?.id, player.gold ?? 65)
+                  createInitialAshVelvetState(currentStory.startingNodes?.[selectedPrologue]?.id, player.gold ?? 65)
                   : null;
                 const heroinesHere = isAvMap
                   ? party.filter((p) => {
-                      const loc = p.isPresent
-                        ? gameState.location
-                        : avStateForMap?.heroineLocations?.[p.name] || "";
-                      return loc.toLowerCase().includes(region.name.toLowerCase());
-                    })
+                    const loc = p.isPresent
+                      ? gameState.location
+                      : avStateForMap?.heroineLocations?.[p.name] || "";
+                    return loc.toLowerCase().includes(region.name.toLowerCase());
+                  })
                   : [];
 
                 return (
@@ -15015,15 +15007,14 @@ export default function VisualNovelGame() {
                       setShowMap(false);
                       sendAction(`[Move to ${region.name}]`, false);
                     }}
-                    className={`overflow-hidden border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${
-                      isAvMap
-                        ? isCurrent
-                          ? "bg-[#1C1A26] border-2 border-amber-400 shadow-[4px_4px_0_#07070A]"
-                          : "bg-[#15141E] border-2 border-[#07070A] hover:border-amber-400/80 shadow-[3px_3px_0_#07070A]"
-                        : isCurrent
+                    className={`overflow-hidden border text-left transition-all cursor-pointer flex flex-col justify-between gap-2 ${isAvMap
+                      ? isCurrent
+                        ? "bg-[#1C1A26] border-2 border-amber-400 shadow-[4px_4px_0_#07070A]"
+                        : "bg-[#15141E] border-2 border-[#07070A] hover:border-amber-400/80 shadow-[3px_3px_0_#07070A]"
+                      : isCurrent
                         ? "p-4 rounded-2xl bg-emerald-950/40 border-emerald-500 ring-1 ring-emerald-500/50 shadow-lg"
                         : "p-4 rounded-2xl bg-zinc-900/80 border-white/10 hover:border-white/20 hover:bg-zinc-900"
-                    }`}
+                      }`}
                   >
                     {isAvMap && (region as any).bgImage && (
                       <div className="relative h-24 w-full overflow-hidden border-b-2 border-[#07070A]">
@@ -15081,11 +15072,11 @@ export default function VisualNovelGame() {
 
       {/* PLAYER SHEET & INVENTORY DRAWER */}
       {showPlayerSheet && (
-        <div 
+        <div
           onClick={() => setShowPlayerSheet(false)}
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-start max-sm:justify-end max-sm:flex-col select-none animate-in fade-in duration-200"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="w-full sm:max-w-md bg-zinc-950/95 sm:border-r border-white/10 sm:h-full max-sm:h-[88dvh] max-sm:rounded-t-3xl max-sm:border-t border-rose-500/30 flex flex-col p-6 overflow-y-auto space-y-6 animate-in sm:slide-in-from-left max-sm:slide-in-from-bottom duration-300 ease-out shadow-2xl"
           >
@@ -15241,8 +15232,8 @@ export default function VisualNovelGame() {
                     {currentStory.id === "port-solaris"
                       ? "FLAIR / HYPE (MP)"
                       : currentStory.id === "sovereign-spire"
-                      ? "AETHER RESONANCE (MP)"
-                      : "MANA (MP)"}
+                        ? "AETHER RESONANCE (MP)"
+                        : "MANA (MP)"}
                   </span>
                   <span>{player.stats.mp} / {player.stats.maxMp}</span>
                 </div>
@@ -15270,11 +15261,10 @@ export default function VisualNovelGame() {
                 </div>
                 <div className="h-2.5 bg-zinc-900 rounded-full overflow-hidden border border-white/10 relative shadow-inner">
                   <div
-                    className={`h-full transition-all duration-1000 ease-out relative ${
-                      expFeedback
-                        ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.9)] animate-pulse"
-                        : "bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-400"
-                    }`}
+                    className={`h-full transition-all duration-1000 ease-out relative ${expFeedback
+                      ? "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-300 shadow-[0_0_14px_rgba(245,158,11,0.9)] animate-pulse"
+                      : "bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-400"
+                      }`}
                     style={{
                       width: `${Math.max(
                         0,
@@ -15589,11 +15579,11 @@ export default function VisualNovelGame() {
 
       {/* BESPOKE ROMANCE CG REVELATION MODAL (Task 3) */}
       {activeBespokeCG && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl animate-in fade-in duration-300"
           onClick={() => setActiveBespokeCG(null)}
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="relative w-full max-w-xl bg-zinc-950 border border-rose-500/50 rounded-3xl shadow-2xl p-6 text-center space-y-4 overflow-hidden"
           >
@@ -15637,11 +15627,11 @@ export default function VisualNovelGame() {
 
       {/* CHRONICLE LOG DRAWER */}
       {showChronicle && (
-        <div 
+        <div
           onClick={() => setShowChronicle(false)}
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex justify-end max-sm:justify-end max-sm:flex-col select-none animate-in fade-in duration-200"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="w-full sm:max-w-md bg-zinc-950/95 sm:border-l border-white/10 sm:h-full max-sm:h-[88dvh] max-sm:rounded-t-3xl max-sm:border-t border-sky-500/30 flex flex-col p-6 overflow-y-auto space-y-4 animate-in sm:slide-in-from-right max-sm:slide-in-from-bottom duration-300 ease-out shadow-2xl"
           >
@@ -15738,11 +15728,10 @@ export default function VisualNovelGame() {
                     <button
                       type="button"
                       onClick={() => handleTogglePinMemory(entry)}
-                      className={`px-2 py-1 rounded-lg border text-[10px] font-mono shrink-0 cursor-pointer transition-all ${
-                        isPinned
-                          ? "border-amber-400/60 bg-amber-500/20 text-amber-300"
-                          : "border-white/10 bg-white/5 text-zinc-400 hover:text-amber-300 hover:border-amber-500/40"
-                      }`}
+                      className={`px-2 py-1 rounded-lg border text-[10px] font-mono shrink-0 cursor-pointer transition-all ${isPinned
+                        ? "border-amber-400/60 bg-amber-500/20 text-amber-300"
+                        : "border-white/10 bg-white/5 text-zinc-400 hover:text-amber-300 hover:border-amber-500/40"
+                        }`}
                       title={isPinned ? "Unpin from Core Canon" : "Pin to Core Canon"}
                     >
                       {isPinned ? "Pinned" : "📌 Pin"}
@@ -15864,11 +15853,10 @@ export default function VisualNovelGame() {
                       key={comp.name}
                       type="button"
                       onClick={() => setSelectedGiftRecipient(comp.name)}
-                      className={`p-2.5 rounded-xl border text-left font-mono transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-rose-950/60 border-rose-500 text-white shadow-sm ring-1 ring-rose-500/30"
-                          : "bg-zinc-900/60 border-white/10 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-                      }`}
+                      className={`p-2.5 rounded-xl border text-left font-mono transition-all cursor-pointer ${isSelected
+                        ? "bg-rose-950/60 border-rose-500 text-white shadow-sm ring-1 ring-rose-500/30"
+                        : "bg-zinc-900/60 border-white/10 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                        }`}
                     >
                       <div className="text-xs font-bold truncate">{comp.name}</div>
                       <div className="text-[10px] text-rose-400 flex items-center gap-1 mt-0.5">
@@ -15925,11 +15913,10 @@ export default function VisualNovelGame() {
                   return (
                     <div
                       key={gift.itemId}
-                      className={`p-3 rounded-xl border flex items-center justify-between transition-all ${
-                        isAffinity
-                          ? "bg-rose-950/30 border-rose-500/40"
-                          : "bg-zinc-900/80 border-white/10 hover:border-zinc-700"
-                      }`}
+                      className={`p-3 rounded-xl border flex items-center justify-between transition-all ${isAffinity
+                        ? "bg-rose-950/30 border-rose-500/40"
+                        : "bg-zinc-900/80 border-white/10 hover:border-zinc-700"
+                        }`}
                     >
                       <div className="space-y-0.5">
                         <div className="text-xs font-bold text-zinc-200 flex items-center gap-2">

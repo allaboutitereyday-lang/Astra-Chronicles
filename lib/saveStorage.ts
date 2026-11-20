@@ -151,21 +151,52 @@ export function normalizeSaveSlotData(raw: any): SaveSlotPayload | null {
       : "/backgrounds/imperial_capital_imperium.jpg";
 
   const lastCharacterMsg = [...normalizedChatLog].reverse().find((m: any) => m.sender === "character");
+  const lastUserMsg = [...normalizedChatLog].reverse().find((m: any) => m.sender === "user");
   const rawBgImage =
     typeof gs.bgImage === "string" && gs.bgImage.endsWith("/imperial_capital.png")
       ? defaultBgForSave
       : gs.bgImage;
+
+  const isAshVelvetSave = raw.storyId === "ash-and-velvet" || Boolean(p.ashVelvetState);
+  const resolvedSpeaker = gs.speaker || lastCharacterMsg?.speakerName || "Narrator";
+  let resolvedLocation = gs.location || "Astral Convergence";
+  let resolvedBgImage =
+    typeof rawBgImage === "string" && rawBgImage.startsWith("data:image") && rawBgImage.length > 350000
+      ? defaultBgForSave
+      : rawBgImage || defaultBgForSave;
+
+  // Self-heal Ash & Velvet Tina Smith saves so any active Tina turn is placed in Tina's Bedroom (Room 206)
+  const presentCompsList: string[] = Array.isArray(gs.presentCompanions) ? gs.presentCompanions : [];
+  const hasTinaPresent =
+    String(resolvedSpeaker).toLowerCase().includes("tina") ||
+    presentCompsList.some((n: any) => typeof n === "string" && n.toLowerCase().includes("tina"));
+  if (
+    isAshVelvetSave &&
+    hasTinaPresent &&
+    !String(resolvedSpeaker).toLowerCase().includes("jill") &&
+    normalizedChatLog.length > 1
+  ) {
+    resolvedLocation = "Tina's Bedroom (Room 206)";
+    resolvedBgImage = "/backgrounds/ash-and-velvet/tinas_bedroom.jpg";
+    if (normalizedPlayer.ashVelvetState && normalizedPlayer.ashVelvetState.heroineLocations) {
+      normalizedPlayer.ashVelvetState = {
+        ...normalizedPlayer.ashVelvetState,
+        heroineLocations: {
+          ...normalizedPlayer.ashVelvetState.heroineLocations,
+          "Tina Smith": "Tina's Bedroom (Room 206)",
+        },
+      };
+    }
+  }
+
   const normalizedGameState = {
-    location: gs.location || "Astral Convergence",
-    speaker: gs.speaker || lastCharacterMsg?.speakerName || "Narrator",
+    location: resolvedLocation,
+    speaker: resolvedSpeaker,
     dialogue:
       (typeof gs.dialogue === "string" && gs.dialogue.trim()) ||
       lastCharacterMsg?.text ||
       "The chronicle resumes...",
-    bgImage:
-      typeof rawBgImage === "string" && rawBgImage.startsWith("data:image") && rawBgImage.length > 350000
-        ? defaultBgForSave
-        : rawBgImage || defaultBgForSave,
+    bgImage: resolvedBgImage,
     mood: gs.mood || "Tense",
     npcKnowledgeMap: gs.npcKnowledgeMap && typeof gs.npcKnowledgeMap === "object" ? gs.npcKnowledgeMap : {},
   };
@@ -537,19 +568,37 @@ export async function loadGameSlot(slotId: number): Promise<SaveSlotPayload | nu
   const normIdb = normalizeSaveSlotData(idbData);
   const normLs = normalizeSaveSlotData(lsData);
 
+  let finalSlot: SaveSlotPayload | null = null;
   if (normIdb && normLs) {
     const idbTime = normIdb.savedAtISO ? Date.parse(normIdb.savedAtISO) || 0 : 0;
     const lsTime = normLs.savedAtISO ? Date.parse(normLs.savedAtISO) || 0 : 0;
     // Choose whichever copy was saved more recently, preserving avatar if one copy has it
     const chosen = lsTime > idbTime ? normLs : normIdb;
     const fallbackAvatar = normIdb.playerAvatar || normLs.playerAvatar || null;
-    return {
+    finalSlot = {
       ...chosen,
       playerAvatar: chosen.playerAvatar || fallbackAvatar,
     };
+  } else {
+    finalSlot = normIdb || normLs || null;
   }
 
-  return normIdb || normLs || null;
+  // If normalization upgraded the save location (e.g., to Tina's Bedroom (Room 206)), persist it back to storage
+  const rawPrevLoc = idbData?.gameState?.location || lsData?.gameState?.location;
+  if (finalSlot && rawPrevLoc && finalSlot.gameState?.location !== rawPrevLoc) {
+    try {
+      const db = await openIndexedDB();
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).put(finalSlot);
+    } catch {}
+    try {
+      if (typeof window !== "undefined" && window.localStorage) {
+        localStorage.setItem(`astra_save_slot_${slotId}`, JSON.stringify(finalSlot));
+      }
+    } catch {}
+  }
+
+  return finalSlot;
 }
 
 /**
