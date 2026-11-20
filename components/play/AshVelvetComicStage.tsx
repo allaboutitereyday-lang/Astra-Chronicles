@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Map as MapIcon,
   Shirt,
@@ -187,6 +187,36 @@ export function AshVelvetScenePanel({
   const isSpeaking =
     Boolean(activeComp) && speaker.toLowerCase().includes(activeComp!.name.toLowerCase());
 
+  const prevLocationRef = useRef<string>(location);
+  const prevBgRef = useRef<string>(bgImage);
+  const [roomTransition, setRoomTransition] = useState<{
+    fromLocation: string;
+    toLocation: string;
+    prevBg: string;
+    key: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const cleanNext = (location || "").trim();
+    const cleanPrev = (prevLocationRef.current || "").trim();
+    if (cleanNext && cleanPrev && cleanNext.toLowerCase() !== cleanPrev.toLowerCase()) {
+      setRoomTransition({
+        fromLocation: cleanPrev,
+        toLocation: cleanNext,
+        prevBg: prevBgRef.current || bgImage,
+        key: Date.now(),
+      });
+      prevLocationRef.current = cleanNext;
+      prevBgRef.current = bgImage;
+      const timer = setTimeout(() => {
+        setRoomTransition(null);
+      }, 1750);
+      return () => clearTimeout(timer);
+    }
+    prevLocationRef.current = cleanNext || prevLocationRef.current;
+    prevBgRef.current = bgImage || prevBgRef.current;
+  }, [location, bgImage]);
+
   if (isCollapsed) {
     return (
       <div className="shrink-0 px-2.5 py-1.5 bg-[#161520] border-2 border-[#07070A] shadow-[3px_3px_0_#07070A] flex items-center justify-between gap-2 select-none">
@@ -220,11 +250,32 @@ export function AshVelvetScenePanel({
 
   return (
     <div className="relative shrink-0 h-[31vh] min-h-[195px] max-h-[290px] w-full bg-[#16151E] border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] overflow-hidden select-none">
-      {/* Atmospheric Room Background */}
+      {/* Atmospheric Room Background with Crossfade & Subtle Zoom on Location Transition */}
       <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-700"
+        key={bgImage || location}
+        className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ${
+          roomTransition ? "animate-in fade-in zoom-in-105 duration-700" : ""
+        }`}
         style={{ backgroundImage: `url('${bgImage || "/backgrounds/ash-and-velvet/shared_kitchen.jpg"}')` }}
       />
+      {/* Graphic-Novel Panel Wipe & Room Transition Banner Overlay */}
+      {roomTransition && (
+        <div
+          key={roomTransition.key}
+          className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center bg-gradient-to-r from-[#07070A]/75 via-[#07070A]/35 to-[#07070A]/75 animate-in fade-in duration-200"
+        >
+          <div className="px-4 py-2 bg-[#14131D]/95 border-2 border-amber-400 shadow-[4px_4px_0px_#07070A] -skew-x-12 flex flex-col items-center gap-0.5 animate-in zoom-in-95 slide-in-from-left-6 duration-300">
+            <div className="skew-x-12 flex items-center gap-1.5 text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400">
+              <span>{shortenAshVelvetLocation(roomTransition.fromLocation)}</span>
+              <span className="text-amber-400">➔</span>
+              <span className="text-amber-300">{houseState.clockLabel}</span>
+            </div>
+            <div className="skew-x-12 text-xs sm:text-sm font-mono font-black italic uppercase tracking-wider text-amber-400">
+              {roomTransition.toLocation}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Subtle cinematic vignette so character ink outlines & HUD badges pop */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/10 to-black/35 pointer-events-none" />
       <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />

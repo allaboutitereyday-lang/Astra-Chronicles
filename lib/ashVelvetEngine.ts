@@ -591,6 +591,104 @@ export function advanceAshVelvetClock(state: AshVelvetHouseState): AshVelvetHous
   };
 }
 
+function parseClockLabelToMinutes(label: string, fallbackSlot: AshVelvetTimeSlot): number {
+  const match = (label || "").trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) {
+    const def = TIME_SLOT_CLOCK_LABELS[fallbackSlot] || "2:40 PM";
+    return parseClockLabelToMinutes(def, "AFTERNOON");
+  }
+  let hours = parseInt(match[1], 10);
+  const mins = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return hours * 60 + mins;
+}
+
+function formatMinutesToClockLabel(totalMinutes: number): string {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  const hours24 = Math.floor(normalized / 60);
+  const mins = normalized % 60;
+  const period = hours24 >= 12 ? "PM" : "AM";
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+  const paddedMins = mins < 10 ? `0${mins}` : `${mins}`;
+  return `${hours12}:${paddedMins} ${period}`;
+}
+
+function resolveTimeSlotFromMinutes(totalMinutes: number): AshVelvetTimeSlot {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  // 1:00 AM (60) to 5:59 AM (359) -> AFTER_MIDNIGHT
+  if (normalized >= 60 && normalized < 360) return "AFTER_MIDNIGHT";
+  // 6:00 AM (360) to 11:59 AM (719) -> MORNING
+  if (normalized >= 360 && normalized < 720) return "MORNING";
+  // 12:00 PM (720) to 5:59 PM (1079) -> AFTERNOON
+  if (normalized >= 720 && normalized < 1080) return "AFTERNOON";
+  // 6:00 PM (1080) to 10:29 PM (1349) -> EVENING
+  if (normalized >= 1080 && normalized < 1350) return "EVENING";
+  // 10:30 PM (1350) to 12:59 AM (59) -> LATE_NIGHT
+  return "LATE_NIGHT";
+}
+
+export function isOffSiteRedbridgeLocation(loc: string): boolean {
+  const lower = (loc || "").toLowerCase();
+  return (
+    lower.includes("diner") ||
+    lower.includes("starlight") ||
+    lower.includes("velvet static") ||
+    lower.includes("dive") ||
+    lower.includes("bourbon") ||
+    lower.includes("lounge")
+  );
+}
+
+/**
+ * Advances the Ash & Velvet clock at a realistic conversational pace:
+ * - Routine dialogue turn in the same room: +4 minutes
+ * - Walking to another room inside 412 Maplewood Ave: +6 minutes
+ * - Traveling to/from an off-site Redbridge venue (Diner, Dive Bar, Lounge): +18 minutes
+ * - Explicit multi-hour time jump (sleeping, working a shift, waiting until evening/morning): advances to next Time Slot.
+ */
+export function tickAshVelvetClock(
+  state: AshVelvetHouseState,
+  options?: {
+    explicitTimeJump?: boolean;
+    movedOffSite?: boolean;
+    movedRoomInHouse?: boolean;
+  }
+): AshVelvetHouseState {
+  if (options?.explicitTimeJump) {
+    return advanceAshVelvetClock(state);
+  }
+
+  const deltaMinutes = options?.movedOffSite
+    ? 18
+    : options?.movedRoomInHouse
+    ? 6
+    : 4;
+
+  const prevMinutes = parseClockLabelToMinutes(state.clockLabel, state.timeSlot);
+  const rawNextMinutes = prevMinutes + deltaMinutes;
+  const nextMinutes = rawNextMinutes % 1440;
+  const nextClockLabel = formatMinutesToClockLabel(nextMinutes);
+  const nextSlot = resolveTimeSlotFromMinutes(nextMinutes);
+  const slotChanged = nextSlot !== state.timeSlot;
+  // Day increments when crossing 6:00 AM into MORNING from AFTER_MIDNIGHT/LATE_NIGHT
+  const crossedMorningBoundary = prevMinutes < 360 && rawNextMinutes >= 360;
+  const nextDay = crossedMorningBoundary ? state.day + 1 : state.day;
+  const viceDecay = slotChanged ? (nextSlot === "MORNING" ? 45 : 8) : 1;
+
+  return {
+    ...state,
+    day: nextDay,
+    timeSlot: nextSlot,
+    clockLabel: nextClockLabel,
+    viceLevel: clampMeter(state.viceLevel - viceDecay),
+    heroineLocations: slotChanged
+      ? { ...HEROINE_SCHEDULE_BY_SLOT[nextSlot] }
+      : { ...state.heroineLocations },
+  };
+}
+
 export function inferNaturalWardrobeKey(
   heroineName: string,
   location: string,

@@ -226,6 +226,8 @@ import {
 import {
   createInitialAshVelvetState,
   advanceAshVelvetClock,
+  tickAshVelvetClock,
+  isOffSiteRedbridgeLocation,
   clampMeter,
   clampAshVelvetTurnDelta,
   resolveHeroineMeters,
@@ -2020,10 +2022,12 @@ export default function VisualNovelGame() {
       return;
     }
     if (loc.toLowerCase() !== prevLocationRef.current.toLowerCase()) {
+      const fromLoc = prevLocationRef.current;
       prevLocationRef.current = loc;
+      soundEffects.playRiftTransition();
       setSectorBanner({
         name: loc,
-        sub: gameState.mood ? `Atmosphere: ${gameState.mood}` : "Sector Resonance Stabilized",
+        sub: fromLoc ? `Moved from ${fromLoc}` : gameState.mood ? `Atmosphere: ${gameState.mood}` : "Location Transition",
       });
     }
   }, [gameState.location, isConfigured, pageLoaded, currentStory?.id]);
@@ -6589,25 +6593,25 @@ export default function VisualNovelGame() {
             : 0;
         const rawCashDelta = Math.max(-300, Math.min(300, Math.round(rawCashField)));
 
-        const actionAndProseCorpus = `${rawAction || ""} ${data.narrative_text || ""}`;
+        const playerActionOnly = String(rawAction || "");
         const hasTimePassingCue =
-          /\b(sleep|wake up|woke up|next morning|work a shift|worked a shift|hours later|call it a night|until morning|after work|go to bed|crash for the night|later that evening|later that night)\b/i.test(
-            actionAndProseCorpus
+          /\b(sleep|wake up|woke up|next morning|work a shift|worked a shift|hours later|call it a night|until morning|after work|go to bed|crash for the night|later that evening|later that night|wait until (?:morning|afternoon|evening|night|midnight))\b/i.test(
+            playerActionOnly
           );
         const locationChanged =
           Boolean(nextLocation) &&
           Boolean(gameState.location) &&
           nextLocation.toLowerCase().trim() !== gameState.location.toLowerCase().trim();
-        const turnTickAdvance = currentTurnNumber > 0 && currentTurnNumber % 3 === 0;
-        const shouldAdvanceClock =
-          Boolean(data.state_updates?.advance_time_slot) ||
-          hasTimePassingCue ||
-          locationChanged ||
-          turnTickAdvance;
+        const movedOffSite =
+          locationChanged &&
+          (isOffSiteRedbridgeLocation(nextLocation) || isOffSiteRedbridgeLocation(gameState.location));
 
-        let nextAvState: AshVelvetHouseState = shouldAdvanceClock
-          ? advanceAshVelvetClock(curAvState)
-          : { ...curAvState, heroineLocations: { ...curAvState.heroineLocations } };
+        let nextAvState: AshVelvetHouseState = tickAshVelvetClock(curAvState, {
+          explicitTimeJump: hasTimePassingCue,
+          movedOffSite,
+          movedRoomInHouse: locationChanged && !movedOffSite,
+        });
+        const shouldAdvanceClock = nextAvState.timeSlot !== curAvState.timeSlot;
 
         nextAvState = {
           ...nextAvState,
@@ -12253,6 +12257,24 @@ export default function VisualNovelGame() {
       />
       <div className="absolute inset-0 cinematic-vignette pointer-events-none z-10" />
       <AtmosphericParticles location={gameState.location} />
+
+      {/* LOCATION TRANSITION BANNER OVERLAY */}
+      {sectorBanner && currentStory.id !== "ash-and-velvet" && (
+        <div
+          key={`${sectorBanner.name}_${sectorBanner.sub}`}
+          className="pointer-events-none fixed top-16 sm:top-20 inset-x-0 z-40 flex justify-center px-4 animate-in fade-in slide-in-from-top-3 duration-300"
+        >
+          <div className="px-5 py-2 rounded-2xl bg-zinc-950/90 border border-amber-400/50 backdrop-blur-xl shadow-[0_0_30px_rgba(245,158,11,0.3)] flex flex-col items-center gap-0.5">
+            <span className="text-[10px] font-mono uppercase tracking-widest text-amber-300/80">
+              {sectorBanner.sub}
+            </span>
+            <span className="text-xs sm:text-sm font-mono font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-amber-400" />
+              <span>{sectorBanner.name}</span>
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* FULL-SCREEN STORY DAMAGE / VITALS IMPACT FEEDBACK OVERLAY */}
       {vitalsFeedback && (
