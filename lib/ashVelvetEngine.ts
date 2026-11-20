@@ -641,6 +641,69 @@ export function inferNaturalWardrobeKey(
   return "base";
 }
 
+export const ASH_VELVET_CANON_OUTFIT_DESCRIPTIONS: Record<string, Record<string, string>> = {
+  "Clara Callahan": {
+    base: "a fitted cream ribbed V-neck knit sweater with an emerald gold pendant resting in her cleavage and high-waisted tan trousers",
+    kitchen: "a warm knit cardigan over a fitted top with a kitchen apron tied around her waist",
+    lounge: "a slouchy off-shoulder sweater and fitted denim shorts showing her curves",
+    date: "a sultry emerald-green velvet wrap dress with a deep neckline",
+    nightwear: "a rose-pink satin camisole slip and loosely tied silk kimono robe",
+    lingerie: "black floral lace lingerie with sheer thigh-high stockings",
+  },
+  "Brianna Chen": {
+    base: "nothing but a dangerously short damp white bath towel wrapped tight around her wet curves and gold hoop earrings",
+    casual: "a fitted lilac halter top and tight white denim shorts",
+    party: "a skin-tight crimson keyhole mini-dress",
+    lounge: "an oversized borrowed navy hoodie and bare legs",
+    nightwear: "a peacock-teal satin camisole and lace trim tap shorts",
+    lingerie: "a black lace bra, garter belt, and sheer stockings",
+  },
+  "Hannah Lindqvist": {
+    base: "a slouchy off-shoulder black ribbed knit sweater, pearl choker, silver headphones around her neck, and a crimson plaid pleated mini-skirt with a belt chain",
+    overalls: "paint-flecked denim studio overalls worn loose over a cropped tank top",
+    nightout: "an unbuttoned flannel shirt over a tight black bandeau top and short skirt",
+    lounge: "an oversized vintage graphic tee and sleep shorts",
+    nightwear: "a slate-blue satin slip cami and soft knit cardigan",
+    lingerie: "black scalloped lace lingerie",
+  },
+  "Sierra Holloway": {
+    base: "a tight yellow short-sleeve ribbed crop top showing her soft midriff, high-waisted blue denim cutoff shorts with a brown leather belt, and silver wrist cuffs",
+    diner: "a retro mint-green Starlight Diner waitress dress with a white waist apron",
+    swim: "an emerald-green string bikini and sheer sarong wrap",
+    lounge: "a cozy olive cardigan over a fitted tank and soft lounge shorts",
+    nightwear: "a honey-apricot buttoned henley sleep top and matching shorts",
+    lingerie: "emerald-green rose-lace lingerie",
+  },
+  "Chloe Bellamy": {
+    base: "a form-fitting off-shoulder pale lavender-white vertical-striped knit top, pearl pendant necklace, pearl earrings, and high-waisted dark navy tailored trousers",
+    office: "a tailored lavender satin office blouse and form-hugging charcoal pencil skirt",
+    afterhours: "a sultry deep-burgundy satin slip dress",
+    lounge: "a soft cashmere wrap top and tailored espresso lounge trousers",
+    nightwear: "a midnight-plum satin camisole and lace shorts",
+    lingerie: "a sapphire satin and black lace lingerie set",
+  },
+  "Jill Smith": {
+    base: "a yellow cable-knit sweater vest over a crisp white rolled-sleeve collared shirt with a red plaid bow tie and a short red plaid pleated mini-skirt",
+    casual: "a fitted pink zip hoodie and short denim skirt",
+    date: "a lilac off-shoulder skater dress",
+    lounge: "an oversized blue college tee and soft sleep shorts",
+    nightwear: "an ivory satin camisole and matching lace-trimmed sleep shorts",
+    swim: "a coral bikini and sheer beach wrap",
+    lingerie: "black floral-lace lingerie",
+  },
+  "Tina Smith": {
+    base: "a partially unbuttoned white short-sleeve button-down shirt slipping off one shoulder to reveal her collarbone and cleavage, a dangerously short navy-blue pleated mini-skirt, and sheer black lace-top thigh-high stockings",
+    nsfw_1: "her white button-down shirt pulled open and short navy-blue skirt hiked up with black lace-top thigh-high stockings",
+    nsfw_2: "only her sheer black lace-top thigh-high stockings and undone shirt",
+  },
+};
+
+export function describeHeroineVisibleOutfit(heroineName: string, wardrobeKey: string = "base"): string {
+  const byHeroine = ASH_VELVET_CANON_OUTFIT_DESCRIPTIONS[heroineName];
+  if (!byHeroine) return "her signature everyday outfit";
+  return byHeroine[wardrobeKey] || byHeroine.base || "her signature everyday outfit";
+}
+
 export type AshVelvetChoiceIntent = "HEART" | "FLAME" | "DOM" | "BOLD" | "COOL";
 
 export function classifyChoiceIntent(choiceText: string): {
@@ -771,7 +834,8 @@ export function buildAshVelvetPromptDirective(params: {
             const kinkSummaryLine = dossier?.kinks?.length
               ? `Kinks & Fetishes (${dossier.kinkDynamicSummary}): ${dossier.kinks.map((k) => `${k.name} [${k.intensity}]`).join("; ")}`
               : "";
-            return `  * ${c.name} [Outfit: ${c.activeWardrobe || "base"} | Synergy: ${evalResult.compatibility.summaryLabel}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Body Sensitivity ${sens}/100 (${getSensitivityStageLabel(sens)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100\n    - Gaze/Body Tell: ${dossier?.gazeReactionTell || "Flushes under your lingering gaze."}${kinkSummaryLine ? `\n    - ${kinkSummaryLine}` : ""}\n    - Emotional Guard & Secret Status: ${secretLine}${evalResult.narrativeOutcomeDirective ? `\n    - THIS TURN DIRECTIVE: ${evalResult.narrativeOutcomeDirective}` : ""}`;
+            const outfitDesc = describeHeroineVisibleOutfit(c.name, c.activeWardrobe || "base");
+            return `  * ${c.name} [Current Visible Outfit (${c.activeWardrobe || "base"}): Wearing ${outfitDesc} | Synergy: ${evalResult.compatibility.summaryLabel}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Body Sensitivity ${sens}/100 (${getSensitivityStageLabel(sens)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100\n    - Gaze/Body Tell: ${dossier?.gazeReactionTell || "Flushes under your lingering gaze."}${kinkSummaryLine ? `\n    - ${kinkSummaryLine}` : ""}\n    - Emotional Guard & Secret Status: ${secretLine}${evalResult.narrativeOutcomeDirective ? `\n    - THIS TURN DIRECTIVE: ${evalResult.narrativeOutcomeDirective}` : ""}`;
           })
           .join("\n")
       : "  * Protagonist is currently alone in this room.";
@@ -779,7 +843,7 @@ export function buildAshVelvetPromptDirective(params: {
   return `--- ASH & VELVET: 18+ SANDBOX CORRUPTION, DOUJIN SENSITIVITY & RELATIONSHIP GUARDRAILS DIRECTIVE ---
 - SETTING & GROUNDED REALISM: Contemporary Western graphic-novel adult drama at 412 Maplewood Ave (Redbridge District). NO fantasy magic, NO swords, NO dungeon spells, NO LitRPG mana jargon. Tension flows from abusive-home recovery, shared-house friction, rent pressure ($${hs.cashUsd} cash on hand; $${hs.rentAmountUsd} rent due Day ${hs.rentDueDay}), alcohol/vice, volatile exes, jealousy, power dynamics, and doujin-style physical conditioning.
 - LIVE HOUSE STATUS: Day ${hs.day} • ${ASH_VELVET_TIME_SLOT_DISPLAY[hs.timeSlot]} (${hs.clockLabel}) | Location: ${params.location} | Protagonist Composure: ${hs.composure}/100 | Vice/Intoxication: ${hs.viceLevel}/100 (${viceInfo.label}).
-- PRESENT HEROINE PSYCHOLOGY, SENSITIVITY, KINKS & BOUNDARY STATE:
+- PRESENT HEROINE PSYCHOLOGY, VISIBLE OUTFIT, SENSITIVITY, KINKS & BOUNDARY STATE (DESCRIBE HER EXACT CURRENT VISIBLE OUTFIT IN PROSE — NEVER INVENT CONTRADICTORY CLOTHING!):
 ${heroineLines}
 - DUAL-TRACK PROGRESSION (DOUJIN BODY SENSITIVITY vs. PORT SOLARIS EMOTIONAL GUARDRAILS):
   * TRACK 1 — DOUJIN GAZE/TOUCH CONDITIONING & BODY SENSITIVITY (0–100): If the protagonist stares at her curves, checks her out, teases her shamelessly, or brushes against her within her receptive threshold, her body grows physically conditioned ("sensitive") to his gaze and touch. At Sensitivity 20–39% her skin tingles and flushes under his eyes; at 40–64% she craves his gaze, shows off more skin, and starts making bold moves on him; at 65%+ her body trembles and yields to his touch even when her pride tries to resist.
@@ -787,13 +851,13 @@ ${heroineLines}
   * PERSONALITY SYNERGY, KINKS & PROACTIVE ADVANCES: When the protagonist's personality/vibe matches hers, or when he leans into her specific Kinks & Fetishes listed above, she responds with heightened arousal and may actively flirt, invade his personal space, or make a move on him first.
   * BOUNDARY OVERSTEP BACKFIRE: If "THIS TURN DIRECTIVE" above flags a 🚨 BOUNDARY OVERSTEP BACKFIRE, you MUST write her rejecting/slapping away his premature advance with sharp consequences—never reward unearned raw escalation!
 - EXACT APPROVED WARDROBE KEYS PER HEROINE (ONLY output keys from this list in "state_updates.wardrobe_key"; ONLY use "nsfw_*" keys when Lust >= 50, Sensitivity >= 50, or in a private/intimate scene):
-  * Clara Callahan: "base" (knit & trousers), "kitchen" (cardigan & apron), "lounge" (off-shoulder sweater & denim shorts), "date" (emerald velvet wrap dress), "nightwear" (rose satin & kimono), "lingerie" (black lace lingerie & stockings), "nsfw_1", "nsfw_2", "nsfw_3" (intimate states)
-  * Hannah Lindqvist: "base" (off-shoulder sweater & plaid skirt), "overalls" (paint-flecked studio overalls), "nightout" (dive-bar flannel & bandeau), "lounge" (crescent tee & sleep shorts), "nightwear" (slate-blue satin & cardigan), "lingerie" (black scalloped lace lingerie), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4" (intimate states)
-  * Brianna Chen: "base" (hallway shower towel), "casual" (lilac halter & white shorts), "party" (crimson keyhole mini-dress), "lounge" (borrowed navy hoodie & shorts), "nightwear" (peacock-teal satin & lace), "lingerie" (black lace & garter set), "nsfw_1", "nsfw_2", "nsfw_3" (intimate states)
-  * Sierra Holloway: "base" (knotted crop tee & denim shorts), "diner" (retro mint diner dress & apron), "swim" (emerald bikini & sarong), "lounge" (olive cardigan & lounge shorts), "nightwear" (honey-apricot henley sleep set), "lingerie" (emerald rose-lace lingerie), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4" (intimate states)
-  * Chloe Bellamy: "base" (white button-down & charcoal shorts), "office" (lavender blouse & pencil skirt), "afterhours" (burgundy satin slip dress), "lounge" (cashmere wrap & espresso trousers), "nightwear" (midnight-plum satin & lace), "lingerie" (sapphire satin & black lace set), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4" (intimate states)
-  * Jill Smith: "base" (preppy sweater vest & plaid skirt), "casual" (pink zip hoodie & denim skirt), "date" (lilac off-shoulder skater dress), "lounge" (oversized blue tee & sleep shorts), "nightwear" (ivory satin cami & sleep shorts), "swim" (coral bikini & sheer wrap), "lingerie" (blue & white rose-lace lingerie), "nsfw_1", "nsfw_2" (intimate states)
-  * Tina Smith: "base" (everyday casual), "nsfw_1", "nsfw_2" (intimate states)
+  * Clara Callahan (Age 41): "base" (fitted cream ribbed V-neck knit sweater & high-waisted tan trousers), "kitchen" (cardigan & apron), "lounge" (off-shoulder sweater & denim shorts), "date" (emerald velvet wrap dress), "nightwear" (rose satin & kimono), "lingerie" (black lace lingerie & stockings), "nsfw_1", "nsfw_2", "nsfw_3"
+  * Hannah Lindqvist (Age 23): "base" (off-shoulder black ribbed sweater, pearl choker, silver headphones & crimson plaid pleated mini-skirt), "overalls" (paint-flecked studio overalls), "nightout" (dive-bar flannel & bandeau), "lounge" (crescent tee & sleep shorts), "nightwear" (slate-blue satin & cardigan), "lingerie" (black scalloped lace lingerie), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4"
+  * Brianna Chen (Age 24): "base" (short damp white bath towel & gold hoop earrings), "casual" (lilac halter & white shorts), "party" (crimson keyhole mini-dress), "lounge" (borrowed navy hoodie & shorts), "nightwear" (peacock-teal satin & lace), "lingerie" (black lace & garter set), "nsfw_1", "nsfw_2", "nsfw_3"
+  * Sierra Holloway (Age 24): "base" (yellow ribbed crop tee, denim cutoff shorts & wrist cuffs), "diner" (retro mint diner dress & apron), "swim" (emerald bikini & sarong), "lounge" (olive cardigan & lounge shorts), "nightwear" (honey-apricot henley sleep set), "lingerie" (emerald rose-lace lingerie), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4"
+  * Chloe Bellamy (Age 28): "base" (off-shoulder striped knit top, pearl necklace & dark navy tailored trousers), "office" (lavender blouse & pencil skirt), "afterhours" (burgundy satin slip dress), "lounge" (cashmere wrap & espresso trousers), "nightwear" (midnight-plum satin & lace), "lingerie" (sapphire satin & black lace set), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4"
+  * Jill Smith (Age 21, older sister): "base" (yellow cable-knit sweater vest over white collared shirt, red plaid bow tie & red plaid pleated mini-skirt), "casual" (pink zip hoodie & denim skirt), "date" (lilac off-shoulder skater dress), "lounge" (oversized blue tee & sleep shorts), "nightwear" (ivory satin cami & sleep shorts), "swim" (coral bikini & sheer wrap), "lingerie" (black floral-lace lingerie), "nsfw_1", "nsfw_2"
+  * Tina Smith (Age 18, bratty/spoiled younger sister): "base" (partially unbuttoned white short-sleeve button-down shirt slipping off one shoulder, short navy-blue skirt & sheer black lace-top thigh-high stockings), "nsfw_1", "nsfw_2"
 - 14 CANON PLAYABLE LOCATIONS:
   "Clara's Kitchen & Living Room", "Upstairs Hallway & Shared Bath", "Upstairs Shared Bathroom", "Clara's Late-Night Den", "The Attic Sanctuary Room", "Velvet Static Dive Bar", "Backyard Porch & Smoke Patio", "Clara's Master Bedroom (Room 101)", "Hannah's Studio Bedroom (Room 202)", "Brianna's Bedroom (Room 203)", "Sierra's Bedroom (Room 204)", "Chloe's Executive Bedroom (Room 205)", "Starlight Retro Diner", "After-Hours Bourbon Lounge".
 - STRUCTURED PSYCHOLOGICAL DELTAS (MARGINAL BY DEFAULT — MAJOR GAINS ONLY ON BREAKTHROUGHS):

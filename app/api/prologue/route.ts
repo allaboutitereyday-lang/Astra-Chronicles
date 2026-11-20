@@ -26,6 +26,7 @@ import {
 import { SOVEREIGN_HEROINE_DOSSIERS, SOVEREIGN_ORIGIN_PRESETS } from "@/types/sovereign_spire";
 import { PORT_SOLARIS_HEROINE_DOSSIERS, PORT_SOLARIS_ORIGIN_PRESETS } from "@/types/port_solaris";
 import { STARFALL_HEROINE_DOSSIERS, STARFALL_ORIGIN_PRESETS } from "@/types/starfall_labyrinth";
+import { describeHeroineVisibleOutfit } from "@/lib/ashVelvetEngine";
 import { parseModelJsonLenient } from "@/lib/jsonSalvage";
 
 export const runtime = "nodejs";
@@ -485,10 +486,21 @@ ${starfallHeroineMeta ? `- First Squadmate Dossier (${starfallHeroineMeta.name.s
 - Selected Opening Scene: "${matchingNode?.title || heroineDossier.title}" at ${matchingNode?.location || startingLocation}${multiHeroineEnsembleDirective}
   Scene Baseline: ${matchingNode?.sceneSetup || heroineDossier.environment}
   Dialogue Baseline: "${matchingNode?.dialogue || heroineDossier.signatureOpeningDialogue}"
+- EXACT VISIBLE HEROINE OUTFIT IN THIS STARTING SCENE (MANDATORY — MUST MATCH SPRITE ART VERBATIM):
+${initialPresentHeroines
+  .map((hName) => {
+    const compObj = storyContext?.companions?.find(
+      (c: any) => c.name && c.name.toLowerCase() === hName.toLowerCase()
+    );
+    const wKey = compObj?.activeWardrobe || "base";
+    return `  * ${hName} (${compObj?.role || "Housemate"}): Wearing ${describeHeroineVisibleOutfit(hName, wKey)}. Persona: ${compObj?.personality || ""}`;
+  })
+  .join("\n")}
+  CRITICAL WARDROBE RULE: Describe ${initialPresentHeroines.map((h) => h.split(" ")[0]).join(" and ")} wearing the EXACT clothing listed above from their visual sprite! NEVER invent different clothes (e.g., for Tina Smith, she is wearing a partially unbuttoned white short-sleeve button-down shirt, a short navy-blue skirt, and black lace-top thigh-high stockings—NEVER a cropped tee or red plaid skirt!).
 - MANDATORY ACT I SHAPING (WITTY BANTER & SENSUAL TENSION):
   1. Write in vivid, contemporary adult graphic-novel prose with sharp wit, physical closeness, and palpable sensual tension.
-  2. Keep ${startingHeroine.split(" ")[0]}'s spoken dialogue playful, teasing, and natural.
-  3. Prefix the 4 "opening_choices" with "[Heart]: ", "[Bold]: ", "[Cool]: ", and "[Dom]: ".`
+  2. Keep ${startingHeroine.split(" ")[0]}'s spoken dialogue true to her exact personality (e.g. if Tina Smith, she is a bratty, spoiled, mischievous 18-year-old who acts mouthy and needs a firm hand to put her in her place).
+  3. Prefix the 4 "opening_choices" with "[Heart]: ", "[Flame]: ", "[Cool]: ", and "[Dom]: ".`
       : "";
 
     const openingChoiceDirective = buildDynamicChoiceDirective({

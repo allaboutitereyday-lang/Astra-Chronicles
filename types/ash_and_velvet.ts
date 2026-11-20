@@ -503,7 +503,7 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
   },
   "Jill Smith": {
     actOneConflict:
-      "Sweet, preppy 19-year-old college transfer crashing in Clara's downstairs parlor while hiding how overwhelmed she is by strict family expectations and late-night loneliness.",
+      "Sweet, preppy 21-year-old college transfer crashing in Clara's downstairs parlor while hiding how overwhelmed she is by strict family expectations, her bratty 18-year-old younger sister Tina, and late-night loneliness.",
     dyadPassiveName: "Fresh Spark",
     dyadPassiveDescription:
       "Boosts early Affection gains and warms awkward late-night conversations around the house.",
@@ -512,11 +512,11 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     accentHex: "#F472B6",
     startingMeters: { affection: 20, lust: 16, submission: 38, trust: 22, jealousy: 6, sensitivity: 16 },
     secretBio:
-      "Keeps her preppy sweater vests and textbook stack spotless to look like an ideal honor student, yet secretly craves someone patient enough to let her drop the polite act after dark.",
+      "Keeps her preppy yellow sweater vest and textbook stack spotless to look like an ideal 21-year-old honor student, yet secretly craves someone patient enough to let her drop the polite act after dark.",
     preferredPersonalities: ["Gentle Protector", "Charismatic Flirt", "Dominant Sovereign", "Quiet Protector"],
     preferredApproaches: ["STEADY_GRIT", "SMOOTH_CHARM"],
     gazeReactionTell:
-      "A rosy blush spreads from her cheeks down to her collarbone; she fidgets with the hem of her pleated mini-skirt, secretly thrilled that your eyes keep drifting down her bare thighs.",
+      "A rosy blush spreads from her cheeks down to her collarbone; she fidgets with the hem of her red plaid pleated mini-skirt, secretly thrilled that your eyes keep drifting down her bare thighs.",
     kinkDynamicSummary: "Good-Girl Corruption • Skirt Lifting, Gentle Domination, Guided Hands & Quiet Moans",
     kinks: [
       {
@@ -530,7 +530,7 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
         name: "Uniform / Pleated Skirt Play",
         intensity: "Secret Craving",
         description:
-          "Having her preppy pleated skirt hiked up around her waist while she stays dressed in her neat sweater vest.",
+          "Having her preppy red plaid pleated skirt hiked up around her waist while she stays dressed in her neat yellow sweater vest.",
         triggerKeywords: ["skirt", "pleated", "thighs", "lift", "sweater", "uniform"],
       },
       {
@@ -545,51 +545,51 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
   },
   "Tina Smith": {
     actOneConflict:
-      "Jill Smith's spirited 19-year-old younger sister crashing in the downstairs parlor/attic guest cot to escape their strict parents, masking restless curiosity behind sharp teasing.",
+      "Jill Smith's bratty, spoiled, and mischievous 18-year-old younger sister crashing in the downstairs parlor/attic guest cot, testing everyone with mouthy attitude until someone with a firm hand puts her in her place.",
     dyadPassiveName: "Double Trouble",
     dyadPassiveDescription:
-      "Accelerates playful banter and shared-secret Trust gains during late-night house hangouts.",
+      "Accelerates brat-taming Submission and shared-secret Lust/Trust gains when you stand firm against her teasing.",
     bedroomLocation: "Clara's Late-Night Den",
     roomLabel: "Parlor",
     accentHex: "#FB7185",
     startingMeters: { affection: 16, lust: 18, submission: 34, trust: 20, jealousy: 8, sensitivity: 18 },
     secretBio:
-      "Always followed Jill's shadow at home—at 412 Maplewood she wants to prove she's grown up enough to choose her own trouble and keep a secret of her own.",
-    preferredPersonalities: ["Audacious Rebel", "Charismatic Flirt", "Dominant Sovereign", "Reckless Night-Owl"],
-    preferredApproaches: ["RAW_EDGE", "SMOOTH_CHARM"],
+      "Acts like a spoiled, untouchable 18-year-old brat who can talk circles around her 21-year-old sister Jill—yet the second a strong, dominant man grabs her, calls her bluff, and puts her firmly in her place, she melts into an obedient, needy mess.",
+    preferredPersonalities: ["Dominant Sovereign", "Audacious Rebel", "Charismatic Flirt", "Reckless Night-Owl"],
+    preferredApproaches: ["RAW_EDGE", "SMOOTH_CHARM", "STEADY_GRIT"],
     gazeReactionTell:
-      "She catches you staring and arches her back with a breathless, conspiratorial grin—deliberately leaning closer to steal your attention right in front of Jill.",
-    kinkDynamicSummary: "Voyeuristic Thrill-Seeker • Footplay, Sister Rivalry, Hair-Pulling, Risk of Getting Caught & Dirty Talk",
+      "She catches you staring at her unbuttoned white shirt and short navy-blue skirt, arching her back with a bratty, smug grin while rubbing her lace-stockinged foot against your leg to see if you're man enough to grab her.",
+    kinkDynamicSummary: "Spoiled Brat Correction & Footplay • Firm Discipline, Stocking Footplay, Sister Rivalry & Rough Manhandling",
     kinks: [
       {
-        name: "Footplay & Barefoot Teasing",
+        name: "Spoiled Brat Discipline & Being Put in Her Place",
         intensity: "Core Fetish",
         description:
-          "Teasing you with her bare feet under the table or on the sofa, and having her arches, ankles, and toes held, massaged, or kissed while she squirms.",
-        triggerKeywords: ["foot", "feet", "toes", "barefoot", "sole", "arch", "ankle", "footplay", "step on"],
+          "Running her mouth until you pin her down, grip her chin or wrists with a firm hand, and make her obey and stay in her place.",
+        triggerKeywords: ["brat", "place", "firm", "behave", "shut up", "obey", "spoiled", "lesson", "discipline"],
+      },
+      {
+        name: "Footplay & Stocking/Barefoot Teasing",
+        intensity: "Core Fetish",
+        description:
+          "Teasing you with her feet in lace-top thigh-high stockings or bare toes, and having her arches, ankles, and soles firmly gripped, massaged, or worshipped while she squirms.",
+        triggerKeywords: ["foot", "feet", "toes", "barefoot", "sole", "arch", "ankle", "footplay", "stocking", "step on"],
       },
       {
         name: "Risk of Getting Caught & Sister Rivalry",
-        intensity: "Core Fetish",
+        intensity: "Secret Craving",
         description:
-          "Sneaking touches, kisses, or quiet quickies when her older sister Jill is just in the next room—thrilled that you chose her.",
+          "Sneaking touches, kisses, or quiet quickies when her 21-year-old older sister Jill is just in the next room—thrilled that you chose her.",
         triggerKeywords: ["jill", "sister", "secret", "catch us", "sneak", "next room", "dare"],
       },
       {
         name: "Hair-Pulling & Rough Manhandling",
-        intensity: "Secret Craving",
-        description:
-          "Having her hair tugged back or being lifted effortlessly onto the counter or attic bed when her teasing goes too far.",
-        triggerKeywords: ["hair", "pull", "grab", "lift", "rough", "pin"],
-      },
-      {
-        name: "Shameless Dirty Talk & Dare Escalation",
         intensity: "Conditioned Trigger",
         description:
-          "Being talked to dirty in her ear and dared to strip or prove she's bolder than her sister.",
-        triggerKeywords: ["dirty", "whisper", "prove it", "bold", "strip", "naughty"],
+          "Having her hair tugged back, her hips spanked, or being lifted effortlessly onto the counter or bed when her bratty teasing goes too far.",
+        triggerKeywords: ["hair", "pull", "grab", "lift", "rough", "pin", "spank"],
       },
     ],
-    secretUnlockRequirement: { minTrust: 38, minAffection: 35 },
+    secretUnlockRequirement: { minTrust: 50, minAffection: 50 },
   },
 };

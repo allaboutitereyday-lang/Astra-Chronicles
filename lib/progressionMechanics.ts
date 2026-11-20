@@ -1822,16 +1822,16 @@ const HEROINE_RESISTANCE_CATALOG: Record<string, HeroineResistanceProfile> = {
   },
   "jill smith": {
     guardTier: "WARM_RIVAL",
-    badgeLabel: "Warm Spark • Preppy Honor Student",
+    badgeLabel: "Warm Spark • Preppy 21yo Older Sister",
     lowTierMaxGain: 2,
     trustStepPerResonance: 1.0,
     guardedThreshold: 20,
     whatEarnsAffection:
-      "Teasing her gently past her polite honor-student facade, letting your eyes linger on her pleated skirt and bare thighs, and guiding her into late-night mischief.",
+      "Teasing her gently past her polite 21-year-old honor-student facade, letting your eyes linger on her red plaid pleated skirt and bare thighs, and guiding her into late-night mischief.",
     armorCrackTell:
-      "A rosy blush spreads from her cheeks down to her collarbone; she fidgets with the hem of her pleated mini-skirt, secretly thrilled that your eyes keep drifting down her bare thighs.",
+      "A rosy blush spreads from her cheeks down to her collarbone; she fidgets with the hem of her red plaid pleated mini-skirt, secretly thrilled that your eyes keep drifting down her bare thighs.",
     initialSentiment:
-      "Flustered Curiosity — She tries to act like the polite preppy transfer student, but her pulse races whenever you look at her like a woman.",
+      "Flustered Curiosity — She tries to act like the responsible 21-year-old older sister, but her pulse races whenever you look at her like a woman.",
     canonicalMemoryTriggers: [
       {
         memoryId: "jill_honor_student_facade",
@@ -1846,27 +1846,27 @@ const HEROINE_RESISTANCE_CATALOG: Record<string, HeroineResistanceProfile> = {
     ],
   },
   "tina smith": {
-    guardTier: "WARM_RIVAL",
-    badgeLabel: "Warm Spark • Mischievous Younger Sister",
+    guardTier: "SELECTIVE",
+    badgeLabel: "Spoiled Brat • Needs a Firm Hand",
     lowTierMaxGain: 2,
-    trustStepPerResonance: 1.0,
-    guardedThreshold: 20,
+    trustStepPerResonance: 0.85,
+    guardedThreshold: 24,
     whatEarnsAffection:
-      "Joining her late-night schemes, checking her out right in front of Jill, and treating her as a bold temptation of her own rather than just Jill's kid sister.",
+      "Refusing to tolerate her spoiled 18-year-old attitude, putting her firmly in her place with a commanding hand, and gripping her ankle or chin when she teases you in front of Jill.",
     armorCrackTell:
-      "She catches you staring and arches her back with a breathless, conspiratorial grin—deliberately leaning closer to steal your attention right in front of Jill.",
+      "Her bratty smirk falters into a hot, needy flush the second you take a firm grip on her—her toes curling inside her lace-top stockings as she realizes she can't boss you around.",
     initialSentiment:
-      "Conspiratorial Heat — She is immediately receptive to your gaze and loves pushing the envelope to see how far you'll go with her.",
+      "Bratty Provocation — Spoiled, mouthy, and mischievous, she deliberately pushes your buttons waiting to see if you have the backbone to put her in her place and keep her there.",
     canonicalMemoryTriggers: [
       {
         memoryId: "tina_out_of_jills_shadow",
         unlockAffection: 35,
-        keywords: /\b(sister|shadow|jill|parents|trouble|grown\s+up)\b/i,
+        keywords: /\b(sister|shadow|jill|parents|trouble|brat|place)\b/i,
       },
       {
         memoryId: "tina_parlor_dare",
         unlockAffection: 60,
-        keywords: /\b(wine|dare|sofa|parlor|attic|secret)\b/i,
+        keywords: /\b(wine|dare|sofa|parlor|attic|secret|foot|stockings)\b/i,
       },
     ],
   },

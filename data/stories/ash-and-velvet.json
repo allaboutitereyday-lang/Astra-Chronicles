@@ -191,8 +191,8 @@
       "title": "2:14 AM — Bourbon & Wet Cashmere",
       "speaker": "Clara Callahan",
       "location": "Clara's Kitchen & Living Room",
-      "sceneSetup": "You arrive rain-soaked at 2:14 AM to rent the cheap attic room. The scent of bourbon and jasmine tea mingles with the damp air as you step inside. Landlady Clara Callahan (41, curvy, auburn hair, emerald eyes) leans across the kitchen island in a loosely tied cream cashmere wrap that slips off one freckled shoulder, spiking your coffee with her private top-shelf bourbon while sizing you up with warm, dangerous amusement.",
-      "dialogue": "\"Mmm, looks like the rain delivered a soaked stray right to my porch at two in the morning. Sit down before you drip all over my hardwood, sweetheart—I spiked your coffee with top-shelf bourbon, and my eyes are up here, even if this robe refuses to behave. Drink up while you're warm, then tell me whether you're going to be my favorite tenant or my favorite headache.\"",
+      "sceneSetup": "You arrive rain-soaked at 2:14 AM to rent the cheap attic room. The scent of bourbon and jasmine tea mingles with the damp air as you step inside. Landlady Clara Callahan (41, curvy, auburn hair, emerald eyes, wearing a fitted cream ribbed V-neck knit sweater, emerald pendant necklace, and high-waisted tan trousers) leans across the kitchen island, spiking your coffee with her private top-shelf bourbon while sizing you up with warm, dangerous amusement.",
+      "dialogue": "\"Mmm, looks like the rain delivered a soaked stray right to my porch at two in the morning. Sit down before you drip all over my hardwood, sweetheart—I spiked your coffee with top-shelf bourbon, and my eyes are up here, even if this sweater's V-neck is doing all the talking. Drink up while you're warm, then tell me whether you're going to be my favorite tenant or my favorite headache.\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/shared_kitchen.jpg",
       "presentCompanions": [
@@ -238,7 +238,7 @@
       "title": "7:40 AM — The Towel Stand-Off",
       "speaker": "Brianna Chen",
       "location": "Upstairs Hallway & Shared Bath",
-      "sceneSetup": "Hot shower steam fills the narrow upstairs hallway, the air thick with the scent of jasmine and lavender. Brianna Chen (24, petite curvy East Asian, glossy raven bob, wicked cat-eye grin) swings the bathroom door open and collides flush against your chest wearing nothing but a dangerously short damp white bath towel—and instead of backing off, she backs you against the doorframe with shameless, teasing heat.",
+      "sceneSetup": "Hot shower steam fills the narrow upstairs hallway, the air thick with the scent of jasmine and lavender. Brianna Chen (24, petite curvy East Asian, glossy raven bob, gold hoop earrings, wicked cat-eye grin) swings the bathroom door open and collides flush against your chest wearing nothing but a dangerously short damp white bath towel wrapped tight around her curves—and instead of backing off, she backs you against the doorframe with shameless, teasing heat.",
       "dialogue": "\"Well, well—Clara didn't mention the new attic roommate actually fills out a soaked t-shirt. Careful with those hands, rookie, this towel's hanging on by a wish and a prayer... unless catching me fresh out of the shower was your grand plan all along? Either way, you're in my light, handsome, so talk fast or step closer.\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway_bath.jpg",
@@ -285,7 +285,7 @@
       "title": "11:50 PM — Neon Smoke & Bad Bets",
       "speaker": "Hannah Lindqvist",
       "location": "Velvet Static Dive Bar",
-      "sceneSetup": "Magenta neon and low bass pulse through Velvet Static Dive Bar, the air thick with the scent of whiskey and cigarette smoke. Your new housemate Hannah Lindqvist (23, tall Scandinavian blonde, pearl choker, slouchy off-shoulder black sweater and plaid mini-skirt) presses her bare thigh against yours on the barstool, tracing the rim of your whiskey glass and daring you into a loser-does-anything bet before you've even unpacked.",
+      "sceneSetup": "Magenta neon and low bass pulse through Velvet Static Dive Bar, the air thick with the scent of whiskey and cigarette smoke. Your new housemate Hannah Lindqvist (23, tall Scandinavian blonde, pearl choker, silver headphones around her neck, slouchy off-shoulder black ribbed sweater and crimson plaid pleated mini-skirt with a silver belt chain) presses her bare thigh against yours on the barstool, tracing the rim of your whiskey glass and daring you into a loser-does-anything bet before you've even unpacked.",
       "dialogue": "\"You've got that 'just escaped a cage and forgot how good trouble tastes' look, attic boy. Come on, don't play shy with me—one shot, one game of darts, and the loser does whatever the winner asks back at 412 Maplewood after last call. So what's it gonna be, stud... are you in, or are you scared I'll win?\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/neon_dive_bar.jpg",
@@ -332,7 +332,7 @@
       "title": "11:30 PM — The Room 205 Clause",
       "speaker": "Chloe Bellamy",
       "location": "After-Hours Bourbon Lounge",
-      "sceneSetup": "In a velvet booth at the After-Hours Bourbon Lounge, the smooth scent of aged oak and vanilla bourbon fills the air. Poised paralegal Chloe Bellamy (28, sculpted honey-tan hourglass, sultry deep burgundy silk slip dress) realizes the stranger she just bought a neat bourbon for—and has been trading heated glances with for twenty minutes—is the new attic tenant moving in directly above her bedroom.",
+      "sceneSetup": "In a velvet booth at the After-Hours Bourbon Lounge, the smooth scent of aged oak and vanilla bourbon fills the air. Poised paralegal Chloe Bellamy (28, sculpted honey-tan hourglass, pearl pendant necklace, wearing a form-fitting off-shoulder striped knit top and high-waisted dark navy tailored trousers) realizes the stranger she just bought a neat bourbon for—and has been trading heated glances with for twenty minutes—is the new attic tenant moving in directly above her bedroom.",
       "dialogue": "\"Wait... you're Clara's new attic tenant? So the guy I've been undressing with my eyes over neat bourbon for the last twenty minutes is sleeping directly above my ceiling tonight. That's a dangerous conflict of interest, Mr. Upstairs—care to tell me how quietly you walk after midnight, or should we negotiate our house rules right now?\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/downtown_lounge.jpg",
@@ -379,7 +379,7 @@
       "title": "1:15 AM — The Midnight Wine Heist",
       "speaker": "Jill Smith",
       "location": "Clara's Late-Night Den",
-      "sceneSetup": "Slipping downstairs at 1:15 AM, the scent of old books and dust mingles with the rich aroma of wine. You catch preppy 19yo honor student Jill Smith and her mischievous 19yo younger sister Tina Smith in silky satin nightwear raiding Clara's locked wine cabinet. Before Jill can panic, Tina catches your wrist and pulls you onto the velvet sofa right between both warm, bare-legged sisters to negotiate your silence.",
+      "sceneSetup": "Slipping downstairs at 1:15 AM, the scent of old books and dust mingles with the rich aroma of wine. You catch preppy 21yo older sister Jill Smith (wearing her yellow cable-knit sweater vest over a crisp white collared shirt, red plaid bow tie, and red plaid mini-skirt) and her bratty, spoiled 18yo younger sister Tina Smith (wearing an unbuttoned white short-sleeve button-down shirt slipping off one shoulder, a short navy-blue skirt, and black lace-top thigh-high stockings) raiding Clara's locked wine cabinet. Before Jill can panic, Tina catches your wrist and pulls you onto the velvet sofa right between both sisters to negotiate your silence.",
       "dialogue": "\"Shh! Tina, stop tugging his shirt—if Clara hears us with her private reserve we're dead! Look, we were just borrowing one tiny bottle to celebrate Tina crashing for the weekend... sit down between us for five minutes, share a glass so you're an accomplice, and we'll owe you a very big favor.\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/claras_den.jpg",
@@ -427,8 +427,8 @@
       "title": "3:20 PM — The Attic Landing Collision",
       "speaker": "Tina Smith",
       "location": "Upstairs Hallway & Shared Bath",
-      "sceneSetup": "Heading up the narrow second-floor landing toward your attic stairs at 3:20 PM, you hear light, hurried footsteps sprinting around the blind corner. Spirited 19-year-old Tina Smith—barefoot in a cropped tee and a dangerously short pleated skirt—rounds the banister at full speed while trying to sneak a stash of snacks and a borrowed bottle upstairs before Jill spots her. She crashes chest-first into you, loses her footing, and tumbles backward onto the hallway runner rug with her skirt flipped completely up around her waist, flashing her delicate lace panties as her bare feet and slender calves land tangled right across your lap.",
-      "dialogue": "\"Eek—! Oof! Hey, watch where you're—wait... oh god, don't just freeze there staring! My skirt got caught on your knee when we crashed, okay?! Stop looking right between my legs with that stupid grin and help me untangle my foot before Jill comes up the stairs—unless you're actually enjoying the view that much, new guy?\"",
+      "sceneSetup": "Heading up the narrow second-floor landing toward your attic stairs at 3:20 PM, you hear light, hurried footsteps sprinting around the blind corner. Bratty, spoiled, mischievous 18-year-old Tina Smith—wearing a partially unbuttoned white button-down shirt slipping off one shoulder, a dangerously short navy-blue skirt, and sheer black lace-top thigh-high stockings (no shoes)—rounds the banister at full speed while sneaking a borrowed stash upstairs before her 21-year-old older sister Jill spots her. She crashes chest-first into you, loses her footing, and tumbles backward onto the hallway runner rug with her short navy-blue skirt flipped completely up around her waist, flashing her panties in classic ecchi fashion while her stocking-clad legs and feet land tangled right across your lap.",
+      "dialogue": "\"Eek—! Oof! Hey, watch where you're walking, you big idiot—wait... ugh, don't just freeze there staring! My skirt only flipped up because you stood in my way, okay?! Wipe that smug grin off your face and take your hands off my ankle before Jill comes up the stairs... unless you're actually trying to get an eyeful of a spoiled 18-year-old, new guy?\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway.jpg",
       "presentCompanions": [
@@ -437,9 +437,9 @@
       "initialAffection": 18,
       "choices": [
         "[Heart]: 'Easy, you okay? Here—let me help you up before Jill catches you.' Catch her ankle gently and pull her upright.",
-        "[Flame]: 'Hard not to stare when you crash into me flashing lace like that.' Let your eyes linger unabashedly while holding her bare foot on your knee.",
-        "[Cool]: 'White lace, huh? Bold choice for sneaking around the hallway.' Smirk calmly without rushing to move your hands.",
-        "[Dom]: 'You ran into me, Tina. Hold still while I check if you twisted that ankle.' Wrap a firm hand around her bare arch and hold her gaze."
+        "[Flame]: 'Hard not to stare when you crash into me in a short navy skirt like that.' Let your eyes linger unabashedly while holding her stocking-clad foot on your knee.",
+        "[Cool]: 'You're the one sprinting around blind corners, brat.' Smirk calmly without rushing to move your hands.",
+        "[Dom]: 'Watch your mouth, Tina. You ran into me—now hold still until I say you can get up.' Wrap a firm hand around her ankle to put the spoiled brat in her place."
       ],
       "initialQuest": {
         "id": "av_quest_first_week",
@@ -982,6 +982,8 @@
     },
     {
       "name": "Jill Smith",
+      "title": "Preppy Older Sister & Transfer Houseguest",
+      "role": "Parlor Guest (Age 21)",
       "archetype": "Preppy Transfer Houseguest",
       "relationshipStatus": "Acquainted",
       "affection": 20,
@@ -990,7 +992,7 @@
       "trust": 22,
       "jealousy": 6,
       "affinityTier": "Warm Crush / Flustered Yield",
-      "personality": "A bright, petite 19-year-old college sophomore crashing in Clara's downstairs parlor between leases. Outwardly polite, conscientious, and easily blushed, she secretly relishes playful teasing and bold late-night attention that lets her shed her sheltered good-girl image.",
+      "personality": "A bright, petite 21-year-old college junior crashing in Clara's downstairs parlor between leases while keeping an eye on her bratty 18-year-old younger sister Tina. Outwardly polite, conscientious, and easily blushed, she secretly relishes playful teasing and bold late-night attention that lets her shed her sheltered good-girl image.",
       "speechStyle": "Warm, slightly breathless, earnest, and quick to stammer into playful honesty when flustered.",
       "interpersonalDynamics": {
         "rivalIds": [
@@ -1006,7 +1008,7 @@
       "baseImageUrl": "/characters/ash-and-velvet/jill_smith/base.png",
       "activeWardrobe": "base",
       "wardrobeLabels": {
-        "base": "Preppy Sweater Vest & Plaid Skirt",
+        "base": "Yellow Sweater Vest, Red Bow & Plaid Skirt",
         "casual": "Pink Cropped Hoodie & Denim Skirt",
         "date": "Lilac Off-Shoulder Skater Dress",
         "lounge": "Oversized Blue Tee & Sleep Shorts",
@@ -1016,7 +1018,7 @@
         "nsfw_1": "Intimate State 1",
         "nsfw_2": "Intimate State 2"
       },
-      "visualPrompt": "Clean 2D cel-shaded graphic novel style, petite curvy 19yo blonde woman, fair porcelain pale skin, shoulder-length golden blonde hair with bangs, emerald green eyes, silver stud earrings, expressive blushing cheeks",
+      "visualPrompt": "Clean 2D cel-shaded graphic novel style, petite curvy 21yo blonde woman, fair porcelain pale skin, shoulder-length golden blonde hair with bangs, emerald green eyes, silver stud earrings, wearing a yellow cable-knit sweater vest over a crisp white collared shirt with a red plaid bow tie and red plaid pleated mini-skirt",
       "expressions": {
         "neutral": "/characters/ash-and-velvet/jill_smith/base.png"
       },
@@ -1054,9 +1056,21 @@
     {
       "id": "tina_smith",
       "name": "Tina Smith",
-      "title": "Jill's Younger Sister & Weekend Crasher",
-      "role": "Parlor Guest (Age 19)",
-      "personality": "Jill Smith's spirited, observant 19-year-old younger sister who tags along to 412 Maplewood whenever she needs a breather from their strict parents. Less buttoned-up than Jill, quick with wry teasing, and secretly curious about the house's late-night tension.",
+      "title": "Bratty Younger Sister & Parlor Troublemaker",
+      "role": "Parlor Guest (Age 18)",
+      "personality": "Jill Smith's bratty, spoiled, and mischievous 18-year-old younger sister who crashed at 412 Maplewood to escape their parents' rules. She acts cocky, mouthy, and shamelessly provocative—constantly pushing boundaries and teasing with her stocking-clad feet—because deep down she craves a dominant man with a firm hand to call her bluff, put her in her place, and keep her there.",
+      "values": [
+        "Dominant Men Who Don't Flinch",
+        "Being Put in Her Place",
+        "Sneaky Thrills & Breaking Rules",
+        "Outshining Her Older Sister Jill"
+      ],
+      "dislikes": [
+        "Pushovers & Timid Men",
+        "Being Treated Like a Little Kid",
+        "Boring Lectures",
+        "Being Ignored"
+      ],
       "affection": 16,
       "trust": 20,
       "lust": 18,
@@ -1068,11 +1082,11 @@
       "baseImageUrl": "/characters/ash-and-velvet/tina_smith/tina_base.png",
       "activeWardrobe": "base",
       "wardrobeLabels": {
-        "base": "Everyday Casual",
+        "base": "Unbuttoned White Shirt, Short Navy Skirt & Lace Stockings",
         "nsfw_1": "Intimate State 1",
         "nsfw_2": "Intimate State 2"
       },
-      "visualPrompt": "Western adult graphic-novel comic style, 19yo petite curvy young woman, younger sister of Jill Smith, bold crisp black ink outlines, smooth cel shading",
+      "visualPrompt": "Western adult graphic-novel comic style, 18yo petite curvy blonde young woman with bright green eyes and a bratty smug blush, younger sister of Jill Smith, wearing a partially unbuttoned white short-sleeve button-down shirt slipping off one shoulder, a short navy-blue pleated mini-skirt, and sheer black lace-top thigh-high stockings",
       "expressions": {
         "neutral": "/characters/ash-and-velvet/tina_smith/tina_base.png"
       },
