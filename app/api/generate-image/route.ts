@@ -463,6 +463,8 @@ export async function POST(req: Request) {
       "brianna": "brianna_chen",
       "sierra": "sierra_holloway",
       "chloe bellamy": "chloe_bellamy",
+      "jill": "jill_smith",
+      "tina": "tina_smith",
     };
     const matchedAshVelvetSlug =
       body.storyId === "ash-and-velvet" || body.artStyle === "western_adult_comic"
@@ -474,9 +476,10 @@ export async function POST(req: Request) {
       const expr = expressionKey === "hurt" ? "hurt" : (expressionKey || "neutral");
       generatedImageUrl = `/characters/${matchedCanon}/${matchedCanon}_${expr}.png`;
     } else if (!body.forceComfyRegenerate && matchedAshVelvetSlug) {
-      const validAvExprs = ["neutral", "intrigued", "flustered", "smug", "hurt", "beckon"];
-      const expr = validAvExprs.includes(expressionKey) ? expressionKey : "base";
-      generatedImageUrl = `/characters/ash-and-velvet/${matchedAshVelvetSlug}/${expr}.png`;
+      generatedImageUrl =
+        matchedAshVelvetSlug === "tina_smith"
+          ? "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png"
+          : `/characters/ash-and-velvet/${matchedAshVelvetSlug}/base.png`;
     } else if (!body.forceComfyRegenerate && matchedStarfallSlug) {
       const validStarfallExprs = ["neutral", "intrigued", "flustered", "smug", "combat_ready", "hurt"];
       const expr = validStarfallExprs.includes(expressionKey) ? expressionKey : "neutral";

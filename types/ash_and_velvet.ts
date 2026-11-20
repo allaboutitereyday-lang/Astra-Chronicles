@@ -38,7 +38,7 @@ export const ASH_VELVET_ORIGIN_PRESETS: AshVelvetOriginPreset[] = [
       "You walked out of your family's house at 2 AM with a bruised jaw, a single duffel bag, and sixty-five dollars in crumpled bills—refusing to take one more night of yelling and broken glass. Clara Callahan answered the porch bell in a silk robe, handed you a warm mug without asking for an apology, and gave you the attic room above her chaotic shared house.",
     actOneStakes:
       "Clara sets strict house rules to keep you safe even as late-night loneliness blurs her boundaries; Brianna corners you in the upstairs bathroom hallway; and Hannah invites you out to a smoky neon dive bar where alcohol and bad decisions wait.",
-    highResonanceHeroines: ["Clara Callahan", "Sierra Holloway", "Hannah Lindqvist"],
+    highResonanceHeroines: ["Clara Callahan", "Sierra Holloway", "Hannah Lindqvist", "Jill Smith"],
   },
   {
     id: "NIGHT_SHIFT_ESCAPEE",
@@ -339,5 +339,31 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     startingMeters: { affection: 10, lust: 22, submission: 12, trust: 12, jealousy: 15 },
     secretBio:
       "Spends twelve hours a day commanding boardrooms and intimidating senior partners—behind closed doors after midnight, she secretly aches for someone strong enough to make her stop being in charge.",
+  },
+  "Jill Smith": {
+    actOneConflict:
+      "Sweet, preppy 19-year-old college transfer crashing in Clara's downstairs parlor while hiding how overwhelmed she is by strict family expectations and late-night loneliness.",
+    dyadPassiveName: "Fresh Spark",
+    dyadPassiveDescription:
+      "Boosts early Affection gains and warms awkward late-night conversations around the house.",
+    bedroomLocation: "Clara's Late-Night Den",
+    roomLabel: "Parlor",
+    accentHex: "#F472B6",
+    startingMeters: { affection: 20, lust: 16, submission: 38, trust: 22, jealousy: 6 },
+    secretBio:
+      "Keeps her preppy sweater vests and textbook stack spotless to look like an ideal honor student, yet secretly craves someone patient enough to let her drop the polite act after dark.",
+  },
+  "Tina Smith": {
+    actOneConflict:
+      "Jill Smith's spirited 19-year-old younger sister crashing in the downstairs parlor/attic guest cot to escape their strict parents, masking restless curiosity behind sharp teasing.",
+    dyadPassiveName: "Double Trouble",
+    dyadPassiveDescription:
+      "Accelerates playful banter and shared-secret Trust gains during late-night house hangouts.",
+    bedroomLocation: "Clara's Late-Night Den",
+    roomLabel: "Parlor",
+    accentHex: "#FB7185",
+    startingMeters: { affection: 16, lust: 18, submission: 34, trust: 20, jealousy: 8 },
+    secretBio:
+      "Always followed Jill's shadow at home—at 412 Maplewood she wants to prove she's grown up enough to choose her own trouble and keep a secret of her own.",
   },
 };

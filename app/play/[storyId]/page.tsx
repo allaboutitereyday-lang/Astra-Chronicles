@@ -6365,8 +6365,18 @@ export default function VisualNovelGame() {
         );
         const validWardrobeMap =
           (comp as any).wardrobeExpressions || storyCompDef?.wardrobeExpressions;
+        const isAvPrivateOrIntimateRoom =
+          /room|bedroom|den|bathroom|attic/i.test(data.location || "");
+        const compAvMeters = currentStory?.id === "ash-and-velvet" ? resolveHeroineMeters(comp) : null;
+        const canAutoNsfw =
+          !incomingWardrobeKey?.startsWith("nsfw_") ||
+          (compAvMeters && compAvMeters.lust >= 50) ||
+          isAvPrivateOrIntimateRoom;
         const updatedWardrobe =
-          incomingWardrobeKey && validWardrobeMap && validWardrobeMap[incomingWardrobeKey]
+          incomingWardrobeKey &&
+          validWardrobeMap &&
+          validWardrobeMap[incomingWardrobeKey] &&
+          canAutoNsfw
             ? incomingWardrobeKey
             : (comp as any).activeWardrobe || storyCompDef?.activeWardrobe;
 
@@ -9976,7 +9986,13 @@ export default function VisualNovelGame() {
           <AtmosphericParticles location="Imperial Capital Imperium" intensity="gentle" />
         </div>
 
-        <div className="relative z-10 w-full max-w-4xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-5 my-auto">
+        <div
+          className={
+            currentStory.id === "ash-and-velvet"
+              ? "relative z-10 w-full max-w-4xl bg-[#161520] border-2 border-[#07070A] shadow-[6px_6px_0px_#07070A] p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-5 my-auto"
+              : "relative z-10 w-full max-w-4xl bg-zinc-900/90 backdrop-blur-2xl border border-white/15 rounded-3xl p-4 sm:p-6 md:p-8 shadow-2xl space-y-4 sm:space-y-5 my-auto"
+          }
+        >
           <div className="space-y-3 border-b border-white/10 pb-3.5">
             {/* Top Utility Navigation Bar */}
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -10008,7 +10024,9 @@ export default function VisualNovelGame() {
                   title="Open World Lore Guidebook (Characters, Locations, Stats & Keywords)"
                 >
                   <BookOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span className="font-mono hidden sm:inline">World Guide</span>
+                  <span className="font-mono hidden sm:inline">
+                    {currentStory.id === "ash-and-velvet" ? "House Dossier" : "World Guide"}
+                  </span>
                   <span className="font-mono sm:hidden">Guide</span>
                 </button>
                 <button
@@ -10053,9 +10071,15 @@ export default function VisualNovelGame() {
                 <Sparkles className="text-rose-400 w-4 h-4 sm:w-5 sm:h-5 animate-pulse shrink-0" />
                 <span className="break-words">{currentStory.title.toUpperCase()}</span>
               </h1>
-              <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-widest text-zinc-500 border border-white/10 bg-zinc-950/70 px-2.5 py-1 rounded-lg shrink-0">
-                Origin Protocol
-              </span>
+              {currentStory.id === "ash-and-velvet" ? (
+                <span className="hidden sm:inline-block text-[10px] font-mono font-black uppercase tracking-widest text-[#09090D] bg-amber-500 border-2 border-[#07070A] shadow-[3px_3px_0px_#07070A] -skew-x-12 px-3 py-1 shrink-0">
+                  <span className="inline-block skew-x-12">412 Maplewood • New Tenant</span>
+                </span>
+              ) : (
+                <span className="hidden sm:inline-block text-[10px] font-mono uppercase tracking-widest text-zinc-500 border border-white/10 bg-zinc-950/70 px-2.5 py-1 rounded-lg shrink-0">
+                  Origin Protocol
+                </span>
+              )}
             </div>
 
             {/* 4-Step Tab Navigation Bar */}
@@ -10065,8 +10089,14 @@ export default function VisualNovelGame() {
                   {
                     id: "identity" as const,
                     step: "01",
-                    label: "Identity & Persona",
-                    sub: `${player.name || "Caelen"} • ${player.race || "Human"}`,
+                    label:
+                      currentStory.id === "ash-and-velvet"
+                        ? "Who You Are"
+                        : "Identity & Persona",
+                    sub:
+                      currentStory.id === "ash-and-velvet"
+                        ? `${player.name || "Caelen"} • Age ${player.age || "22"}`
+                        : `${player.name || "Caelen"} • ${player.race || "Human"}`,
                   },
                   {
                     id: "origin" as const,
@@ -10078,6 +10108,8 @@ export default function VisualNovelGame() {
                         ? "Proprietor Background"
                         : currentStory.id === "starfall-labyrinth"
                         ? "Summoned Origin"
+                        : currentStory.id === "ash-and-velvet"
+                        ? "Your Backstory"
                         : "World Origin",
                     sub:
                       currentStory.id === "sovereign-spire"
@@ -10086,6 +10118,8 @@ export default function VisualNovelGame() {
                         ? `0★ Probation • ${player.semesterDebtQuota || 1200} Crowns`
                         : currentStory.id === "starfall-labyrinth"
                         ? `${player.labyrinthState?.isHiddenRarity ? "?★" : `${player.labyrinthState?.protagonistStarRank || 1}★`} • ${player.labyrinthState?.starShards ?? 60} Shards`
+                        : currentStory.id === "ash-and-velvet"
+                        ? `${player.worldOrigin?.split("(")[0]?.trim() || "Runaway"} • $${player.gold ?? 65} Cash`
                         : player.worldOrigin?.split("(")[0]?.trim() || "Native",
                   },
                   {
@@ -10098,9 +10132,13 @@ export default function VisualNovelGame() {
                         ? "Flair & Faction"
                         : currentStory.id === "starfall-labyrinth"
                         ? "Squad Role & Kit"
+                        : currentStory.id === "ash-and-velvet"
+                        ? "Vibe & Approach"
                         : "Class & Arsenal",
                     sub:
-                      hasCustomWorldPresets(currentStory.id)
+                      currentStory.id === "ash-and-velvet"
+                        ? player.role || "Quiet Protector"
+                        : hasCustomWorldPresets(currentStory.id)
                         ? `${(player.conduit || "SOMATIC").replace(/_/g, " ")} • ${gearPreference.toUpperCase()}`
                         : player.role || "Choose Class",
                   },
@@ -10108,14 +10146,17 @@ export default function VisualNovelGame() {
                     id: "prologue" as const,
                     step: "04",
                     label:
-                      hasCustomWorldPresets(currentStory.id)
+                      currentStory.id === "ash-and-velvet"
+                        ? "Opening Scene"
+                        : hasCustomWorldPresets(currentStory.id)
                         ? "Act I Prelude"
                         : "Starting Scenario",
-                    sub: prologues[selectedPrologue]?.speaker || "Select Node",
+                    sub: prologues[selectedPrologue]?.speaker || "Pick Opener",
                   },
                 ]
               ).map((tab) => {
                 const isActive = creationTab === tab.id;
+                const isAv = currentStory.id === "ash-and-velvet";
                 return (
                   <button
                     key={tab.id}
@@ -10124,24 +10165,32 @@ export default function VisualNovelGame() {
                       soundEffects.playClick();
                       setCreationTab(tab.id);
                     }}
-                    className={`px-3 py-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${
-                      isActive
-                        ? "bg-gradient-to-br from-rose-950/70 via-zinc-900 to-amber-950/50 border-rose-500/80 text-white shadow-lg ring-1 ring-rose-500/30"
-                        : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
-                    }`}
+                    className={
+                      isAv
+                        ? `px-3 py-2 border-2 border-[#07070A] text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${
+                            isActive
+                              ? "bg-gradient-to-r from-pink-600 to-rose-500 text-white shadow-[3px_3px_0px_#07070A]"
+                              : "bg-[#111018] text-zinc-400 hover:text-amber-300 shadow-[2px_2px_0px_#07070A]"
+                          }`
+                        : `px-3 py-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-0.5 ${
+                            isActive
+                              ? "bg-gradient-to-br from-rose-950/70 via-zinc-900 to-amber-950/50 border-rose-500/80 text-white shadow-lg ring-1 ring-rose-500/30"
+                              : "bg-zinc-950/80 border-white/10 text-zinc-400 hover:border-white/25 hover:text-zinc-200"
+                          }`
+                    }
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-mono font-bold text-rose-400">
+                      <span className={`text-[10px] font-mono font-bold ${isAv && isActive ? "text-amber-200" : "text-rose-400"}`}>
                         STEP {tab.step}
                       </span>
                       {isActive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                        <span className={`w-1.5 h-1.5 rounded-full ${isAv ? "bg-amber-300" : "bg-rose-400 animate-pulse"}`} />
                       )}
                     </div>
                     <span className="text-xs font-mono font-bold truncate">
                       {tab.label}
                     </span>
-                    <span className="text-[10px] font-mono text-zinc-400 truncate">
+                    <span className={`text-[10px] font-mono truncate ${isAv && isActive ? "text-white/90" : "text-zinc-400"}`}>
                       {tab.sub}
                     </span>
                   </button>
@@ -10340,7 +10389,9 @@ export default function VisualNovelGame() {
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between gap-2">
                       <label className="text-xs font-mono text-zinc-300 font-bold">
-                        Protagonist Portrait (Visual AI Anchor)
+                        {currentStory.id === "ash-and-velvet"
+                          ? "Your Portrait (Optional)"
+                          : "Protagonist Portrait (Visual AI Anchor)"}
                       </label>
                       {playerAvatar && playerAvatar.trim() && (
                         <button
@@ -10360,7 +10411,9 @@ export default function VisualNovelGame() {
                       className="text-xs text-zinc-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-rose-600/30 file:text-rose-200 hover:file:bg-rose-600/50 cursor-pointer"
                     />
                     <p className="text-[11px] text-zinc-500">
-                      Visual AI scans your portrait to anchor species features, eye color, and attire in generated scenes.
+                      {currentStory.id === "ash-and-velvet"
+                        ? "Upload an optional portrait for your protagonist profile and illustrated scene CGs."
+                        : "Visual AI scans your portrait to anchor species features, eye color, and attire in generated scenes."}
                     </p>
                   </div>
                 </div>
@@ -10453,7 +10506,8 @@ export default function VisualNovelGame() {
                 )}
               </div>
 
-              {/* LINEAGE & ANATOMICAL VISION PROFILE */}
+              {/* LINEAGE & ANATOMICAL VISION PROFILE (Hidden in grounded contemporary stories) */}
+              {currentStory.id !== "ash-and-velvet" && (
               <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -10519,6 +10573,7 @@ export default function VisualNovelGame() {
                   </div>
                 </div>
               </div>
+              )}
 
               {/* CHARACTER DEMEANOR & CRAFTED PERSONA */}
               <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4 space-y-3">
@@ -10599,6 +10654,8 @@ export default function VisualNovelGame() {
                       ? "Proprietor Background & Lease Stakes"
                       : currentStory.id === "starfall-labyrinth"
                       ? "Summoned Origin & Master Account"
+                      : currentStory.id === "ash-and-velvet"
+                      ? "Your Backstory"
                       : "World Origin"}{" "}
                     →
                   </span>
@@ -10624,6 +10681,8 @@ export default function VisualNovelGame() {
                           ? "Proprietor Background & The Stray Anchor Lease Stakes"
                           : currentStory.id === "starfall-labyrinth"
                           ? "Summoned Origin & Master Account Standing"
+                          : currentStory.id === "ash-and-velvet"
+                          ? "Your Backstory & Move-In Situation"
                           : "World Origin & System Familiarity"}
                       </span>
                     </label>
@@ -10634,6 +10693,8 @@ export default function VisualNovelGame() {
                         ? "Select how you inherited the deed and debt to The Stray Anchor in Driftwood Cove. Each background shapes your starting Solar Crowns, weekly rent quota, island reputation, and which Heroines naturally gravitate toward your boarding house."
                         : currentStory.id === "starfall-labyrinth"
                         ? "Select how your consciousness was pulled into Celestia Summons as a 1★ Lv.1 hero. Shapes your starting Star Shards (for Main Lobby summons), Unseen Master trust, meta-knowledge floor ceiling, and opening squad synergy."
+                        : currentStory.id === "ash-and-velvet"
+                        ? "Choose how you ended up knocking on Clara Callahan's porch at 412 Maplewood Ave. Shapes your starting cash on hand, monthly rent pressure, and which housemates click with you first."
                         : "Choose how you entered this world and how deeply you understand the System and its factions."}
                     </p>
                   </div>
@@ -10644,6 +10705,8 @@ export default function VisualNovelGame() {
                           ? `0★ Probation • ${player.semesterDebtQuota || 1200} Crowns Rent`
                           : currentStory.id === "starfall-labyrinth"
                           ? `1★ Cap Lv.20 • 💠 ${player.labyrinthState?.starShards ?? 60} Shards`
+                          : currentStory.id === "ash-and-velvet"
+                          ? `Attic Room • $${player.semesterDebtQuota || 450}/mo Rent • $${player.gold ?? 65} Cash`
                           : `Rank #${player.matriculationRank || 488} • ${player.semesterDebtQuota || 400} Core Quota`}
                       </span>
                     </div>
@@ -10726,10 +10789,14 @@ export default function VisualNovelGame() {
                                     ? `Rent: ${so.semesterDebtQuota} Crowns`
                                     : currentStory.id === "starfall-labyrinth"
                                     ? `Memory: F1–F${(so as StarfallOriginPreset).metaKnowledgeCeiling ?? 40}`
+                                    : currentStory.id === "ash-and-velvet"
+                                    ? `Rent: $${so.semesterDebtQuota}/mo`
                                     : `Quota: ${so.semesterDebtQuota} Cores`}
                                 </span>
                                 <span className="text-amber-300 font-bold">
-                                  {so.startingCrowns} {worldPreset.uiLabels.originFundsSuffix}
+                                  {currentStory.id === "ash-and-velvet"
+                                    ? `$${so.startingCrowns} Cash`
+                                    : `${so.startingCrowns} ${worldPreset.uiLabels.originFundsSuffix}`}
                                 </span>
                               </div>
                             </button>
@@ -10744,7 +10811,7 @@ export default function VisualNovelGame() {
                             <span className="text-lg">{activeOrigin.icon}</span>
                             <div>
                               <h3 className="text-xs sm:text-sm font-mono font-bold text-white">
-                                How &ldquo;{activeOrigin.shortLabel}&rdquo; Shapes Your Opening Scenario
+                                How &ldquo;{activeOrigin.shortLabel}&rdquo; Shapes Your Opening Scene
                               </h3>
                               <p className="text-[11px] font-mono text-emerald-300">
                                 {worldPreset.uiLabels.originImpactSubtitle(activeOrigin)}
@@ -10760,7 +10827,9 @@ export default function VisualNovelGame() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                           <div className="p-3.5 rounded-xl bg-black/50 border border-rose-500/25 space-y-1.5">
                             <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold block">
-                              Act I Political &amp; Rival Pressure
+                              {currentStory.id === "ash-and-velvet"
+                                ? "First-Week House Tension & Dynamics"
+                                : "Act I Political & Rival Pressure"}
                             </span>
                             <p className="text-xs text-zinc-300 leading-relaxed">
                               {activeOrigin.actOneStakes}
@@ -10768,7 +10837,9 @@ export default function VisualNovelGame() {
                           </div>
                           <div className="p-3.5 rounded-xl bg-black/50 border border-emerald-500/25 space-y-2">
                             <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold block">
-                              High-Resonance Heroines
+                              {currentStory.id === "ash-and-velvet"
+                                ? "Strongest Chemistry Matches"
+                                : "High-Resonance Heroines"}
                             </span>
                             <div className="flex flex-col gap-1.5">
                               {activeOrigin.highResonanceHeroines.map((hName) => {
@@ -10776,6 +10847,7 @@ export default function VisualNovelGame() {
                                   SOVEREIGN_HEROINE_DOSSIERS[hName] ||
                                   PORT_SOLARIS_HEROINE_DOSSIERS[hName] ||
                                   STARFALL_HEROINE_DOSSIERS[hName];
+                                const avDossier = worldPreset.heroineDossiers[hName];
                                 return (
                                   <div
                                     key={hName}
@@ -10784,17 +10856,23 @@ export default function VisualNovelGame() {
                                     <span className="text-[11px] font-mono text-emerald-200 font-bold shrink-0">
                                       ★ {hName}
                                     </span>
-                                    {hDossier && (
+                                    {hDossier ? (
                                       <span className="text-[10px] font-mono text-emerald-300/80 truncate">
                                         {hDossier.epithet}
                                       </span>
-                                    )}
+                                    ) : avDossier?.roomLabel ? (
+                                      <span className="text-[10px] font-mono text-emerald-300/80 truncate">
+                                        {avDossier.roomLabel} • {avDossier.dyadPassiveName}
+                                      </span>
+                                    ) : null}
                                   </div>
                                 );
                               })}
                             </div>
                             <p className="text-[10px] text-zinc-400 font-sans">
-                              Highlighted with an &ldquo;Origin Resonance&rdquo; badge on the Act I Prelude tab.
+                              {currentStory.id === "ash-and-velvet"
+                                ? "Highlighted with a \"Chemistry Match\" badge on the Opening Scene tab."
+                                : "Highlighted with an \"Origin Resonance\" badge on the Act I Prelude tab."}
                             </p>
                           </div>
                         </div>
@@ -10807,7 +10885,9 @@ export default function VisualNovelGame() {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-white/10 items-start">
                   <div className="md:col-span-4">
                     <label className="text-xs font-mono text-zinc-400 block mb-1">
-                      Origin Title (Editable)
+                      {currentStory.id === "ash-and-velvet"
+                        ? "Backstory Title (Editable)"
+                        : "Origin Title (Editable)"}
                     </label>
                     <input
                       type="text"
@@ -10819,9 +10899,15 @@ export default function VisualNovelGame() {
                   <div className="md:col-span-8">
                     <div className="flex items-center justify-between gap-1 mb-1">
                       <label className="text-xs font-mono text-zinc-400">
-                        Origin Backstory &amp; Narrative Directive
+                        {currentStory.id === "ash-and-velvet"
+                          ? "Your Personal Backstory"
+                          : "Origin Backstory & Narrative Directive"}
                       </label>
-                      <span className="text-[10px] text-zinc-500 font-mono">Injected into AI Prologue</span>
+                      <span className="text-[10px] text-zinc-500 font-mono">
+                        {currentStory.id === "ash-and-velvet"
+                          ? "Shapes how housemates treat you"
+                          : "Injected into AI Prologue"}
+                      </span>
                     </div>
                     <textarea
                       rows={3}
@@ -10849,7 +10935,7 @@ export default function VisualNovelGame() {
                   }}
                   className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs font-mono cursor-pointer transition-all"
                 >
-                  ← Back: Identity
+                  ← Back: {currentStory.id === "ash-and-velvet" ? "Who You Are" : "Identity"}
                 </button>
                 <button
                   type="button"
@@ -10867,6 +10953,8 @@ export default function VisualNovelGame() {
                       ? "Flair Conduit, Faction & Keepsakes"
                       : currentStory.id === "starfall-labyrinth"
                       ? "1★ Squad Role & Deployment Kit"
+                      : currentStory.id === "ash-and-velvet"
+                      ? "Vibe & Approach"
                       : "Class & Arsenal"}{" "}
                     →
                   </span>
@@ -10894,6 +10982,8 @@ export default function VisualNovelGame() {
                               ? "Showdown Flair Conduit & Island Faction"
                               : currentStory.id === "starfall-labyrinth"
                               ? "1★ Squad Combat Role & Labyrinth Faction"
+                              : currentStory.id === "ash-and-velvet"
+                              ? "Your Vibe & House Dynamic"
                               : "Dual-Conduit & Patron Wing Doctrine"}
                           </span>
                         </label>
@@ -10902,7 +10992,9 @@ export default function VisualNovelGame() {
                         </p>
                       </div>
                       <span className="text-xs font-mono px-3 py-1 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-200 font-bold self-start shrink-0">
-                        {(player.conduit || "SOMATIC").replace(/_/g, " ")}
+                        {currentStory.id === "ash-and-velvet"
+                          ? player.role || "Quiet Protector"
+                          : (player.conduit || "SOMATIC").replace(/_/g, " ")}
                       </span>
                     </div>
 
@@ -10927,7 +11019,9 @@ export default function VisualNovelGame() {
                                   <span>{preset.shortLabel}</span>
                                 </span>
                                 <span className="text-[9px] font-mono uppercase px-2 py-0.5 rounded bg-black/70 border border-amber-500/35 text-amber-300 shrink-0">
-                                  {preset.conduit.replace(/_/g, " ")} • {preset.wingLabel.replace("The ", "")}
+                                  {currentStory.id === "ash-and-velvet"
+                                    ? preset.wingLabel.replace("The ", "")
+                                    : `${preset.conduit.replace(/_/g, " ")} • ${preset.wingLabel.replace("The ", "")}`}
                                 </span>
                               </div>
                               <p className="text-[11px] text-zinc-300 leading-relaxed">
@@ -10953,7 +11047,9 @@ export default function VisualNovelGame() {
               {/* Custom Class Title Override */}
               <div className="bg-zinc-950/80 border border-white/10 rounded-2xl p-3.5 sm:p-4">
                 <label className="text-xs font-mono text-zinc-300 font-bold block mb-1">
-                  {hasCustomWorldPresets(currentStory.id)
+                  {currentStory.id === "ash-and-velvet"
+                    ? "Your Day Job / House Role (Editable)"
+                    : hasCustomWorldPresets(currentStory.id)
                     ? "Active Specialty / Conduit Title (Editable)"
                     : "Custom Class / Archetype"}
                 </label>
@@ -11062,7 +11158,11 @@ export default function VisualNovelGame() {
                     }`}
                   >
                     <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-                    <span>System Choice (3 Cards)</span>
+                    <span>
+                      {currentStory.id === "ash-and-velvet"
+                        ? "Custom Pocket Kit (3 Cards)"
+                        : "System Choice (3 Cards)"}
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -11074,7 +11174,11 @@ export default function VisualNovelGame() {
                     }`}
                   >
                     <Shield className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Unarmed &amp; Unarmored</span>
+                    <span>
+                      {currentStory.id === "ash-and-velvet"
+                        ? "Empty Pockets (Just Clothes)"
+                        : "Unarmed & Unarmored"}
+                    </span>
                   </button>
                 </div>
 
@@ -11089,11 +11193,14 @@ export default function VisualNovelGame() {
                     <div className="p-3.5 rounded-xl bg-indigo-950/35 border border-indigo-500/35 text-xs font-mono space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2 text-indigo-200">
                         <span className="font-bold">
-                          ⚔️ {activeConduit.canonLoadout.weapon}
+                          {currentStory.id === "ash-and-velvet" ? "🧥" : "⚔️"}{" "}
+                          {activeConduit.canonLoadout.weapon}
                         </span>
-                        <span className="text-[10px] px-2.5 py-0.5 rounded-lg bg-purple-950/80 border border-purple-500/40 text-purple-200 font-bold">
-                          Slot [{activeConduit.canonLoadout.relicSlot}] • Set: {activeConduit.canonLoadout.setId}
-                        </span>
+                        {currentStory.id !== "ash-and-velvet" && (
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-lg bg-purple-950/80 border border-purple-500/40 text-purple-200 font-bold">
+                            Slot [{activeConduit.canonLoadout.relicSlot}] • Set: {activeConduit.canonLoadout.setId}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-zinc-300 font-sans">
                         <span className="text-indigo-300 font-mono font-bold">Attire:</span> {activeConduit.canonLoadout.armor} • <span className="text-purple-300 font-mono font-bold">{worldPreset.uiLabels.relicOrKeepsakeLabel}:</span> {activeConduit.canonLoadout.relic}
@@ -11114,10 +11221,23 @@ export default function VisualNovelGame() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <label className="text-xs font-mono text-zinc-300 font-bold flex items-center gap-1.5">
-                      <Zap className="w-4 h-4 text-amber-400" /> Starting Conduit Techniques
+                      <Zap className="w-4 h-4 text-amber-400" />{" "}
+                      {currentStory.id === "ash-and-velvet"
+                        ? "Signature Social Moves & Edge"
+                        : "Starting Conduit Techniques"}
                     </label>
                     <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
-                      Click any technique to inspect its cost and cooldown, or roll bespoke AI abilities for <span className="text-zinc-300 font-mono">{player.role || "your class"}</span>.
+                      {currentStory.id === "ash-and-velvet" ? (
+                        <>
+                          Your go-to social instincts for handling late-night drama, bar fights, or close-quarters tension as{" "}
+                          <span className="text-zinc-300 font-mono">{player.role || "the new roommate"}</span>.
+                        </>
+                      ) : (
+                        <>
+                          Click any technique to inspect its cost and cooldown, or roll bespoke AI abilities for{" "}
+                          <span className="text-zinc-300 font-mono">{player.role || "your class"}</span>.
+                        </>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -11137,7 +11257,13 @@ export default function VisualNovelGame() {
                       className="px-3.5 py-1.5 bg-gradient-to-r from-amber-600/80 to-rose-600/80 hover:from-amber-500 hover:to-rose-500 text-white rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
                     >
                       <Dices className={`w-3.5 h-3.5 ${isRollingAbilities ? "animate-spin" : ""}`} />
-                      <span>{isRollingAbilities ? "Synthesizing..." : "Roll Custom Abilities"}</span>
+                      <span>
+                        {isRollingAbilities
+                          ? "Generating..."
+                          : currentStory.id === "ash-and-velvet"
+                          ? "Roll Custom Moves"
+                          : "Roll Custom Abilities"}
+                      </span>
                     </button>
                   </div>
                 </div>
@@ -11151,7 +11277,7 @@ export default function VisualNovelGame() {
                           key={i}
                           onClick={() => handleInspectAbility(abName)}
                           className="bg-zinc-900/90 hover:bg-zinc-800/90 border border-amber-500/30 hover:border-amber-400/60 p-3.5 rounded-xl transition-all cursor-pointer group shadow-sm flex flex-col gap-1.5"
-                          title="Click to inspect full ability modal"
+                          title="Click to inspect details"
                         >
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <span className="font-bold text-xs sm:text-sm text-white group-hover:text-amber-300 transition-colors flex items-center gap-1.5">
@@ -11160,7 +11286,7 @@ export default function VisualNovelGame() {
                             </span>
                             <div className="flex items-center gap-2 shrink-0">
                               <span className="text-[10px] font-mono text-sky-400 bg-sky-950/50 border border-sky-500/25 px-2 py-0.5 rounded">
-                                {detail?.cost || "Cost: 10 MP"}
+                                {detail?.cost || "Cost: 10 Composure"}
                               </span>
                               <span className="text-[10px] font-mono text-zinc-300 bg-black/50 border border-white/10 px-2 py-0.5 rounded">
                                 {detail?.cooldown || "Instant"}
@@ -11171,7 +11297,7 @@ export default function VisualNovelGame() {
                             </div>
                           </div>
                           <p className="text-xs text-zinc-300 leading-relaxed">
-                            {detail?.description || "Click to inspect full ability mechanics..."}
+                            {detail?.description || "Click to inspect full details..."}
                           </p>
                         </div>
                       );
@@ -11180,7 +11306,9 @@ export default function VisualNovelGame() {
                 ) : (
                   <div className="text-center py-2.5 px-3 border border-dashed border-white/10 rounded-xl bg-zinc-950/40">
                     <p className="text-xs text-zinc-500 font-sans italic">
-                      Select a Conduit Doctrine above or click &ldquo;Roll Custom Abilities&rdquo; to generate techniques.
+                      {currentStory.id === "ash-and-velvet"
+                        ? "Pick a Vibe above or click \"Roll Custom Moves\" to generate signature social instincts."
+                        : "Select a Conduit Doctrine above or click \"Roll Custom Abilities\" to generate techniques."}
                     </p>
                   </div>
                 )}
@@ -11196,7 +11324,7 @@ export default function VisualNovelGame() {
                   }}
                   className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs font-mono cursor-pointer transition-all"
                 >
-                  ← Back: Origin
+                  ← Back: {currentStory.id === "ash-and-velvet" ? "Your Backstory" : "Origin"}
                 </button>
                 <button
                   type="button"
@@ -11206,7 +11334,11 @@ export default function VisualNovelGame() {
                   }}
                   className="px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white text-xs font-mono font-bold shadow-lg transition-all cursor-pointer flex items-center gap-2"
                 >
-                  <span>Next: Choose Act I Prelude &amp; Dyad Partner →</span>
+                  <span>
+                    {currentStory.id === "ash-and-velvet"
+                      ? "Next: Pick Your Opening Scene →"
+                      : "Next: Choose Act I Prelude & Dyad Partner →"}
+                  </span>
                 </button>
               </div>
             </div>
@@ -11249,11 +11381,17 @@ export default function VisualNovelGame() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-[11px] font-mono uppercase tracking-wider text-rose-300 font-bold flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        <span>How Your Choices Shape This Opening Scenario</span>
+                        <span>
+                          {currentStory.id === "ash-and-velvet"
+                            ? "How Your Backstory & Vibe Shape This Opening Scene"
+                            : "How Your Choices Shape This Opening Scenario"}
+                        </span>
                       </span>
                       {isResonant && (
                         <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-emerald-200 font-bold">
-                          ★ High Origin Synergy Active
+                          {currentStory.id === "ash-and-velvet"
+                            ? "★ Strong Chemistry Match"
+                            : "★ High Origin Synergy Active"}
                         </span>
                       )}
                     </div>
@@ -11268,10 +11406,15 @@ export default function VisualNovelGame() {
                       </div>
                       <div className="p-2.5 rounded-xl bg-black/50 border border-white/10">
                         <span className="text-[10px] font-mono text-amber-300 block font-bold">
-                          {activeConduit.icon} {activeConduit.shortLabel} ({activeConduit.conduit.replace(/_/g, " ")})
+                          {activeConduit.icon} {activeConduit.shortLabel}{" "}
+                          {currentStory.id === "ash-and-velvet"
+                            ? `(${activeConduit.wingLabel})`
+                            : `(${activeConduit.conduit.replace(/_/g, " ")})`}
                         </span>
                         <p className="text-zinc-300 mt-0.5 leading-snug">
-                          Aligned with {activeConduit.wingLabel}. Carrying {activeConduit.canonLoadout.relic} ([{activeConduit.canonLoadout.relicSlot}]).
+                          {currentStory.id === "ash-and-velvet"
+                            ? `Carrying ${activeConduit.canonLoadout.relic} & wearing ${activeConduit.canonLoadout.armor}.`
+                            : `Aligned with ${activeConduit.wingLabel}. Carrying ${activeConduit.canonLoadout.relic} ([${activeConduit.canonLoadout.relicSlot}]).`}
                         </p>
                       </div>
                       <div className="p-2.5 rounded-xl bg-black/50 border border-white/10">
@@ -11302,17 +11445,21 @@ export default function VisualNovelGame() {
                           ? "Act I Opening Scenario & Boarding House Heroine"
                           : currentStory.id === "starfall-labyrinth"
                           ? "Act I Star Gate Arrival & Starting Squadmate"
+                          : currentStory.id === "ash-and-velvet"
+                          ? "Pick Your Opening Scene & Housemate"
                           : "Select Starting Scenario & Companion"}
                       </span>
                     </label>
                     {hasCustomWorldPresets(currentStory.id) && (
                       <p className="text-[11px] text-zinc-500 font-sans mt-0.5">
-                        Select a scenario below to read its full prelude setup, partner passive, and your 4 opening tactical choices.
+                        {currentStory.id === "ash-and-velvet"
+                          ? "Pick an opening scene below to preview the setup, housemate chemistry, and your 4 opening moves."
+                          : "Select a scenario below to read its full prelude setup, partner passive, and your 4 opening tactical choices."}
                       </p>
                     )}
                   </div>
                   <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 self-start shrink-0 font-bold">
-                    {prologues.length} Scenarios Available
+                    {prologues.length} {currentStory.id === "ash-and-velvet" ? "Opening Scenes" : "Scenarios Available"}
                   </span>
                 </div>
 
@@ -11328,6 +11475,10 @@ export default function VisualNovelGame() {
                         ? PORT_SOLARIS_HEROINE_DOSSIERS[p.speaker]
                         : currentStory.id === "sovereign-spire"
                         ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
+                        : undefined;
+                    const avDossier =
+                      currentStory.id === "ash-and-velvet"
+                        ? getWorldPresets("ash-and-velvet")?.heroineDossiers[p.speaker]
                         : undefined;
                     const isColdOpen =
                       p.id === "prologue_act1_seal_gate" ||
@@ -11423,13 +11574,17 @@ export default function VisualNovelGame() {
                                 )}
                                 {isOriginResonant && !isColdOpen && !isEntranceCeremony && (
                                   <span className="text-[9px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-400/40 text-emerald-200">
-                                    Origin Resonance
+                                    {currentStory.id === "ash-and-velvet"
+                                      ? "Chemistry Match"
+                                      : "Origin Resonance"}
                                   </span>
                                 )}
-                                {(sfDossier || dossier) && !isEntranceCeremony && (
+                                {(sfDossier || dossier || avDossier) && !isEntranceCeremony && (
                                   <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950/80 border border-indigo-500/35 text-indigo-200">
                                     {sfDossier
                                       ? `${sfDossier.baseStarRank}★ ${sfDossier.combatRole.split("&")[0].trim()}`
+                                      : avDossier
+                                      ? avDossier.roomLabel || "412 Maplewood"
                                       : dossier!.conduit.replace(/_/g, " ")}
                                   </span>
                                 )}
@@ -11440,11 +11595,15 @@ export default function VisualNovelGame() {
                             </p>
                             {ensembleHeroines ? (
                               <p className="text-[10px] font-mono text-amber-300/95 mt-0.5">
-                                Present Heroines: {ensembleHeroines.join(" • ")}
+                                {currentStory.id === "ash-and-velvet" ? "In Scene" : "Present Heroines"}: {ensembleHeroines.join(" • ")}
                               </p>
                             ) : sfDossier ? (
                               <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
                                 {sfDossier.epithet} • {sfDossier.combatRole} • Passive: {sfDossier.dyadPassiveName}
+                              </p>
+                            ) : avDossier ? (
+                              <p className="text-[10px] font-mono text-amber-300/90 mt-0.5 truncate">
+                                {p.speaker} • Spark: {avDossier.dyadPassiveName}
                               </p>
                             ) : (
                               dossier && (
@@ -11463,15 +11622,19 @@ export default function VisualNovelGame() {
                             {ensembleHeroines
                               ? currentStory.id === "port-solaris"
                                 ? "All 4 Island Factions Present • 30-Day Star Audit & Roommate Stampede"
+                                : currentStory.id === "ash-and-velvet"
+                                ? `Featuring ${ensembleHeroines.join(" & ")}`
                                 : "All 4 Patron Wings Present • High Sovereign Vane & Proctor Sallow Presiding"
                               : sfDossier
                               ? `Hook: ${sfDossier.actOneConflict}`
+                              : avDossier
+                              ? `${avDossier.actOneConflict}`
                               : dossier
                               ? `Hook: ${dossier.rivalBossTieIn}`
                               : `Companion: ${p.speaker}`}
                           </span>
                           <span className="text-rose-300/90 shrink-0 ml-2">
-                            {p.choices.length} Entry Vectors
+                            {p.choices.length} {currentStory.id === "ash-and-velvet" ? "Opening Moves" : "Entry Vectors"}
                           </span>
                         </div>
                       </button>
@@ -11485,25 +11648,26 @@ export default function VisualNovelGame() {
                   const activeDossier =
                     SOVEREIGN_HEROINE_DOSSIERS[activeNode.speaker] ||
                     PORT_SOLARIS_HEROINE_DOSSIERS[activeNode.speaker] ||
-                    STARFALL_HEROINE_DOSSIERS[activeNode.speaker];
+                    STARFALL_HEROINE_DOSSIERS[activeNode.speaker] ||
+                    getWorldPresets(currentStory.id)?.heroineDossiers[activeNode.speaker];
                   return (
                     <div className="p-4 rounded-2xl bg-zinc-950/95 border border-rose-500/35 space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
                         <div>
                           <span className="text-xs sm:text-sm font-mono font-bold text-white block">
-                            Selected Prelude: {activeNode.title}
+                            {currentStory.id === "ash-and-velvet" ? "Selected Scene" : "Selected Prelude"}: {activeNode.title}
                           </span>
                           <span className="text-[11px] font-mono text-rose-300">
                             Location: {activeNode.location} •{" "}
                             {Array.isArray(activeNode.presentCompanions) &&
                             activeNode.presentCompanions.length > 1
-                              ? `Present Heroines: ${activeNode.presentCompanions.join(", ")}`
-                              : `Speaker: ${activeNode.speaker}`}
+                              ? `In Scene: ${activeNode.presentCompanions.join(", ")}`
+                              : `With: ${activeNode.speaker}`}
                           </span>
                         </div>
                         {activeDossier && (
                           <span className="text-[10px] font-mono px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 font-bold">
-                            Partner Passive: {activeDossier.dyadPassiveName} — {activeDossier.dyadPassiveDescription}
+                            {currentStory.id === "ash-and-velvet" ? "Chemistry Spark" : "Partner Passive"}: {activeDossier.dyadPassiveName} — {activeDossier.dyadPassiveDescription}
                           </span>
                         )}
                       </div>
@@ -11519,7 +11683,9 @@ export default function VisualNovelGame() {
                       )}
                       <div className="space-y-1.5 pt-1">
                         <span className="text-[10px] font-mono uppercase tracking-wider text-rose-400 font-bold block">
-                          Opening Tactical Entry Vectors (Available on Turn 1)
+                          {currentStory.id === "ash-and-velvet"
+                            ? "Your Opening Moves (Turn 1)"
+                            : "Opening Tactical Entry Vectors (Available on Turn 1)"}
                         </span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {activeNode.choices.map((ch, cIdx) => (
@@ -11553,9 +11719,10 @@ export default function VisualNovelGame() {
                     }}
                     className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-rose-500 focus:outline-none font-mono"
                   >
-                    <option>Tactical Dungeon Survival (Tense, strategic, grounded human grit)</option>
+                    <option>Raw Adult Visual Novel Drama (Intimate, gritty, sensory, emotionally charged)</option>
                     <option>Sun-Drenched Coastal Rom-Com (Sparkling banter, sensory warmth, romantic tension)</option>
-                    <option>Grimdark & Atmospheric (Tense, visceral, sensory)</option>
+                    <option>Tactical Dungeon Survival (Tense, strategic, grounded human grit)</option>
+                    <option>Grimdark &amp; Atmospheric (Tense, visceral, sensory)</option>
                     <option>Light Novel High Fantasy (Dynamic pacing, witty banter, heroic)</option>
                     <option>Noir Arcana (Brooding, cynical, sharp monologues)</option>
                   </select>
@@ -11594,7 +11761,7 @@ export default function VisualNovelGame() {
                   }}
                   className="px-4 py-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-zinc-300 text-xs font-mono cursor-pointer transition-all shrink-0"
                 >
-                  ← Back: Conduit &amp; Gear
+                  ← Back: {currentStory.id === "ash-and-velvet" ? "Vibe & Approach" : "Conduit & Gear"}
                 </button>
 
                 <div className="flex-1">
@@ -11602,13 +11769,23 @@ export default function VisualNovelGame() {
                   hasCustomWorldPresets(currentStory.id) ? (
                     <button
                       onClick={handleStartWithCanonWingLoadout}
-                      className="w-full py-3.5 bg-gradient-to-r from-indigo-600 via-rose-600 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono text-xs sm:text-sm"
+                      className={
+                        currentStory.id === "ash-and-velvet"
+                          ? "w-full py-3.5 bg-gradient-to-r from-pink-600 via-rose-500 to-amber-500 hover:from-pink-500 hover:to-amber-400 text-white border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all cursor-pointer font-mono text-xs sm:text-sm"
+                          : "w-full py-3.5 bg-gradient-to-r from-indigo-600 via-rose-600 to-amber-600 hover:from-indigo-500 hover:to-amber-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer font-mono text-xs sm:text-sm"
+                      }
                     >
-                      <Swords className="w-4 h-4" />{" "}
+                      {currentStory.id === "ash-and-velvet" ? (
+                        <Sparkles className="w-4 h-4" />
+                      ) : (
+                        <Swords className="w-4 h-4" />
+                      )}{" "}
                       {currentStory.id === "port-solaris"
                         ? "Open The Stray Anchor (Equip Canon Faction Loadout) →"
                         : currentStory.id === "starfall-labyrinth"
                         ? "Materialize at Star Gate Plaza (Equip 1★ Squad Kit) →"
+                        : currentStory.id === "ash-and-velvet"
+                        ? "Move Into 412 Maplewood Ave →"
                         : "Enter The Sovereign Spire (Equip Canon Wing Loadout) →"}
                     </button>
                   ) : gearPreference === "system" ? (
@@ -12594,6 +12771,16 @@ export default function VisualNovelGame() {
               setShowMap(true);
             }}
             onIllustrateCg={() => handleGenerateSceneCG(false)}
+            onChangeWardrobe={(compName, nextW) => {
+              soundEffects.playClick();
+              setParty((prev) =>
+                prev.map((p) =>
+                  p.name.toLowerCase() === compName.toLowerCase()
+                    ? { ...p, activeWardrobe: nextW }
+                    : p
+                )
+              );
+            }}
           />
         )}
 

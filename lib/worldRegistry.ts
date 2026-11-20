@@ -44,7 +44,15 @@ export interface WorldPresetRegistryEntry {
   origins: AnyWorldOriginPreset[];
   conduits: AnyWorldConduitPreset[];
   defaultTone: string;
-  heroineDossiers: Record<string, { actOneConflict: string; dyadPassiveName?: string; dyadPassiveDescription?: string }>;
+  heroineDossiers: Record<
+    string,
+    {
+      actOneConflict: string;
+      dyadPassiveName?: string;
+      dyadPassiveDescription?: string;
+      roomLabel?: string;
+    }
+  >;
   uiLabels: {
     originQuotaPrefix: string;
     originFundsSuffix: string;

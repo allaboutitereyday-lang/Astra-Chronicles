@@ -188,11 +188,11 @@
   "startingNodes": [
     {
       "id": "av_prologue_rain",
-      "title": "2:14 AM — A Dry Roof & Warm Coffee",
+      "title": "2:14 AM — Bourbon & Wet Cashmere",
       "speaker": "Clara Callahan",
       "location": "Clara's Kitchen & Living Room",
-      "sceneSetup": "Rain lashes the bay windows of 412 Maplewood Ave. Your knuckles are scraped and your duffel bag drips onto the welcome mat, but the kitchen smells of fresh coffee and cedarwood. Clara Callahan leans against the counter in her soft knit wrap, hazel eyes warming with quiet concern—never pity—as she slides a steaming ceramic mug toward you.",
-      "dialogue": "\"Stop staring at the doorway like someone's going to kick it in, sweetheart. The deadbolt's heavy brass, and nobody comes past my porch without my say-so. Drink your coffee before your hands stop shaking—then I'll show you the attic room before the girls wake up and start fighting over the upstairs shower.\"",
+      "sceneSetup": "You arrive rain-soaked at 2:14 AM to rent the cheap attic room. The scent of bourbon and jasmine tea mingles with the damp air as you step inside. Landlady Clara Callahan (41, curvy, auburn hair, emerald eyes) leans across the kitchen island in a loosely tied cream cashmere wrap that slips off one freckled shoulder, spiking your coffee with her private top-shelf bourbon while sizing you up with warm, dangerous amusement.",
+      "dialogue": "\"Mmm, looks like the rain delivered a soaked stray right to my porch at two in the morning. Sit down before you drip all over my hardwood, sweetheart—I spiked your coffee with top-shelf bourbon, and my eyes are up here, even if this robe refuses to behave. Drink up while you're warm, then tell me whether you're going to be my favorite tenant or my favorite headache.\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/shared_kitchen.jpg",
       "presentCompanions": [
@@ -200,10 +200,10 @@
       ],
       "initialAffection": 18,
       "choices": [
-        "[Heart]: Wrap both hands around the mug and thank Clara honestly, letting your guard drop a fraction.",
-        "[Bold]: Offer to pay off the first week's rent by fixing whatever's broken around the house starting tomorrow.",
-        "[Cool]: Ask quietly who else lives upstairs—and whose muffled music is still pulsing through the ceiling.",
-        "[Dom]: Check your buzzing phone from your old house, then shut it completely off in front of Clara without flinching."
+        "[Heart]: I don't mind at all. Thank you, Clara.",
+        "[Bold]: Actually, I prefer my coffee black. Any chance for a quick tour?",
+        "[Cool]: Bourbon, huh? Looks like you know how to welcome a new tenant.",
+        "[Dom]: Let's skip the tour and discuss the rent. Cash is best, isn't it?"
       ],
       "initialQuest": {
         "id": "av_quest_first_week",
@@ -220,42 +220,83 @@
     },
     {
       "id": "av_hallway_morning",
-      "title": "7:40 AM — The Upstairs Bathroom Stand-Off",
+      "title": "7:40 AM — The Towel Stand-Off",
       "speaker": "Brianna Chen",
       "location": "Upstairs Hallway & Shared Bath",
-      "sceneSetup": "Your first morning in the house starts with hot steam curling out of the second-floor bathroom. The door swings open right as you reach for the handle—and Brianna Chen steps straight into your path wrapped only in a damp white bath towel, dark hair clinging to her flushed shoulders, blinking up at you with an instantly wicked grin.",
-      "dialogue": "\"Well, well—Clara didn't mention the new attic stray actually cleans up nice. Eyes up here, rookie—or at least pretend you're subtle. Unless you want to explain to the landlady why you're hogging my hallway before I've even had espresso?\"",
-      "expressionKey": "smug",
+      "sceneSetup": "Hot shower steam fills the narrow upstairs hallway, the air thick with the scent of jasmine and lavender. Brianna Chen (24, petite curvy East Asian, glossy raven bob, wicked cat-eye grin) swings the bathroom door open and collides flush against your chest wearing nothing but a dangerously short damp white bath towel—and instead of backing off, she backs you against the doorframe with shameless, teasing heat.",
+      "dialogue": "\"Well, well—Clara didn't mention the new attic roommate actually fills out a soaked t-shirt. Careful with those hands, rookie, this towel's hanging on by a wish and a prayer... unless catching me fresh out of the shower was your grand plan all along? Either way, you're in my light, handsome, so talk fast or step closer.\"",
+      "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway_bath.jpg",
       "presentCompanions": [
         "Brianna Chen"
       ],
-      "initialAffection": 12,
+      "initialAffection": 14,
       "choices": [
-        "Hold her gaze without flinching and tease right back about her thirty-minute steam takeover.",
-        "Step aside smoothly with a crooked grin and offer to grab her coffee downstairs.",
-        "Flush slightly and mutter an apology while eyeing the steamy mirror behind her.",
-        "Ask if everyone in this house greets new roommates like this—or just her."
+        "[Heart]: No worries, Brianna. Nice meeting you.",
+        "[Bold]: Morning, sunshine. Sweet dreams?",
+        "[Cool]: Hi Brianna. You might want to grab a robe out there.",
+        "[Dom]: Since you're practically naked, why don't you make it up to me?"
       ]
     },
     {
       "id": "av_velvet_static_night",
-      "title": "11:50 PM — Neon Smoke & Bad Company",
+      "title": "11:50 PM — Neon Smoke & Bad Bets",
       "speaker": "Hannah Lindqvist",
       "location": "Velvet Static Dive Bar",
-      "sceneSetup": "Magenta neon cuts through the cigarette haze of Velvet Static. Hannah Lindqvist slides onto the barstool beside yours, icy-blue eyes heavy-lidded and sparkling dangerously over a neat whiskey glass while an unruly crowd presses near the back booths.",
-      "dialogue": "\"You've got that 'I escaped a cage and don't know what to do with the noise yet' look, attic boy. Trust me—I know it well. Stay with me tonight? One more drink, maybe something stronger in the back patio... or tell me I'm making a terrible mistake.\"",
-      "expressionKey": "intrigued",
+      "sceneSetup": "Magenta neon and low bass pulse through Velvet Static Dive Bar, the air thick with the scent of whiskey and cigarette smoke. Your new housemate Hannah Lindqvist (23, tall Scandinavian blonde, pearl choker, slouchy off-shoulder black sweater and plaid mini-skirt) presses her bare thigh against yours on the barstool, tracing the rim of your whiskey glass and daring you into a loser-does-anything bet before you've even unpacked.",
+      "dialogue": "\"You've got that 'just escaped a cage and forgot how good trouble tastes' look, attic boy. Come on, don't play shy with me—one shot, one game of darts, and the loser does whatever the winner asks back at 412 Maplewood after last call. So what's it gonna be, stud... are you in, or are you scared I'll win?\"",
+      "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/neon_dive_bar.jpg",
       "presentCompanions": [
         "Hannah Lindqvist"
       ],
-      "initialAffection": 15,
+      "initialAffection": 16,
       "choices": [
-        "Clink glasses with Hannah and match her reckless energy—tonight you want to forget everything.",
-        "Keep one steady hand near her wrist and suggest stepping out to the smoke patio before the crowd gets ugly.",
-        "Buy her a glass of water alongside her whiskey and ask who she's really trying to outrun tonight.",
-        "Spot Chloe Bellamy watching from a corner booth with a neat bourbon and invite both women to share a table."
+        "[Heart]: Sounds fun, Hannah. What kind of bet did you have in mind?",
+        "[Bold]: Absolutely. But I've got a feeling I'm not going to lose.",
+        "[Cool]: I'm not sure about betting, Hannah. But thanks for the invite.",
+        "[Dom]: I'll play along, but if I win, you have to do anything I say."
+      ]
+    },
+    {
+      "id": "av_bourbon_lounge_chloe",
+      "title": "11:30 PM — The Room 205 Clause",
+      "speaker": "Chloe Bellamy",
+      "location": "After-Hours Bourbon Lounge",
+      "sceneSetup": "In a velvet booth at the After-Hours Bourbon Lounge, the smooth scent of aged oak and vanilla bourbon fills the air. Poised paralegal Chloe Bellamy (28, sculpted honey-tan hourglass, sultry deep burgundy silk slip dress) realizes the stranger she just bought a neat bourbon for—and has been trading heated glances with for twenty minutes—is the new attic tenant moving in directly above her bedroom.",
+      "dialogue": "\"Wait... you're Clara's new attic tenant? So the guy I've been undressing with my eyes over neat bourbon for the last twenty minutes is sleeping directly above my ceiling tonight. That's a dangerous conflict of interest, Mr. Upstairs—care to tell me how quietly you walk after midnight, or should we negotiate our house rules right now?\"",
+      "expressionKey": "neutral",
+      "bgImage": "/backgrounds/ash-and-velvet/downtown_lounge.jpg",
+      "presentCompanions": [
+        "Chloe Bellamy"
+      ],
+      "initialAffection": 14,
+      "choices": [
+        "[Heart]: Chloe Bellamy, right? We're neighbors now, it seems.",
+        "[Bold]: Room 205, huh? I like the sound of that. Especially with a breathtaking view like you.",
+        "[Cool]: Chloe Bellamy. Nice to meet you. Guess we're neighbors now.",
+        "[Dom]: So, Room 205. I wonder if you've ever had a tenant you wanted to keep all to yourself."
+      ]
+    },
+    {
+      "id": "av_parlor_sisters_late",
+      "title": "1:15 AM — The Midnight Wine Heist",
+      "speaker": "Jill Smith",
+      "location": "Clara's Late-Night Den",
+      "sceneSetup": "Slipping downstairs at 1:15 AM, the scent of old books and dust mingles with the rich aroma of wine. You catch preppy 19yo honor student Jill Smith and her mischievous 19yo younger sister Tina Smith in silky satin nightwear raiding Clara's locked wine cabinet. Before Jill can panic, Tina catches your wrist and pulls you onto the velvet sofa right between both warm, bare-legged sisters to negotiate your silence.",
+      "dialogue": "\"Shh! Tina, stop tugging his shirt—if Clara hears us with her private reserve we're dead! Look, we were just borrowing one tiny bottle to celebrate Tina crashing for the weekend... sit down between us for five minutes, share a glass so you're an accomplice, and we'll owe you a very big favor.\"",
+      "expressionKey": "neutral",
+      "bgImage": "/backgrounds/ash-and-velvet/claras_den.jpg",
+      "presentCompanions": [
+        "Jill Smith",
+        "Tina Smith"
+      ],
+      "initialAffection": 20,
+      "choices": [
+        "[Heart]: It's okay, Jill. I won't tell anyone. How about we share a bottle instead?",
+        "[Bold]: Well, well. Looks like we've got a couple of little vixens on our hands.",
+        "[Cool]: Hey, I'm just getting a glass of water. I didn't see anything.",
+        "[Dom]: Since you've got me between two gorgeous sisters, why don't you make it worth my while?"
       ]
     }
   ],
@@ -320,25 +361,19 @@
         "kitchen": "Morning Kitchen (Cardigan & Apron)",
         "lounge": "Weekend Lounge (Sweater & Denim Shorts)",
         "date": "Night Out (Emerald Velvet Dress)",
-        "nightwear": "Late-Night Den (Rose Satin & Kimono)"
+        "nightwear": "Late-Night Den (Rose Satin & Kimono)",
+        "lingerie": "Black Lace Lingerie & Stockings",
+        "nsfw_1": "Intimate State 1",
+        "nsfw_2": "Intimate State 2",
+        "nsfw_3": "Intimate State 3"
       },
       "visualPrompt": "Western adult graphic-novel comic style, mature 41yo lush curvy pear-hourglass woman, wavy chestnut-auburn shoulder-length hair, bright hazel-green eyes, warm freckles across cheeks and chest, gold pendant necklace, bold crisp black ink outlines, smooth cel shading",
       "expressions": {
-        "neutral": "/characters/ash-and-velvet/clara_callahan/neutral.png",
-        "flustered": "/characters/ash-and-velvet/clara_callahan/flustered.png",
-        "smug": "/characters/ash-and-velvet/clara_callahan/smug.png",
-        "intrigued": "/characters/ash-and-velvet/clara_callahan/intrigued.png",
-        "hurt": "/characters/ash-and-velvet/clara_callahan/hurt.png",
-        "beckon": "/characters/ash-and-velvet/clara_callahan/beckon.png"
+        "neutral": "/characters/ash-and-velvet/clara_callahan/base.png"
       },
       "wardrobeExpressions": {
         "base": {
-          "neutral": "/characters/ash-and-velvet/clara_callahan/neutral.png",
-          "flustered": "/characters/ash-and-velvet/clara_callahan/flustered.png",
-          "smug": "/characters/ash-and-velvet/clara_callahan/smug.png",
-          "intrigued": "/characters/ash-and-velvet/clara_callahan/intrigued.png",
-          "hurt": "/characters/ash-and-velvet/clara_callahan/hurt.png",
-          "beckon": "/characters/ash-and-velvet/clara_callahan/beckon.png"
+          "neutral": "/characters/ash-and-velvet/clara_callahan/base.png"
         },
         "kitchen": {
           "neutral": "/characters/ash-and-velvet/clara_callahan/kitchen.png"
@@ -351,6 +386,18 @@
         },
         "nightwear": {
           "neutral": "/characters/ash-and-velvet/clara_callahan/nightwear.png"
+        },
+        "lingerie": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/lingerie.png"
+        },
+        "nsfw_1": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/deeb_custom_00029_.png"
+        },
+        "nsfw_2": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/deeb_custom_00030_.png"
+        },
+        "nsfw_3": {
+          "neutral": "/characters/ash-and-velvet/clara_callahan/deeb_custom_00031_.png"
         }
       }
     },
@@ -414,25 +461,20 @@
         "overalls": "Paint-Flecked Studio Overalls",
         "nightout": "Dive-Bar Flannel & Bandeau",
         "lounge": "Late-Night Crescent Tee & Shorts",
-        "nightwear": "Slate-Blue Satin & Cardigan"
+        "nightwear": "Slate-Blue Satin & Cardigan",
+        "lingerie": "Black Scalloped Lace Lingerie",
+        "nsfw_1": "Intimate State 1",
+        "nsfw_2": "Intimate State 2",
+        "nsfw_3": "Intimate State 3",
+        "nsfw_4": "Intimate State 4"
       },
       "visualPrompt": "Western adult graphic-novel comic style, slender willowy tall 23yo woman, small perky breasts, solid platinum-blonde wavy hair with darker roots, heavy-lidded vibrant icy-blue eyes, rosy nose blush, pearl choker, bold crisp black ink outlines, smooth cel shading",
       "expressions": {
-        "neutral": "/characters/ash-and-velvet/hannah_lindqvist/neutral.png",
-        "flustered": "/characters/ash-and-velvet/hannah_lindqvist/flustered.png",
-        "smug": "/characters/ash-and-velvet/hannah_lindqvist/smug.png",
-        "intrigued": "/characters/ash-and-velvet/hannah_lindqvist/intrigued.png",
-        "hurt": "/characters/ash-and-velvet/hannah_lindqvist/hurt.png",
-        "beckon": "/characters/ash-and-velvet/hannah_lindqvist/beckon.png"
+        "neutral": "/characters/ash-and-velvet/hannah_lindqvist/base.png"
       },
       "wardrobeExpressions": {
         "base": {
-          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/neutral.png",
-          "flustered": "/characters/ash-and-velvet/hannah_lindqvist/flustered.png",
-          "smug": "/characters/ash-and-velvet/hannah_lindqvist/smug.png",
-          "intrigued": "/characters/ash-and-velvet/hannah_lindqvist/intrigued.png",
-          "hurt": "/characters/ash-and-velvet/hannah_lindqvist/hurt.png",
-          "beckon": "/characters/ash-and-velvet/hannah_lindqvist/beckon.png"
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/base.png"
         },
         "overalls": {
           "neutral": "/characters/ash-and-velvet/hannah_lindqvist/overalls.png"
@@ -445,6 +487,21 @@
         },
         "nightwear": {
           "neutral": "/characters/ash-and-velvet/hannah_lindqvist/nightwear.png"
+        },
+        "lingerie": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/lingerie.png"
+        },
+        "nsfw_1": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/deeb_custom_00011_.png"
+        },
+        "nsfw_2": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/deeb_custom_00015_.png"
+        },
+        "nsfw_3": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/deeb_custom_00016_.png"
+        },
+        "nsfw_4": {
+          "neutral": "/characters/ash-and-velvet/hannah_lindqvist/deeb_custom_00020_.png"
         }
       }
     },
@@ -508,25 +565,19 @@
         "casual": "Lilac Halter & White Shorts",
         "party": "Crimson Keyhole Mini-Dress",
         "lounge": "Borrowed Navy Hoodie & Shorts",
-        "nightwear": "Peacock-Teal Satin & Lace Set"
+        "nightwear": "Peacock-Teal Satin & Lace Set",
+        "lingerie": "Black Lace & Garter Set",
+        "nsfw_1": "Intimate State 1",
+        "nsfw_2": "Intimate State 2",
+        "nsfw_3": "Intimate State 3"
       },
       "visualPrompt": "Western adult graphic-novel comic style, petite slim-curvy 24yo East Asian woman, shoulder-length raven black bob hair with bangs, teasing upturned dark brown eyes, warm golden-peach skin, rosy cheek blush, bold crisp black ink outlines, smooth cel shading",
       "expressions": {
-        "neutral": "/characters/ash-and-velvet/brianna_chen/neutral.png",
-        "flustered": "/characters/ash-and-velvet/brianna_chen/flustered.png",
-        "smug": "/characters/ash-and-velvet/brianna_chen/smug.png",
-        "intrigued": "/characters/ash-and-velvet/brianna_chen/intrigued.png",
-        "hurt": "/characters/ash-and-velvet/brianna_chen/hurt.png",
-        "beckon": "/characters/ash-and-velvet/brianna_chen/beckon.png"
+        "neutral": "/characters/ash-and-velvet/brianna_chen/base.png"
       },
       "wardrobeExpressions": {
         "base": {
-          "neutral": "/characters/ash-and-velvet/brianna_chen/neutral.png",
-          "flustered": "/characters/ash-and-velvet/brianna_chen/flustered.png",
-          "smug": "/characters/ash-and-velvet/brianna_chen/smug.png",
-          "intrigued": "/characters/ash-and-velvet/brianna_chen/intrigued.png",
-          "hurt": "/characters/ash-and-velvet/brianna_chen/hurt.png",
-          "beckon": "/characters/ash-and-velvet/brianna_chen/beckon.png"
+          "neutral": "/characters/ash-and-velvet/brianna_chen/base.png"
         },
         "casual": {
           "neutral": "/characters/ash-and-velvet/brianna_chen/casual.png"
@@ -539,6 +590,18 @@
         },
         "nightwear": {
           "neutral": "/characters/ash-and-velvet/brianna_chen/nightwear.png"
+        },
+        "lingerie": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/lingerie.png"
+        },
+        "nsfw_1": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/deeb_custom_00006_.png"
+        },
+        "nsfw_2": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/deeb_custom_00007_.png"
+        },
+        "nsfw_3": {
+          "neutral": "/characters/ash-and-velvet/brianna_chen/deeb_custom_00008_.png"
         }
       }
     },
@@ -600,25 +663,20 @@
         "diner": "Retro Diner Uniform & Apron",
         "swim": "Emerald Bikini & Sarong",
         "lounge": "Patio Cardigan & Lounge Shorts",
-        "nightwear": "Honey-Apricot Henley Sleep Set"
+        "nightwear": "Honey-Apricot Henley Sleep Set",
+        "lingerie": "Emerald Rose-Lace Lingerie",
+        "nsfw_1": "Intimate State 1",
+        "nsfw_2": "Intimate State 2",
+        "nsfw_3": "Intimate State 3",
+        "nsfw_4": "Intimate State 4"
       },
       "visualPrompt": "Western adult graphic-novel comic style, thick plump plush curvy 24yo woman, long wavy bright copper-ginger redhead hair, bright emerald green eyes, abundant warm freckles across nose cheeks shoulders and thighs, dimpled grin, bold crisp black ink outlines, smooth cel shading",
       "expressions": {
-        "neutral": "/characters/ash-and-velvet/sierra_holloway/neutral.png",
-        "flustered": "/characters/ash-and-velvet/sierra_holloway/flustered.png",
-        "smug": "/characters/ash-and-velvet/sierra_holloway/smug.png",
-        "intrigued": "/characters/ash-and-velvet/sierra_holloway/intrigued.png",
-        "hurt": "/characters/ash-and-velvet/sierra_holloway/hurt.png",
-        "beckon": "/characters/ash-and-velvet/sierra_holloway/beckon.png"
+        "neutral": "/characters/ash-and-velvet/sierra_holloway/base.png"
       },
       "wardrobeExpressions": {
         "base": {
-          "neutral": "/characters/ash-and-velvet/sierra_holloway/neutral.png",
-          "flustered": "/characters/ash-and-velvet/sierra_holloway/flustered.png",
-          "smug": "/characters/ash-and-velvet/sierra_holloway/smug.png",
-          "intrigued": "/characters/ash-and-velvet/sierra_holloway/intrigued.png",
-          "hurt": "/characters/ash-and-velvet/sierra_holloway/hurt.png",
-          "beckon": "/characters/ash-and-velvet/sierra_holloway/beckon.png"
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/base.png"
         },
         "diner": {
           "neutral": "/characters/ash-and-velvet/sierra_holloway/diner.png"
@@ -631,6 +689,21 @@
         },
         "nightwear": {
           "neutral": "/characters/ash-and-velvet/sierra_holloway/nightwear.png"
+        },
+        "lingerie": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/lingerie.png"
+        },
+        "nsfw_1": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/deeb_custom_00021_.png"
+        },
+        "nsfw_2": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/deeb_custom_00022_.png"
+        },
+        "nsfw_3": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/deeb_custom_00023_.png"
+        },
+        "nsfw_4": {
+          "neutral": "/characters/ash-and-velvet/sierra_holloway/deeb_custom_00026_.png"
         }
       }
     },
@@ -693,25 +766,20 @@
         "office": "Lavender Blouse & Pencil Skirt",
         "afterhours": "Burgundy Satin Slip Dress",
         "lounge": "Cashmere Wrap & Espresso Trousers",
-        "nightwear": "Midnight-Plum Satin & Lace Set"
+        "nightwear": "Midnight-Plum Satin & Lace Set",
+        "lingerie": "Sapphire Satin & Black Lace Set",
+        "nsfw_1": "Intimate State 1",
+        "nsfw_2": "Intimate State 2",
+        "nsfw_3": "Intimate State 3",
+        "nsfw_4": "Intimate State 4"
       },
       "visualPrompt": "Western adult graphic-novel comic style, tall voluptuous hourglass 28yo woman, lush dark chocolate-brown chestnut long wavy hair, bright sky-blue eyes, cheek beauty mark, full glossy lips, bold crisp black ink outlines, smooth cel shading",
       "expressions": {
-        "neutral": "/characters/ash-and-velvet/chloe_bellamy/neutral.png",
-        "flustered": "/characters/ash-and-velvet/chloe_bellamy/flustered.png",
-        "smug": "/characters/ash-and-velvet/chloe_bellamy/smug.png",
-        "intrigued": "/characters/ash-and-velvet/chloe_bellamy/intrigued.png",
-        "hurt": "/characters/ash-and-velvet/chloe_bellamy/hurt.png",
-        "beckon": "/characters/ash-and-velvet/chloe_bellamy/beckon.png"
+        "neutral": "/characters/ash-and-velvet/chloe_bellamy/base.png"
       },
       "wardrobeExpressions": {
         "base": {
-          "neutral": "/characters/ash-and-velvet/chloe_bellamy/neutral.png",
-          "flustered": "/characters/ash-and-velvet/chloe_bellamy/flustered.png",
-          "smug": "/characters/ash-and-velvet/chloe_bellamy/smug.png",
-          "intrigued": "/characters/ash-and-velvet/chloe_bellamy/intrigued.png",
-          "hurt": "/characters/ash-and-velvet/chloe_bellamy/hurt.png",
-          "beckon": "/characters/ash-and-velvet/chloe_bellamy/beckon.png"
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/base.png"
         },
         "office": {
           "neutral": "/characters/ash-and-velvet/chloe_bellamy/office.png"
@@ -724,6 +792,129 @@
         },
         "nightwear": {
           "neutral": "/characters/ash-and-velvet/chloe_bellamy/nightwear.png"
+        },
+        "lingerie": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/lingerie.png"
+        },
+        "nsfw_1": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/deeb_custom_00038_.png"
+        },
+        "nsfw_2": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/deeb_custom_00040_.png"
+        },
+        "nsfw_3": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/deeb_custom_00041_.png"
+        },
+        "nsfw_4": {
+          "neutral": "/characters/ash-and-velvet/chloe_bellamy/deeb_custom_00043_.png"
+        }
+      }
+    },
+    {
+      "name": "Jill Smith",
+      "archetype": "Preppy Transfer Houseguest",
+      "relationshipStatus": "Acquainted",
+      "affection": 20,
+      "lust": 16,
+      "submission": 38,
+      "trust": 22,
+      "jealousy": 6,
+      "affinityTier": "Warm Crush / Flustered Yield",
+      "personality": "A bright, petite 19-year-old college sophomore crashing in Clara's downstairs parlor between leases. Outwardly polite, conscientious, and easily blushed, she secretly relishes playful teasing and bold late-night attention that lets her shed her sheltered good-girl image.",
+      "speechStyle": "Warm, slightly breathless, earnest, and quick to stammer into playful honesty when flustered.",
+      "interpersonalDynamics": {
+        "rivalIds": [
+          "brianna_chen"
+        ],
+        "allyIds": [
+          "clara_callahan",
+          "sierra_holloway"
+        ],
+        "jealousyThreshold": 18
+      },
+      "seed": 660105,
+      "baseImageUrl": "/characters/ash-and-velvet/jill_smith/base.png",
+      "activeWardrobe": "base",
+      "wardrobeLabels": {
+        "base": "Preppy Sweater Vest & Plaid Skirt",
+        "casual": "Pink Cropped Hoodie & Denim Skirt",
+        "date": "Lilac Off-Shoulder Skater Dress",
+        "lounge": "Oversized Blue Tee & Sleep Shorts",
+        "nightwear": "Ivory Satin Cami & Sleep Shorts",
+        "swim": "Coral Bikini & Sheer Wrap",
+        "lingerie": "Black Floral-Lace Lingerie",
+        "nsfw_1": "Intimate State 1",
+        "nsfw_2": "Intimate State 2"
+      },
+      "visualPrompt": "Clean 2D cel-shaded graphic novel style, petite curvy 19yo blonde woman, fair porcelain pale skin, shoulder-length golden blonde hair with bangs, emerald green eyes, silver stud earrings, expressive blushing cheeks",
+      "expressions": {
+        "neutral": "/characters/ash-and-velvet/jill_smith/base.png"
+      },
+      "wardrobeExpressions": {
+        "base": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/base.png"
+        },
+        "casual": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/casual.png"
+        },
+        "date": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/date.png"
+        },
+        "lounge": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/lounge.png"
+        },
+        "nightwear": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/nightwear.png"
+        },
+        "swim": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/swim.png"
+        },
+        "lingerie": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/lingerie.png"
+        },
+        "nsfw_1": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/deeb_custom_00002_.png"
+        },
+        "nsfw_2": {
+          "neutral": "/characters/ash-and-velvet/jill_smith/deeb_custom_00004_.png"
+        }
+      },
+      "id": "jill_smith"
+    },
+    {
+      "id": "tina_smith",
+      "name": "Tina Smith",
+      "title": "Jill's Younger Sister & Weekend Crasher",
+      "role": "Parlor Guest (Age 19)",
+      "personality": "Jill Smith's spirited, observant 19-year-old younger sister who tags along to 412 Maplewood whenever she needs a breather from their strict parents. Less buttoned-up than Jill, quick with wry teasing, and secretly curious about the house's late-night tension.",
+      "affection": 16,
+      "trust": 20,
+      "lust": 18,
+      "submission": 34,
+      "jealousy": 8,
+      "isPresent": false,
+      "encountered": true,
+      "seed": 910701,
+      "baseImageUrl": "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png",
+      "activeWardrobe": "base",
+      "wardrobeLabels": {
+        "base": "Everyday Casual",
+        "nsfw_1": "Intimate State 1",
+        "nsfw_2": "Intimate State 2"
+      },
+      "visualPrompt": "Western adult graphic-novel comic style, 19yo petite curvy young woman, younger sister of Jill Smith, bold crisp black ink outlines, smooth cel shading",
+      "expressions": {
+        "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png"
+      },
+      "wardrobeExpressions": {
+        "base": {
+          "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png"
+        },
+        "nsfw_1": {
+          "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00035_.png"
+        },
+        "nsfw_2": {
+          "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00036_.png"
         }
       }
     }

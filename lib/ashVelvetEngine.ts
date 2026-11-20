@@ -40,6 +40,8 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Brianna Chen": "Upstairs Hallway & Shared Bath",
     "Sierra Holloway": "Clara's Kitchen & Living Room",
     "Chloe Bellamy": "Chloe's Executive Bedroom (Room 205)",
+    "Jill Smith": "Clara's Kitchen & Living Room",
+    "Tina Smith": "Clara's Late-Night Den",
   },
   AFTERNOON: {
     "Clara Callahan": "Clara's Kitchen & Living Room",
@@ -47,6 +49,8 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Brianna Chen": "Brianna's Bedroom (Room 203)",
     "Sierra Holloway": "Starlight Retro Diner",
     "Chloe Bellamy": "After-Hours Bourbon Lounge",
+    "Jill Smith": "Clara's Kitchen & Living Room",
+    "Tina Smith": "Backyard Porch & Smoke Patio",
   },
   EVENING: {
     "Clara Callahan": "Clara's Kitchen & Living Room",
@@ -54,6 +58,8 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Brianna Chen": "Backyard Porch & Smoke Patio",
     "Sierra Holloway": "Starlight Retro Diner",
     "Chloe Bellamy": "After-Hours Bourbon Lounge",
+    "Jill Smith": "Backyard Porch & Smoke Patio",
+    "Tina Smith": "Clara's Kitchen & Living Room",
   },
   LATE_NIGHT: {
     "Clara Callahan": "Clara's Late-Night Den",
@@ -61,6 +67,8 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Brianna Chen": "Brianna's Bedroom (Room 203)",
     "Sierra Holloway": "Backyard Porch & Smoke Patio",
     "Chloe Bellamy": "Chloe's Executive Bedroom (Room 205)",
+    "Jill Smith": "Clara's Late-Night Den",
+    "Tina Smith": "The Attic Sanctuary Room",
   },
   AFTER_MIDNIGHT: {
     "Clara Callahan": "Clara's Late-Night Den",
@@ -68,6 +76,8 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Brianna Chen": "Brianna's Bedroom (Room 203)",
     "Sierra Holloway": "Sierra's Bedroom (Room 204)",
     "Chloe Bellamy": "Chloe's Executive Bedroom (Room 205)",
+    "Jill Smith": "Clara's Late-Night Den",
+    "Tina Smith": "Clara's Late-Night Den",
   },
 };
 
@@ -192,12 +202,22 @@ export function createInitialAshVelvetState(
 ): AshVelvetHouseState {
   let timeSlot: AshVelvetTimeSlot = "AFTER_MIDNIGHT";
   let clockLabel = "2:14 AM";
+  let initialVice = 0;
   if (startingNodeId === "av_hallway_morning") {
     timeSlot = "MORNING";
     clockLabel = "7:40 AM";
   } else if (startingNodeId === "av_velvet_static_night") {
     timeSlot = "LATE_NIGHT";
     clockLabel = "11:50 PM";
+    initialVice = 30;
+  } else if (startingNodeId === "av_bourbon_lounge_chloe") {
+    timeSlot = "LATE_NIGHT";
+    clockLabel = "11:30 PM";
+    initialVice = 25;
+  } else if (startingNodeId === "av_parlor_sisters_late") {
+    timeSlot = "AFTER_MIDNIGHT";
+    clockLabel = "1:15 AM";
+    initialVice = 15;
   }
 
   return {
@@ -205,7 +225,7 @@ export function createInitialAshVelvetState(
     timeSlot,
     clockLabel,
     composure: 85,
-    viceLevel: startingNodeId === "av_velvet_static_night" ? 30 : 0,
+    viceLevel: initialVice,
     cashUsd: startingCash,
     rentDueDay: 7,
     rentAmountUsd: 450,
@@ -270,6 +290,13 @@ export function inferNaturalWardrobeKey(
     if (timeSlot === "MORNING" || timeSlot === "AFTERNOON") return "office";
     if (timeSlot === "AFTER_MIDNIGHT" || (l.includes("205") && timeSlot === "LATE_NIGHT")) return "nightwear";
     if (l.includes("den") || l.includes("patio")) return "lounge";
+    return "base";
+  }
+  if (n.includes("jill")) {
+    if (l.includes("lounge") || l.includes("dive")) return "date";
+    if (timeSlot === "AFTER_MIDNIGHT") return "nightwear";
+    if (l.includes("den") && timeSlot === "LATE_NIGHT") return "lounge";
+    if (l.includes("patio") || l.includes("hallway")) return "casual";
     return "base";
   }
   return "base";
@@ -397,12 +424,14 @@ ${heroineLines}
   * SUBMISSION (0–100 Power Gradient): Low (0–25) = guarded, challenging, takes charge (especially Chloe & Brianna); Mid (26–55) = charged push-pull banter; High (56–100) = softening, yielding to protagonist's lead, craving his steady control.
   * TRUST: Distinct from Lust; honest follow-through raises Trust and unlocks private bedroom invitations (Rooms 101–205). Lies or reckless betrayal slash Trust.
   * JEALOUSY: Flirting openly near rivals (Clara ↔ Chloe, Brianna ↔ Chloe, Hannah ↔ Clara) spikes Jealousy and sparks sharp territorial banter.
-- EXACT 5 APPROVED STYLE A WARDROBE KEYS PER HEROINE (ONLY output keys from this list in "state_updates.wardrobe_key"):
-  * Clara Callahan: "base" (knit & trousers), "kitchen" (cardigan & apron), "lounge" (off-shoulder sweater & denim shorts), "date" (emerald velvet wrap dress), "nightwear" (rose satin & kimono)
-  * Hannah Lindqvist: "base" (off-shoulder sweater & plaid skirt), "overalls" (paint-flecked studio overalls), "nightout" (dive-bar flannel & bandeau), "lounge" (crescent tee & sleep shorts), "nightwear" (slate-blue satin & cardigan)
-  * Brianna Chen: "base" (hallway shower towel), "casual" (lilac halter & white shorts), "party" (crimson keyhole mini-dress), "lounge" (borrowed navy hoodie & shorts), "nightwear" (peacock-teal satin & lace)
-  * Sierra Holloway: "base" (knotted crop tee & denim shorts), "diner" (retro mint diner dress & apron), "swim" (emerald bikini & sarong), "lounge" (olive cardigan & lounge shorts), "nightwear" (honey-apricot henley sleep set)
-  * Chloe Bellamy: "base" (white button-down & charcoal shorts), "office" (lavender blouse & pencil skirt), "afterhours" (burgundy satin slip dress), "lounge" (cashmere wrap & espresso trousers), "nightwear" (midnight-plum satin & lace)
+- EXACT APPROVED WARDROBE KEYS PER HEROINE (ONLY output keys from this list in "state_updates.wardrobe_key"; ONLY use "nsfw_*" keys when Lust >= 50 or in a private room/intimate scene):
+  * Clara Callahan: "base" (knit & trousers), "kitchen" (cardigan & apron), "lounge" (off-shoulder sweater & denim shorts), "date" (emerald velvet wrap dress), "nightwear" (rose satin & kimono), "lingerie" (black lace lingerie & stockings), "nsfw_1", "nsfw_2", "nsfw_3" (intimate states)
+  * Hannah Lindqvist: "base" (off-shoulder sweater & plaid skirt), "overalls" (paint-flecked studio overalls), "nightout" (dive-bar flannel & bandeau), "lounge" (crescent tee & sleep shorts), "nightwear" (slate-blue satin & cardigan), "lingerie" (black scalloped lace lingerie), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4" (intimate states)
+  * Brianna Chen: "base" (hallway shower towel), "casual" (lilac halter & white shorts), "party" (crimson keyhole mini-dress), "lounge" (borrowed navy hoodie & shorts), "nightwear" (peacock-teal satin & lace), "lingerie" (black lace & garter set), "nsfw_1", "nsfw_2", "nsfw_3" (intimate states)
+  * Sierra Holloway: "base" (knotted crop tee & denim shorts), "diner" (retro mint diner dress & apron), "swim" (emerald bikini & sarong), "lounge" (olive cardigan & lounge shorts), "nightwear" (honey-apricot henley sleep set), "lingerie" (emerald rose-lace lingerie), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4" (intimate states)
+  * Chloe Bellamy: "base" (white button-down & charcoal shorts), "office" (lavender blouse & pencil skirt), "afterhours" (burgundy satin slip dress), "lounge" (cashmere wrap & espresso trousers), "nightwear" (midnight-plum satin & lace), "lingerie" (sapphire satin & black lace set), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4" (intimate states)
+  * Jill Smith: "base" (preppy sweater vest & plaid skirt), "casual" (pink zip hoodie & denim skirt), "date" (lilac off-shoulder skater dress), "lounge" (oversized blue tee & sleep shorts), "nightwear" (ivory satin cami & sleep shorts), "swim" (coral bikini & sheer wrap), "lingerie" (blue & white rose-lace lingerie), "nsfw_1", "nsfw_2" (intimate states)
+  * Tina Smith: "base" (everyday casual), "nsfw_1", "nsfw_2" (intimate states)
 - 14 CANON PLAYABLE LOCATIONS:
   "Clara's Kitchen & Living Room", "Upstairs Hallway & Shared Bath", "Upstairs Shared Bathroom", "Clara's Late-Night Den", "The Attic Sanctuary Room", "Velvet Static Dive Bar", "Backyard Porch & Smoke Patio", "Clara's Master Bedroom (Room 101)", "Hannah's Studio Bedroom (Room 202)", "Brianna's Bedroom (Room 203)", "Sierra's Bedroom (Room 204)", "Chloe's Executive Bedroom (Room 205)", "Starlight Retro Diner", "After-Hours Bourbon Lounge".
 - STRUCTURED PSYCHOLOGICAL DELTAS: Always populate realistic integer deltas inside "state_updates" for the active speaker/scene:

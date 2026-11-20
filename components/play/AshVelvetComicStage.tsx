@@ -143,6 +143,7 @@ export interface AshVelvetScenePanelProps {
   onOpenDossier: (comp: AshVelvetStageCompanion) => void;
   onOpenMap: () => void;
   onIllustrateCg: () => void;
+  onChangeWardrobe?: (compName: string, nextWardrobe: string) => void;
 }
 
 /**
@@ -167,11 +168,17 @@ export function AshVelvetScenePanel({
   onOpenDossier,
   onOpenMap,
   onIllustrateCg,
+  onChangeWardrobe,
 }: AshVelvetScenePanelProps) {
   const activeComp = presentCompanions.length > 0 ? spotlightComp || presentCompanions[0] : null;
   const activeSpriteSrc = activeComp
-    ? getSpriteSrc(activeComp.name, activeComp.expressionKey) || activeComp.baseImageUrl || fallbackSprite
+    ? getSpriteSrc(activeComp.name, "neutral") || activeComp.baseImageUrl || fallbackSprite
     : fallbackSprite;
+  const activeOutfitLabel = activeComp
+    ? activeComp.wardrobeLabels?.[activeComp.activeWardrobe || "base"] ||
+      activeComp.activeWardrobe ||
+      "base"
+    : "";
   const activeFirstName = activeComp ? activeComp.name.split(" ")[0].toUpperCase() : "SOLO";
   const isSpeaking =
     Boolean(activeComp) && speaker.toLowerCase().includes(activeComp!.name.toLowerCase());
@@ -297,7 +304,7 @@ export function AshVelvetScenePanel({
         </div>
       )}
 
-      {/* Bottom-Left Angled Hot-Magenta Speaker Nameplate + Expression Pill */}
+      {/* Bottom-Left Angled Hot-Magenta Speaker Nameplate + Outfit State Pill */}
       {activeComp && (
         <div className="absolute bottom-2 left-3 sm:left-5 z-20 flex items-center gap-2">
           <button
@@ -312,9 +319,30 @@ export function AshVelvetScenePanel({
             </span>
           </button>
 
-          <span className="px-2 py-0.5 bg-[#0C0B10]/90 border border-white/15 text-[9px] font-mono font-black uppercase tracking-wider text-amber-300 shadow">
-            {activeComp.expressionKey || "neutral"}
-          </span>
+          {onChangeWardrobe &&
+          activeComp.wardrobeLabels &&
+          Object.keys(activeComp.wardrobeLabels).length > 1 ? (
+            <label className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#0C0B10]/95 border border-white/20 text-[9px] font-mono font-black uppercase tracking-wider text-amber-300 shadow max-w-[220px] cursor-pointer hover:border-pink-400/70">
+              <Shirt className="w-2.5 h-2.5 shrink-0 text-pink-400" />
+              <select
+                aria-label={`${activeComp.name} outfit state`}
+                value={activeComp.activeWardrobe || "base"}
+                onChange={(e) => onChangeWardrobe(activeComp.name, e.target.value)}
+                className="bg-transparent text-amber-300 text-[9px] font-mono font-black uppercase tracking-wider focus:outline-none cursor-pointer truncate max-w-[180px]"
+              >
+                {Object.entries(activeComp.wardrobeLabels).map(([wKey, wLabel]) => (
+                  <option key={wKey} value={wKey} className="bg-[#111018] text-amber-200">
+                    {wLabel}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#0C0B10]/90 border border-white/15 text-[9px] font-mono font-black uppercase tracking-wider text-amber-300 shadow max-w-[200px] truncate">
+              <Shirt className="w-2.5 h-2.5 shrink-0 text-pink-400" />
+              <span className="truncate">{activeOutfitLabel}</span>
+            </span>
+          )}
         </div>
       )}
 
@@ -386,7 +414,7 @@ export function AshVelvetTelemetryRail({
 
   return (
     <aside className="w-full lg:w-[278px] xl:w-[298px] shrink-0 bg-[#161520] border-2 border-[#07070A] shadow-[4px_4px_0px_#07070A] p-3 flex flex-col gap-3 overflow-y-auto select-none">
-      {/* 1. TOP ROW: 5-HOUSEMATE LIVE AVATAR & WHEREABOUTS STRIP */}
+      {/* 1. TOP ROW: HOUSEMATE LIVE AVATAR & WHEREABOUTS STRIP */}
       <div className="pb-2.5 border-b border-white/10">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[9px] font-mono font-black uppercase tracking-widest text-amber-400">
@@ -396,14 +424,14 @@ export function AshVelvetTelemetryRail({
             {presentCompanions.length} in room
           </span>
         </div>
-        <div className="grid grid-cols-5 gap-1">
-          {allCompanions.slice(0, 5).map((comp) => {
+        <div className="grid grid-cols-7 gap-1">
+          {allCompanions.slice(0, 7).map((comp) => {
             const isFocused = activeComp?.name.toLowerCase() === comp.name.toLowerCase();
             const isHere = presentCompanions.some(
               (p) => p.name.toLowerCase() === comp.name.toLowerCase()
             );
             const thumb =
-              getSpriteSrc(comp.name, comp.expressionKey) || comp.baseImageUrl || fallbackSprite;
+              getSpriteSrc(comp.name, "neutral") || comp.baseImageUrl || fallbackSprite;
             const compRoom = isHere
               ? location
               : houseState.heroineLocations[comp.name] ||
@@ -421,7 +449,7 @@ export function AshVelvetTelemetryRail({
                 className="flex flex-col items-center gap-1 cursor-pointer focus:outline-none group"
               >
                 <div
-                  className={`relative w-10 h-10 rounded-full overflow-hidden border-2 transition-all bg-[#252334] ${
+                  className={`relative w-9 h-9 rounded-full overflow-hidden border-2 transition-all bg-[#252334] ${
                     isFocused
                       ? "border-amber-400 ring-2 ring-amber-400/35 scale-105"
                       : isHere
