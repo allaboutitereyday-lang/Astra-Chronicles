@@ -520,7 +520,7 @@ const STARFALL_LABYRINTH_GLOSSARY: GlossaryEntry[] = [
   },
 ];
 
-const ASH_VELVET_GLOSSARY: GlossaryItem[] = [
+const ASH_VELVET_GLOSSARY = [
   {
     term: "412 Maplewood Ave (Callahan House)",
     category: "Setting & Rules",
