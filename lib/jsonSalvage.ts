@@ -568,7 +568,28 @@ export function extractStringFieldFromRawText(rawContent: string, fieldName: str
   const regex = new RegExp(`"${escapedField}"\\s*:\\s*"((?:[^"\\\\]|\\\\[\\s\\S])*)(?:"|$)`);
   const match = rawContent.match(regex);
   if (match && match[1] && match[1].trim().length > 0) {
-    return unescapeCapturedJsonString(match[1]);
+    let captured = unescapeCapturedJsonString(match[1]);
+    // If the string was truncated mid-sentence at max_tokens (no closing quote in rawContent), trim trailing partial clause cleanly
+    const fullMatchText = match[0];
+    const wasCutAtEof = !fullMatchText.endsWith('"');
+    if (wasCutAtEof && captured.length > 80 && !/[.!?…"”']$/.test(captured)) {
+      const lastBoundary = Math.max(
+        captured.lastIndexOf('."'),
+        captured.lastIndexOf('!"'),
+        captured.lastIndexOf('?"'),
+        captured.lastIndexOf(". "),
+        captured.lastIndexOf("! "),
+        captured.lastIndexOf("? "),
+        captured.lastIndexOf(".\n"),
+        captured.lastIndexOf('"\n')
+      );
+      if (lastBoundary > captured.length * 0.55) {
+        captured = captured
+          .slice(0, lastBoundary + (captured[lastBoundary + 1] === '"' ? 2 : 1))
+          .trim();
+      }
+    }
+    return captured;
   }
   return null;
 }

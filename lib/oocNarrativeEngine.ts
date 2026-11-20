@@ -451,7 +451,7 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
           messages: pass1Messages,
           user: params.userKey,
           temperature: Math.max(0.55, Math.min(1.05, params.temperature)),
-          max_tokens: Math.min(2200, params.maxTokens),
+          max_tokens: Math.min(3000, params.maxTokens),
           ...(isAnthropic ? {} : { repetition_penalty: params.repetitionPenalty }),
           provider: { allow_fallbacks: true, sort: "throughput" },
         }),
@@ -474,10 +474,27 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
       }
 
       const data = await res.json();
-      const text = String(data?.choices?.[0]?.message?.content || "").trim();
+      let text = String(data?.choices?.[0]?.message?.content || "").trim();
+      const finishReason = String(data?.choices?.[0]?.finish_reason || "").toLowerCase();
       if (text.length < 40) {
         lastPass1Err = new Error(`Pass 1 (${candidateModel}) returned stub text (${text.length} chars)`);
         continue;
+      }
+      // If the model stopped mid-sentence due to length limit, trim cleanly to the last complete sentence/quote
+      if (finishReason === "length" && !/[.!?…"”']$/.test(text)) {
+        const lastSentenceEnd = Math.max(
+          text.lastIndexOf('."'),
+          text.lastIndexOf('!"'),
+          text.lastIndexOf('?"'),
+          text.lastIndexOf(". "),
+          text.lastIndexOf("! "),
+          text.lastIndexOf("? "),
+          text.lastIndexOf(".\n"),
+          text.lastIndexOf('"\n')
+        );
+        if (lastSentenceEnd > text.length * 0.6) {
+          text = text.slice(0, lastSentenceEnd + (text[lastSentenceEnd + 1] === '"' ? 2 : 1)).trim();
+        }
       }
 
       rawCreativeText = text;

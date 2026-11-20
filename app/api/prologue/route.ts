@@ -54,12 +54,12 @@ function shouldUseJsonObjectFormat(model: string): boolean {
 
 function getModelMaxTokens(model: string, baseMaxTokens: number): number {
   const m = (model || "").toLowerCase();
-  if (m.includes("mythomax")) return Math.min(baseMaxTokens, 900);
-  if (m.includes("lunaris-8b")) return Math.min(baseMaxTokens, 1500);
+  if (m.includes("mythomax")) return Math.min(baseMaxTokens, 1100);
+  if (m.includes("lunaris-8b")) return Math.min(baseMaxTokens, 1800);
   if (m.includes("cydonia") || m.includes("euryale") || m.includes("magnum")) {
-    return Math.min(baseMaxTokens, 2000);
+    return Math.min(baseMaxTokens, 2600);
   }
-  return Math.min(baseMaxTokens, 2400);
+  return Math.min(baseMaxTokens, 3200);
 }
 
 export async function POST(req: Request) {
