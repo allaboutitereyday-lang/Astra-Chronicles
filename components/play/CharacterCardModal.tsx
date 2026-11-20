@@ -1228,7 +1228,7 @@ export function CharacterCardModal({
                       }`}
                     >
                       <span className="font-bold block">
-                        {isStarfall ? "Combat Class" : "Conduit Flair"}
+                        {isStarfall ? "Combat Class" : isAshVelvet ? "Your Vibe" : "Conduit Flair"}
                       </span>
                       <span>{npcKnowledge?.knowsClass ? "Recognized" : "Guarded"}</span>
                     </div>
@@ -1241,7 +1241,7 @@ export function CharacterCardModal({
                       }`}
                     >
                       <span className="font-bold block">
-                        {isStarfall ? "Ex-Ranker Origin" : "Origin Truth"}
+                        {isStarfall ? "Ex-Ranker Origin" : isAshVelvet ? "Your Past" : "Origin Truth"}
                       </span>
                       <span>{npcKnowledge?.knowsOrigin ? "Disclosed" : "Masked"}</span>
                     </div>

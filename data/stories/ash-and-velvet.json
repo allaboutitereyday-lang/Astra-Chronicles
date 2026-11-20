@@ -208,14 +208,29 @@
       "initialQuest": {
         "id": "av_quest_first_week",
         "title": "A Place of Your Own",
-        "description": "Settle into Clara Callahan's shared house, meet the other housemates, and survive your first unpredictable week without letting your past—or Redbridge's vices—pull you under.",
+        "description": "Settle into Clara Callahan's shared house at 412 Maplewood Ave, build chemistry with your housemates, and pull together $450 for your first week's rent.",
+        "type": "scenario",
+        "difficulty": "E",
         "status": "active",
         "objectives": [
-          "Settle into the Attic Sanctuary Room and set your terms with Clara",
-          "Meet Hannah, Brianna, Sierra, and Chloe around 412 Maplewood",
-          "Make it through your first Friday night in Redbridge"
+          {
+            "text": "Navigate your opening encounter with Clara Callahan at Clara's Kitchen & Living Room",
+            "completed": false
+          },
+          {
+            "text": "Settle into the Attic Sanctuary Room and meet the other housemates around 412 Maplewood",
+            "completed": false
+          },
+          {
+            "text": "Earn extra cash or deepen housemate trust before Friday night in Redbridge",
+            "completed": false
+          }
         ],
-        "rewards": "+100 EXP & Housemate Trust Milestone"
+        "rewards": {
+          "exp": 100,
+          "gold": 150,
+          "title": "412 Maplewood Tenant"
+        }
       }
     },
     {
@@ -236,7 +251,34 @@
         "[Bold]: Morning, sunshine. Sweet dreams?",
         "[Cool]: Hi Brianna. You might want to grab a robe out there.",
         "[Dom]: Since you're practically naked, why don't you make it up to me?"
-      ]
+      ],
+      "initialQuest": {
+        "id": "av_quest_first_week",
+        "title": "A Place of Your Own",
+        "description": "Settle into Clara Callahan's shared house at 412 Maplewood Ave, build chemistry with your housemates, and pull together $450 for your first week's rent.",
+        "type": "scenario",
+        "difficulty": "E",
+        "status": "active",
+        "objectives": [
+          {
+            "text": "Navigate your opening encounter with Brianna Chen at Upstairs Hallway & Shared Bath",
+            "completed": false
+          },
+          {
+            "text": "Settle into the Attic Sanctuary Room and meet the other housemates around 412 Maplewood",
+            "completed": false
+          },
+          {
+            "text": "Earn extra cash or deepen housemate trust before Friday night in Redbridge",
+            "completed": false
+          }
+        ],
+        "rewards": {
+          "exp": 100,
+          "gold": 150,
+          "title": "412 Maplewood Tenant"
+        }
+      }
     },
     {
       "id": "av_velvet_static_night",
@@ -256,7 +298,34 @@
         "[Bold]: Absolutely. But I've got a feeling I'm not going to lose.",
         "[Cool]: I'm not sure about betting, Hannah. But thanks for the invite.",
         "[Dom]: I'll play along, but if I win, you have to do anything I say."
-      ]
+      ],
+      "initialQuest": {
+        "id": "av_quest_first_week",
+        "title": "A Place of Your Own",
+        "description": "Settle into Clara Callahan's shared house at 412 Maplewood Ave, build chemistry with your housemates, and pull together $450 for your first week's rent.",
+        "type": "scenario",
+        "difficulty": "E",
+        "status": "active",
+        "objectives": [
+          {
+            "text": "Navigate your opening encounter with Hannah Lindqvist at Velvet Static Dive Bar",
+            "completed": false
+          },
+          {
+            "text": "Settle into the Attic Sanctuary Room and meet the other housemates around 412 Maplewood",
+            "completed": false
+          },
+          {
+            "text": "Earn extra cash or deepen housemate trust before Friday night in Redbridge",
+            "completed": false
+          }
+        ],
+        "rewards": {
+          "exp": 100,
+          "gold": 150,
+          "title": "412 Maplewood Tenant"
+        }
+      }
     },
     {
       "id": "av_bourbon_lounge_chloe",
@@ -276,7 +345,34 @@
         "[Bold]: Room 205, huh? I like the sound of that. Especially with a breathtaking view like you.",
         "[Cool]: Chloe Bellamy. Nice to meet you. Guess we're neighbors now.",
         "[Dom]: So, Room 205. I wonder if you've ever had a tenant you wanted to keep all to yourself."
-      ]
+      ],
+      "initialQuest": {
+        "id": "av_quest_first_week",
+        "title": "A Place of Your Own",
+        "description": "Settle into Clara Callahan's shared house at 412 Maplewood Ave, build chemistry with your housemates, and pull together $450 for your first week's rent.",
+        "type": "scenario",
+        "difficulty": "E",
+        "status": "active",
+        "objectives": [
+          {
+            "text": "Navigate your opening encounter with Chloe Bellamy at After-Hours Bourbon Lounge",
+            "completed": false
+          },
+          {
+            "text": "Settle into the Attic Sanctuary Room and meet the other housemates around 412 Maplewood",
+            "completed": false
+          },
+          {
+            "text": "Earn extra cash or deepen housemate trust before Friday night in Redbridge",
+            "completed": false
+          }
+        ],
+        "rewards": {
+          "exp": 100,
+          "gold": 150,
+          "title": "412 Maplewood Tenant"
+        }
+      }
     },
     {
       "id": "av_parlor_sisters_late",
@@ -297,7 +393,34 @@
         "[Bold]: Well, well. Looks like we've got a couple of little vixens on our hands.",
         "[Cool]: Hey, I'm just getting a glass of water. I didn't see anything.",
         "[Dom]: Since you've got me between two gorgeous sisters, why don't you make it worth my while?"
-      ]
+      ],
+      "initialQuest": {
+        "id": "av_quest_first_week",
+        "title": "A Place of Your Own",
+        "description": "Settle into Clara Callahan's shared house at 412 Maplewood Ave, build chemistry with your housemates, and pull together $450 for your first week's rent.",
+        "type": "scenario",
+        "difficulty": "E",
+        "status": "active",
+        "objectives": [
+          {
+            "text": "Navigate your opening encounter with Jill Smith & Tina Smith at Clara's Late-Night Den",
+            "completed": false
+          },
+          {
+            "text": "Settle into the Attic Sanctuary Room and meet the other housemates around 412 Maplewood",
+            "completed": false
+          },
+          {
+            "text": "Earn extra cash or deepen housemate trust before Friday night in Redbridge",
+            "completed": false
+          }
+        ],
+        "rewards": {
+          "exp": 100,
+          "gold": 150,
+          "title": "412 Maplewood Tenant"
+        }
+      }
     }
   ],
   "companions": [
@@ -895,7 +1018,7 @@
       "isPresent": false,
       "encountered": true,
       "seed": 910701,
-      "baseImageUrl": "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png",
+      "baseImageUrl": "/characters/ash-and-velvet/tina_smith/tina_base.png",
       "activeWardrobe": "base",
       "wardrobeLabels": {
         "base": "Everyday Casual",
@@ -904,17 +1027,17 @@
       },
       "visualPrompt": "Western adult graphic-novel comic style, 19yo petite curvy young woman, younger sister of Jill Smith, bold crisp black ink outlines, smooth cel shading",
       "expressions": {
-        "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png"
+        "neutral": "/characters/ash-and-velvet/tina_smith/tina_base.png"
       },
       "wardrobeExpressions": {
         "base": {
-          "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png"
+          "neutral": "/characters/ash-and-velvet/tina_smith/tina_base.png"
         },
         "nsfw_1": {
-          "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00035_.png"
+          "neutral": "/characters/ash-and-velvet/tina_smith/tina_nsfw_1.png"
         },
         "nsfw_2": {
-          "neutral": "/characters/ash-and-velvet/tina_smith/deeb_custom_00036_.png"
+          "neutral": "/characters/ash-and-velvet/tina_smith/tina_nsfw_2.png"
         }
       }
     }

@@ -228,6 +228,7 @@ import {
   advanceAshVelvetClock,
   clampMeter,
   resolveHeroineMeters,
+  inferNaturalWardrobeKey,
 } from "@/lib/ashVelvetEngine";
 import { AshVelvetScenePanel, AshVelvetTelemetryRail } from "@/components/play/AshVelvetComicStage";
 import { AshVelvetChoiceDeck } from "@/components/play/AshVelvetChoiceDeck";
@@ -6451,12 +6452,31 @@ export default function VisualNovelGame() {
           typeof data.state_updates?.composure_delta === "number"
             ? Math.max(-12, Math.min(12, Math.round(data.state_updates.composure_delta)))
             : 0;
-        const rawCashDelta =
+        const rawCashField =
           typeof data.state_updates?.cash_delta === "number"
-            ? Math.max(-300, Math.min(300, Math.round(data.state_updates.cash_delta)))
+            ? data.state_updates.cash_delta
+            : typeof (data.state_updates as any)?.gold_delta === "number"
+            ? (data.state_updates as any).gold_delta
             : 0;
+        const rawCashDelta = Math.max(-300, Math.min(300, Math.round(rawCashField)));
 
-        let nextAvState: AshVelvetHouseState = data.state_updates?.advance_time_slot
+        const actionAndProseCorpus = `${rawAction || ""} ${data.narrative_text || ""}`;
+        const hasTimePassingCue =
+          /\b(sleep|wake up|woke up|next morning|work a shift|worked a shift|hours later|call it a night|until morning|after work|go to bed|crash for the night|later that evening|later that night)\b/i.test(
+            actionAndProseCorpus
+          );
+        const locationChanged =
+          Boolean(nextLocation) &&
+          Boolean(gameState.location) &&
+          nextLocation.toLowerCase().trim() !== gameState.location.toLowerCase().trim();
+        const turnTickAdvance = currentTurnNumber > 0 && currentTurnNumber % 3 === 0;
+        const shouldAdvanceClock =
+          Boolean(data.state_updates?.advance_time_slot) ||
+          hasTimePassingCue ||
+          locationChanged ||
+          turnTickAdvance;
+
+        let nextAvState: AshVelvetHouseState = shouldAdvanceClock
           ? advanceAshVelvetClock(curAvState)
           : { ...curAvState, heroineLocations: { ...curAvState.heroineLocations } };
 
@@ -6467,12 +6487,58 @@ export default function VisualNovelGame() {
           cashUsd: Math.max(0, nextAvState.cashUsd + rawCashDelta),
         };
 
-        // Update current room for every heroine currently present in this scene
-        for (const pComp of nextPartyState) {
+        // Automatic Weekly Rent Deduction when advancing onto/past rentDueDay
+        if (
+          nextAvState.day > curAvState.day &&
+          nextAvState.day >= nextAvState.rentDueDay &&
+          nextAvState.cashUsd >= nextAvState.rentAmountUsd
+        ) {
+          nextAvState = {
+            ...nextAvState,
+            cashUsd: Math.max(0, nextAvState.cashUsd - nextAvState.rentAmountUsd),
+            rentDueDay: nextAvState.rentDueDay + 7,
+          };
+          pushNotification({
+            id: `av_rent_paid_${Date.now()}`,
+            type: "quest_completed",
+            title: `RENT PAID TO CLARA (-$${nextAvState.rentAmountUsd} CASH)`,
+            subtitle: `Day ${nextAvState.day}: Paid your attic room rent on time. Next rent due Day ${nextAvState.rentDueDay}.`,
+            difficulty: "D",
+          });
+        }
+
+        // Update current room for every heroine currently present in this scene, and refresh natural outfits when clock/location shifts
+        const explicitSpeakerWardrobe =
+          typeof data.state_updates?.wardrobe_key === "string"
+            ? data.state_updates.wardrobe_key.trim().toLowerCase()
+            : null;
+        resolvedPartyState = nextPartyState.map((pComp) => {
           if (pComp.isPresent && nextLocation) {
             nextAvState.heroineLocations[pComp.name] = nextLocation;
           }
-        }
+          const compRoom =
+            nextAvState.heroineLocations[pComp.name] || nextLocation || gameState.location;
+          const curW = (pComp as any).activeWardrobe || "base";
+          const isExplicitlySetThisTurn =
+            Boolean(explicitSpeakerWardrobe) &&
+            typeof data.speaker === "string" &&
+            data.speaker.toLowerCase().includes(pComp.name.toLowerCase());
+          if (shouldAdvanceClock && !isExplicitlySetThisTurn && !curW.startsWith("nsfw_")) {
+            const naturalKey = inferNaturalWardrobeKey(
+              pComp.name,
+              compRoom,
+              nextAvState.timeSlot
+            );
+            const storyDef = currentStory.companions?.find(
+              (sc) => sc.id === pComp.id || sc.name.toLowerCase() === pComp.name.toLowerCase()
+            );
+            const wMap = (pComp as any).wardrobeExpressions || storyDef?.wardrobeExpressions;
+            if (wMap && wMap[naturalKey]) {
+              return { ...pComp, activeWardrobe: naturalKey };
+            }
+          }
+          return pComp;
+        });
 
         const updatedPlayerWithAv = {
           ...(playerRef.current || player),
@@ -8741,12 +8807,30 @@ export default function VisualNovelGame() {
       setStatPoints((prev) => prev + statRewardToApply);
     }
 
-    // 5. Grant Gold
+    // 5. Grant Gold / Cash
     if (goldRewardToApply > 0) {
-      latestPlayer = {
-        ...latestPlayer,
-        gold: (latestPlayer.gold || 0) + goldRewardToApply,
-      };
+      if (currentStory.id === "ash-and-velvet") {
+        const curAv =
+          latestPlayer.ashVelvetState ||
+          createInitialAshVelvetState(
+            currentStory.startingNodes?.[selectedPrologue]?.id,
+            latestPlayer.gold ?? 65
+          );
+        const updatedCash = Math.max(0, (curAv.cashUsd ?? latestPlayer.gold ?? 65) + goldRewardToApply);
+        latestPlayer = {
+          ...latestPlayer,
+          gold: updatedCash,
+          ashVelvetState: {
+            ...curAv,
+            cashUsd: updatedCash,
+          },
+        };
+      } else {
+        latestPlayer = {
+          ...latestPlayer,
+          gold: (latestPlayer.gold || 0) + goldRewardToApply,
+        };
+      }
       playerRef.current = latestPlayer;
       setPlayer(latestPlayer);
     }
@@ -8816,11 +8900,20 @@ export default function VisualNovelGame() {
       });
     } else {
       soundEffects.playQuestComplete();
+      const rewardCurrencyText =
+        goldRewardToApply > 0
+          ? currentStory.id === "ash-and-velvet"
+            ? ` • +$${goldRewardToApply} Cash`
+            : ` • +${goldRewardToApply} ${currentStory.rpgRules?.currencyName || "Gold"}`
+          : "";
       pushNotification({
         id: `quest_claimed_${Date.now()}`,
         type: "quest_completed",
-        title: "SCENARIO CLEARANCE CLAIMED",
-        subtitle: `${targetQuest.title} clearance archived. +${expRewardToApply} EXP${statRewardToApply > 0 ? ` • +${statRewardToApply} Stat Points` : ""}${goldRewardToApply > 0 ? ` • +${goldRewardToApply} Gold` : ""}.`,
+        title:
+          currentStory.id === "ash-and-velvet"
+            ? "GOAL COMPLETED & CASH EARNED"
+            : "SCENARIO CLEARANCE CLAIMED",
+        subtitle: `${targetQuest.title} completed. +${expRewardToApply} EXP${statRewardToApply > 0 ? ` • +${statRewardToApply} Stat Points` : ""}${rewardCurrencyText}.`,
         difficulty: targetQuest.difficulty,
       });
     }
@@ -14038,6 +14131,11 @@ export default function VisualNovelGame() {
         onCompleteQuest={handleCompleteQuest}
         onToggleQuestObjective={handleToggleQuestObjective}
         onManualCompleteQuest={(questId) => handleCompleteQuest(questId, true)}
+        currencyLabel={
+          currentStory.id === "ash-and-velvet"
+            ? "Cash"
+            : currentStory.rpgRules?.currencyName || "Gold"
+        }
       />
 
       <NotificationHistoryModal

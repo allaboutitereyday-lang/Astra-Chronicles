@@ -478,7 +478,7 @@ export async function POST(req: Request) {
     } else if (!body.forceComfyRegenerate && matchedAshVelvetSlug) {
       generatedImageUrl =
         matchedAshVelvetSlug === "tina_smith"
-          ? "/characters/ash-and-velvet/tina_smith/deeb_custom_00034_.png"
+          ? "/characters/ash-and-velvet/tina_smith/tina_base.png"
           : `/characters/ash-and-velvet/${matchedAshVelvetSlug}/base.png`;
     } else if (!body.forceComfyRegenerate && matchedStarfallSlug) {
       const validStarfallExprs = ["neutral", "intrigued", "flustered", "smug", "combat_ready", "hurt"];

@@ -24,6 +24,7 @@ interface SystemQuestModalProps {
   onCompleteQuest?: (questId: string) => void;
   onToggleQuestObjective?: (questId: string, objectiveIdx: number) => void;
   onManualCompleteQuest?: (questId: string) => void;
+  currencyLabel?: string;
 }
 
 const DIFFICULTY_STYLES: Record<QuestDifficulty, { label: string; badge: string }> = {
@@ -87,6 +88,7 @@ export function SystemQuestModal({
   onCompleteQuest,
   onToggleQuestObjective,
   onManualCompleteQuest,
+  currencyLabel = "Gold",
 }: SystemQuestModalProps) {
   const [activeTab, setActiveTab] = useState<"active" | "completed" | "directives">("active");
 
@@ -656,7 +658,10 @@ export function SystemQuestModal({
                       )}
                       {Boolean(selectedQuest.rewards?.gold && selectedQuest.rewards.gold > 0) && (
                         <span className="px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-400/40 text-amber-300 font-mono flex items-center gap-1.5">
-                          <Coins className="w-3.5 h-3.5" /> +{selectedQuest.rewards?.gold} Gold
+                          <Coins className="w-3.5 h-3.5" />{" "}
+                          {currencyLabel === "Cash"
+                            ? `+$${selectedQuest.rewards?.gold} Cash`
+                            : `+${selectedQuest.rewards?.gold} ${currencyLabel}`}
                         </span>
                       )}
                       {Boolean(selectedQuest.rewards?.statPoints && selectedQuest.rewards.statPoints > 0) && (

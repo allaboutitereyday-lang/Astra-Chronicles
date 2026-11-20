@@ -297,6 +297,21 @@ export async function POST(req: Request) {
                   rewards: { exp: 95, gold: 30, title: "Zero-Casualty Shot-Caller" },
                   status: "active",
                 }
+              : storyContext?.id === "ash-and-velvet" || storyTitle.toLowerCase().includes("ash")
+              ? {
+                  id: "av_quest_first_week",
+                  title: "A Place of Your Own",
+                  description: `Settle into Clara Callahan's shared house at 412 Maplewood Ave, navigate your opening encounter with ${matchingComp?.name || startingHeroine}, and earn $450 for your first week's rent.`,
+                  type: "scenario",
+                  difficulty: "E",
+                  objectives: [
+                    { text: `Navigate your opening encounter with ${matchingComp?.name || startingHeroine} at ${matchingNode?.location || startingLocation}`, completed: false },
+                    { text: "Settle into the Attic Sanctuary Room and meet the other housemates around 412 Maplewood", completed: false },
+                    { text: "Earn extra cash or deepen housemate trust before Friday night in Redbridge", completed: false },
+                  ],
+                  rewards: { exp: 100, gold: 150, title: "412 Maplewood Tenant" },
+                  status: "active",
+                }
               : {
                   id: "scenario_01",
                   title: `Scenario 1: Matriculation at ${matchingNode?.location || startingLocation}`,
@@ -461,6 +476,19 @@ ${starfallHeroineMeta ? `- First Squadmate Dossier (${starfallHeroineMeta.name.s
      - Choice 2: [Role Technique] Demonstrating disciplined ${playerProfile?.conduit || "Tactician"} poise despite a Lv.1 1★ body.
      - Choice 3: [Defy the Master] Finding a smart loophole around the unseen Master's careless deployment or protecting ${startingHeroine.split(" ")[0]} from fodder treatment.
      - Choice 4: [Protect the Squad / Lobby Prep] Checking Star Gate Plaza resources or rallying ${startingHeroine.split(" ")[0]} before stepping into Floor 1.`
+      : storyContext?.id === "ash-and-velvet"
+      ? `
+--- ASH & VELVET: 18+ CONTEMPORARY SHARED-HOUSE GRAPHIC NOVEL DIRECTIVE ---
+- Setting: 412 Maplewood Ave (Redbridge District), a contemporary Victorian boarding house run by 41yo landlady Clara Callahan. ZERO fantasy magic, ZERO swords, ZERO LitRPG system jargon.
+- Protagonist Move-In Backstory: ${playerProfile?.worldOrigin} (${playerProfile?.worldOriginDetails})
+- Protagonist Vibe & Approach: ${playerProfile?.role || "Quiet Protector"}
+- Selected Opening Scene: "${matchingNode?.title || heroineDossier.title}" at ${matchingNode?.location || startingLocation}${multiHeroineEnsembleDirective}
+  Scene Baseline: ${matchingNode?.sceneSetup || heroineDossier.environment}
+  Dialogue Baseline: "${matchingNode?.dialogue || heroineDossier.signatureOpeningDialogue}"
+- MANDATORY ACT I SHAPING (WITTY BANTER & SENSUAL TENSION):
+  1. Write in vivid, contemporary adult graphic-novel prose with sharp wit, physical closeness, and palpable sensual tension.
+  2. Keep ${startingHeroine.split(" ")[0]}'s spoken dialogue playful, teasing, and natural.
+  3. Prefix the 4 "opening_choices" with "[Heart]: ", "[Bold]: ", "[Cool]: ", and "[Dom]: ".`
       : "";
 
     const openingChoiceDirective = buildDynamicChoiceDirective({
@@ -823,7 +851,10 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
           genre: storyContext?.genre,
         }),
         initial_quest: heroineDossier.initialQuest,
-        system_announcement: `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`,
+        system_announcement:
+          storyContext?.id === "ash-and-velvet"
+            ? `[412 MAPLEWOOD: Attic Sanctuary Room Lease Active • Welcome to Redbridge, ${playerProfile.name}.]`
+            : `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`,
         plausibility: 80,
         plausibility_tier: "Stable",
       };
@@ -852,8 +883,10 @@ Generate the dynamic opening prologue according to the instructions. Ensure all 
       responseData.initial_quest.status = "active";
     }
     responseData.system_announcement =
-      responseData.system_announcement ||
-      `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`;
+      storyContext?.id === "ash-and-velvet"
+        ? `[412 MAPLEWOOD: Attic Sanctuary Room Lease Active • Welcome to Redbridge, ${playerProfile.name}.]`
+        : responseData.system_announcement ||
+          `[SYSTEM: Dimensional synchronization complete. Administrator Protocol engaged. Welcome to Astra Continent, ${playerProfile.name}.]`;
     if (responseData.scene_setup) {
       responseData.scene_setup = sanitizeVisualNovelProse(responseData.scene_setup);
     }
