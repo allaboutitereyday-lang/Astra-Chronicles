@@ -421,6 +421,53 @@
           "title": "412 Maplewood Tenant"
         }
       }
+    },
+    {
+      "id": "av_tina_stairwell_crash",
+      "title": "3:20 PM — The Attic Landing Collision",
+      "speaker": "Tina Smith",
+      "location": "Upstairs Hallway & Shared Bath",
+      "sceneSetup": "Heading up the narrow second-floor landing toward your attic stairs at 3:20 PM, you hear light, hurried footsteps sprinting around the blind corner. Spirited 19-year-old Tina Smith—barefoot in a cropped tee and a dangerously short pleated skirt—rounds the banister at full speed while trying to sneak a stash of snacks and a borrowed bottle upstairs before Jill spots her. She crashes chest-first into you, loses her footing, and tumbles backward onto the hallway runner rug with her skirt flipped completely up around her waist, flashing her delicate lace panties as her bare feet and slender calves land tangled right across your lap.",
+      "dialogue": "\"Eek—! Oof! Hey, watch where you're—wait... oh god, don't just freeze there staring! My skirt got caught on your knee when we crashed, okay?! Stop looking right between my legs with that stupid grin and help me untangle my foot before Jill comes up the stairs—unless you're actually enjoying the view that much, new guy?\"",
+      "expressionKey": "neutral",
+      "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway.jpg",
+      "presentCompanions": [
+        "Tina Smith"
+      ],
+      "initialAffection": 18,
+      "choices": [
+        "[Heart]: 'Easy, you okay? Here—let me help you up before Jill catches you.' Catch her ankle gently and pull her upright.",
+        "[Flame]: 'Hard not to stare when you crash into me flashing lace like that.' Let your eyes linger unabashedly while holding her bare foot on your knee.",
+        "[Cool]: 'White lace, huh? Bold choice for sneaking around the hallway.' Smirk calmly without rushing to move your hands.",
+        "[Dom]: 'You ran into me, Tina. Hold still while I check if you twisted that ankle.' Wrap a firm hand around her bare arch and hold her gaze."
+      ],
+      "initialQuest": {
+        "id": "av_quest_first_week",
+        "title": "A Place of Your Own",
+        "description": "Settle into Clara Callahan's shared house at 412 Maplewood Ave, build chemistry with your housemates, and pull together $450 for your first week's rent.",
+        "type": "scenario",
+        "difficulty": "E",
+        "status": "active",
+        "objectives": [
+          {
+            "text": "Navigate your opening collision with Tina Smith in the Upstairs Hallway",
+            "completed": false
+          },
+          {
+            "text": "Settle into the Attic Sanctuary Room and meet the other housemates around 412 Maplewood",
+            "completed": false
+          },
+          {
+            "text": "Earn extra cash or deepen housemate trust before Friday night in Redbridge",
+            "completed": false
+          }
+        ],
+        "rewards": {
+          "exp": 100,
+          "gold": 150,
+          "title": "412 Maplewood Tenant"
+        }
+      }
     }
   ],
   "companions": [

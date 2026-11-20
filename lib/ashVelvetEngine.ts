@@ -553,6 +553,10 @@ export function createInitialAshVelvetState(
     timeSlot = "AFTER_MIDNIGHT";
     clockLabel = "1:15 AM";
     initialVice = 15;
+  } else if (startingNodeId === "av_tina_stairwell_crash") {
+    timeSlot = "AFTERNOON";
+    clockLabel = "3:20 PM";
+    initialVice = 0;
   }
 
   return {

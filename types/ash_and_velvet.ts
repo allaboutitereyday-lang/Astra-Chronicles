@@ -300,7 +300,7 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     bedroomLocation: "Clara's Master Bedroom (Room 101)",
     roomLabel: "Room 101",
     accentHex: "#F59E0B",
-    startingMeters: { affection: 18, lust: 14, submission: 32, trust: 26, jealousy: 5, sensitivity: 12 },
+    startingMeters: { affection: 18, lust: 14, submission: 10, trust: 26, jealousy: 5, sensitivity: 12 },
     secretBio:
       "Keeps a stack of overdue mortgage notices hidden inside her den desk—she refuses to let anyone see her cry until someone finally takes care of her instead of leaning on her.",
     preferredPersonalities: ["Stoic Pragmatist", "Gentle Protector", "Chivalrous Guardian", "Quiet Protector"],
@@ -559,8 +559,15 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
     preferredApproaches: ["RAW_EDGE", "SMOOTH_CHARM"],
     gazeReactionTell:
       "She catches you staring and arches her back with a breathless, conspiratorial grin—deliberately leaning closer to steal your attention right in front of Jill.",
-    kinkDynamicSummary: "Voyeuristic Thrill-Seeker • Sister Rivalry, Hair-Pulling, Risk of Getting Caught & Dirty Talk",
+    kinkDynamicSummary: "Voyeuristic Thrill-Seeker • Footplay, Sister Rivalry, Hair-Pulling, Risk of Getting Caught & Dirty Talk",
     kinks: [
+      {
+        name: "Footplay & Barefoot Teasing",
+        intensity: "Core Fetish",
+        description:
+          "Teasing you with her bare feet under the table or on the sofa, and having her arches, ankles, and toes held, massaged, or kissed while she squirms.",
+        triggerKeywords: ["foot", "feet", "toes", "barefoot", "sole", "arch", "ankle", "footplay", "step on"],
+      },
       {
         name: "Risk of Getting Caught & Sister Rivalry",
         intensity: "Core Fetish",
