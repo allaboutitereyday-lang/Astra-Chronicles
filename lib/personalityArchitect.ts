@@ -660,6 +660,7 @@ export interface DynamicChoiceContext {
   turnsInScene?: number;
   recentHistory?: { speaker: string; text: string }[];
   lastPlayerAction?: string;
+  speakerKnowsPlayerName?: boolean;
 }
 
 function resolveDefaultNextLocations(currentLoc: string, storyId?: string, role?: string): [string, string] {
@@ -835,7 +836,11 @@ CRITICAL PACING & STORY PROGRESSION RULES FOR ALL 4 CHOICES:
    - CHOICE 3 [${tag3}] (High-Stakes Action / Wager / Hands-On ${cleanRole} Flair):
      Take a bold physical action, wager, or hands-on ${cleanRole} move right here in ${cleanLocation} (${abilitiesSnippet}) that visibly shifts the stakes or dynamic.
    - CHOICE 4 [Move/Transition] (Step Out to Next Location / Advance to Next Scene Phase):
-     Offer a clear, natural transition out of ${cleanLocation} toward ${nextLoc1} or ${nextLoc2}${otherHeroineFirst ? ` (or to check on ${otherHeroineFirst})` : ""} whenever the player is ready to move the story to its next setting.
+     Offer a clear, natural transition out of ${cleanLocation} toward ${nextLoc1} or ${nextLoc2}${otherHeroineFirst ? ` (or to check on ${otherHeroineFirst})` : ""} whenever the player is ready to move the story to its next setting.${
+       ctx.speakerKnowsPlayerName === false && !ctx.isProtagonistAlone
+         ? `\n   - FIRST-MEETING SELF-INTRODUCTION MANDATE (NAME UNKNOWN TO ${speakerFirstName.toUpperCase()}): Because ${speakerFirstName} does NOT yet know ${ctx.playerName}'s name, at least TWO of the 4 choices (specifically CHOICE 1 and CHOICE 2) MUST include ${ctx.playerName.trim().split(/\s+/)[0] || ctx.playerName} naturally introducing themselves by name ('I'm ${ctx.playerName.trim().split(/\s+/)[0] || ctx.playerName}...') and sharing a brief introductory detail alongside their spoken response!`
+         : ""
+     }
 2. INCLUDE SPOKEN DIALOGUE IN SINGLE QUOTES ('...'): Whenever ${ctx.playerName} speaks in a choice, write their actual spoken line in single quotes ('...'). Do NOT escape apostrophes with a backslash (\') inside JSON strings; write normal apostrophes ('Don't', 'We're').
 3. USE FIRST NAMES & NATURAL PROSE ONLY: Refer to ${ctx.activeSpeaker} simply as "${speakerFirstName}" and refer to locations naturally ("${cleanLocation}", "${nextLoc1}"). Never paste full character names or parenthetical UI labels into choices!
 

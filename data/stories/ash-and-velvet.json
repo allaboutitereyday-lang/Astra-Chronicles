@@ -192,7 +192,7 @@
       "speaker": "Clara Callahan",
       "location": "Clara's Kitchen & Living Room",
       "sceneSetup": "You arrive rain-soaked at 2:14 AM to rent the cheap attic room. The scent of bourbon and jasmine tea mingles with the damp air as you step inside. Landlady Clara Callahan (41, curvy, auburn hair, emerald eyes, wearing a fitted cream ribbed V-neck knit sweater, emerald pendant necklace, and high-waisted tan trousers) leans across the kitchen island, spiking your coffee with her private top-shelf bourbon while sizing you up with warm, dangerous amusement.",
-      "dialogue": "\"Mmm, looks like the rain delivered a soaked stray right to my porch at two in the morning. Sit down before you drip all over my hardwood, sweetheart—I spiked your coffee with top-shelf bourbon, and my eyes are up here, even if this sweater's V-neck is doing all the talking. Drink up while you're warm, then tell me whether you're going to be my favorite tenant or my favorite headache.\"",
+      "dialogue": "\"Mmm, looks like the rain delivered a soaked stray right to my porch at two in the morning. Sit down before you drip all over my hardwood, sweetheart—I spiked your coffee with top-shelf bourbon, and my eyes are up here, even if this sweater's V-neck is doing all the talking. Drink up while you're warm, then give me your name and tell me what brings you to Redbridge—and whether you're going to be my favorite tenant or my favorite headache.\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/shared_kitchen.jpg",
       "presentCompanions": [
@@ -200,10 +200,10 @@
       ],
       "initialAffection": 18,
       "choices": [
-        "[Heart]: I don't mind at all. Thank you, Clara.",
-        "[Bold]: Actually, I prefer my coffee black. Any chance for a quick tour?",
-        "[Cool]: Bourbon, huh? Looks like you know how to welcome a new tenant.",
-        "[Dom]: Let's skip the tour and discuss the rent. Cash is best, isn't it?"
+        "[Heart]: 'Appreciate the warm welcome, Clara. Tell you my name and story over that cup?' Take the spiked coffee with a grateful smile and introduce yourself.",
+        "[Bold]: 'If the landlady always greets new tenants like this, I'm definitely staying. Let me introduce myself properly—then how about a late-night tour?' Meet her eyes over the rim of the mug.",
+        "[Cool]: 'Bourbon at two in the morning? You know how to make a guy feel at home, Clara.' Lean against the kitchen island and tell her your name and how you found Room 301.",
+        "[Dom]: 'Let's get introductions and the rent terms straight first, Clara. Cash in hand keeps things simple, doesn't it?' Step up to the island and hold her gaze."
       ],
       "initialQuest": {
         "id": "av_quest_first_week",
@@ -239,7 +239,7 @@
       "speaker": "Brianna Chen",
       "location": "Upstairs Hallway & Shared Bath",
       "sceneSetup": "Hot shower steam fills the narrow upstairs hallway, the air thick with the scent of jasmine and lavender. Brianna Chen (24, petite curvy East Asian, glossy raven bob, gold hoop earrings, wicked cat-eye grin) swings the bathroom door open and collides flush against your chest wearing nothing but a dangerously short damp white bath towel wrapped tight around her curves—and instead of backing off, she backs you against the doorframe with shameless, teasing heat.",
-      "dialogue": "\"Well, well—Clara didn't mention the new attic roommate actually fills out a soaked t-shirt. Careful with those hands, rookie, this towel's hanging on by a wish and a prayer... unless catching me fresh out of the shower was your grand plan all along? Either way, you're in my light, handsome, so talk fast or step closer.\"",
+      "dialogue": "\"Well, well—Clara didn't mention the new attic roommate actually fills out a soaked t-shirt. Careful with those hands, rookie, this towel's hanging on by a wish and a prayer... unless catching me fresh out of the shower was your grand plan all along? I'm Brianna, by the way—now give me a name to go with those eyes, handsome, and talk fast or step closer.\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway_bath.jpg",
       "presentCompanions": [
@@ -247,10 +247,10 @@
       ],
       "initialAffection": 14,
       "choices": [
-        "[Heart]: No worries, Brianna. Nice meeting you.",
-        "[Bold]: Morning, sunshine. Sweet dreams?",
-        "[Cool]: Hi Brianna. You might want to grab a robe out there.",
-        "[Dom]: Since you're practically naked, why don't you make it up to me?"
+        "[Heart]: 'Sorry about the collision, Brianna—just moved into the attic upstairs.' Introduce yourself by name with an easy smile and steady her arm.",
+        "[Bold]: 'If this is the morning hallway greeting, I picked the right house, Brianna.' Introduce yourself by name with a slow grin without backing up an inch.",
+        "[Cool]: 'Nice to meet you, Brianna. You might want to hang onto that towel before the draft catches it.' Give her your name calmly while leaning against the wall.",
+        "[Dom]: 'You're the one who barrelled into me in nothing but a towel, Brianna. Remember my name—because I'm not moving until I'm ready.' Hold her gaze firmly."
       ],
       "initialQuest": {
         "id": "av_quest_first_week",
@@ -286,7 +286,7 @@
       "speaker": "Hannah Lindqvist",
       "location": "Velvet Static Dive Bar",
       "sceneSetup": "Magenta neon and low bass pulse through Velvet Static Dive Bar, the air thick with the scent of whiskey and cigarette smoke. Your new housemate Hannah Lindqvist (23, tall Scandinavian blonde, pearl choker, silver headphones around her neck, slouchy off-shoulder black ribbed sweater and crimson plaid pleated mini-skirt with a silver belt chain) presses her bare thigh against yours on the barstool, tracing the rim of your whiskey glass and daring you into a loser-does-anything bet before you've even unpacked.",
-      "dialogue": "\"You've got that 'just escaped a cage and forgot how good trouble tastes' look, attic boy. Come on, don't play shy with me—one shot, one game of darts, and the loser does whatever the winner asks back at 412 Maplewood after last call. So what's it gonna be, stud... are you in, or are you scared I'll win?\"",
+      "dialogue": "\"You've got that 'just escaped a cage and forgot how good trouble tastes' look, attic boy. I'm Hannah—and since we're living under the same roof now, you're gonna tell me your name and what you're running from over a real drink. One shot, one game of darts, and the loser does whatever the winner asks back at 412 Maplewood after last call. So what's your name, stud... and are you in, or are you scared I'll win?\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/neon_dive_bar.jpg",
       "presentCompanions": [
@@ -294,10 +294,10 @@
       ],
       "initialAffection": 16,
       "choices": [
-        "[Heart]: Sounds fun, Hannah. What kind of bet did you have in mind?",
-        "[Bold]: Absolutely. But I've got a feeling I'm not going to lose.",
-        "[Cool]: I'm not sure about betting, Hannah. But thanks for the invite.",
-        "[Dom]: I'll play along, but if I win, you have to do anything I say."
+        "[Heart]: 'Deal, Hannah—let me introduce myself first so you know who's buying the next round.' Tell her your name and clink your glass against hers.",
+        "[Bold]: 'You're on, Hannah. Remember my name, because I don't plan on losing tonight.' Introduce yourself with a confident smirk and pick up the darts.",
+        "[Cool]: 'Easy on the hustle, Hannah—let's start with names and one drink before we bet the house.' Introduce yourself smoothly on the barstool.",
+        "[Dom]: 'I'm in, Hannah. Let me tell you my name right now so you know what to call me when I win and collect after last call.' Lock eyes with her over the bar."
       ],
       "initialQuest": {
         "id": "av_quest_first_week",
@@ -333,7 +333,7 @@
       "speaker": "Chloe Bellamy",
       "location": "After-Hours Bourbon Lounge",
       "sceneSetup": "In a velvet booth at the After-Hours Bourbon Lounge, the smooth scent of aged oak and vanilla bourbon fills the air. Poised paralegal Chloe Bellamy (28, sculpted honey-tan hourglass, pearl pendant necklace, wearing a form-fitting off-shoulder striped knit top and high-waisted dark navy tailored trousers) realizes the stranger she just bought a neat bourbon for—and has been trading heated glances with for twenty minutes—is the new attic tenant moving in directly above her bedroom.",
-      "dialogue": "\"Wait... you're Clara's new attic tenant? So the guy I've been undressing with my eyes over neat bourbon for the last twenty minutes is sleeping directly above my ceiling tonight. That's a dangerous conflict of interest, Mr. Upstairs—care to tell me how quietly you walk after midnight, or should we negotiate our house rules right now?\"",
+      "dialogue": "\"Wait... you're Clara's new attic tenant? So the guy I've been undressing with my eyes over neat bourbon for the last twenty minutes is sleeping directly above my ceiling tonight. I'm Chloe Bellamy, Room 205—and since that's a dangerous conflict of interest, Mr. Upstairs, why don't you start by telling me your actual name and what you do before we negotiate our after-midnight house rules?\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/downtown_lounge.jpg",
       "presentCompanions": [
@@ -341,10 +341,10 @@
       ],
       "initialAffection": 14,
       "choices": [
-        "[Heart]: Chloe Bellamy, right? We're neighbors now, it seems.",
-        "[Bold]: Room 205, huh? I like the sound of that. Especially with a breathtaking view like you.",
-        "[Cool]: Chloe Bellamy. Nice to meet you. Guess we're neighbors now.",
-        "[Dom]: So, Room 205. I wonder if you've ever had a tenant you wanted to keep all to yourself."
+        "[Heart]: 'Pleasure to officially meet you, Chloe—looks like we're neighbors now.' Introduce yourself by name and share what brought you to 412 Maplewood.",
+        "[Bold]: 'Room 205, huh? Let me give you my name properly, Chloe, because you're already my favorite reason to move in.' Slide closer in the velvet booth.",
+        "[Cool]: 'Small world, Chloe. Here's my name and story—and I promise I walk quiet after midnight unless invited down.' Raise your bourbon glass to hers.",
+        "[Dom]: 'Let's get my name on the record first, Counselor—then you can tell me which house rules you're actually hoping I break.' Hold her gaze steadily."
       ],
       "initialQuest": {
         "id": "av_quest_first_week",
@@ -380,7 +380,7 @@
       "speaker": "Jill Smith",
       "location": "Clara's Late-Night Den",
       "sceneSetup": "Slipping downstairs at 1:15 AM, the scent of old books and dust mingles with the rich aroma of wine. You catch preppy 21yo older sister Jill Smith (wearing her yellow cable-knit sweater vest over a crisp white collared shirt, red plaid bow tie, and red plaid mini-skirt) and her bratty, spoiled 18yo younger sister Tina Smith (wearing an unbuttoned white short-sleeve button-down shirt slipping off one shoulder, a short navy-blue skirt, and black lace-top thigh-high stockings) raiding Clara's locked wine cabinet. Before Jill can panic, Tina catches your wrist and pulls you onto the velvet sofa right between both sisters to negotiate your silence.",
-      "dialogue": "\"Shh! Tina, stop tugging his shirt—if Clara hears us with her private reserve we're dead! Look, we were just borrowing one tiny bottle to celebrate Tina crashing for the weekend... sit down between us for five minutes, share a glass so you're an accomplice, and we'll owe you a very big favor.\"",
+      "dialogue": "\"Shh! Tina, stop tugging his shirt—if Clara hears us with her private reserve we're dead! Look, you're the new attic tenant, right? I'm Jill, and this little menace is my eighteen-year-old sister Tina. Tell us your name, sit down between us for five minutes to share a glass so you're an accomplice, and we'll owe you a very big favor.\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/claras_den.jpg",
       "presentCompanions": [
@@ -389,10 +389,10 @@
       ],
       "initialAffection": 20,
       "choices": [
-        "[Heart]: It's okay, Jill. I won't tell anyone. How about we share a bottle instead?",
-        "[Bold]: Well, well. Looks like we've got a couple of little vixens on our hands.",
-        "[Cool]: Hey, I'm just getting a glass of water. I didn't see anything.",
-        "[Dom]: Since you've got me between two gorgeous sisters, why don't you make it worth my while?"
+        "[Heart]: 'Your secret's safe with me, Jill. Let me introduce myself first—then pour me a glass.' Tell both sisters your name and settle onto the sofa between them.",
+        "[Bold]: 'Caught red-handed at one in the morning. Here's my name, ladies—now let's hear how big a favor we're talking about.' Drape an arm along the velvet sofa back.",
+        "[Cool]: 'Relax, Jill, I'm not snitching to Clara. Let me introduce myself properly while you uncork that bottle.' Give them your name with a calm smirk.",
+        "[Dom]: 'If I'm covering for both of you, you're going to learn my name and play by my rules tonight. Pour the glass, Jill—and Tina, behave.' Take command between the two sisters."
       ],
       "initialQuest": {
         "id": "av_quest_first_week",
@@ -428,7 +428,7 @@
       "speaker": "Tina Smith",
       "location": "Upstairs Hallway & Shared Bath",
       "sceneSetup": "Heading up the narrow second-floor landing toward your attic stairs at 3:20 PM, you hear light, hurried footsteps sprinting around the blind corner. Bratty, spoiled, mischievous 18-year-old Tina Smith—wearing a partially unbuttoned white button-down shirt slipping off one shoulder, a dangerously short navy-blue skirt, and sheer black lace-top thigh-high stockings (no shoes)—rounds the banister at full speed while sneaking a borrowed stash upstairs before her 21-year-old older sister Jill spots her. She crashes chest-first into you, loses her footing, and tumbles backward onto the hallway runner rug with her short navy-blue skirt flipped completely up around her waist, flashing her panties in classic ecchi fashion while her stocking-clad legs and feet land tangled right across your lap.",
-      "dialogue": "\"Eek—! Oof! Hey, watch where you're walking, you big idiot—wait... ugh, don't just freeze there staring! My skirt only flipped up because you stood in my way, okay?! Wipe that smug grin off your face and take your hands off my ankle before Jill comes up the stairs... unless you're actually trying to get an eyeful of a spoiled 18-year-old, new guy?\"",
+      "dialogue": "\"Eek—! Oof! Hey, watch where you're walking, you big idiot—wait... ugh, don't just freeze there staring! My skirt only flipped up because you stood in my way, okay?! Wipe that smug grin off your face and take your hands off my ankle before my sister Jill comes up the stairs... Wait, you're the new attic guy, aren't you? I'm Tina—what's your name anyway, and are you always this bold with a spoiled eighteen-year-old?\"",
       "expressionKey": "neutral",
       "bgImage": "/backgrounds/ash-and-velvet/upstairs_hallway.jpg",
       "presentCompanions": [
@@ -436,10 +436,10 @@
       ],
       "initialAffection": 18,
       "choices": [
-        "[Heart]: 'Easy, you okay? Here—let me help you up before Jill catches you.' Catch her ankle gently and pull her upright.",
-        "[Flame]: 'Hard not to stare when you crash into me in a short navy skirt like that.' Let your eyes linger unabashedly while holding her stocking-clad foot on your knee.",
-        "[Cool]: 'You're the one sprinting around blind corners, brat.' Smirk calmly without rushing to move your hands.",
-        "[Dom]: 'Watch your mouth, Tina. You ran into me—now hold still until I say you can get up.' Wrap a firm hand around her ankle to put the spoiled brat in her place."
+        "[Heart]: 'Easy, Tina, you okay? Let me introduce myself and help you up before Jill catches you.' Tell her your name and catch her ankle gently to pull her upright.",
+        "[Flame]: 'Hard not to stare when you crash into me in a short navy skirt like that, Tina.' Introduce yourself by name while letting your hand linger on her stocking-clad ankle.",
+        "[Cool]: 'You're the one sprinting around blind corners, brat.' Tell her your name with a calm smirk without rushing to move your hands.",
+        "[Dom]: 'Watch your mouth, Tina. Learn my name right now—you ran into me, and you'll hold still until I say you can get up.' Wrap a firm hand around her ankle to put the spoiled brat in her place."
       ],
       "initialQuest": {
         "id": "av_quest_first_week",

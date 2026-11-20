@@ -1411,7 +1411,11 @@ You are speaking as "${p.name}". The LLM output MUST embody their exact psycholo
    - HUMAN-LIKE SPOKEN DIALOGUE (MANDATORY): Make every line of "${p.name}"'s spoken dialogue ("...") sound decipherable, natural, and genuinely alive. Keep their exact personality and attitude, but express intelligence, pride, grit, or coolness through subtext, tone, and sharp timing—NEVER through verbose thesaurus words, multi-clause academic monologues, or technical jargon dumps.
 2. AUTHORIZED SPOKEN TERMS OF ADDRESS (Affection: ${affectionLevel}% - Tier: ${addressTier.toUpperCase()} - Protagonist Gender: ${playerGender || "Male"}):
    - In spoken quotes ("..."), ${p.name} may address the protagonist using: ${allowedTerms.map((t) => `"${t}"`).join(", ")}${knowsPlayerName ? ` or "${playerName}"` : ` (NEVER USE "${playerName}" - NAME IS UNKNOWN)`}.
-   - FORBIDDEN: Do NOT jump to higher affection terms (no unearned pet names or fawning).
+   - FORBIDDEN: Do NOT jump to higher affection terms (no unearned pet names or fawning).${
+     !knowsPlayerName
+       ? `\n   - FIRST-MEETING NAME INQUIRY (MANDATORY): Because ${p.name} does NOT yet know the protagonist's name, she must naturally ask for their name (or who they are / what their story is) in her own signature voice and demeanor during her spoken dialogue this turn—do NOT passively call them "stranger" forever without asking.`
+       : ""
+   }
 3. HARD VOICE GUARDS:
 ${p.hardNegativeRules.map((r) => `   - ${r}`).join("\n")}
 ${p.antiSycophancyGuardrails.map((g) => `   - ${g}`).join("\n")}

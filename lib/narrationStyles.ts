@@ -127,22 +127,28 @@ export function getNarrativeDepthDirective(depth: NarrativeDepthMode = "deep_nov
   }
 
   if (depth === "expansive") {
-    return `--- NARRATIVE DEPTH & RHYTHM: [DYNAMIC SCENE & DIALOGUE CADENCE (3–4 PARAGRAPHS)] ---
-- Unfold the turn naturally across 3 to 4 organic paragraphs (approx. 240–420 words) separated by clean line breaks (\\n\\n).
-- Weave spoken dialogue ("...") directly into physical business, subtle micro-expressions, and live environmental interaction—never stop the scene dead for static internal essays.`;
+    return `--- NARRATIVE DEPTH & RHYTHM: [DYNAMIC OOC.AI SCENE & MULTI-BEAT DIALOGUE CADENCE (3–5 PARAGRAPHS)] ---
+- Unfold the turn naturally across 3 to 5 organic paragraphs (approx. 260–450 words) separated by clean line breaks (\\n\\n), mixing rich sensory paragraphs with occasional punchy 1-line micro-beats for comedic or dramatic timing.
+- Break the active character's reaction into 2 to 3 distinct spoken dialogue beats ("...") separated by physical business, micro-expressions, and live environmental interaction—never lump all speech into a single static monologue.`;
   }
 
-  return `--- NARRATIVE DEPTH & RHYTHM: [ELASTIC OOC.AI NOVELISTIC PERFORMANCE (DYNAMIC PACING)] ---
-1. ELASTIC SCENE RHYTHM — NEVER PAD WITH FORMULAIC ESSAY FILLER:
-   - Adapt paragraph count and pacing organically to the moment (typically **3 to 5 rich, tight paragraphs**, expanding to 6 only for major boss climaxes, arrivals, or emotional turning points; tightening to 2–3 punchy paragraphs during rapid-fire banter or split-second combat callouts).
-   - NEVER follow a robotic 4-step school-essay template ("Paragraph 1 weather recap -> Paragraph 2 micro-expression checklist -> Paragraph 3 speech -> Paragraph 4 summary hook"). Jump straight into the live friction, physical consequence, or spoken reaction that feels most immediate and human!
-2. SHOW SUBTEXT THROUGH PHYSICAL BUSINESS, NOT EXPLANATION:
-   - Real characters do things with their hands and bodies while talking—tightening a shield strap, checking a doorway, rationing water, nursing a bruised knuckle, or refusing eye contact. Let subtext breathe without explaining the joke or spelling out their psychology to the reader.
-3. AUTONOMOUS CHARACTER AGENCY & ANTI-ECHO RULE:
+  return `--- NARRATIVE DEPTH & RHYTHM: [ELASTIC OOC.AI NOVELISTIC PERFORMANCE & MULTI-BEAT CADENCE] ---
+1. ELASTIC STACCATO & MULTI-BEAT PACING (MIX SENSORY PARAGRAPHS WITH 1-LINE PUNCHES):
+   - Adapt paragraph count and pacing organically to the moment (typically **4 to 7 paragraphs**, mixing full sensory paragraphs with crisp 1-to-2 sentence staccato beats for sudden freezes, flushes, or deadpan comedic/dramatic timing—e.g., "Then the flush hits." or "Like kiss you.\\n\\nOr break your nose.\\n\\nIt's genuinely unclear which.").
+   - NEVER follow a robotic 4-step school-essay template ("Paragraph 1 weather recap -> Paragraph 2 micro-expression checklist -> Paragraph 3 single speech -> Paragraph 4 summary hook"). Jump straight into the live friction, physical consequence, or somatic reaction that feels most immediate and human!
+2. MULTI-STAGE INTERRUPTED DIALOGUE (FALSE STARTS, VOCAL CRACKS & COMPOSURE RECOVERY):
+   - Do NOT dump a character's entire verbal response into one polished, uninterrupted paragraph of speech.
+   - Instead, stage **2 to 4 distinct spoken dialogue beats** ("...") across the turn separated by physical business and micro-reactions.
+   - When a heroine is caught off-guard, teased, flustered, or emotionally pressured, show the live progression: (a) an initial freeze, narrowed gaze, or false start ("...", "W—Wait—", "You—"), (b) involuntary physical leakage (fingers tightening on a glass, chair scraping, clearing her throat, heat creeping up her neck), (c) rallying her signature outer armor/authority to regain control, and (d) a lingering parting tell or glance back.
+3. "ARMOR VS. UNDERCURRENT" PSYCHOLOGICAL CONTRAST (GAP MOE):
+   - Pit the heroine's public persona and guard (ice-cold professional, proud heiress, bratty tease, composed landlady, battle-hardened vanguard) against the raw emotional undercurrent leaking through her posture, pulse, and eyes. She never drops her personality into generic fawning—she fights to keep her armor up even as her physical tells betray her.
+4. WRY, OBSERVANT NARRATOR WIT & BYSTANDER / WORLD ECHOES:
+   - Write narrative prose with sharp, observant, contemporary wit and zero stiff AI clichés. When in a shared or public space (a café, kitchen, hallway, dive bar, guild hall), let nearby bystanders or the ambient room react to audacious moves to amplify the social stakes.
+   - Weave organic callbacks to earlier props, broken items, inside jokes, nicknames, or promises from the Chronicle Memory & Callback Ledger.
+5. AUTONOMOUS CHARACTER AGENCY, FIRST-MEETING CURIOSITY & NATURAL ENDING MOMENTUM:
    - NEVER repeat or paraphrase the player's own dialogue/action back to them before reacting.
-   - Characters have their own immediate agendas, doubts, humor, and boundaries—they interrupt, tease, push back, ask unexpected questions, or change the subject when something matters to them.
-4. NATURAL ENDING MOMENTUM:
-   - End on an organic beat—an unspoken gesture, an interrupted silence, a sharp question, or an imminent threat—rather than a repetitive "What will you do next?" narrator summary.`;
+   - Characters have their own immediate agendas, doubts, humor, and boundaries—if they don't even know the protagonist's name or story yet, they naturally ask for it in their own voice!
+   - End on an organic live beat—a lingered glance, an unspoken gesture, a sharp in-character question, or a physical standoff—never a meta "What will you do next?" summary.`;
 }
 
 /**

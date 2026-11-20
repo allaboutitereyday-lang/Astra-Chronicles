@@ -142,9 +142,18 @@ export function buildAutonomousSceneSubtext(params: {
   location: string;
   labyrinthState?: LabyrinthState | null;
   turnNumber?: number;
+  speakerKnowsPlayerName?: boolean;
+  speakerKnownFacts?: string[];
 }): string {
-  const { presentCompanions, activeSpeakerName, location, labyrinthState, turnNumber = 1 } =
-    params;
+  const {
+    presentCompanions,
+    activeSpeakerName,
+    location,
+    labyrinthState,
+    turnNumber = 1,
+    speakerKnowsPlayerName = true,
+    speakerKnownFacts = [],
+  } = params;
   if (!presentCompanions || presentCompanions.length === 0) {
     return `--- SOLITUDE SCENE LOCK ---
 No companions are physically present in ${location}. Focus strictly on tactile atmosphere, environmental tension, and the protagonist's immediate physical reality.`;
@@ -185,9 +194,16 @@ No companions are physically present in ${location}. Focus strictly on tactile a
     const isPrimary =
       fp.name.toLowerCase() === String(activeSpeakerName || "").toLowerCase();
 
+    const firstMeetingInquiryClause =
+      isPrimary && !speakerKnowsPlayerName
+        ? `\n   - FIRST-MEETING INTRODUCTION & NAME CURIOSITY (MANDATORY): She still doesn't know the protagonist's name (or full story) and naturally prompts him for his name and an introduction in her own signature attitude during her dialogue.`
+        : isPrimary && speakerKnownFacts.length === 0 && turnNumber <= 3
+          ? `\n   - EARLY ACQUAINTANCE CURIOSITY: She knows his name, but still knows almost nothing about his background or what brought him here—she naturally asks a sharp, in-character question about his story.`
+          : "";
+
     return `${idx + 1}. ${fp.name} (${fp.archetype})${isPrimary ? " [PRIMARY SCENE FOCUS]" : " [IN ROOM]"} — Affection: ${affection}%
    - Autonomous Subtext & Agenda: ${immediateAgenda}
-   - Live Physicality: Ground her speech in ${physicalHabit}. Never reuse the exact same prop gesture from the last message.`;
+   - Live Physicality: Ground her speech in ${physicalHabit}. Never reuse the exact same prop gesture from the last message.${firstMeetingInquiryClause}`;
   });
 
   return `--- AUTONOMOUS CHARACTER SUBTEXT & LIVE SCENE BLOCKING (PRESENT CAST ONLY) ---
@@ -298,6 +314,9 @@ export async function executeOocTwoPassTurn(params: {
   specialEventDirective?: string;
   knowledgeGateDirective?: string;
   earnedRomanceDirective?: string;
+  plotMemories?: string[];
+  pinnedMemories?: string[];
+  speakerKnownFacts?: string[];
   turnNumber: number;
 }): Promise<{
   responseData: any;
@@ -338,6 +357,8 @@ export async function executeOocTwoPassTurn(params: {
     location: params.location,
     labyrinthState: params.playerProfile?.labyrinthState || null,
     turnNumber: params.turnNumber,
+    speakerKnowsPlayerName: params.speakerKnowsPlayerName,
+    speakerKnownFacts: params.speakerKnownFacts || [],
   });
 
   const speakerLock = buildActiveSpeakerPersonaLock(
@@ -356,12 +377,62 @@ export async function executeOocTwoPassTurn(params: {
 ================================================================================`
     : "";
 
+  const pinnedMemList: string[] = Array.isArray(params.pinnedMemories)
+    ? params.pinnedMemories.filter((m): m is string => typeof m === "string" && m.trim().length > 0)
+    : Array.isArray(params.playerProfile?.pinnedMemories)
+      ? params.playerProfile.pinnedMemories.filter((m: any): m is string => typeof m === "string" && m.trim().length > 0)
+      : [];
+  const plotMemList: string[] = Array.isArray(params.plotMemories)
+    ? params.plotMemories.filter((m): m is string => typeof m === "string" && m.trim().length > 0).slice(-18)
+    : [];
+
+  const companionRelationshipLedgerLines = (params.presentCompanions || []).map((c: any) => {
+    const cName = c?.name || "Companion";
+    const cSentiment = c?.currentSentiment || c?.lastSentiment || null;
+    const dynMems = Array.isArray(c?.dynamicCoreMemories)
+      ? c.dynamicCoreMemories
+          .slice(-4)
+          .map((m: any) => (typeof m === "string" ? m : m?.title ? `${m.title}: ${m.summary || ""}` : ""))
+          .filter(Boolean)
+      : [];
+    const parts = [
+      `  * ${cName} (Favor: ${c?.affection ?? 15}%${c?.guardTier ? ` | Guard: ${c.guardTier}` : ""})`,
+    ];
+    if (cSentiment) {
+      parts.push(`    - Latest Internal Sentiment Toward ${playerFirstName}: "${cSentiment}"`);
+    }
+    if (dynMems.length > 0) {
+      parts.push(`    - Shared Core Memories with ${playerFirstName}: ${dynMems.join(" | ")}`);
+    }
+    return parts.join("\n");
+  });
+
+  const longTermMemoryLedgerBlock = `--- 4-TIER LONG-TERM CHRONICLE MEMORY, CALLBACK PROPS & RELATIONSHIP CONTINUITY ---
+${
+  pinnedMemList.length > 0
+    ? `[TIER 1 — PINNED CORE CANON FACTS (PERMANENT & NON-NEGOTIABLE)]:\n${pinnedMemList
+        .map((pm, idx) => `  ★ [Pinned Canon #${idx + 1}]: ${pm}`)
+        .join("\n")}\n\n`
+    : ""
+}${
+  companionRelationshipLedgerLines.length > 0
+    ? `[TIER 2 — PRESENT HEROINE EMOTIONAL STATE & SHARED CORE MEMORIES]:\n${companionRelationshipLedgerLines.join("\n")}\n\n`
+    : ""
+}[TIER 3 — EPISODIC STORY ARCHIVE & RUNNING CALLBACK LEDGER (PROPS, GAGS, NICKNAMES & PROMISES)]:
+${
+  plotMemList.length > 0
+    ? plotMemList.map((m, idx) => `  [Chronicle Beat #${idx + 1}]: ${m}`).join("\n")
+    : "  * Opening chapter — first mutual encounter in progress."
+}
+- CALLBACK & PROP CONTINUITY MANDATE: Characters and the narrator MUST remember earlier interactions, broken props, inside jokes, nicknames used, favors owed, and scheduled appointments from the ledger above (e.g., casually noting "glass number two" if an earlier glass was broken, or recalling a nickname ${playerFirstName} used). Never treat a turn as a blank slate!`;
+
   const conditionalWorldBlocks = [
     params.worldSpecificDirective,
     params.combatTelemetryDirective,
     params.specialEventDirective,
     params.knowledgeGateDirective,
     params.earnedRomanceDirective,
+    longTermMemoryLedgerBlock,
   ]
     .filter((b) => Boolean(b && b.trim()))
     .join("\n\n");
@@ -370,7 +441,7 @@ export async function executeOocTwoPassTurn(params: {
   // PASS 1 SYSTEM PROMPT: LEAN, PURE NOVELIST & CHARACTER ACTOR (ZERO JSON!)
   // =========================================================================
   const pass1SystemPrompt = `You are an elite interactive novelist and character actor running "${params.storyTitle}" (${params.settingName}).
-Write with the effortless human immediacy, psychological subtext, dry wit, and grounded physical presence of top-tier roleplay fiction—NEVER like an AI game-master summarizing a checklist.
+Write with the effortless human immediacy, multi-stage dialogue cadence, "Armor vs. Undercurrent" psychological contrast, wry narrator wit, and grounded physical presence of top-tier OOC.ai roleplay fiction—NEVER like a stiff AI game-master summarizing a checklist.
 
 --- ACTIVE SCENE GROUNDING ---
 - Location: ${params.location}${params.timeOfDay ? ` (${params.timeOfDay})` : ""}
@@ -396,15 +467,16 @@ ${conditionalWorldBlocks}
 ${speakerLock}
 ${directorBlock}
 
---- CRITICAL OUTPUT FORMAT (PLAIN UNESCAPED TEXT — DO NOT OUTPUT JSON!) ---
+--- CRITICAL OUTPUT FORMAT (CLEAN NOVEL PROSE — DO NOT OUTPUT JSON OR SCRIPT SYMBOLS!) ---
 - Output ONLY pure story prose and spoken dialogue in standard double quotes ("...").
-- NEVER output JSON braces, markdown code fences, asterisks (*), stat blocks, choice lists, or bracketed headers unless requested below.
+- NEVER output JSON braces, markdown code fences, asterisks (*), chat icons (💬), pipe prefixes (Name｜), or corner brackets (「...」).
+- Interleave 2 to 4 distinct spoken dialogue segments ("...") with somatic micro-reactions, physical business, and punchy staccato beats separated by clean double line breaks (\\n\\n).
 - NEVER write spoken lines or unprompted decisions for ${playerFirstName} inside the world/NPC scene response!`;
 
   const cleanHistory = buildCleanConversationHistory(
     params.recentHistory,
     playerName,
-    16
+    24
   );
 
   const pass1UserPrompt = params.isCustomAction
@@ -599,7 +671,11 @@ RULES:
    - Choice 2: "[${tag2}]: ..." or "[Banter/Deepen]: ..." (linger to probe subtext, tease, or share a real human moment with the speaker)
    - Choice 3: "[${tag3}]: ..." (bold physical, environmental, wager, or signature skill play)
    - Choice 4: "[Move/Transition]: ..." (lead toward a new room, floor, or area when ready)
-   - PERSONALITY & PLAYSTYLE ALIGNMENT RULE: Shape BOTH the tactical/interpersonal decision AND the spoken quote ('...') of all 4 options around ${playerFirstName}'s chosen "${personaVoice.personaTitle}" worldview, custom traits ([${personaVoice.traitsList.join(", ")}]), and emergent playstyle (${dominantTendencyLabel}).
+   - PERSONALITY & PLAYSTYLE ALIGNMENT RULE: Shape BOTH the tactical/interpersonal decision AND the spoken quote ('...') of all 4 options around ${playerFirstName}'s chosen "${personaVoice.personaTitle}" worldview, custom traits ([${personaVoice.traitsList.join(", ")}]), and emergent playstyle (${dominantTendencyLabel}).${
+     !params.speakerKnowsPlayerName && presentNamesList.length > 0
+       ? `\n   - FIRST-MEETING SELF-INTRODUCTION RULE (CRITICAL): Because ${params.activeSpeakerName || presentNamesList[0]} does NOT yet know ${playerFirstName}'s name, Choice 1 and Choice 2 MUST include ${playerFirstName} naturally introducing himself by name ('I'm ${playerFirstName}...') and sharing a brief introductory detail as part of his spoken response!`
+       : ""
+   }
    - CONVERSATIONAL VOICE RULE (CRITICAL): Tune the vocabulary, contractions, casualness, slang, bluntness, or teasing of every single-quoted line ('...') to match how ${playerFirstName} actually talks in PLAYER ACTION / PROTAGONIST EXECUTION and the Live Player Speaking Style samples above! Use natural contractions ('I'm', 'don't', 'you're', 'let's') and everyday human rhythm. NEVER write stiff, overly proper, courtroom, or robotic RPG dialogue in choices (e.g., BANNED: 'State your terms plainly', 'I shall comply', 'Allow me to inquire', 'Let us proceed'). Do NOT escape apostrophes with \\' inside JSON strings.
 5. "system_updates.quest_updates": Evaluate PLAYER ACTION, PROTAGONIST EXECUTION, and SCENE PROSE against EVERY PENDING objective in ACTIVE SCENARIOS above (including social/romance milestone objectives, wagers, investigations, location arrivals, or combat). Be generous when the player's action reasonably fulfills the spirit of an objective!
    - When one or more PENDING objectives are fulfilled on an active quest, push an object to "system_updates.quest_updates": { "quest_id": "<exact Quest ID>", "status": "active" | "completed" | "failed", "completed_objective_indices": [0], "progress_note": "Short 1-sentence system log" }.
@@ -609,7 +685,7 @@ RULES:
    - Set "knowsClass": true ONLY if ${playerFirstName} stated or visibly demonstrated their class/conduit ("${params.playerProfile?.role || "Adventurer"}") this turn.
    - Set "knowsOrigin": true ONLY if ${playerFirstName} disclosed their Regressor / System / Ex-Ranker origin this turn.
    - Set "learned_fact": a concise 1-sentence personal fact if ${params.activeSpeakerName || "the companion"} learned something genuinely new about ${playerFirstName} this turn (background, promise, taste, specialty, or goal), else null.
-7. "state_updates.new_plot_memory": Populate with a concise 1-sentence canon summary whenever a notable character beat, promise, confession, wager, or plot progression occurs this turn, else null.
+7. "state_updates.new_plot_memory": Populate with a concise 1-sentence canon summary or callback anchor whenever a notable character beat, prop incident (e.g., breaking a glass, spilling a drink), nickname/tease used, promise, wager, appointment time/place, or plot progression occurs this turn, else null.
 ${isStarfall
       ? `8. "starfall_updates": Include { "floor_cleared": boolean (true ONLY if all waves on the floor are cleared and the Transfer Ring is active—never true while Wave Y+1 remains), "hero_casualties": [], "star_shards_earned": 0, "master_trust_delta": number (-5..+5), "master_command": string | null }.
 9. Align "suggested_choices" and "state_updates.current_location" strictly with the locked enemy pack, wave number, or Transfer Ring telemetry below—never invent off-list monster names!${starfallPass2Telemetry}`

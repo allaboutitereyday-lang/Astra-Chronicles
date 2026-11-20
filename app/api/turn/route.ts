@@ -1030,6 +1030,7 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
         turnsInScene: Array.isArray(recentHistory) ? Math.floor(recentHistory.length / 2) : 1,
         recentHistory: Array.isArray(recentHistory) ? recentHistory : [],
         lastPlayerAction: action,
+        speakerKnowsPlayerName: activeSpeakerKnowledge.knowsName,
       });
 
       const systemPrompt = `You are the Game Master, Narrator, and World Engine for "${storyTitle}", an interactive visual novel set in ${settingName}.
@@ -1583,6 +1584,11 @@ ${visualInspectionInstruction}`;
           specialEventDirective: specialDirectives,
           knowledgeGateDirective,
           earnedRomanceDirective: dynamicRomanceDirective,
+          plotMemories: Array.isArray(plotMemories) ? plotMemories : [],
+          pinnedMemories: Array.isArray(playerProfile?.pinnedMemories)
+            ? playerProfile.pinnedMemories
+            : [],
+          speakerKnownFacts: activeSpeakerKnowledge.knownFacts || [],
           turnNumber: currentTurnNumber,
         });
 
@@ -1645,12 +1651,12 @@ ${visualInspectionInstruction}`;
           ? `${systemPrompt}\n\n${starfallCombatTelemetryDirective}`
           : systemPrompt;
 
-        // Construct model-appropriate messages payload with clean 14-turn conversation history
+        // Construct model-appropriate messages payload with clean 24-message conversation history
         const modelMessages: any[] = [{ role: "system", content: fallbackSysPromptWithOoc }];
         const cleanFallbackHistory = buildCleanConversationHistory(
           recentHistory,
           playerProfile.name,
-          14
+          24
         );
         for (const hMsg of cleanFallbackHistory) {
           modelMessages.push(hMsg);

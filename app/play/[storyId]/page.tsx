@@ -6062,7 +6062,7 @@ export default function VisualNovelGame() {
           max_tokens: llmConfig.max_tokens,
           repetition_penalty: llmConfig.repetition_penalty,
           narrativeDepth: llmConfig.narrativeDepth,
-          recentHistory: chatBeforeTurn.slice(-14).map((m) => ({
+          recentHistory: chatBeforeTurn.slice(-24).map((m) => ({
             speaker: m.speakerName,
             text: m.text,
           })),
@@ -7624,6 +7624,17 @@ export default function VisualNovelGame() {
         const cleanPlotMem = unlockedPlotMemory.trim();
         if (!memories.some((m) => m.toLowerCase() === cleanPlotMem.toLowerCase())) {
           nextMemories = [...memories, cleanPlotMem];
+          setMemories(nextMemories);
+        }
+      } else if (currentTurnNumber > 1 && currentTurnNumber % 3 === 0 && speakerName && speakerName !== "Narrator") {
+        // Rolling Episodic Callback Breadcrumb: ensure long campaigns retain a continuous memory trail even on quiet turns
+        const firstQuoteMatch = narrative.match(/"([^"\n]{12,110})"/);
+        const actionSnippet = (rawAction || "").replace(/^\[[^\]]+\]:?\s*/, "").trim().slice(0, 70);
+        const autoBreadcrumb = firstQuoteMatch
+          ? `Turn ${currentTurnNumber} (${nextLocation}): ${player.name} (${actionSnippet || "interacted"}) — ${speakerName} replied: "${firstQuoteMatch[1]}"`
+          : `Turn ${currentTurnNumber} (${nextLocation}): ${player.name} and ${speakerName} shared an exchange (${actionSnippet || "scene progression"}).`;
+        if (!memories.some((m) => m.toLowerCase() === autoBreadcrumb.toLowerCase())) {
+          nextMemories = [...memories.slice(-24), autoBreadcrumb];
           setMemories(nextMemories);
         }
       }

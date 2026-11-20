@@ -194,6 +194,7 @@ export function evaluateActionForKnowledgeUnlocks(
 
   const lowerAction = actionText.toLowerCase();
   const cleanName = (playerName || "").trim().toLowerCase();
+  const cleanFirstName = cleanName.split(/\s+/)[0] || cleanName;
   const cleanRole = (playerRole || "").trim().toLowerCase();
 
   // 1. Detect Name Introduction
@@ -201,6 +202,9 @@ export function evaluateActionForKnowledgeUnlocks(
     /\bmy name is\b/i,
     /\bi am called\b/i,
     /\bcall me\b/i,
+    /\bname's\b/i,
+    /\bnames\s+[a-z]{2,}\b/i,
+    /\bi'm\s+[a-z]{2,}\b/i,
     /\bintroduce yourself\b/i,
     /\bintroduce myself\b/i,
     /\bstate my name\b/i,
@@ -208,10 +212,14 @@ export function evaluateActionForKnowledgeUnlocks(
     /\bgive her my name\b/i,
   ];
   const mentionsOwnName =
-    cleanName.length >= 2 &&
-    new RegExp(`\\b${cleanName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(
-      actionText
-    );
+    (cleanName.length >= 2 &&
+      new RegExp(`\\b${cleanName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(
+        actionText
+      )) ||
+    (cleanFirstName.length >= 2 &&
+      new RegExp(`\\b${cleanFirstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(
+        actionText
+      ));
   const revealsName =
     mentionsOwnName || nameIntroPatterns.some((pat) => pat.test(actionText));
 
@@ -375,10 +383,15 @@ export function buildKnowledgeGateDirective(
     const k = getCompanionKnowledge(npcKnowledgeMap, compName);
 
     const nameRule = k.knowsName
-      ? `[SYSTEM UNLOCKED: ${compName} knows the protagonist's name is "${playerName}". She may address "${playerName}" by name in spoken dialogue.]`
+      ? `[SYSTEM UNLOCKED: ${compName} knows the protagonist's name is "${playerName}". She may address "${playerName}" by name in spoken dialogue.]${
+          !k.knowsClass || !Array.isArray(k.knownFacts) || k.knownFacts.length === 0
+            ? `\n   * EARLY ACQUAINTANCE CURIOSITY: ${compName} knows the protagonist's name ("${playerName}"), but still knows very little about their background, work, or story. When natural to the conversation, she should ask an in-character follow-up question about their background or what brings them here.`
+            : ""
+        }`
       : `[SYSTEM LOCK — NAME UNKNOWN: ${compName} does NOT know the protagonist's name ("${playerName}").]
    * STRICT DIALOGUE PROHIBITION: ${compName} MUST NEVER speak, whisper, or address the protagonist as "${playerName}" inside quotation marks ("...").
-   * REQUIRED FORM OF ADDRESS: In spoken dialogue, ${compName} must refer to the protagonist only as "stranger", "wanderer", "traveler", "intriguer", "outsider", or by their visible gear (${visibleWeapon} / ${visibleArmor}).`;
+   * REQUIRED FORM OF ADDRESS: In spoken dialogue, ${compName} must refer to the protagonist only as "stranger", "newcomer", "traveler", "outsider", or by their visible gear/appearance (${visibleWeapon} / ${visibleArmor}) until introduced.
+   * FIRST-MEETING NAME & INTRODUCTORY INQUIRY MANDATE (CRITICAL): Because ${compName} does NOT yet know the protagonist's name${!k.knowsClass ? " or background" : ""}, she MUST NOT passively treat them as a nameless stranger forever. Within her spoken dialogue this turn, ${compName} MUST naturally prompt the protagonist for their name (and, if fitting to the moment, ask a brief in-character question about who they are, where they came from, or what brings them here) in her own signature voice and attitude.`;
 
     const classRule = k.knowsClass
       ? `[SYSTEM UNLOCKED: ${compName} knows the protagonist's LitRPG Class/Archetype is "${playerRole}".]`

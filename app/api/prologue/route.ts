@@ -523,6 +523,7 @@ ${initialPresentHeroines
       mood: "Introductory Encounter",
       isProtagonistAlone: false,
       presentHeroineNames: initialPresentHeroines,
+      speakerKnowsPlayerName: startingHeroineKnowledge.knowsName,
     });
 
     const portraitAttireLabel = resolvePortraitAttireLabel(
