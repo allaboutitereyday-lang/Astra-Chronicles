@@ -110,6 +110,13 @@
         "bgImage": "/backgrounds/ash-and-velvet/chloes_bedroom.jpg"
       },
       {
+        "name": "Tina's Bedroom (Room 206)",
+        "zone": "412 Maplewood — Second Floor",
+        "danger": "Bratty / Mischievous",
+        "description": "Warm golden-rose sunlight filtering through sheer Victorian curtains, a Hollywood LED vanity mirror cluttered with lip gloss and perfume, fairy lights and Polaroids over a plush pink-and-navy bed with black lace-top stockings and an open designer duffel bag, and a soft cream rug over oak floorboards.",
+        "bgImage": "/backgrounds/ash-and-velvet/tinas_bedroom.jpg"
+      },
+      {
         "name": "Starlight Retro Diner",
         "zone": "Redbridge Strip — Late-Night Shift",
         "danger": "Working Shift",

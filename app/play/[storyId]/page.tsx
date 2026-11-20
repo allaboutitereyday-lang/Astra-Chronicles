@@ -4262,6 +4262,59 @@ export default function VisualNovelGame() {
           l.name.toLowerCase().includes(locName.toLowerCase()))
     );
     if (match?.bgImage && match.bgImage.trim()) return match.bgImage.trim();
+    if (currentStory.id === "ash-and-velvet") {
+      const lowerLoc = locName.toLowerCase();
+      if (lowerLoc.includes("tina") || lowerLoc.includes("206")) {
+        return "/backgrounds/ash-and-velvet/tinas_bedroom.jpg";
+      }
+      if (lowerLoc.includes("chloe") || lowerLoc.includes("205")) {
+        return "/backgrounds/ash-and-velvet/chloes_bedroom.jpg";
+      }
+      if (lowerLoc.includes("sierra") || lowerLoc.includes("204")) {
+        return "/backgrounds/ash-and-velvet/sierras_bedroom.jpg";
+      }
+      if (lowerLoc.includes("brianna") || lowerLoc.includes("203")) {
+        return "/backgrounds/ash-and-velvet/briannas_bedroom.jpg";
+      }
+      if (lowerLoc.includes("hannah") || lowerLoc.includes("202")) {
+        return "/backgrounds/ash-and-velvet/hannahs_bedroom.jpg";
+      }
+      if (
+        lowerLoc.includes("101") ||
+        lowerLoc.includes("clara's bedroom") ||
+        lowerLoc.includes("clara's room") ||
+        lowerLoc.includes("clara's master")
+      ) {
+        return "/backgrounds/ash-and-velvet/claras_bedroom.jpg";
+      }
+      if (lowerLoc.includes("jill") || lowerLoc.includes("den") || lowerLoc.includes("parlor")) {
+        return "/backgrounds/ash-and-velvet/claras_den.jpg";
+      }
+      if (lowerLoc.includes("attic") || lowerLoc.includes("301") || lowerLoc.includes("my room") || lowerLoc.includes("your room")) {
+        return "/backgrounds/ash-and-velvet/attic_bedroom.jpg";
+      }
+      if (lowerLoc.includes("bathroom") || lowerLoc.includes("shower") || lowerLoc.includes("bath")) {
+        return "/backgrounds/ash-and-velvet/shared_bathroom.jpg";
+      }
+      if (lowerLoc.includes("hallway") || lowerLoc.includes("landing") || lowerLoc.includes("stairs")) {
+        return "/backgrounds/ash-and-velvet/upstairs_hallway_bath.jpg";
+      }
+      if (lowerLoc.includes("kitchen") || lowerLoc.includes("living room")) {
+        return "/backgrounds/ash-and-velvet/shared_kitchen.jpg";
+      }
+      if (lowerLoc.includes("patio") || lowerLoc.includes("porch") || lowerLoc.includes("backyard") || lowerLoc.includes("deck")) {
+        return "/backgrounds/ash-and-velvet/backyard_patio.jpg";
+      }
+      if (lowerLoc.includes("diner") || lowerLoc.includes("starlight")) {
+        return "/backgrounds/ash-and-velvet/retro_diner.jpg";
+      }
+      if (lowerLoc.includes("velvet static") || lowerLoc.includes("dive")) {
+        return "/backgrounds/ash-and-velvet/neon_dive_bar.jpg";
+      }
+      if (lowerLoc.includes("bourbon") || lowerLoc.includes("lounge")) {
+        return "/backgrounds/ash-and-velvet/downtown_lounge.jpg";
+      }
+    }
     if (LOCATION_BACKGROUNDS[locName]) return LOCATION_BACKGROUNDS[locName];
     return gameState?.bgImage || currentStory.coverImage || DEFAULT_BG;
   };
@@ -12183,13 +12236,13 @@ export default function VisualNovelGame() {
     }`}>
       
       <div 
-        key={gameState.bgImage}
+        key={getLocationBg(gameState.location) || gameState.bgImage}
         className={`absolute inset-0 bg-cover bg-center transition-all duration-700 ease-out pointer-events-none select-none ${
           currentStory.id === "ash-and-velvet"
             ? "blur-2xl brightness-[0.20] scale-110"
             : "brightness-75 contrast-105"
         }`}
-        style={{ backgroundImage: `url("${gameState.bgImage}")` }}
+        style={{ backgroundImage: `url("${getLocationBg(gameState.location) || gameState.bgImage}")` }}
       />
       <div
         className={
@@ -13058,7 +13111,7 @@ export default function VisualNovelGame() {
         {/* ASH & VELVET UPPER WIDESCREEN COMIC SCENE PANEL */}
         {currentStory.id === "ash-and-velvet" && (
           <AshVelvetScenePanel
-            bgImage={gameState.bgImage}
+            bgImage={getLocationBg(gameState.location) || gameState.bgImage}
             location={gameState.location}
             mood={gameState.mood}
             speaker={gameState.speaker}

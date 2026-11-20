@@ -41,7 +41,7 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Sierra Holloway": "Clara's Kitchen & Living Room",
     "Chloe Bellamy": "Chloe's Executive Bedroom (Room 205)",
     "Jill Smith": "Clara's Kitchen & Living Room",
-    "Tina Smith": "Clara's Late-Night Den",
+    "Tina Smith": "Tina's Bedroom (Room 206)",
   },
   AFTERNOON: {
     "Clara Callahan": "Clara's Kitchen & Living Room",
@@ -50,7 +50,7 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Sierra Holloway": "Starlight Retro Diner",
     "Chloe Bellamy": "After-Hours Bourbon Lounge",
     "Jill Smith": "Clara's Kitchen & Living Room",
-    "Tina Smith": "Backyard Porch & Smoke Patio",
+    "Tina Smith": "Tina's Bedroom (Room 206)",
   },
   EVENING: {
     "Clara Callahan": "Clara's Kitchen & Living Room",
@@ -68,7 +68,7 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Sierra Holloway": "Backyard Porch & Smoke Patio",
     "Chloe Bellamy": "Chloe's Executive Bedroom (Room 205)",
     "Jill Smith": "Clara's Late-Night Den",
-    "Tina Smith": "The Attic Sanctuary Room",
+    "Tina Smith": "Tina's Bedroom (Room 206)",
   },
   AFTER_MIDNIGHT: {
     "Clara Callahan": "Clara's Late-Night Den",
@@ -77,7 +77,7 @@ export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, 
     "Sierra Holloway": "Sierra's Bedroom (Room 204)",
     "Chloe Bellamy": "Chloe's Executive Bedroom (Room 205)",
     "Jill Smith": "Clara's Late-Night Den",
-    "Tina Smith": "Clara's Late-Night Den",
+    "Tina Smith": "Tina's Bedroom (Room 206)",
   },
 };
 
@@ -94,6 +94,7 @@ export const HEROINE_SHORT_LOCATION_LABELS: Record<string, string> = {
   "Brianna's Bedroom (Room 203)": "Rm 203",
   "Sierra's Bedroom (Room 204)": "Rm 204",
   "Chloe's Executive Bedroom (Room 205)": "Rm 205",
+  "Tina's Bedroom (Room 206)": "Rm 206",
   "Starlight Retro Diner": "Diner",
   "After-Hours Bourbon Lounge": "Lounge",
 };
@@ -116,6 +117,7 @@ export function shortenAshVelvetLocation(loc: string): string {
   if (lower.includes("203") || lower.includes("brianna")) return "Rm 203";
   if (lower.includes("204") || lower.includes("sierra")) return "Rm 204";
   if (lower.includes("205") || lower.includes("chloe")) return "Rm 205";
+  if (lower.includes("206") || lower.includes("tina")) return "Rm 206";
   return loc.length > 14 ? `${loc.slice(0, 12)}…` : loc;
 }
 
@@ -858,8 +860,8 @@ ${heroineLines}
   * Chloe Bellamy (Age 28): "base" (off-shoulder striped knit top, pearl necklace & dark navy tailored trousers), "office" (lavender blouse & pencil skirt), "afterhours" (burgundy satin slip dress), "lounge" (cashmere wrap & espresso trousers), "nightwear" (midnight-plum satin & lace), "lingerie" (sapphire satin & black lace set), "nsfw_1", "nsfw_2", "nsfw_3", "nsfw_4"
   * Jill Smith (Age 21, older sister): "base" (yellow cable-knit sweater vest over white collared shirt, red plaid bow tie & red plaid pleated mini-skirt), "casual" (pink zip hoodie & denim skirt), "date" (lilac off-shoulder skater dress), "lounge" (oversized blue tee & sleep shorts), "nightwear" (ivory satin cami & sleep shorts), "swim" (coral bikini & sheer wrap), "lingerie" (black floral-lace lingerie), "nsfw_1", "nsfw_2"
   * Tina Smith (Age 18, bratty/spoiled younger sister): "base" (partially unbuttoned white short-sleeve button-down shirt slipping off one shoulder, short navy-blue skirt & sheer black lace-top thigh-high stockings), "nsfw_1", "nsfw_2"
-- 14 CANON PLAYABLE LOCATIONS:
-  "Clara's Kitchen & Living Room", "Upstairs Hallway & Shared Bath", "Upstairs Shared Bathroom", "Clara's Late-Night Den", "The Attic Sanctuary Room", "Velvet Static Dive Bar", "Backyard Porch & Smoke Patio", "Clara's Master Bedroom (Room 101)", "Hannah's Studio Bedroom (Room 202)", "Brianna's Bedroom (Room 203)", "Sierra's Bedroom (Room 204)", "Chloe's Executive Bedroom (Room 205)", "Starlight Retro Diner", "After-Hours Bourbon Lounge".
+- 15 CANON PLAYABLE LOCATIONS:
+  "Clara's Kitchen & Living Room", "Upstairs Hallway & Shared Bath", "Upstairs Shared Bathroom", "Clara's Late-Night Den", "The Attic Sanctuary Room", "Velvet Static Dive Bar", "Backyard Porch & Smoke Patio", "Clara's Master Bedroom (Room 101)", "Hannah's Studio Bedroom (Room 202)", "Brianna's Bedroom (Room 203)", "Sierra's Bedroom (Room 204)", "Chloe's Executive Bedroom (Room 205)", "Tina's Bedroom (Room 206)", "Starlight Retro Diner", "After-Hours Bourbon Lounge".
 - STRUCTURED PSYCHOLOGICAL DELTAS (MARGINAL BY DEFAULT — MAJOR GAINS ONLY ON BREAKTHROUGHS):
   Keep stat changes marginal (+1 or +2, -1 or -2) on routine conversational or flirting turns; reserve +3 to +5 (or -4 to -8 on boundary backfire) ONLY for major emotional/intimate milestones:
   * "affection_delta": -2 to +2 on normal turns (+3 to +5 ONLY on major heart-to-heart breakthrough or memory unlock; -3 to -6 on betrayal/backfire)

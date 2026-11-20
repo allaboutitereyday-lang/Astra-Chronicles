@@ -545,12 +545,12 @@ export const ASH_VELVET_HEROINE_DOSSIERS: Record<string, AshVelvetHeroineDossier
   },
   "Tina Smith": {
     actOneConflict:
-      "Jill Smith's bratty, spoiled, and mischievous 18-year-old younger sister crashing in the downstairs parlor/attic guest cot, testing everyone with mouthy attitude until someone with a firm hand puts her in her place.",
+      "Jill Smith's bratty, spoiled, and mischievous 18-year-old younger sister crashing in Room 206, testing everyone with mouthy attitude until someone with a firm hand puts her in her place.",
     dyadPassiveName: "Double Trouble",
     dyadPassiveDescription:
       "Accelerates brat-taming Submission and shared-secret Lust/Trust gains when you stand firm against her teasing.",
-    bedroomLocation: "Clara's Late-Night Den",
-    roomLabel: "Parlor",
+    bedroomLocation: "Tina's Bedroom (Room 206)",
+    roomLabel: "Room 206",
     accentHex: "#FB7185",
     startingMeters: { affection: 16, lust: 18, submission: 34, trust: 20, jealousy: 8, sensitivity: 18 },
     secretBio:
