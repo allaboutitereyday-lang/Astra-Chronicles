@@ -1530,6 +1530,15 @@ export default function VisualNovelGame() {
       guardTier: (rawComp?.guardTier || storyComp?.guardTier) as HeroineGuardTier | undefined,
       baseImageUrl: resolvedBaseImg,
       expressions: resolvedExpressions,
+      activeWardrobe: rawComp?.activeWardrobe || storyComp?.activeWardrobe,
+      wardrobeLabels:
+        rawComp?.wardrobeLabels && Object.keys(rawComp.wardrobeLabels).length > 0
+          ? rawComp.wardrobeLabels
+          : storyComp?.wardrobeLabels,
+      wardrobeExpressions:
+        rawComp?.wardrobeExpressions && Object.keys(rawComp.wardrobeExpressions).length > 0
+          ? rawComp.wardrobeExpressions
+          : storyComp?.wardrobeExpressions,
     };
   };
 
@@ -4336,7 +4345,16 @@ export default function VisualNovelGame() {
       if (lowerLoc.includes("jill") || lowerLoc.includes("den") || lowerLoc.includes("parlor")) {
         return "/backgrounds/ash-and-velvet/claras_den.jpg";
       }
-      if (lowerLoc.includes("attic") || lowerLoc.includes("301") || lowerLoc.includes("my room") || lowerLoc.includes("your room")) {
+      if (
+        lowerLoc.includes("attic") ||
+        lowerLoc.includes("301") ||
+        lowerLoc.includes("my room") ||
+        lowerLoc.includes("your room") ||
+        lowerLoc.includes("mc's room") ||
+        lowerLoc.includes("mc room") ||
+        lowerLoc.includes("his room") ||
+        lowerLoc.includes("third floor")
+      ) {
         return "/backgrounds/ash-and-velvet/attic_bedroom.jpg";
       }
       if (lowerLoc.includes("bathroom") || lowerLoc.includes("shower") || lowerLoc.includes("bath")) {
@@ -12358,6 +12376,7 @@ export default function VisualNovelGame() {
           setShowNotificationHistory(true);
           setUnreadNotificationCount(0);
         }}
+        storyId={currentStory.id}
       />
 
       {/* TOP HUD */}
@@ -14470,6 +14489,7 @@ export default function VisualNovelGame() {
         onDismissItem={handleDismissHistoryItem}
         onOpenSystemWindow={() => setShowSystemModal(true)}
         onInspectItem={(item) => handleInspectItem(item)}
+        storyId={currentStory.id}
       />
 
       {/* Mobile Command Dock Sheet */}

@@ -669,10 +669,25 @@ export function CharacterCardModal({
 
   const roomInfo = BOARDING_HOUSE_ROOMS[resolvedRoomNum] || BOARDING_HOUSE_ROOMS[201];
 
+  const avDossier = isAshVelvet ? ASH_VELVET_HEROINE_DOSSIERS[companion.name] : undefined;
+  const avWardrobeLabels = (companion as any).wardrobeLabels as Record<string, string> | undefined;
+  const avActiveWardrobe = (companion as any).activeWardrobe || "base";
+  const avWardrobeExprs = (companion as any).wardrobeExpressions as
+    | Record<string, Record<string, string>>
+    | undefined;
+  const avActiveOutfitExprs =
+    avWardrobeExprs && avActiveWardrobe ? avWardrobeExprs[avActiveWardrobe] : undefined;
+  const avExprKey = companion.expressionKey || "neutral";
+  const avResolvedOutfitSrc =
+    avActiveOutfitExprs?.[avExprKey] ||
+    avActiveOutfitExprs?.neutral ||
+    (avActiveWardrobe === "base" ? companion.baseImageUrl : undefined);
+
   // Resolve high-res portrait art
   const portraitSrc =
     STARFALL_PORTRAITS[compNameLower] ||
     PORT_SOLARIS_PORTRAITS[compNameLower] ||
+    avResolvedOutfitSrc ||
     companion.baseImageUrl ||
     "/characters/default.png";
 
@@ -738,7 +753,6 @@ export function CharacterCardModal({
   };
   const factionMeta = factionBadgeStyles[factionName] || factionBadgeStyles.BOARDWALK_GUILD;
 
-  const avDossier = isAshVelvet ? ASH_VELVET_HEROINE_DOSSIERS[companion.name] : undefined;
   const avMeters = isAshVelvet
     ? resolveHeroineMeters({
         name: companion.name,
@@ -752,8 +766,6 @@ export function CharacterCardModal({
     : null;
   const avRoomUnlocked = avMeters ? isBedroomKeyUnlocked(avMeters) : false;
   const avSecretUnlocked = avMeters ? isHeroineSecretUnlocked(companion.name, avMeters) : false;
-  const avWardrobeLabels = (companion as any).wardrobeLabels as Record<string, string> | undefined;
-  const avActiveWardrobe = (companion as any).activeWardrobe || "base";
 
   return (
     <div
@@ -823,14 +835,15 @@ export function CharacterCardModal({
           {/* Full-Height Heroine Portrait */}
           <div className="relative w-full h-[260px] md:h-[420px] flex items-end justify-center">
             <img
+              key={portraitSrc}
               src={portraitSrc}
-              alt={companion.name}
-              className={`w-full h-full object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)] ${
+              alt={`${companion.name} (${avActiveWardrobe})`}
+              className={`w-full h-full object-contain object-bottom filter drop-shadow-[0_16px_32px_rgba(0,0,0,0.95)] transition-all duration-300 animate-in fade-in ${
                 isFallenHero ? "grayscale opacity-65" : ""
               }`}
               onError={(e) => {
                 e.currentTarget.onerror = null;
-                e.currentTarget.src = "/characters/default.png";
+                e.currentTarget.src = companion.baseImageUrl || "/characters/default.png";
               }}
             />
           </div>

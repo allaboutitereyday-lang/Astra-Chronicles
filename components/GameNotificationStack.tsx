@@ -58,6 +58,7 @@ export interface GameNotificationStackProps {
   onOpenHistory?: () => void;
   maxVisible?: number;
   staggerDelayMs?: number;
+  storyId?: string;
 }
 
 const DIFFICULTY_BADGES: Record<QuestDifficulty, string> = {
@@ -75,6 +76,7 @@ interface NotificationCardProps {
   onDismiss: (id: string) => void;
   onOpenSystemWindow?: () => void;
   onInspectItem?: (item: any) => void;
+  storyId?: string;
 }
 
 function NotificationCard({
@@ -82,7 +84,9 @@ function NotificationCard({
   onDismiss,
   onOpenSystemWindow,
   onInspectItem,
+  storyId,
 }: NotificationCardProps) {
+  const isAshVelvet = storyId === "ash-and-velvet";
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [progress, setProgress] = useState(100);
@@ -292,32 +296,54 @@ function NotificationCard({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={handleCardClick}
-      className={`pointer-events-auto relative overflow-hidden rounded-2xl p-3.5 sm:p-4 backdrop-blur-2xl border-2 shadow-2xl transition-all duration-400 ease-out transform max-w-[calc(100vw-24px)] sm:max-w-md w-full select-none ${
+      className={`pointer-events-auto relative overflow-hidden transition-all duration-400 ease-out transform max-w-[calc(100vw-24px)] sm:max-w-md w-full select-none ${
         isInteractive ? "cursor-pointer hover:scale-[1.01]" : ""
       } ${
         isVisible
           ? "opacity-100 translate-x-0 scale-100"
           : "opacity-0 translate-x-10 scale-95"
-      } ${theme.card}`}
+      } ${
+        isAshVelvet
+          ? "p-3.5 bg-[#161520]/95 border-2 border-[#07070A] shadow-[5px_5px_0px_#07070A] text-zinc-100"
+          : `rounded-2xl p-3.5 sm:p-4 backdrop-blur-2xl border-2 shadow-2xl ${theme.card}`
+      }`}
     >
+      {/* Left accent stripe for Ash & Velvet graphic-novel toast */}
+      {isAshVelvet && (
+        <div
+          className="absolute inset-y-0 left-0 w-1.5"
+          style={{ backgroundColor: theme.accentColor }}
+        />
+      )}
+
       {/* Ambient Radial Backlight */}
-      <div
-        className="absolute -inset-4 rounded-full blur-2xl opacity-25 pointer-events-none"
-        style={{
-          background: `radial-gradient(circle at top left, ${theme.accentColor} 0%, transparent 70%)`,
-        }}
-      />
+      {!isAshVelvet && (
+        <div
+          className="absolute -inset-4 rounded-full blur-2xl opacity-25 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at top left, ${theme.accentColor} 0%, transparent 70%)`,
+          }}
+        />
+      )}
 
-      {/* LitRPG Corner Glyphs */}
-      <span className="absolute top-1 left-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">┌</span>
-      <span className="absolute top-1 right-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">┐</span>
-      <span className="absolute bottom-1 left-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">└</span>
-      <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">┘</span>
+      {/* LitRPG Corner Glyphs (Hidden in Ash & Velvet) */}
+      {!isAshVelvet && (
+        <>
+          <span className="absolute top-1 left-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">┌</span>
+          <span className="absolute top-1 right-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">┐</span>
+          <span className="absolute bottom-1 left-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">└</span>
+          <span className="absolute bottom-1 right-1.5 text-[8px] font-mono text-rose-400/50 pointer-events-none">┘</span>
+        </>
+      )}
 
-      <div className="flex items-start gap-3 relative z-10">
+      <div className={`flex items-start gap-3 relative z-10 ${isAshVelvet ? "pl-1.5" : ""}`}>
         {/* Leading Visual / Thumbnail */}
         <div
-          className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border relative overflow-hidden shadow-lg ${theme.iconBg}`}
+          className={`w-11 h-11 flex items-center justify-center shrink-0 border relative overflow-hidden shadow-lg ${
+            isAshVelvet
+              ? "bg-[#0D0C12] border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A]"
+              : `rounded-xl ${theme.iconBg}`
+          }`}
         >
           {item.imageUrl ? (
             <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover rounded-lg" />
@@ -355,10 +381,14 @@ function NotificationCard({
         {/* Content Body */}
         <div className="flex-1 min-w-0 pr-6">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-rose-300">
+            <span
+              className={`text-[10px] font-mono uppercase font-black tracking-wider ${
+                isAshVelvet ? "text-amber-300" : "text-rose-300"
+              }`}
+            >
               {item.title}
             </span>
-            {item.difficulty && (
+            {!isAshVelvet && item.difficulty && (
               <span
                 className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
                   DIFFICULTY_BADGES[item.difficulty] || DIFFICULTY_BADGES.C
@@ -380,11 +410,15 @@ function NotificationCard({
 
           <div className="flex items-center justify-between mt-1 text-[9px] font-mono text-zinc-500">
             {item.type.startsWith("quest") || item.type === "penalty_quest" || item.type === "regression_trigger" ? (
-              <span className="text-rose-400/80 hover:underline">Click to view in System Interface →</span>
+              <span className={isAshVelvet ? "text-pink-400 hover:underline" : "text-rose-400/80 hover:underline"}>
+                {isAshVelvet ? "View in House Goals →" : "Click to view in System Interface →"}
+              </span>
             ) : item.type === "loot" && item.metadata ? (
-              <span className="text-amber-400/80 hover:underline">Click to inspect artifact →</span>
+              <span className="text-amber-400/80 hover:underline">
+                {isAshVelvet ? "Click to inspect item →" : "Click to inspect artifact →"}
+              </span>
             ) : (
-              <span>LitRPG Matrix Broadcast</span>
+              <span>{isAshVelvet ? "412 Maplewood • House Bulletin" : "LitRPG Matrix Broadcast"}</span>
             )}
             <span>{item.timestamp || "Just now"}</span>
           </div>
@@ -423,6 +457,7 @@ export function GameNotificationStack({
   onOpenHistory,
   maxVisible = 2,
   staggerDelayMs = 750,
+  storyId,
 }: GameNotificationStackProps) {
   const [visibleItems, setVisibleItems] = useState<GameNotificationItem[]>([]);
   const pendingQueueRef = useRef<GameNotificationItem[]>([]);
@@ -549,6 +584,7 @@ export function GameNotificationStack({
           onDismiss={handleCardDismiss}
           onOpenSystemWindow={onOpenSystemWindow}
           onInspectItem={onInspectItem}
+          storyId={storyId}
         />
       ))}
 

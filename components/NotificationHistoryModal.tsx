@@ -35,6 +35,7 @@ export interface NotificationHistoryModalProps {
   onDismissItem?: (id: string) => void;
   onOpenSystemWindow?: () => void;
   onInspectItem?: (item: any) => void;
+  storyId?: string;
 }
 
 type FilterCategory = "all" | "quests" | "loot" | "progression" | "system";
@@ -57,7 +58,9 @@ export function NotificationHistoryModal({
   onDismissItem,
   onOpenSystemWindow,
   onInspectItem,
+  storyId,
 }: NotificationHistoryModalProps) {
+  const isAshVelvet = storyId === "ash-and-velvet";
   const [activeFilter, setActiveFilter] = useState<FilterCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
@@ -229,34 +232,79 @@ export function NotificationHistoryModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-3xl bg-zinc-950 border border-white/15 rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[88vh] animate-in zoom-in-95 duration-200"
+        className={`relative w-full max-w-3xl flex flex-col overflow-hidden max-h-[88vh] animate-in zoom-in-95 duration-200 ${
+          isAshVelvet
+            ? "bg-[#161520] border-2 border-[#07070A] shadow-[8px_8px_0px_#07070A]"
+            : "bg-zinc-950 border border-white/15 rounded-3xl shadow-2xl"
+        }`}
       >
         {/* Glow Header Accent */}
-        <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500/80 to-transparent" />
+        <div
+          className={`absolute top-0 inset-x-0 h-[2px] ${
+            isAshVelvet
+              ? "bg-gradient-to-r from-amber-400 via-pink-500 to-rose-500"
+              : "bg-gradient-to-r from-transparent via-rose-500/80 to-transparent"
+          }`}
+        />
 
-        {/* Corner Glyphs */}
-        <span className="absolute top-1.5 left-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">┌</span>
-        <span className="absolute top-1.5 right-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">┐</span>
-        <span className="absolute bottom-1.5 left-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">└</span>
-        <span className="absolute bottom-1.5 right-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">┘</span>
+        {/* Corner Glyphs (Hidden in Ash & Velvet) */}
+        {!isAshVelvet && (
+          <>
+            <span className="absolute top-1.5 left-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">┌</span>
+            <span className="absolute top-1.5 right-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">┐</span>
+            <span className="absolute bottom-1.5 left-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">└</span>
+            <span className="absolute bottom-1.5 right-2 text-[9px] font-mono text-rose-500/40 pointer-events-none">┘</span>
+          </>
+        )}
 
         {/* Modal Header */}
-        <div className="px-4 sm:px-5 py-3 sm:py-4 border-b border-white/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 bg-zinc-900/80 backdrop-blur-md">
+        <div
+          className={`px-4 sm:px-5 py-3 sm:py-4 border-b flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 ${
+            isAshVelvet
+              ? "bg-[#111018] border-[#07070A]"
+              : "border-white/10 bg-zinc-900/80 backdrop-blur-md"
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.25)] shrink-0">
-              <Bell className="w-5 h-5 text-rose-400 animate-pulse" />
+            <div
+              className={`p-2.5 shrink-0 ${
+                isAshVelvet
+                  ? "bg-pink-600/20 border-2 border-[#07070A] shadow-[2px_2px_0px_#07070A] text-pink-400"
+                  : "rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.25)]"
+              }`}
+            >
+              <Bell className={`w-5 h-5 ${isAshVelvet ? "text-amber-300" : "text-rose-400 animate-pulse"}`} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-bold text-white font-serif tracking-wide">
-                  Notification Archive & Telemetry
+                <h3
+                  className={`text-base sm:text-lg font-bold text-white tracking-wide ${
+                    isAshVelvet ? "font-mono uppercase italic" : "font-serif"
+                  }`}
+                >
+                  {isAshVelvet ? "412 Maplewood • House Bulletin" : "Notification Archive & Telemetry"}
                 </h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-950/80 border border-rose-500/40 text-rose-300">
-                  {history.length} {history.length === 1 ? "Broadcast" : "Broadcasts"}
+                <span
+                  className={`text-[10px] font-mono px-2 py-0.5 border ${
+                    isAshVelvet
+                      ? "bg-amber-500 text-[#09090D] border-[#07070A] font-black uppercase"
+                      : "rounded-full bg-rose-950/80 border-rose-500/40 text-rose-300"
+                  }`}
+                >
+                  {history.length}{" "}
+                  {isAshVelvet
+                    ? history.length === 1
+                      ? "Update"
+                      : "Updates"
+                    : history.length === 1
+                    ? "Broadcast"
+                    : "Broadcasts"}
                 </span>
               </div>
               <p className="text-xs text-zinc-400 font-mono mt-0.5 hidden sm:block">
-                LitRPG Matrix Telemetry • Quest updates, unlocked skills & relic acquisitions
+                {isAshVelvet
+                  ? "Housemate sparks, rent alerts, core memories & 412 Maplewood milestones"
+                  : "LitRPG Matrix Telemetry • Quest updates, unlocked skills & relic acquisitions"}
               </p>
             </div>
           </div>
@@ -319,7 +367,7 @@ export function NotificationHistoryModal({
                   : "bg-zinc-900/60 text-zinc-400 border border-white/5 hover:border-white/20 hover:text-zinc-200"
               }`}
             >
-              Quests ({categoryCounts.quests})
+              {isAshVelvet ? `House Goals (${categoryCounts.quests})` : `Quests (${categoryCounts.quests})`}
             </button>
 
             <button
@@ -334,7 +382,7 @@ export function NotificationHistoryModal({
                   : "bg-zinc-900/60 text-zinc-400 border border-white/5 hover:border-white/20 hover:text-zinc-200"
               }`}
             >
-              Loot & Relics ({categoryCounts.loot})
+              {isAshVelvet ? `Items (${categoryCounts.loot})` : `Loot & Relics (${categoryCounts.loot})`}
             </button>
 
             <button
@@ -349,7 +397,7 @@ export function NotificationHistoryModal({
                   : "bg-zinc-900/60 text-zinc-400 border border-white/5 hover:border-white/20 hover:text-zinc-200"
               }`}
             >
-              Progression ({categoryCounts.progression})
+              {isAshVelvet ? `Sparks (${categoryCounts.progression})` : `Progression (${categoryCounts.progression})`}
             </button>
 
             <button
@@ -364,7 +412,7 @@ export function NotificationHistoryModal({
                   : "bg-zinc-900/60 text-zinc-400 border border-white/5 hover:border-white/20 hover:text-zinc-200"
               }`}
             >
-              Alerts ({categoryCounts.system})
+              {isAshVelvet ? `House Alerts (${categoryCounts.system})` : `Alerts (${categoryCounts.system})`}
             </button>
           </div>
 
@@ -400,11 +448,15 @@ export function NotificationHistoryModal({
               <p className="text-sm font-mono text-zinc-400">
                 {searchQuery || activeFilter !== "all"
                   ? "No notifications matching your filter criteria"
+                  : isAshVelvet
+                  ? "412 Maplewood Bulletin Empty"
                   : "Matrix Broadcast Chronicle Empty"}
               </p>
               <p className="text-xs text-zinc-600 font-sans max-w-sm mt-1">
                 {searchQuery || activeFilter !== "all"
                   ? "Try resetting your filter or searching for a different keyword."
+                  : isAshVelvet
+                  ? "Housemate reactions, rent alerts, boundary warnings, and private milestones will record here as you live at 412 Maplewood."
                   : "Telemetric updates, quest assignments, and item acquisitions will automatically record here as you journey."}
               </p>
             </div>
@@ -427,12 +479,22 @@ export function NotificationHistoryModal({
                 <div
                   key={item.id}
                   onClick={() => isInteractive && handleItemClick(item)}
-                  className={`group relative rounded-2xl p-3.5 border transition-all duration-200 flex items-start gap-3.5 ${
+                  className={`group relative p-3.5 border transition-all duration-200 flex items-start gap-3.5 ${
                     isInteractive ? "cursor-pointer" : ""
-                  } ${getItemColorTheme(item)}`}
+                  } ${
+                    isAshVelvet
+                      ? "bg-[#111018] border-2 border-[#07070A] shadow-[3px_3px_0px_#07070A] hover:border-amber-400/70"
+                      : `rounded-2xl ${getItemColorTheme(item)}`
+                  }`}
                 >
                   {/* Thumbnail / Category Icon */}
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-white/10 bg-zinc-950 relative overflow-hidden shadow-md">
+                  <div
+                    className={`w-11 h-11 flex items-center justify-center shrink-0 relative overflow-hidden shadow-md ${
+                      isAshVelvet
+                        ? "bg-[#09090D] border-2 border-[#07070A]"
+                        : "rounded-xl border border-white/10 bg-zinc-950"
+                    }`}
+                  >
                     {item.imageUrl ? (
                       <img
                         src={item.imageUrl}
@@ -451,7 +513,7 @@ export function NotificationHistoryModal({
                         {item.title}
                       </span>
 
-                      {item.difficulty && (
+                      {!isAshVelvet && item.difficulty && (
                         <span
                           className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
                             DIFFICULTY_BADGES[item.difficulty] || DIFFICULTY_BADGES.C
@@ -480,14 +542,15 @@ export function NotificationHistoryModal({
                       <div className="flex items-center gap-2">
                         {item.type.startsWith("quest") || item.type === "penalty_quest" || item.type === "regression_trigger" ? (
                           <span className="text-rose-400 group-hover:underline flex items-center gap-1">
-                            Inspect in System Window <ArrowRight className="w-3 h-3" />
+                            {isAshVelvet ? "Inspect in House Goals" : "Inspect in System Window"}{" "}
+                            <ArrowRight className="w-3 h-3" />
                           </span>
                         ) : item.type === "loot" && item.metadata ? (
                           <span className="text-amber-400 group-hover:underline flex items-center gap-1">
-                            Inspect Artifact <ArrowRight className="w-3 h-3" />
+                            {isAshVelvet ? "Inspect Item" : "Inspect Artifact"} <ArrowRight className="w-3 h-3" />
                           </span>
                         ) : (
-                          <span>LitRPG Broadcast Telemetry</span>
+                          <span>{isAshVelvet ? "412 Maplewood Bulletin" : "LitRPG Broadcast Telemetry"}</span>
                         )}
                       </div>
                       <span>{item.timestamp || "Just now"}</span>
