@@ -211,11 +211,154 @@ Off-screen characters are strictly absent and CANNOT speak or appear unless newl
 ${lines.join("\n")}`;
 }
 
+export const UNCENSORED_RP_MODELS = [
+  "deepseek/deepseek-v3.2",
+  "sao10k/l3.1-euryale-70b",
+  "anthracite-org/magnum-v4-72b",
+  "thedrummer/cydonia-24b-v4.1",
+  "nousresearch/hermes-4-405b",
+  "sao10k/l3-lunaris-8b",
+] as const;
+
+export function isExplicitUncensoredModel(modelId?: string | null): boolean {
+  if (!modelId) return false;
+  const m = modelId.toLowerCase().trim();
+  return (
+    m.includes("deepseek") ||
+    m.includes("euryale") ||
+    m.includes("magnum") ||
+    m.includes("cydonia") ||
+    m.includes("hermes") ||
+    m.includes("lunaris") ||
+    m.includes("mythomax")
+  );
+}
+
+/**
+ * Detects whether the current turn or scene is entering or actively in an intimate,
+ * sensual, romantic, or 18+ encounter so choice and prose generation automatically
+ * route through uncensored LLMs without safety refusals or sanitized choices.
+ */
+export function isIntimateSceneContext(params: {
+  actionText?: string | null;
+  narrativeText?: string | null;
+  latestDialogue?: string | null;
+  recentHistory?: Array<{ speaker?: string; text?: string }> | null;
+  presentCompanions?: any[] | null;
+  rerollFocus?: string | null;
+  storyId?: string | null;
+  location?: string | null;
+}): boolean {
+  const focusLower = String(params.rerollFocus || "").toLowerCase();
+  if (
+    focusLower === "romantic" ||
+    focusLower.includes("intimate") ||
+    focusLower.includes("flirt") ||
+    focusLower.includes("lust") ||
+    focusLower.includes("nsfw")
+  ) {
+    return true;
+  }
+
+  const comps = Array.isArray(params.presentCompanions) ? params.presentCompanions : [];
+  for (const c of comps) {
+    if (!c) continue;
+    const w = String(c.activeWardrobe || "").toLowerCase();
+    if (w.startsWith("nsfw_") || w === "lingerie" || w === "nightwear" || w === "swim") {
+      return true;
+    }
+    const lust = typeof c.lust === "number" ? c.lust : 0;
+    const sens = typeof c.sensitivity === "number" ? c.sensitivity : 0;
+    const aff = typeof c.affection === "number" ? c.affection : 0;
+    if (lust >= 28 || sens >= 28 || aff >= 50) {
+      return true;
+    }
+  }
+
+  const recentSnippet = Array.isArray(params.recentHistory)
+    ? params.recentHistory
+        .slice(-4)
+        .map((h) => h?.text || "")
+        .join(" ")
+    : "";
+  const corpus = `${params.actionText || ""} ${params.narrativeText || ""} ${params.latestDialogue || ""} ${recentSnippet}`;
+
+  if (/^\[(flame|lust|dom|seduce|intimate|romance|kiss|tease)\b/i.test(String(params.actionText || "").trim())) {
+    return true;
+  }
+
+  const intimatePattern =
+    /\b(kiss|kissing|kisses|lips|tongue|undress|unbutton|unbuttons|unbuttoned|unzip|strip|naked|nude|bare\s+(?:skin|thighs|legs|chest|shoulders|breasts)|breasts|cleavage|nipples|thighs|panties|underwear|bra|lingerie|stockings|towel|skirt\s+flipped|skirt\s+up|lap|straddle|straddling|grind|grinding|moan|moans|moaning|gasp|gasps|shiver|shivers|caress|stroke|grope|spank|choke|pin\s+her|pinned|bed|mattress|sheets|aroused|arousal|lust|climax|orgasm|lick|suck|bite|collarbone|inner\s+thigh|footplay|barefoot|toes|sole|arch|ankle|kneel|knees|obey|submit|submission|dominate|intimate|make\s+out)\b/i;
+
+  return intimatePattern.test(corpus);
+}
+
+/**
+ * Resolves the model chain for generating player choices (Pass 2, /api/generate-choices, /api/expand-action).
+ * When `isIntimate` is true, strictly prioritizes uncensored LLMs so choices are never sanitized or refused.
+ */
+export function resolveChoiceModelChain(
+  requestedModel?: string | null,
+  isIntimate: boolean = false
+): string[] {
+  const m = String(requestedModel || "").trim();
+  const specificUncensored =
+    m.includes("/") && isExplicitUncensoredModel(m) ? m : null;
+
+  if (isIntimate || m === "ooc-two-pass-deepseek" || m === "orchestrated-hybrid-deepseek") {
+    const baseUncensored = [...UNCENSORED_RP_MODELS];
+    if (specificUncensored) {
+      return [
+        specificUncensored,
+        ...baseUncensored.filter((candidate) => candidate !== specificUncensored),
+      ];
+    }
+    return baseUncensored;
+  }
+
+  if (specificUncensored) {
+    return [
+      specificUncensored,
+      "deepseek/deepseek-v3.2",
+      "google/gemini-2.5-flash",
+      "thedrummer/cydonia-24b-v4.1",
+      "sao10k/l3-lunaris-8b",
+    ];
+  }
+
+  return [
+    "google/gemini-2.5-flash",
+    "deepseek/deepseek-v3.2",
+    "thedrummer/cydonia-24b-v4.1",
+    "sao10k/l3.1-euryale-70b",
+    "sao10k/l3-lunaris-8b",
+  ];
+}
+
 /**
  * Resolves the Pass 1 creative model priority list for OpenRouter.
  */
-export function resolveCreativeModelChain(requestedModel?: string): string[] {
+export function resolveCreativeModelChain(
+  requestedModel?: string,
+  isIntimate: boolean = false
+): string[] {
   const m = String(requestedModel || "").trim();
+  if (isIntimate) {
+    const specificUncensored =
+      m.includes("/") && isExplicitUncensoredModel(m) ? m : null;
+    const uncensoredChain = [
+      "deepseek/deepseek-v3.2",
+      "sao10k/l3.1-euryale-70b",
+      "anthracite-org/magnum-v4-72b",
+      "thedrummer/cydonia-24b-v4.1",
+      "nousresearch/hermes-4-405b",
+      "sao10k/l3-lunaris-8b",
+    ];
+    return specificUncensored
+      ? [specificUncensored, ...uncensoredChain.filter((d) => d !== specificUncensored)]
+      : uncensoredChain;
+  }
+
   const defaults = [
     "anthropic/claude-sonnet-4.6",
     "deepseek/deepseek-v3.2",
@@ -239,8 +382,9 @@ export function resolveCreativeModelChain(requestedModel?: string): string[] {
   ) {
     return [
       "deepseek/deepseek-v3.2",
-      "anthropic/claude-sonnet-4.6",
       "sao10k/l3.1-euryale-70b",
+      "anthracite-org/magnum-v4-72b",
+      "anthropic/claude-sonnet-4.6",
       "google/gemini-2.5-flash",
     ];
   }
@@ -496,7 +640,18 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
     { role: "user", content: pass1UserPrompt },
   ];
 
-  const creativeChain = resolveCreativeModelChain(params.requestedModelId);
+  const isIntimateTurnPrePass1 = isIntimateSceneContext({
+    actionText: parsedOoc.inCharacterAction,
+    recentHistory: params.recentHistory,
+    presentCompanions: params.presentCompanions,
+    storyId: params.storyId,
+    location: params.location,
+  });
+
+  const creativeChain = resolveCreativeModelChain(
+    params.requestedModelId,
+    isIntimateTurnPrePass1
+  );
   const headers: Record<string, string> = {
     Authorization: `Bearer ${params.apiKey}`,
     "Content-Type": "application/json",
@@ -609,9 +764,20 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
   }
 
   // =========================================================================
-  // PASS 2: FAST DETERMINISTIC STATE & CHOICE EXTRACTOR (GEMINI 2.5 FLASH JSON)
+  // PASS 2: DETERMINISTIC STATE & CHOICE EXTRACTOR (AUTO-UNCENSORED IN INTIMATE SCENES)
   // =========================================================================
   const isStarfall = params.storyId === "starfall-labyrinth";
+  const isAshVelvet = params.storyId === "ash-and-velvet";
+  const isIntimateTurnPass2 =
+    isIntimateTurnPrePass1 ||
+    isIntimateSceneContext({
+      actionText: parsedOoc.inCharacterAction,
+      narrativeText: extractedNarrativeProse,
+      recentHistory: params.recentHistory,
+      presentCompanions: params.presentCompanions,
+      storyId: params.storyId,
+      location: params.location,
+    });
   const presentNamesList = params.presentCompanions.map((c) => c.name);
   const allKnownCompanionNames = presentNamesList.length > 0 ? presentNamesList.join(", ") : "None (Solo)";
   const starfallPass2Telemetry =
@@ -619,8 +785,19 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
       ? `\nLIVE STARFALL COMBAT / WAVE STATE (ALIGN CHOICES & LOCATION TO THIS):\n${params.combatTelemetryDirective.slice(0, 1200)}`
       : "";
 
-  const [tag1, tag2, tag3] = personaVoice.preferredTagPrefixes;
+  const [tag1, tag2, tag3] =
+    isAshVelvet || isIntimateTurnPass2
+      ? ["Flame", "Dom", "Heart"]
+      : personaVoice.preferredTagPrefixes;
   const recentPlayerHistorySnippet = `\n\n${voiceFingerprint.promptDirectiveBlock}`;
+  const intimateChoicesMandate = isIntimateTurnPass2
+    ? `\n   - UNCENSORED INTIMATE SCENE CHOICE MANDATE (CRITICAL): The scene is currently in a heated, sensual, or intimate encounter. You MUST author 4 uncensored, physically immediate, and emotionally/sensually charged choices that match the exact level of intimacy in SCENE PROSE:
+     * Choice 1 ("[Flame]: ..."): Escalate the physical intimacy, touch, kissing, undressing, or sensual teasing directly in the moment.
+     * Choice 2 ("[Dom]: ..."): Take firm, commanding control of the physical dynamic (e.g., pinning her, gripping her chin/waist/ankle, giving a bold order, or leaning into her kinks).
+     * Choice 3 ("[Heart]: ..."): Combine close physical contact with warm, intimate praise, eye contact, or emotional intensity.
+     * Choice 4 ("[Bold]: ..." or "[Tease]: ..."): A provocative tease, position shift, or de-escalation/transition option if the player wants to pace the encounter.
+     NEVER censor, fade to black, lecture, or sanitize the choices into bland small talk during an intimate scene!`
+    : "";
 
   const activeQuestsList = Array.isArray(params.activeQuests) ? params.activeQuests : [];
   const completedQuestsList = Array.isArray(params.completedQuests) ? params.completedQuests : [];
@@ -671,7 +848,7 @@ RULES:
    - Choice 2: "[${tag2}]: ..." or "[Banter/Deepen]: ..." (linger to probe subtext, tease, or share a real human moment with the speaker)
    - Choice 3: "[${tag3}]: ..." (bold physical, environmental, wager, or signature skill play)
    - Choice 4: "[Move/Transition]: ..." (lead toward a new room, floor, or area when ready)
-   - PERSONALITY & PLAYSTYLE ALIGNMENT RULE: Shape BOTH the tactical/interpersonal decision AND the spoken quote ('...') of all 4 options around ${playerFirstName}'s chosen "${personaVoice.personaTitle}" worldview, custom traits ([${personaVoice.traitsList.join(", ")}]), and emergent playstyle (${dominantTendencyLabel}).${
+   - PERSONALITY & PLAYSTYLE ALIGNMENT RULE: Shape BOTH the tactical/interpersonal decision AND the spoken quote ('...') of all 4 options around ${playerFirstName}'s chosen "${personaVoice.personaTitle}" worldview, custom traits ([${personaVoice.traitsList.join(", ")}]), and emergent playstyle (${dominantTendencyLabel}).${intimateChoicesMandate}${
      !params.speakerKnowsPlayerName && presentNamesList.length > 0
        ? `\n   - FIRST-MEETING SELF-INTRODUCTION RULE (CRITICAL): Because ${params.activeSpeakerName || presentNamesList[0]} does NOT yet know ${playerFirstName}'s name, Choice 1 and Choice 2 MUST include ${playerFirstName} naturally introducing himself by name ('I'm ${playerFirstName}...') and sharing a brief introductory detail as part of his spoken response!`
        : ""
@@ -743,26 +920,41 @@ PLAYER ACTION: ${parsedOoc.inCharacterAction}
 ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution}\n\n` : ""}SCENE PROSE:\n${extractedNarrativeProse}`;
 
   let extractedMeta: any = null;
-  try {
-    const pass2Res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers,
-      signal: AbortSignal.timeout(18000),
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: pass2SystemPrompt },
-          { role: "user", content: pass2UserContent },
-        ],
-        user: params.userKey,
-        temperature: 0.2,
-        max_tokens: 900,
-        response_format: { type: "json_object" },
-        provider: { allow_fallbacks: true, sort: "throughput" },
-      }),
-    });
+  const pass2Chain = resolveChoiceModelChain(
+    params.requestedModelId,
+    isIntimateTurnPass2
+  );
+  let stateModelUsed = pass2Chain[0] || "deepseek/deepseek-v3.2";
 
-    if (pass2Res.ok) {
+  for (let p2Idx = 0; p2Idx < pass2Chain.length; p2Idx++) {
+    const candidateStateModel = pass2Chain[p2Idx];
+    const useNativeJsonFormat =
+      candidateStateModel.startsWith("google/") ||
+      candidateStateModel.includes("gemini") ||
+      candidateStateModel.startsWith("openai/");
+    try {
+      const pass2Res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers,
+        signal: AbortSignal.timeout(p2Idx === 0 ? 18000 : 14000),
+        body: JSON.stringify({
+          model: candidateStateModel,
+          messages: [
+            { role: "system", content: pass2SystemPrompt },
+            { role: "user", content: pass2UserContent },
+          ],
+          user: params.userKey,
+          temperature: isIntimateTurnPass2 ? 0.55 : 0.25,
+          max_tokens: 950,
+          ...(useNativeJsonFormat ? { response_format: { type: "json_object" } } : {}),
+          provider: { allow_fallbacks: true, sort: "throughput" },
+        }),
+      });
+
+      if (!pass2Res.ok) {
+        continue;
+      }
+
       const p2Json = await pass2Res.json();
       if (p2Json?.usage) {
         combinedUsage.prompt_tokens += p2Json.usage.prompt_tokens || 0;
@@ -770,10 +962,23 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
         combinedUsage.total_tokens += p2Json.usage.total_tokens || 0;
       }
       const p2Content = String(p2Json?.choices?.[0]?.message?.content || "");
-      extractedMeta = parseModelJsonLenient(p2Content, params.activeSpeakerName);
+      const candidateMeta = parseModelJsonLenient(p2Content, params.activeSpeakerName);
+      if (
+        candidateMeta &&
+        typeof candidateMeta === "object" &&
+        Array.isArray(candidateMeta.suggested_choices) &&
+        candidateMeta.suggested_choices.length >= 2
+      ) {
+        extractedMeta = candidateMeta;
+        stateModelUsed = candidateStateModel;
+        break;
+      }
+    } catch (p2Err: any) {
+      console.warn(
+        `OOC Pass 2 extractor on ${candidateStateModel} failed, trying next model:`,
+        p2Err?.message
+      );
     }
-  } catch (p2Err: any) {
-    console.warn("OOC Pass 2 metadata extractor fallback triggered:", p2Err?.message);
   }
 
   const safeMeta =
@@ -908,7 +1113,8 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
     _oocEngine: {
       twoPass: true,
       creativeModel: creativeModelUsed,
-      stateModel: "google/gemini-2.5-flash",
+      stateModel: stateModelUsed,
+      intimateUncensoredRouting: isIntimateTurnPass2,
       directorNotesApplied: Boolean(parsedOoc.combinedDirectorNotes),
     },
   };

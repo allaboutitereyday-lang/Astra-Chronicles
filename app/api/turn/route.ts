@@ -101,6 +101,8 @@ import {
   buildCleanConversationHistory,
   parseOocInput,
   extractOpenRouterErrorInfo,
+  isIntimateSceneContext,
+  resolveChoiceModelChain,
 } from "@/lib/oocNarrativeEngine";
 
 export const runtime = "nodejs";
@@ -1614,19 +1616,33 @@ ${visualInspectionInstruction}`;
 
     const singlePassPrompts = !responseData ? buildSinglePassFallbackPrompts() : null;
 
-    const effectiveModelId =
-      normalizedRequestedModel === "orchestrated-hybrid" ||
-      normalizedRequestedModel === "ooc-two-pass-sonnet" ||
-      !normalizedRequestedModel
-        ? "google/gemini-2.5-flash"
-        : normalizedRequestedModel === "orchestrated-hybrid-deepseek" ||
-          normalizedRequestedModel === "ooc-two-pass-deepseek"
-        ? "deepseek/deepseek-v3.2"
-        : normalizedRequestedModel;
+    const isIntimateFallbackTurn = isIntimateSceneContext({
+      actionText: action,
+      latestDialogue: gameState?.dialogue,
+      recentHistory: Array.isArray(recentHistory) ? recentHistory : [],
+      presentCompanions: physicallyPresentCompanions,
+      storyId: storyContext?.id,
+      location: gameState?.location,
+    });
 
     const modelsToTry = isLocal
-      ? [effectiveModelId || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
-      : (effectiveModelId ? [effectiveModelId, ...FALLBACK_MODELS.filter((m) => m !== effectiveModelId)] : FALLBACK_MODELS);
+      ? [normalizedRequestedModel || "hermes3:8b", "hermes3:8b"].filter((m, idx, arr) => arr.indexOf(m) === idx)
+      : isIntimateFallbackTurn
+      ? resolveChoiceModelChain(normalizedRequestedModel, true)
+      : (() => {
+          const effectiveModelId =
+            normalizedRequestedModel === "orchestrated-hybrid" ||
+            normalizedRequestedModel === "ooc-two-pass-sonnet" ||
+            !normalizedRequestedModel
+              ? "google/gemini-2.5-flash"
+              : normalizedRequestedModel === "orchestrated-hybrid-deepseek" ||
+                normalizedRequestedModel === "ooc-two-pass-deepseek"
+              ? "deepseek/deepseek-v3.2"
+              : normalizedRequestedModel;
+          return effectiveModelId
+            ? [effectiveModelId, ...FALLBACK_MODELS.filter((m) => m !== effectiveModelId)]
+            : FALLBACK_MODELS;
+        })();
 
     for (let modelIdx = 0; !responseData && singlePassPrompts && modelIdx < modelsToTry.length; modelIdx++) {
       const model = modelsToTry[modelIdx];

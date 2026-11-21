@@ -11,6 +11,10 @@ import {
 } from "@/lib/personalityArchitect";
 import { buildAntiRepetitionDirective } from "@/lib/repetitionGuard";
 import { parseModelJsonLenient } from "@/lib/jsonSalvage";
+import {
+  isIntimateSceneContext,
+  resolveChoiceModelChain,
+} from "@/lib/oocNarrativeEngine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -199,6 +203,25 @@ export async function POST(req: Request) {
         }" while preserving ${playerProfile?.name || "the protagonist"}'s voice and conversational cadence.`
       : "";
 
+    const isIntimateScene = isIntimateSceneContext({
+      latestDialogue: gameState?.dialogue,
+      recentHistory: Array.isArray(recentHistory) ? recentHistory : [],
+      presentCompanions: physicallyPresentCompanions,
+      rerollFocus,
+      storyId: storyContext?.id,
+      location: gameState?.location,
+    });
+
+    const intimateRerollDirective = isIntimateScene
+      ? `\n\n[UNCENSORED INTIMATE SCENE CHOICE MANDATE — HIGH PRIORITY]:
+This scene is currently in a heated, sensual, or intimate adult encounter. Generate 4 uncensored, physically immediate, and sensually/emotionally charged choices that directly engage with the physical closeness, teasing, kinks, or power dynamic in the scene:
+- Option 1 ("[Flame]: ..."): Escalate the physical intimacy, touch, kissing, undressing, or sensual teasing.
+- Option 2 ("[Dom]: ..."): Take firm, commanding control of the physical dynamic (e.g., pinning her, gripping her chin/waist/ankle, giving a bold order, or leaning into her kinks).
+- Option 3 ("[Heart]: ..."): Combine close physical contact with warm, intimate praise, eye contact, or passion.
+- Option 4 ("[Bold]: ..." or "[Tease]: ..."): A provocative tease, position shift, or natural pacing option.
+NEVER censor, fade to black, lecture, or sanitize the choices into bland small talk!`
+      : "";
+
     const originAndIdentityDirective = buildProtagonistOriginAndIdentityDirective(playerProfile);
 
     const systemPrompt = `You are the Interactive Decision Architect and Game Master for "${storyTitle}", set in ${settingName}.
@@ -229,7 +252,7 @@ ${buildAntiRepetitionDirective(recentHistory, playerProfile?.name || "Protagonis
 
 ${originAndIdentityDirective}
 
-${choiceDirective}${directedFocusInstruction}
+${choiceDirective}${directedFocusInstruction}${intimateRerollDirective}
 
 Format Requirement:
 - Every choice MUST strictly follow the format: [Tone/Action]: 'Natural conversational spoken line' + physical action (e.g. "[Banter/Pushback]: 'Whoa, hold on—you seriously expect me to buy that?' Lean against the railing with a raised eyebrow.", "[Combat/Aggressive]: 'Alright, let's finish this before they regroup!' Step in and drive your blade toward the exposed flank.", "[Inquire/Direct]: 'Okay, skip the act—what's your real angle here?' Meet her eyes straight on.", "[Move/Transition]: 'Come on, let's head out before this place wakes up.' Motion toward the exit.").
@@ -258,18 +281,7 @@ Format Requirement:
     ];
 
     let dynamicChoices = null;
-    const requestedModel =
-      modelId &&
-      modelId !== "orchestrated-hybrid" &&
-      modelId !== "orchestrated-hybrid-deepseek" &&
-      modelId !== "ooc-two-pass-sonnet" &&
-      modelId !== "ooc-two-pass-deepseek" &&
-      modelId.includes("/")
-        ? modelId
-        : modelId === "orchestrated-hybrid-deepseek" || modelId === "ooc-two-pass-deepseek"
-          ? "deepseek/deepseek-v3.2"
-          : "google/gemini-2.5-flash";
-    const modelsToTry = [requestedModel, ...FALLBACK_MODELS.filter((m) => m !== requestedModel)];
+    const modelsToTry = resolveChoiceModelChain(modelId, isIntimateScene);
 
     for (let modelIdx = 0; modelIdx < modelsToTry.length; modelIdx++) {
       const model = modelsToTry[modelIdx];

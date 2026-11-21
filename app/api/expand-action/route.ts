@@ -9,6 +9,10 @@ import {
   buildProtagonistOriginAndIdentityDirective,
 } from "@/lib/personalityArchitect";
 import { buildAntiRepetitionDirective } from "@/lib/repetitionGuard";
+import {
+  isIntimateSceneContext,
+  resolveChoiceModelChain,
+} from "@/lib/oocNarrativeEngine";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -257,18 +261,17 @@ ${buildAntiRepetitionDirective(recentHistory, playerFirstName, naturalLocation)}
 }`;
 
     const normalizedRequestedModel = modelId ? (LEGACY_MODEL_MIGRATIONS[modelId] || modelId) : "";
-    const effectiveModelId =
-      normalizedRequestedModel === "orchestrated-hybrid" ||
-      normalizedRequestedModel === "ooc-two-pass-sonnet" ||
-      !normalizedRequestedModel
-        ? "google/gemini-2.5-flash"
-        : normalizedRequestedModel === "orchestrated-hybrid-deepseek" ||
-          normalizedRequestedModel === "ooc-two-pass-deepseek"
-        ? "deepseek/deepseek-v3.2"
-        : normalizedRequestedModel;
+    const isIntimateExpand = isIntimateSceneContext({
+      actionText: action,
+      latestDialogue: gameState?.dialogue,
+      recentHistory: Array.isArray(recentHistory) ? recentHistory : [],
+      presentCompanions: physicallyPresentCompanions,
+      storyId: storyContext?.id || rawStoryId,
+      location,
+    });
     const modelsToTry = isLocal
-      ? [effectiveModelId || "hermes3:8b"]
-      : [effectiveModelId, ...EXPAND_MODELS.filter((m) => m !== effectiveModelId)];
+      ? [normalizedRequestedModel || "hermes3:8b"]
+      : resolveChoiceModelChain(normalizedRequestedModel, isIntimateExpand);
 
     let expandedText: string | null = null;
 
