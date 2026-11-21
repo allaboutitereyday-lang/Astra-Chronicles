@@ -22,6 +22,10 @@ import {
   getCompanionPersonaFingerprint,
 } from "@/lib/characterPersonas";
 import {
+  detectPresentCompanionsFromProse,
+  matchCanonicalCompanionName,
+} from "@/lib/scenePresence";
+import {
   extractPlayerVoiceStyleFromHistory,
   getDominantTendencyLabel,
   getPersonaVoiceProfile,
@@ -443,6 +447,7 @@ export async function executeOocTwoPassTurn(params: {
   timeOfDay?: string;
   playerProfile: any;
   presentCompanions: any[];
+  allCastNames?: string[];
   activeSpeakerName: string;
   speakerAffection: number;
   speakerKnowsPlayerName: boolean;
@@ -808,7 +813,12 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
       location: params.location,
     });
   const presentNamesList = params.presentCompanions.map((c) => c.name);
-  const allKnownCompanionNames = presentNamesList.length > 0 ? presentNamesList.join(", ") : "None (Solo)";
+  const fullCastNamesList =
+    Array.isArray(params.allCastNames) && params.allCastNames.length > 0
+      ? params.allCastNames
+      : presentNamesList;
+  const allKnownCompanionNames =
+    fullCastNamesList.length > 0 ? fullCastNamesList.join(", ") : "None (Solo)";
   const starfallPass2Telemetry =
     isStarfall && params.combatTelemetryDirective
       ? `\nLIVE STARFALL COMBAT / WAVE STATE (ALIGN CHOICES & LOCATION TO THIS):\n${params.combatTelemetryDirective.slice(0, 1200)}`
@@ -869,7 +879,12 @@ ALREADY COMPLETED SCENARIOS (DO NOT RE-ASSIGN):
 ${completedQuestsPass2Block}
 
 RULES:
-1. "speaker": Must be the primary companion speaking in SCENE PROSE (from [${allKnownCompanionNames}]), or "Narrator" if nobody else spoke. NEVER set "speaker" to "${playerName}".
+1. "speaker": Must be the primary companion speaking in SCENE PROSE (exact canonical full name from FULL CAST ROSTER: [${allKnownCompanionNames}]), or "Narrator" if nobody else spoke. NEVER set "speaker" to "${playerName}".
+1b. "state_updates.present_companions": CRITICAL — Output the exact canonical full names (from [${allKnownCompanionNames}]) of EVERY cast member who is PHYSICALLY PRESENT in the same room/scene at the END of SCENE PROSE!
+    - INCLUDE cast members who were already present AND any cast members who walked in or were already in the room ${playerFirstName} just entered (e.g., multiple heroines in the kitchen/living room).
+    - REMOVE any cast member who physically walked out or left the room during SCENE PROSE.
+    - Do NOT include cast members who are merely mentioned in conversation or in another room.
+    - Output [] ONLY if ${playerFirstName} is genuinely physically alone in the room at the end of SCENE PROSE.
 2. "expression_key": One of "neutral" | "intrigued" | "flustered" | "smug" | "combat_ready" | "hurt" matching the speaker's closing mood.
 3. "affection_delta": Integer from -5 to +4 (0 for routine tactical chat, +1 to +3 only when genuinely earned by cleverness, protection, or emotional resonance, negative if reckless/cold).
 4. "suggested_choices": Array of EXACTLY 4 distinct choices formatted strictly as: "[Tag]: 'Natural conversational spoken line' + physical action" (14–28 words total):
@@ -1094,8 +1109,25 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
         }
       : null);
 
+  const reconciledPresentCompanions = detectPresentCompanionsFromProse({
+    prose: combinedProseForPass2,
+    speaker: safeMeta.speaker,
+    rawPresentList: Array.isArray(safeMeta.state_updates?.present_companions)
+      ? safeMeta.state_updates.present_companions
+      : presentNamesList,
+    castNames: fullCastNamesList,
+  });
+  const canonicalSpeaker =
+    matchCanonicalCompanionName(safeMeta.speaker, fullCastNamesList) ||
+    (reconciledPresentCompanions.length > 0 &&
+    (!safeMeta.speaker ||
+      safeMeta.speaker.toLowerCase() === "narrator" ||
+      safeMeta.speaker.toLowerCase() === playerName.toLowerCase())
+      ? reconciledPresentCompanions[0]
+      : safeMeta.speaker || params.activeSpeakerName || "Narrator");
+
   const mergedResponseData = {
-    speaker: safeMeta.speaker || params.activeSpeakerName || "Narrator",
+    speaker: canonicalSpeaker,
     expression_key: safeMeta.expression_key || "neutral",
     player_execution: extractedPlayerExecution,
     narrative_text: extractedNarrativeProse,
@@ -1107,12 +1139,10 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
     state_updates: {
       current_location:
         safeMeta.state_updates?.current_location || params.location,
-      present_companions: Array.isArray(safeMeta.state_updates?.present_companions)
-        ? safeMeta.state_updates.present_companions
-        : presentNamesList,
+      present_companions: reconciledPresentCompanions,
       affected_companion:
-        safeMeta.state_updates?.affected_companion ??
-        (presentNamesList[0] || null),
+        matchCanonicalCompanionName(safeMeta.state_updates?.affected_companion, fullCastNamesList) ??
+        (reconciledPresentCompanions[0] || null),
       affection_delta: resolvedAffectionDelta,
       companion_sentiment: safeMeta.state_updates?.companion_sentiment || null,
       new_plot_memory: resolvedPlotMemory,

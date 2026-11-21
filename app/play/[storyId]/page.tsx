@@ -237,6 +237,10 @@ import {
 import { AshVelvetScenePanel, AshVelvetTelemetryRail } from "@/components/play/AshVelvetComicStage";
 import { AshVelvetChoiceDeck } from "@/components/play/AshVelvetChoiceDeck";
 import {
+  detectPresentCompanionsFromProse,
+  matchCanonicalCompanionName,
+} from "@/lib/scenePresence";
+import {
   MAX_DEPLOYED_PARTY,
   SummonPullResult,
   isStarfallLobbyLocation,
@@ -2352,19 +2356,21 @@ export default function VisualNovelGame() {
   const dialogueFeedRef = useRef<HTMLDivElement | null>(null);
   const isResumingSaveRef = useRef(false);
 
-  // Self-heal active Ash & Velvet Tina Smith session & latest save slot so Tina's post-prologue turn is in Tina's Bedroom (Room 206)
+  // Self-heal active Ash & Velvet Tina Smith session ONLY if stuck on the legacy hallway location while alone with Tina
   useEffect(() => {
     if (currentStory?.id !== "ash-and-velvet") return;
     const activeSpk = (gameState.speaker || "").toLowerCase();
+    const presentCount = party.filter((c) => c.isPresent).length;
     const hasTinaInScene =
       activeSpk.includes("tina") ||
       (gameState.presentCompanions || []).some((n) => n.toLowerCase().includes("tina")) ||
       party.some((c) => c.isPresent && c.name.toLowerCase().includes("tina"));
     if (
       hasTinaInScene &&
+      presentCount <= 1 &&
       !activeSpk.includes("jill") &&
       chatLog.length > 1 &&
-      gameState.location !== "Tina's Bedroom (Room 206)"
+      gameState.location === "Upstairs Hallway & Shared Bath"
     ) {
       const targetLoc = "Tina's Bedroom (Room 206)";
       const targetBg = "/backgrounds/ash-and-velvet/tinas_bedroom.jpg";
@@ -2393,6 +2399,86 @@ export default function VisualNovelGame() {
       performAutoSaveRef.current?.({ gameState: nextGs });
     }
   }, [currentStory?.id, gameState.speaker, gameState.location, gameState.presentCompanions, party, chatLog.length]);
+
+  // Self-heal active sessions/saves trapped in "Solo Scene" when the latest scene dialogue clearly has heroines present
+  useEffect(() => {
+    if (!party.length || chatLog.length === 0) return;
+    const currentPresent = party.filter((c) => c.isPresent && c.heroStatus !== "FALLEN");
+    const latestDialogue = (gameState.dialogue || "").trim();
+    if (!latestDialogue) return;
+
+    const nonFallenNames = party
+      .filter((c) => c.heroStatus !== "FALLEN")
+      .map((c) => c.name);
+    const detectedPresent = detectPresentCompanionsFromProse({
+      prose: latestDialogue,
+      speaker: gameState.speaker,
+      rawPresentList:
+        currentPresent.length > 0
+          ? currentPresent.map((c) => c.name)
+          : gameState.presentCompanions || [],
+      castNames: nonFallenNames,
+    });
+
+    if (detectedPresent.length === 0) return;
+
+    // Check if any detected heroine is missing from party.isPresent (e.g. stuck in Solo Scene or newly entered room)
+    const missingFromParty = detectedPresent.some(
+      (dName) => !currentPresent.some((c) => c.name.toLowerCase() === dName.toLowerCase())
+    );
+    if (!missingFromParty) return;
+
+    const nextParty = party.map((c) => {
+      if (c.heroStatus === "FALLEN") return c;
+      const shouldBePresent = detectedPresent.some(
+        (dName) => dName.toLowerCase() === c.name.toLowerCase()
+      );
+      if (shouldBePresent && !c.isPresent) {
+        return { ...c, isPresent: true, encountered: true };
+      }
+      return c;
+    });
+    partyRef.current = nextParty;
+    setParty(nextParty);
+
+    const nextSpeaker =
+      !gameState.speaker ||
+      gameState.speaker.toLowerCase() === "narrator" ||
+      gameState.speaker.toLowerCase() === (player.name || "").toLowerCase()
+        ? detectedPresent[0]
+        : gameState.speaker;
+    const nextGs: RoleplayState = {
+      ...gameState,
+      speaker: nextSpeaker,
+      presentCompanions: detectedPresent,
+    };
+    gameStateRef.current = nextGs;
+    setGameState(nextGs);
+
+    if (currentStory?.id === "ash-and-velvet" && gameState.location) {
+      setPlayer((prev) => {
+        if (!prev.ashVelvetState) return prev;
+        const nextLocs = { ...(prev.ashVelvetState.heroineLocations || {}) };
+        for (const dName of detectedPresent) {
+          nextLocs[dName] = gameState.location;
+        }
+        const nextP: PlayerProfile = {
+          ...prev,
+          ashVelvetState: {
+            ...prev.ashVelvetState,
+            heroineLocations: nextLocs,
+          },
+        };
+        playerRef.current = nextP;
+        return nextP;
+      });
+    }
+
+    performAutoSaveRef.current?.({
+      party: nextParty,
+      gameState: nextGs,
+    });
+  }, [currentStory?.id, gameState.dialogue, gameState.speaker, gameState.location, gameState.presentCompanions, party, chatLog.length, player.name]);
 
   // Self-heal corrupted choice arrays (e.g. from older saves or truncated JSON fragments)
   useEffect(() => {
@@ -5783,12 +5869,40 @@ export default function VisualNovelGame() {
       isResumingSaveRef.current = true;
       setDisplayedText(combinedText);
 
+      const curPartyList = partyRef.current || party;
+      const nonFallenCast = curPartyList
+        .filter((c) => c.heroStatus !== "FALLEN")
+        .map((c) => c.name);
+      const continuedPresent = detectPresentCompanionsFromProse({
+        prose: combinedText,
+        speaker: data.speaker || curGs.speaker,
+        rawPresentList: Array.isArray(data.state_updates?.present_companions)
+          ? data.state_updates.present_companions
+          : curGs.presentCompanions || [],
+        castNames: nonFallenCast,
+      });
+
+      const nextPartyAfterContinue = curPartyList.map((c) => {
+        if (c.heroStatus === "FALLEN") return c;
+        const isNowHere = continuedPresent.some(
+          (pn) => pn.toLowerCase() === c.name.toLowerCase()
+        );
+        return {
+          ...c,
+          isPresent: isNowHere,
+          encountered: c.encountered || isNowHere,
+        };
+      });
+      partyRef.current = nextPartyAfterContinue;
+      setParty(nextPartyAfterContinue);
+
       const nextGameState: RoleplayState = {
         ...curGs,
         speaker: data.speaker || curGs.speaker,
         dialogue: combinedText,
         mood: data.mood || curGs.mood,
         location: data.state_updates?.current_location || curGs.location,
+        presentCompanions: continuedPresent,
         npcKnowledgeMap: data.state_updates?.npc_knowledge_map || curGs.npcKnowledgeMap,
       };
       gameStateRef.current = nextGameState;
@@ -5811,6 +5925,7 @@ export default function VisualNovelGame() {
 
       performAutoSaveRef.current?.({
         chatLog: nextLog,
+        party: nextPartyAfterContinue,
         gameState: nextGameState,
         choices: nextChoices,
       });
@@ -6437,27 +6552,42 @@ export default function VisualNovelGame() {
       );
       const isCurrentlyAlone = currentPresentComps.length === 0;
 
-      // 2. Resolve present companions list from state updates
+      const narrative =
+        (typeof data.narrative_text === "string" && data.narrative_text.trim()) ||
+        (typeof data.narrative === "string" && data.narrative.trim()) ||
+        `Across ${data.state_updates?.current_location || gameState.location}, the momentum of ${playerWithTendencies.name}'s maneuver reshapes the immediate encounter.`;
+
+      // 2. Resolve present companions list from state updates + narrative prose reconciliation
+      const nonFallenPartyNames = party
+        .filter((c) => c.heroStatus !== "FALLEN" && !isNameFallen(c.name))
+        .map((c) => c.name);
       const rawPresentList = data.state_updates?.present_companions;
       const unfilteredPresentList: string[] = Array.isArray(rawPresentList)
         ? rawPresentList
         : (isCurrentlyAlone ? [] : currentPresentComps.map((c) => c.name));
-      const presentList: string[] = unfilteredPresentList.filter(
-        (pName) => typeof pName === "string" && !isNameFallen(pName)
-      );
+      const presentList: string[] = detectPresentCompanionsFromProse({
+        prose: narrative,
+        speaker: data.speaker,
+        rawPresentList: unfilteredPresentList,
+        castNames: nonFallenPartyNames,
+        fallenNames: incomingFallenNames,
+      }).filter((pName) => typeof pName === "string" && !isNameFallen(pName));
 
       const isSceneAlone = presentList.length === 0;
 
       // 3. Sanitize speakerName: PROHIBIT player.name or FALLEN heroines as visual novel speaker
       let rawSpeaker = (data.speaker || gameState.speaker || (isSceneAlone ? "Narrator" : "Companion")).trim();
-      if (rawSpeaker.toLowerCase() === player.name.toLowerCase() || isNameFallen(rawSpeaker)) {
+      const canonicalSpeakerMatch = matchCanonicalCompanionName(rawSpeaker, nonFallenPartyNames);
+      if (canonicalSpeakerMatch && !isNameFallen(canonicalSpeakerMatch)) {
+        rawSpeaker = canonicalSpeakerMatch;
+      } else if (
+        rawSpeaker.toLowerCase() === player.name.toLowerCase() ||
+        isNameFallen(rawSpeaker) ||
+        (!isSceneAlone && rawSpeaker.toLowerCase() === "narrator")
+      ) {
         rawSpeaker = isSceneAlone ? "Narrator" : (presentList[0] || currentPresentComps[0]?.name || "Narrator");
       }
       const speakerName = rawSpeaker;
-      const narrative =
-        (typeof data.narrative_text === "string" && data.narrative_text.trim()) ||
-        (typeof data.narrative === "string" && data.narrative.trim()) ||
-        `Across ${data.state_updates?.current_location || gameState.location}, the momentum of ${playerWithTendencies.name}'s maneuver reshapes the immediate encounter.`;
 
       let playerText = "";
       if (isCustom) {
@@ -6562,7 +6692,18 @@ export default function VisualNovelGame() {
         const compFellNow = comp.heroStatus === "FALLEN" || isNameFallen(comp.name);
         const isCurrentSpeaker = !compFellNow && compNameLower.includes((speakerName || "").toLowerCase());
         const isAffected = !compFellNow && affectedComp ? compNameLower.includes(affectedComp.toLowerCase()) : false;
-        const isPresent = !compFellNow && presentList.some((p) => typeof p === "string" && compNameLower.includes(p.toLowerCase()));
+        const isPresent =
+          !compFellNow &&
+          presentList.some((p) => {
+            if (typeof p !== "string") return false;
+            const pLower = p.trim().toLowerCase();
+            return (
+              compNameLower === pLower ||
+              compNameLower.includes(pLower) ||
+              pLower.includes(compNameLower) ||
+              matchCanonicalCompanionName(p, [comp.name]) !== null
+            );
+          });
         const isNewlyMet = !compFellNow && newlyMet.some((n) => typeof n === "string" && compNameLower.includes(n.toLowerCase()));
 
         const nowEncountered = comp.encountered || isCurrentSpeaker || isPresent || isAffected || isNewlyMet;
@@ -13377,6 +13518,10 @@ export default function VisualNovelGame() {
               onToggleCollapse={() => {
                 soundEffects.playClick();
                 setIsAshVelvetStageCollapsed((v) => !v);
+              }}
+              onSelectSpotlight={(name) => {
+                soundEffects.playClick();
+                setSpotlightHeroineName(name);
               }}
               onOpenDossier={(comp) => {
                 soundEffects.playClick();

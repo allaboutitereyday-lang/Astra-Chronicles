@@ -104,6 +104,10 @@ import {
   isIntimateSceneContext,
   resolveChoiceModelChain,
 } from "@/lib/oocNarrativeEngine";
+import {
+  detectPresentCompanionsFromProse,
+  matchCanonicalCompanionName,
+} from "@/lib/scenePresence";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -244,7 +248,7 @@ export async function POST(req: Request) {
     const effectiveTone = narrationStyle || storyContext?.narrationStyle || "Grimdark & Atmospheric";
 
     // Track physical presence of companions in the active scene (strictly excluding FALLEN Starfall heroines)
-    const fallenMemorialSet = new Set(
+    const fallenMemorialSet = new Set<string>(
       (playerProfile?.labyrinthState?.memorial || []).map((m: any) =>
         typeof m?.name === "string" ? m.name.trim().toLowerCase() : ""
       )
@@ -428,20 +432,26 @@ ${playerProfile.racialTraits && playerProfile.racialTraits.length > 0 ? `- Biolo
       return 100;
     };
 
+    const allNonFallenCastNames: string[] = (partyMembers || [])
+      .filter((c: any) => c?.name && !isHeroineFallen(c))
+      .map((c: any) => String(c.name));
+
     const scenePresenceDirective = isProtagonistAlone
-      ? `--- SCENE PRESENCE: PROTAGONIST IS PHYSICALLY ALONE ---
-- There are NO heroines or companions physically present in this location.
-- "speaker" MUST BE "Narrator", "Inner Monologue", or "System". It MUST NEVER be any heroine's name.
-- "state_updates.present_companions" MUST BE [].
-- "state_updates.affected_companion" MUST BE null.
-- "state_updates.affection_delta" MUST BE 0 (favor cannot change while alone).
-- "state_updates.expression_key" MUST BE "neutral".`
+      ? `--- SCENE PRESENCE: PROTAGONIST STARTS THIS TURN ALONE ---
+- At the start of this turn, no companions are currently in ${gameState?.location || "this room"}.
+- IF the protagonist stays alone in this room and nobody enters:
+  * "speaker" MUST BE "Narrator" or "Inner Monologue".
+  * "state_updates.present_companions" MUST BE [].
+  * "state_updates.affected_companion" MUST BE null and "state_updates.affection_delta" MUST BE 0.
+- HOWEVER, if the protagonist moves to a room where cast members are (e.g., the Kitchen, Living Room, Hallway, or another character's room) OR any cast member enters the scene:
+  * List EVERY cast member physically present at the end of the turn in "state_updates.present_companions" using exact canonical full names from: [${allNonFallenCastNames.map((n: string) => `"${n}"`).join(", ")}].
+  * Set "speaker" to the primary cast member speaking in the scene.`
       : `--- SCENE PRESENCE: HEROINES PRESENT ---
-- The protagonist (${playerProfile.name}) is in the physical presence of: ${presentHeroineNames.join(", ")}.
-- "speaker" MUST BE the exact canonical name of the active companion speaking (${presentHeroineNames.join(" or ")}).
-- "speaker" MUST NEVER BE "${playerProfile.name}".
-- "state_updates.present_companions" MUST list all heroines physically present in the scene: [${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}].
-- "state_updates.affected_companion" MUST BE one of the physically present heroines (${presentHeroineNames.map((n: string) => `"${n}"`).join(", ")}), or null if neutral.
+- At the start of this turn, the protagonist (${playerProfile.name}) is with: ${presentHeroineNames.join(", ")}.
+- Full canonical cast roster (in case others enter or the protagonist moves rooms): [${allNonFallenCastNames.map((n: string) => `"${n}"`).join(", ")}].
+- "speaker" MUST BE the exact canonical name of the active companion speaking (NEVER "${playerProfile.name}").
+- "state_updates.present_companions" MUST list ALL heroines physically present in the same room at the END of this turn (keep those who stay, add any who enter or are in a newly entered room, remove any who walk out).
+- "state_updates.affected_companion" MUST BE one of the physically present heroines, or null if neutral.
 - "state_updates.affection_delta" applies strictly to the present affected heroine based on ideological compatibility (0 by default; +1 to +2 on rare deep alignment; -1 to -4 on friction). If locked at threshold, MUST BE 0.`;
 
     // Camp Gifting Directive
@@ -1568,6 +1578,7 @@ ${continueSeedFallback.slice(-2200)}
           timeOfDay: gameState?.timeOfDay,
           playerProfile,
           presentCompanions: physicallyPresentCompanions,
+          allCastNames: allNonFallenCastNames,
           activeSpeakerName: sanitizedContextSpeaker,
           speakerAffection: companionAffection,
           speakerKnowsPlayerName: activeSpeakerKnowledge.knowsName,
@@ -2151,18 +2162,46 @@ ${continueSeedFallback.slice(-2200)}
       );
     }
 
-    // Fail-safe post-processing: enforce speaker attribution and solitude rules
-    if (responseData.speaker && String(responseData.speaker).trim().toLowerCase() === safePlayerName.toLowerCase()) {
-      responseData.speaker = isProtagonistAlone ? "Narrator" : (presentHeroineNames[0] || "Narrator");
+    // Fail-safe post-processing: reconcile physical scene presence with prose & cast roster
+    // Never trap the player permanently in "Solo Scene" when they enter a room with heroines or heroines arrive!
+    if (!responseData.state_updates) responseData.state_updates = {};
+    const reconciledPresentHeroines = detectPresentCompanionsFromProse({
+      prose: cleanedProse,
+      speaker: responseData.speaker,
+      rawPresentList: Array.isArray(responseData.state_updates.present_companions)
+        ? responseData.state_updates.present_companions
+        : presentHeroineNames,
+      castNames: allNonFallenCastNames,
+      fallenNames: fallenMemorialSet,
+    });
+    responseData.state_updates.present_companions = reconciledPresentHeroines;
+    const isAloneAfterTurn = reconciledPresentHeroines.length === 0;
+
+    const matchedSpeaker = matchCanonicalCompanionName(responseData.speaker, allNonFallenCastNames);
+    if (matchedSpeaker && !isAloneAfterTurn) {
+      responseData.speaker = matchedSpeaker;
+    } else if (
+      !responseData.speaker ||
+      String(responseData.speaker).trim().toLowerCase() === safePlayerName.toLowerCase() ||
+      (!isAloneAfterTurn && String(responseData.speaker).trim().toLowerCase() === "narrator")
+    ) {
+      responseData.speaker = isAloneAfterTurn ? "Narrator" : (reconciledPresentHeroines[0] || "Narrator");
     }
-    if (isProtagonistAlone) {
-      if (!responseData.state_updates) responseData.state_updates = {};
+
+    if (isAloneAfterTurn) {
       responseData.state_updates.present_companions = [];
       responseData.state_updates.affected_companion = null;
       responseData.state_updates.affection_delta = 0;
       if (!responseData.speaker || String(responseData.speaker).trim().toLowerCase() === safePlayerName.toLowerCase()) {
         responseData.speaker = "Narrator";
       }
+    } else if (responseData.state_updates.affected_companion) {
+      const canonicalAffected = matchCanonicalCompanionName(
+        responseData.state_updates.affected_companion,
+        reconciledPresentHeroines
+      );
+      responseData.state_updates.affected_companion =
+        canonicalAffected || reconciledPresentHeroines[0] || null;
     }
 
     // Interpersonal Friction & Rivalry Tracking (Pitch B)

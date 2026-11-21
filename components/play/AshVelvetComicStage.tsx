@@ -143,6 +143,7 @@ export interface AshVelvetScenePanelProps {
   lastDeltas?: AshVelvetTurnDeltaSummary | null;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onSelectSpotlight?: (name: string) => void;
   onOpenDossier: (comp: AshVelvetStageCompanion) => void;
   onOpenMap: () => void;
   onIllustrateCg: () => void;
@@ -169,6 +170,7 @@ export function AshVelvetScenePanel({
   lastDeltas,
   isCollapsed = false,
   onToggleCollapse,
+  onSelectSpotlight,
   onOpenDossier,
   onOpenMap,
   onIllustrateCg,
@@ -325,23 +327,92 @@ export function AshVelvetScenePanel({
         )}
       </div>
 
-      {/* TRANSPARENT STYLE A HEROINE STANDING DIRECTLY IN THE ROOM (Mathematically guaranteed below top ribbon!) */}
-      {activeComp ? (
-        <div
-          onClick={() => onOpenDossier(activeComp)}
-          title={`Click to open ${activeComp.name}'s Psychological Dossier`}
-          className="absolute bottom-0 left-3 sm:left-7 md:left-10 z-10 h-[calc(100%-44px)] flex items-end cursor-pointer group"
-        >
-          <img
-            src={activeSpriteSrc}
-            alt={activeComp.name}
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = fallbackSprite;
-            }}
-            className="h-full w-auto max-w-[260px] object-contain object-bottom drop-shadow-[0_6px_18px_rgba(0,0,0,0.88)] transition-transform duration-300 group-hover:scale-[1.02]"
-          />
-        </div>
+      {/* TRANSPARENT STYLE A HEROINES STANDING DIRECTLY IN THE ROOM (Supports 1–4 simultaneous sprites!) */}
+      {presentCompanions.length > 0 && activeComp ? (
+        presentCompanions.length === 1 ? (
+          <div
+            onClick={() => onOpenDossier(activeComp)}
+            title={`Click to open ${activeComp.name}'s Psychological Dossier`}
+            className="absolute bottom-0 left-3 sm:left-7 md:left-10 z-10 h-[calc(100%-44px)] flex items-end cursor-pointer group"
+          >
+            <img
+              src={activeSpriteSrc}
+              alt={activeComp.name}
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = fallbackSprite;
+              }}
+              className="h-full w-auto max-w-[260px] object-contain object-bottom drop-shadow-[0_6px_18px_rgba(0,0,0,0.88)] transition-transform duration-300 group-hover:scale-[1.02]"
+            />
+          </div>
+        ) : (
+          <div className="absolute bottom-0 inset-x-2 sm:inset-x-6 z-10 h-[calc(100%-44px)] flex items-end justify-start gap-0 sm:gap-1 pointer-events-none">
+            {(() => {
+              // Ensure the active spotlight/speaker heroine is always included among the visible stage cast (up to 4)
+              const orderedStageCast = [
+                activeComp,
+                ...presentCompanions.filter(
+                  (c) => c.name.toLowerCase() !== activeComp.name.toLowerCase()
+                ),
+              ].slice(0, 4);
+              const count = orderedStageCast.length;
+              return orderedStageCast.map((comp, idx) => {
+                const isFocused = comp.name.toLowerCase() === activeComp.name.toLowerCase();
+                const isCompSpeaking = speaker.toLowerCase().includes(comp.name.toLowerCase());
+                const spriteSrc =
+                  getSpriteSrc(comp.name, comp.expressionKey || "neutral") ||
+                  comp.baseImageUrl ||
+                  fallbackSprite;
+                return (
+                  <div
+                    key={comp.name}
+                    onClick={() => {
+                      if (isFocused || !onSelectSpotlight) {
+                        onOpenDossier(comp);
+                      } else {
+                        onSelectSpotlight(comp.name);
+                      }
+                    }}
+                    title={
+                      isFocused
+                        ? `${comp.name} (Focused — Click to open Dossier)`
+                        : `${comp.name} (Click to focus • Double-click for Dossier)`
+                    }
+                    onDoubleClick={() => onOpenDossier(comp)}
+                    className={`pointer-events-auto relative h-full flex items-end cursor-pointer group transition-all duration-300 ${
+                      idx > 0 ? "-ml-8 sm:-ml-6 md:-ml-4" : ""
+                    } ${isFocused ? "z-20" : "z-10 hover:z-20"}`}
+                  >
+                    <img
+                      src={spriteSrc}
+                      alt={comp.name}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = fallbackSprite;
+                      }}
+                      className={`h-full w-auto ${
+                        count >= 4
+                          ? "max-w-[145px] sm:max-w-[175px]"
+                          : count === 3
+                          ? "max-w-[165px] sm:max-w-[205px]"
+                          : "max-w-[195px] sm:max-w-[235px]"
+                      } object-contain object-bottom transition-all duration-300 ${
+                        isFocused
+                          ? "scale-100 brightness-105 drop-shadow-[0_6px_18px_rgba(236,72,153,0.45)] group-hover:scale-[1.03]"
+                          : "scale-[0.92] origin-bottom brightness-[0.86] saturate-[0.92] drop-shadow-[0_6px_16px_rgba(0,0,0,0.85)] group-hover:brightness-100 group-hover:scale-[0.97]"
+                      }`}
+                    />
+                    {isCompSpeaking && !isFocused && (
+                      <span className="absolute top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-pink-600/95 border border-[#07070A] text-[8px] font-mono font-black uppercase text-white shadow">
+                        {comp.name.split(" ")[0]}
+                      </span>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        )
       ) : (
         <div className="absolute bottom-2 left-5 z-10 flex items-center gap-2 px-3 py-1.5 bg-[#14131B]/90 border-2 border-[#07070A] shadow-[3px_3px_0px_#07070A]">
           {playerAvatar ? (
