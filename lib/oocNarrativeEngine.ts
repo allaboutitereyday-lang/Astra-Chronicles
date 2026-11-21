@@ -462,6 +462,7 @@ export async function executeOocTwoPassTurn(params: {
   pinnedMemories?: string[];
   speakerKnownFacts?: string[];
   turnNumber: number;
+  continueFromMessageText?: string | null;
 }): Promise<{
   responseData: any;
   creativeModelUsed: string;
@@ -623,7 +624,26 @@ ${directorBlock}
     24
   );
 
-  const pass1UserPrompt = params.isCustomAction
+  const continueSeed =
+    typeof params.continueFromMessageText === "string" && params.continueFromMessageText.trim().length > 0
+      ? params.continueFromMessageText.trim()
+      : null;
+
+  const pass1UserPrompt = continueSeed
+    ? `CONTINUE THIS UNFINISHED SCENE PASSAGE SEAMLESSLY FROM ITS EXACT STOPPING POINT.
+
+PASSAGE WRITTEN SO FAR (ending where generation stopped):
+"""
+${continueSeed.slice(-2200)}
+"""
+
+CONTINUATION MANDATE:
+- Pick up IMMEDIATELY at the next beat, breath, or character reaction right after the final line above.
+- Do NOT repeat, paraphrase, or re-describe anything already written above.
+- If other present characters have not yet reacted or spoken, bring them into the moment now with their authentic voices, physical beats, and subtext.
+- Keep ${playerFirstName} free of protagonist puppeteering (do not write spoken dialogue for ${playerFirstName}).
+- Output ONLY pure continuation prose (no headers like "=== SCENE RESPONSE ===", no JSON, no meta commentary).`
+    : params.isCustomAction
     ? `${playerFirstName}'s action / dialogue:\n${parsedOoc.inCharacterAction}\n\nWrite the immediate, lived-in scene consequence and character reaction directly in plain prose (no headers, no JSON, no protagonist puppeteering).`
     : `${playerFirstName} commits to this choice vector: "${parsedOoc.inCharacterAction}"
 
@@ -678,7 +698,7 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
           messages: pass1Messages,
           user: params.userKey,
           temperature: Math.max(0.55, Math.min(1.05, params.temperature)),
-          max_tokens: Math.min(3000, params.maxTokens),
+          max_tokens: Math.max(512, Math.min(6144, params.maxTokens)),
           ...(isAnthropic ? {} : { repetition_penalty: params.repetitionPenalty }),
           provider: { allow_fallbacks: true, sort: "throughput" },
         }),
@@ -745,7 +765,12 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
   let extractedPlayerExecution: string | null = null;
   let extractedNarrativeProse = rawCreativeText;
 
-  if (rawCreativeText.includes("=== SCENE RESPONSE ===")) {
+  if (continueSeed) {
+    extractedPlayerExecution = null;
+    extractedNarrativeProse = rawCreativeText
+      .replace(/===\s*(?:PROTAGONIST BEAT|SCENE RESPONSE)\s*===/gi, "")
+      .trim();
+  } else if (rawCreativeText.includes("=== SCENE RESPONSE ===")) {
     const parts = rawCreativeText.split(/===\s*SCENE RESPONSE\s*===/i);
     const beatPart = (parts[0] || "")
       .replace(/===\s*PROTAGONIST BEAT\s*===/gi, "")
@@ -762,6 +787,10 @@ Output your plain-text response in EXACTLY two sections separated by "=== SCENE 
       .replace(/===\s*PROTAGONIST BEAT\s*===/gi, "")
       .trim();
   }
+
+  const combinedProseForPass2 = continueSeed
+    ? `${continueSeed}\n\n${extractedNarrativeProse}`
+    : extractedNarrativeProse;
 
   // =========================================================================
   // PASS 2: DETERMINISTIC STATE & CHOICE EXTRACTOR (AUTO-UNCENSORED IN INTIMATE SCENES)
@@ -916,8 +945,8 @@ JSON SCHEMA:
 }`;
 
   const pass2UserContent = `CURRENT LOCATION: ${params.location}
-PLAYER ACTION: ${parsedOoc.inCharacterAction}
-${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution}\n\n` : ""}SCENE PROSE:\n${extractedNarrativeProse}`;
+PLAYER ACTION: ${continueSeed ? "(Continue unfinished response)" : parsedOoc.inCharacterAction}
+${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution}\n\n` : ""}SCENE PROSE:\n${combinedProseForPass2}`;
 
   let extractedMeta: any = null;
   const pass2Chain = resolveChoiceModelChain(

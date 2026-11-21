@@ -5666,6 +5666,180 @@ export default function VisualNovelGame() {
     await handleStartGameRef.current?.(curPlayer?.gear, curPlayer?.inventory);
   }, []);
 
+  const handleContinueTurn = useCallback(async () => {
+    if (isLoadingRef.current) return;
+    const curLog = chatLogRef.current || [];
+    let latestCharIdx = -1;
+    for (let i = curLog.length - 1; i >= 0; i--) {
+      if (curLog[i].sender === "character") {
+        latestCharIdx = i;
+        break;
+      }
+    }
+    if (latestCharIdx === -1) return;
+    const targetMsg = curLog[latestCharIdx];
+    const seedText = (targetMsg.text || "").trim();
+    if (!seedText) return;
+
+    soundEffects.playClick();
+    setIsLoading(true);
+    isLoadingRef.current = true;
+
+    try {
+      const accessKey = userAuth?.key || localStorage.getItem("astra_user_key") || "";
+      const curPlayer = playerRef.current || player;
+      const curGs = gameStateRef.current || gameState;
+      const { playerAvatar: _omitAvatar, gear: _omitGear, ...playerSansGearImages } = curPlayer as any;
+      const lightGameStateForTurn = {
+        ...curGs,
+        backgroundImage: undefined,
+      };
+      const lightPlayerForTurn = {
+        ...playerSansGearImages,
+        inventory: Array.isArray(curPlayer?.inventory)
+          ? curPlayer.inventory.map(({ image: _img, ...rest }: any) => rest)
+          : [],
+      };
+
+      const res = await fetch("/api/turn", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-user-key": accessKey,
+        },
+        body: JSON.stringify({
+          action: "[Continue]: Continue the unfinished scene response seamlessly.",
+          isCustom: true,
+          continueFromMessageText: seedText,
+          gameState: lightGameStateForTurn,
+          partyMembers: partyRef.current || party,
+          playerProfile: lightPlayerForTurn,
+          narrationStyle: narrationStyle || curPlayer?.narrationStyle || currentStory?.narrationStyle || "Grimdark & Atmospheric",
+          plotMemories: memoriesRef.current || memories,
+          userAccessKey: accessKey,
+          systemState: systemStateRef.current || systemState,
+          storyContext: currentStory,
+          timelineEchoes,
+          npcKnowledgeMap: curGs?.npcKnowledgeMap || null,
+          activeStance: curPlayer?.activeStance || "neutral",
+          targetEnvironment: llmConfig.targetEnvironment,
+          modelId: llmConfig.modelId,
+          temperature: llmConfig.temperature,
+          max_tokens: llmConfig.max_tokens,
+          repetition_penalty: llmConfig.repetition_penalty,
+          narrativeDepth: llmConfig.narrativeDepth,
+          recentHistory: curLog.slice(0, latestCharIdx).slice(-20).map((m) => ({
+            speaker: m.speakerName,
+            text: m.text,
+          })),
+          currentTurnNumber: curLog.length + 1,
+          directorNotes: directorNotes.trim() || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server returned HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data._userStats) {
+        setUserAuth(data._userStats);
+      }
+
+      const continuation = String(data.narrative_text || "").trim();
+      if (!continuation) {
+        throw new Error("Model returned an empty continuation.");
+      }
+
+      const combinedText = `${seedText}\n\n${continuation}`;
+      const nextChoices =
+        Array.isArray(data.suggested_choices) && data.suggested_choices.length > 0
+          ? data.suggested_choices
+          : choicesRef.current;
+
+      const updatedMsg: ChatMessage = {
+        ...targetMsg,
+        text: combinedText,
+        speakerName: data.speaker || targetMsg.speakerName,
+        choicesSnapshot: nextChoices,
+        swipes: Array.isArray(targetMsg.swipes)
+          ? targetMsg.swipes.map((s, idx) => {
+              const activeIdx =
+                typeof targetMsg.activeSwipeIndex === "number"
+                  ? targetMsg.activeSwipeIndex
+                  : targetMsg.swipes!.length - 1;
+              return idx === activeIdx
+                ? { ...s, text: combinedText, speakerName: data.speaker || s.speakerName, choices: nextChoices }
+                : s;
+            })
+          : targetMsg.swipes,
+      };
+
+      const nextLog = curLog.map((m, i) => (i === latestCharIdx ? updatedMsg : m));
+      chatLogRef.current = nextLog;
+      setChatLog(nextLog);
+
+      isResumingSaveRef.current = true;
+      setDisplayedText(combinedText);
+
+      const nextGameState: RoleplayState = {
+        ...curGs,
+        speaker: data.speaker || curGs.speaker,
+        dialogue: combinedText,
+        mood: data.mood || curGs.mood,
+        location: data.state_updates?.current_location || curGs.location,
+        npcKnowledgeMap: data.state_updates?.npc_knowledge_map || curGs.npcKnowledgeMap,
+      };
+      gameStateRef.current = nextGameState;
+      setGameState(nextGameState);
+
+      if (Array.isArray(nextChoices) && nextChoices.length > 0) {
+        choicesRef.current = nextChoices;
+        setChoices(nextChoices);
+      }
+
+      if (typeof data.state_updates?.memory_unlocked === "string" && data.state_updates.memory_unlocked.trim()) {
+        const mem = data.state_updates.memory_unlocked.trim();
+        const curMems = memoriesRef.current || memories || [];
+        if (!curMems.includes(mem)) {
+          const nextMems = [...curMems, mem];
+          memoriesRef.current = nextMems;
+          setMemories(nextMems);
+        }
+      }
+
+      performAutoSaveRef.current?.({
+        chatLog: nextLog,
+        gameState: nextGameState,
+        choices: nextChoices,
+      });
+    } catch (err: any) {
+      console.error("Continue generation failed:", err);
+      pushNotificationRef.current?.({
+        id: `continue_err_${Date.now()}`,
+        type: "system_alert",
+        title: "CONTINUE GENERATION FAILED",
+        subtitle: err?.message || "Failed to continue generation.",
+      });
+    } finally {
+      setIsLoading(false);
+      isLoadingRef.current = false;
+    }
+  }, [
+    player,
+    gameState,
+    party,
+    narrationStyle,
+    currentStory,
+    memories,
+    systemState,
+    timelineEchoes,
+    llmConfig,
+    directorNotes,
+    userAuth,
+  ]);
+
   const handleSelectSwipe = useCallback((msgId: string, nextIdx: number) => {
     if (isLoadingRef.current) return;
     const curLog = chatLogRef.current || [];
@@ -11918,18 +12092,6 @@ export default function VisualNovelGame() {
                         : currentStory.id === "sovereign-spire"
                           ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
                           : undefined;
-                    const avDossier =
-                      currentStory.id === "ash-and-velvet"
-                        ? getWorldPresets("ash-and-velvet")?.heroineDossiers[p.speaker]
-                        : undefined;
-                    const isColdOpen =
-                      p.id === "prologue_act1_seal_gate" ||
-                      p.id === "prologue_act1_article9_wager" ||
-                      p.id === "prologue_starfall_synthesis_bench";
-                    const isEntranceCeremony =
-                      p.id === "prologue_entrance_ceremony" ||
-                      p.id === "prologue_solaris_grand_audit";
-                    const ensembleHeroines =
                       Array.isArray(p.presentCompanions) && p.presentCompanions.length > 1
                         ? p.presentCompanions
                         : null;
@@ -13814,6 +13976,7 @@ export default function VisualNovelGame() {
                           onSaveEdit={handleSaveEdit}
                           onDeleteMessage={handleDeleteMessage}
                           onRegenerateTurn={handleRegenerateTurn}
+                          onContinueTurn={handleContinueTurn}
                           onSkipTypewriter={handleSkipTypewriter}
                           onPinMemory={handlePinTurnMessage}
                           onViewPortrait={handleViewMessagePortrait}

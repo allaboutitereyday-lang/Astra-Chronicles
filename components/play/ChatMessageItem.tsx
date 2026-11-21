@@ -21,6 +21,7 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  ChevronsRight,
 } from "lucide-react";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
@@ -77,6 +78,7 @@ export interface ChatMessageItemProps {
   onCancelEdit: () => void;
   onSaveEdit: (id: string, newText: string, shouldRegenerate?: boolean) => void;
   onRegenerateTurn: () => void;
+  onContinueTurn?: () => void;
   onSkipTypewriter: (msg: ChatMessageData, isLatestCharacterTurn: boolean) => void;
   onViewPortrait?: (imageUrl: string, name?: string) => void;
   onPinMemory?: (text: string, speakerName: string) => void;
@@ -103,6 +105,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
   onCancelEdit,
   onSaveEdit,
   onRegenerateTurn,
+  onContinueTurn,
   onSkipTypewriter,
   onViewPortrait,
   onPinMemory,
@@ -326,15 +329,28 @@ export const ChatMessageItem = memo(function ChatMessageItem({
               </button>
             )}
             {msg.sender === "character" && isLatestCharacterTurn && !isLoading && (
-              <button
-                type="button"
-                onClick={onRegenerateTurn}
-                className="flex px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono items-center gap-1 cursor-pointer shadow-sm transition-all"
-                title="Regenerate response (saves previous version as swipe variant)"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Regenerate</span>
-              </button>
+              <>
+                {onContinueTurn && (
+                  <button
+                    type="button"
+                    onClick={onContinueTurn}
+                    className="flex px-2 py-1 rounded-lg bg-cyan-950/50 hover:bg-cyan-900/60 border border-cyan-500/35 hover:border-cyan-400/65 text-cyan-200 hover:text-white text-[11px] font-mono items-center gap-1 cursor-pointer shadow-sm transition-all"
+                    title="Continue generation (generate more if the response hit a token limit or stopped early)"
+                  >
+                    <ChevronsRight className="w-3 h-3" />
+                    <span>Continue</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onRegenerateTurn}
+                  className="flex px-2 py-1 rounded-lg bg-rose-950/50 hover:bg-rose-900/60 border border-rose-500/30 hover:border-rose-400/60 text-rose-200 hover:text-white text-[11px] font-mono items-center gap-1 cursor-pointer shadow-sm transition-all"
+                  title="Regenerate response (saves previous version as swipe variant)"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Regenerate</span>
+                </button>
+              </>
             )}
           </div>
         )}

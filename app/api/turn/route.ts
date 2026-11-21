@@ -142,14 +142,7 @@ function getModelMaxTokens(model: string, baseMaxTokens: number): number {
   const m = (model || "").toLowerCase();
   if (m.includes("mythomax")) return Math.min(baseMaxTokens, 1100);
   if (m.includes("lunaris-8b")) return Math.min(baseMaxTokens, 1800);
-  if (m.startsWith("deepseek/")) return Math.min(baseMaxTokens, 2600);
-  if (m.includes("cydonia") || m.includes("euryale") || m.includes("magnum")) {
-    return Math.min(baseMaxTokens, 2600);
-  }
-  if (m.includes("claude") || m.startsWith("anthropic/") || m.includes("hermes-4")) {
-    return Math.min(baseMaxTokens, 3000);
-  }
-  return Math.min(baseMaxTokens, 3200);
+  return Math.min(baseMaxTokens, 6144);
 }
 
 export async function POST(req: Request) {
@@ -190,6 +183,7 @@ export async function POST(req: Request) {
       narrativeDepth,
       npcKnowledgeMap = null,
       directorNotes = null,
+      continueFromMessageText = null,
     } = body;
 
     const effectiveTemperature = typeof temperature === "number" ? Math.max(0.1, Math.min(1.8, temperature)) : 0.75;
@@ -197,13 +191,8 @@ export async function POST(req: Request) {
       narrativeDepth === "standard" || narrativeDepth === "expansive" || narrativeDepth === "deep_novelistic"
         ? narrativeDepth
         : "deep_novelistic";
-    const requestedMaxTokens = typeof max_tokens === "number" ? Math.max(1024, Math.min(3000, max_tokens)) : 2400;
-    const effectiveMaxTokens =
-      effectiveNarrativeDepth === "deep_novelistic"
-        ? Math.max(2400, Math.min(2600, requestedMaxTokens))
-        : effectiveNarrativeDepth === "expansive"
-        ? Math.max(1800, Math.min(2200, requestedMaxTokens))
-        : Math.min(1400, requestedMaxTokens);
+    const requestedMaxTokens = typeof max_tokens === "number" ? Math.max(512, Math.min(6144, max_tokens)) : 3584;
+    const effectiveMaxTokens = requestedMaxTokens;
     const effectiveRepetitionPenalty = typeof repetition_penalty === "number" ? Math.max(1.0, Math.min(1.5, repetition_penalty)) : 1.1;
     const paragraphSpecLabel =
       effectiveNarrativeDepth === "standard"
@@ -1496,7 +1485,21 @@ ${visualInspectionInstruction}`;
 
 >>> SELECTED CHOICE VECTOR TO EXECUTE & ANSWER NOW: "${action}" <<<`;
 
-      return { systemPrompt, userPromptContent };
+      const continueSeedFallback =
+        typeof continueFromMessageText === "string" && continueFromMessageText.trim().length > 0
+          ? continueFromMessageText.trim()
+          : null;
+      const finalUserPromptContent = continueSeedFallback
+        ? `[CONTINUATION MANDATE — FINISH UNFINISHED RESPONSE]
+Continue seamlessly from the exact stopping point of the passage below. Do NOT repeat any sentence already written, set "player_execution": null, bring in any other present characters who haven't spoken yet, and output ONLY the new continuation prose in "narrative_text" plus fresh "suggested_choices".
+
+PASSAGE WRITTEN SO FAR (ending where generation stopped):
+"""
+${continueSeedFallback.slice(-2200)}
+"""`
+        : userPromptContent;
+
+      return { systemPrompt, userPromptContent: finalUserPromptContent };
     };
 
     function supportsVision(modelName?: string): boolean {
@@ -1592,6 +1595,10 @@ ${visualInspectionInstruction}`;
             : [],
           speakerKnownFacts: activeSpeakerKnowledge.knownFacts || [],
           turnNumber: currentTurnNumber,
+          continueFromMessageText:
+            typeof continueFromMessageText === "string" && continueFromMessageText.trim().length > 0
+              ? continueFromMessageText.trim()
+              : null,
         });
 
         responseData = twoPass.responseData;

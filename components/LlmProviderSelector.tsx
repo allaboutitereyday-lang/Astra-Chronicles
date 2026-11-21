@@ -421,6 +421,29 @@ export function LlmProviderSelector({
         </p>
       </div>
 
+      {/* Visible Output Token Length Slider */}
+      <div className="p-3 bg-zinc-900/60 border border-white/10 rounded-xl space-y-1.5">
+        <div className="flex items-center justify-between text-[11px] font-mono">
+          <span className="text-zinc-300 font-medium">Max Output Tokens</span>
+          <span className="text-cyan-400 font-bold">{currentTokens} tokens</span>
+        </div>
+        <input
+          type="range"
+          min="512"
+          max="6144"
+          step="128"
+          value={currentTokens}
+          onChange={(e) => handleParamChange("max_tokens", parseInt(e.target.value, 10))}
+          className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
+        />
+        <div className="flex justify-between text-[9px] font-mono text-zinc-500">
+          <span>512 (Compact)</span>
+          <span>2560 (Balanced)</span>
+          <span>4096 (Deep)</span>
+          <span>6144 (Uncut)</span>
+        </div>
+      </div>
+
       {/* Interactive Model Settings Panel */}
       {showSettings && (
         <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-rose-500/30 space-y-3.5 animate-in fade-in duration-200">
@@ -459,28 +482,6 @@ export function LlmProviderSelector({
               <span>0.2 (Precise / Factual)</span>
               <span>0.85 (Balanced RP)</span>
               <span>1.5 (Wild / Novel)</span>
-            </div>
-          </div>
-
-          {/* Max Tokens Slider */}
-          <div className="space-y-1">
-            <div className="flex items-center justify-between text-[11px] font-mono">
-              <span className="text-zinc-300 font-medium">Max Output Tokens</span>
-              <span className="text-cyan-400 font-bold">{currentTokens} tokens</span>
-            </div>
-            <input
-              type="range"
-              min="512"
-              max="4096"
-              step="128"
-              value={currentTokens}
-              onChange={(e) => handleParamChange("max_tokens", parseInt(e.target.value, 10))}
-              className="w-full accent-cyan-500 cursor-pointer h-1.5 bg-zinc-800 rounded-lg"
-            />
-            <div className="flex justify-between text-[9px] font-mono text-zinc-500">
-              <span>512 (Compact)</span>
-              <span>2048 (Expansive)</span>
-              <span>4096 (Deep Novelistic)</span>
             </div>
           </div>
 
