@@ -12092,6 +12092,18 @@ export default function VisualNovelGame() {
                         : currentStory.id === "sovereign-spire"
                           ? SOVEREIGN_HEROINE_DOSSIERS[p.speaker]
                           : undefined;
+                    const avDossier =
+                      currentStory.id === "ash-and-velvet"
+                        ? getWorldPresets("ash-and-velvet")?.heroineDossiers[p.speaker]
+                        : undefined;
+                    const isColdOpen =
+                      p.id === "prologue_act1_seal_gate" ||
+                      p.id === "prologue_act1_article9_wager" ||
+                      p.id === "prologue_starfall_synthesis_bench";
+                    const isEntranceCeremony =
+                      p.id === "prologue_entrance_ceremony" ||
+                      p.id === "prologue_solaris_grand_audit";
+                    const ensembleHeroines =
                       Array.isArray(p.presentCompanions) && p.presentCompanions.length > 1
                         ? p.presentCompanions
                         : null;
