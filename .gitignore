@@ -52,4 +52,9 @@ next-env.d.ts
 /data/usage_tracking.json
 /data/cloud_saves/
 
+# local LoRA training zips and sprite-studio scratch backups
+/lora_datasets/
+/sprite-studio/backup_style_a/
+/sprite-studio/deeb/
+
 
