@@ -227,6 +227,9 @@ import {
   createInitialAshVelvetState,
   advanceAshVelvetClock,
   tickAshVelvetClock,
+  evaluateAshVelvetClockAndScheduleTick,
+  getHeroineScheduleAtClock,
+  locationsMatchAshVelvet,
   isOffSiteRedbridgeLocation,
   clampMeter,
   clampAshVelvetTurnDelta,
@@ -2400,7 +2403,7 @@ export default function VisualNovelGame() {
     }
   }, [currentStory?.id, gameState.speaker, gameState.location, gameState.presentCompanions, party, chatLog.length]);
 
-  // Self-heal active sessions/saves trapped in "Solo Scene" when the latest scene dialogue clearly has heroines present
+  // Self-heal scene presence: both recover genuine unquoted actors AND prune false-positive spoken-mention ghosts!
   useEffect(() => {
     if (!party.length || chatLog.length === 0) return;
     const currentPresent = party.filter((c) => c.isPresent && c.heroStatus !== "FALLEN");
@@ -2410,6 +2413,17 @@ export default function VisualNovelGame() {
     const nonFallenNames = party
       .filter((c) => c.heroStatus !== "FALLEN")
       .map((c) => c.name);
+    const scheduledHereNames: string[] =
+      currentStory?.id === "ash-and-velvet" && gameState.location
+        ? nonFallenNames.filter((hName) => {
+            const avSt = player.ashVelvetState;
+            const schedLoc = avSt
+              ? getHeroineScheduleAtClock(hName, avSt.clockLabel, avSt.timeSlot).location
+              : "";
+            return locationsMatchAshVelvet(schedLoc, gameState.location);
+          })
+        : [];
+
     const detectedPresent = detectPresentCompanionsFromProse({
       prose: latestDialogue,
       speaker: gameState.speaker,
@@ -2417,34 +2431,48 @@ export default function VisualNovelGame() {
         currentPresent.length > 0
           ? currentPresent.map((c) => c.name)
           : gameState.presentCompanions || [],
+      previouslyPresentNames: scheduledHereNames,
+      scheduledInRoomNames: scheduledHereNames,
       castNames: nonFallenNames,
     });
 
-    if (detectedPresent.length === 0) return;
-
-    // Check if any detected heroine is missing from party.isPresent (e.g. stuck in Solo Scene or newly entered room)
-    const missingFromParty = detectedPresent.some(
-      (dName) => !currentPresent.some((c) => c.name.toLowerCase() === dName.toLowerCase())
-    );
-    if (!missingFromParty) return;
+    const curNamesSorted = currentPresent
+      .map((c) => c.name.toLowerCase())
+      .sort()
+      .join("|");
+    const nextNamesSorted = detectedPresent
+      .map((n) => n.toLowerCase())
+      .sort()
+      .join("|");
+    if (curNamesSorted === nextNamesSorted) return;
 
     const nextParty = party.map((c) => {
       if (c.heroStatus === "FALLEN") return c;
       const shouldBePresent = detectedPresent.some(
         (dName) => dName.toLowerCase() === c.name.toLowerCase()
       );
-      if (shouldBePresent && !c.isPresent) {
-        return { ...c, isPresent: true, encountered: true };
+      if (shouldBePresent !== c.isPresent) {
+        return {
+          ...c,
+          isPresent: shouldBePresent,
+          encountered: shouldBePresent ? true : c.encountered,
+        };
       }
       return c;
     });
     partyRef.current = nextParty;
     setParty(nextParty);
 
+    const isStillSpeakerPresent = detectedPresent.some(
+      (d) => d.toLowerCase() === (gameState.speaker || "").toLowerCase()
+    );
     const nextSpeaker =
-      !gameState.speaker ||
-      gameState.speaker.toLowerCase() === "narrator" ||
-      gameState.speaker.toLowerCase() === (player.name || "").toLowerCase()
+      detectedPresent.length === 0
+        ? "Narrator"
+        : !isStillSpeakerPresent ||
+          !gameState.speaker ||
+          gameState.speaker.toLowerCase() === "narrator" ||
+          gameState.speaker.toLowerCase() === (player.name || "").toLowerCase()
         ? detectedPresent[0]
         : gameState.speaker;
     const nextGs: RoleplayState = {
@@ -2459,8 +2487,20 @@ export default function VisualNovelGame() {
       setPlayer((prev) => {
         if (!prev.ashVelvetState) return prev;
         const nextLocs = { ...(prev.ashVelvetState.heroineLocations || {}) };
-        for (const dName of detectedPresent) {
-          nextLocs[dName] = gameState.location;
+        for (const hName of nonFallenNames) {
+          const isNowHere = detectedPresent.some(
+            (d) => d.toLowerCase() === hName.toLowerCase()
+          );
+          if (isNowHere) {
+            nextLocs[hName] = gameState.location;
+          } else if (locationsMatchAshVelvet(nextLocs[hName], gameState.location)) {
+            // Reset falsely-parked mentioned housemates back to their true scheduled location
+            nextLocs[hName] = getHeroineScheduleAtClock(
+              hName,
+              prev.ashVelvetState.clockLabel,
+              prev.ashVelvetState.timeSlot
+            ).location;
+          }
         }
         const nextP: PlayerProfile = {
           ...prev,
@@ -2478,7 +2518,7 @@ export default function VisualNovelGame() {
       party: nextParty,
       gameState: nextGs,
     });
-  }, [currentStory?.id, gameState.dialogue, gameState.speaker, gameState.location, gameState.presentCompanions, party, chatLog.length, player.name]);
+  }, [currentStory?.id, gameState.dialogue, gameState.speaker, gameState.location, gameState.presentCompanions, party, chatLog.length, player.name, player.ashVelvetState]);
 
   // Self-heal corrupted choice arrays (e.g. from older saves or truncated JSON fragments)
   useEffect(() => {
@@ -6557,10 +6597,25 @@ export default function VisualNovelGame() {
         (typeof data.narrative === "string" && data.narrative.trim()) ||
         `Across ${data.state_updates?.current_location || gameState.location}, the momentum of ${playerWithTendencies.name}'s maneuver reshapes the immediate encounter.`;
 
-      // 2. Resolve present companions list from state updates + narrative prose reconciliation
+      // 2. Resolve present companions list from state updates + strict unquoted narrator reconciliation
       const nonFallenPartyNames = party
         .filter((c) => c.heroStatus !== "FALLEN" && !isNameFallen(c.name))
         .map((c) => c.name);
+      const rawNextLocCandidate = data.state_updates?.current_location || gameState.location;
+      const turnMovedLocation =
+        Boolean(rawNextLocCandidate) &&
+        Boolean(gameState.location) &&
+        !locationsMatchAshVelvet(rawNextLocCandidate, gameState.location);
+      const scheduledAtTargetForTurn: string[] =
+        currentStory?.id === "ash-and-velvet" && rawNextLocCandidate
+          ? nonFallenPartyNames.filter((hName) => {
+              const avSt = playerRef.current?.ashVelvetState || player.ashVelvetState;
+              const liveLoc =
+                avSt?.heroineLocations?.[hName] ||
+                (avSt ? getHeroineScheduleAtClock(hName, avSt.clockLabel, avSt.timeSlot).location : "");
+              return locationsMatchAshVelvet(liveLoc, rawNextLocCandidate);
+            })
+          : [];
       const rawPresentList = data.state_updates?.present_companions;
       const unfilteredPresentList: string[] = Array.isArray(rawPresentList)
         ? rawPresentList
@@ -6569,6 +6624,8 @@ export default function VisualNovelGame() {
         prose: narrative,
         speaker: data.speaker,
         rawPresentList: unfilteredPresentList,
+        previouslyPresentNames: turnMovedLocation ? [] : currentPresentComps.map((c) => c.name),
+        scheduledInRoomNames: scheduledAtTargetForTurn,
         castNames: nonFallenPartyNames,
         fallenNames: incomingFallenNames,
       }).filter((pName) => typeof pName === "string" && !isNameFallen(pName));
@@ -6981,12 +7038,49 @@ export default function VisualNovelGame() {
           locationChanged &&
           (isOffSiteRedbridgeLocation(nextLocation) || isOffSiteRedbridgeLocation(gameState.location));
 
-        let nextAvState: AshVelvetHouseState = tickAshVelvetClock(curAvState, {
+        const lockedIntimateNamesForClock = resolvedPartyState
+          .filter((p) => p.isPresent && (resolveHeroineMeters(p).lust >= 45 || (p as any).activeWardrobe?.startsWith("nsfw_")))
+          .map((p) => p.name);
+
+        const clockTickEval = evaluateAshVelvetClockAndScheduleTick(curAvState, {
           explicitTimeJump: hasTimePassingCue,
           movedOffSite,
           movedRoomInHouse: locationChanged && !movedOffSite,
+          playerLocation: nextLocation,
+          presentHeroineNames: locationChanged ? [] : currentPresentComps.map((c) => c.name),
+          lockedIntimateHeroineNames: locationChanged ? [] : lockedIntimateNamesForClock,
         });
-        const shouldAdvanceClock = nextAvState.timeSlot !== curAvState.timeSlot;
+        let nextAvState: AshVelvetHouseState = clockTickEval.nextState;
+
+        // Emit subtle House Bulletin notifications when heroines dynamically arrive or head out on schedule
+        const serverTransitions = (data.state_updates as any)?.schedule_transitions;
+        const arrivingEvents = Array.isArray(serverTransitions?.arriving)
+          ? serverTransitions.arriving
+          : clockTickEval.arrivingHeroines;
+        const departingEvents = Array.isArray(serverTransitions?.departing)
+          ? serverTransitions.departing
+          : clockTickEval.departingHeroines;
+
+        for (const arr of arrivingEvents) {
+          if (arr?.heroineName) {
+            pushNotification({
+              id: `av_sched_arr_${arr.heroineName}_${Date.now()}`,
+              type: "system_alert",
+              title: `${arr.heroineName.toUpperCase()} ARRIVED`,
+              subtitle: `${nextAvState.clockLabel}: Stepped into ${nextLocation} (${arr.activity}).`,
+            });
+          }
+        }
+        for (const dep of departingEvents) {
+          if (dep?.heroineName) {
+            pushNotification({
+              id: `av_sched_dep_${dep.heroineName}_${Date.now()}`,
+              type: "system_alert",
+              title: `${dep.heroineName.toUpperCase()} HEADED OUT`,
+              subtitle: `${nextAvState.clockLabel}: Left for ${dep.toLocation} (${dep.activity}).`,
+            });
+          }
+        }
 
         nextAvState = {
           ...nextAvState,
@@ -7015,27 +7109,35 @@ export default function VisualNovelGame() {
           });
         }
 
-        // Update current room for every heroine currently present in this scene, and refresh natural outfits when clock/location shifts
+        // Update current room for every heroine currently present in this scene, and refresh natural outfits dynamically by clock & room
         const explicitSpeakerWardrobe =
           typeof data.state_updates?.wardrobe_key === "string"
             ? data.state_updates.wardrobe_key.trim().toLowerCase()
             : null;
         resolvedPartyState = nextPartyState.map((pComp) => {
+          const prevKnownRoom = curAvState.heroineLocations?.[pComp.name] || "";
           if (pComp.isPresent && nextLocation) {
             nextAvState.heroineLocations[pComp.name] = nextLocation;
           }
           const compRoom =
             nextAvState.heroineLocations[pComp.name] || nextLocation || gameState.location;
+          const roomShiftedForHeroine = !locationsMatchAshVelvet(prevKnownRoom, compRoom);
+          const slotShifted = nextAvState.timeSlot !== curAvState.timeSlot;
           const curW = (pComp as any).activeWardrobe || "base";
           const isExplicitlySetThisTurn =
             Boolean(explicitSpeakerWardrobe) &&
             typeof data.speaker === "string" &&
             data.speaker.toLowerCase().includes(pComp.name.toLowerCase());
-          if (shouldAdvanceClock && !isExplicitlySetThisTurn && !curW.startsWith("nsfw_")) {
+          if (
+            (roomShiftedForHeroine || slotShifted) &&
+            !isExplicitlySetThisTurn &&
+            !(pComp.isPresent && curW.startsWith("nsfw_"))
+          ) {
             const naturalKey = inferNaturalWardrobeKey(
               pComp.name,
               compRoom,
-              nextAvState.timeSlot
+              nextAvState.timeSlot,
+              nextAvState.clockLabel
             );
             const storyDef = currentStory.companions?.find(
               (sc) => sc.id === pComp.id || sc.name.toLowerCase() === pComp.name.toLowerCase()
@@ -14772,6 +14874,7 @@ export default function VisualNovelGame() {
             roomNumber={(liveCardComp as any)?.assignedRoomNumber}
             starfallRosterEntry={cardRosterEntry}
             npcKnowledge={cardKnowledge}
+            ashVelvetClockLabel={player.ashVelvetState?.clockLabel}
             onSelectWardrobe={(compName, nextW) => {
               setParty((prev) =>
                 prev.map((p) =>
@@ -15366,19 +15469,28 @@ export default function VisualNovelGame() {
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
                         {heroinesHere.length > 0 && (
                           <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1">
-                            {heroinesHere.map((h) => (
-                              <div
-                                key={h.name}
-                                title={`${h.name} is here`}
-                                className="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-400 bg-[#FDFBF7] shadow-md"
-                              >
-                                <img
-                                  src={getSpriteSrc(h.name, h.expressionKey) || DEFAULT_FALLBACK_SPRITE}
-                                  alt={h.name}
-                                  className="w-full h-full object-cover object-top"
-                                />
-                              </div>
-                            ))}
+                            {heroinesHere.map((h) => {
+                              const schedAct = avStateForMap
+                                ? getHeroineScheduleAtClock(
+                                    h.name,
+                                    avStateForMap.clockLabel,
+                                    avStateForMap.timeSlot
+                                  ).activity
+                                : "";
+                              return (
+                                <div
+                                  key={h.name}
+                                  title={`${h.name} is here${schedAct ? ` — ${schedAct}` : ""}`}
+                                  className="w-7 h-7 rounded-full overflow-hidden border-2 border-amber-400 bg-[#FDFBF7] shadow-md"
+                                >
+                                  <img
+                                    src={getSpriteSrc(h.name, h.expressionKey) || DEFAULT_FALLBACK_SPRITE}
+                                    alt={h.name}
+                                    className="w-full h-full object-cover object-top"
+                                  />
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>

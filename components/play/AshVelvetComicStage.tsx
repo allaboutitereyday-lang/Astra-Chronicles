@@ -29,6 +29,7 @@ import {
 import {
   ASH_VELVET_TIME_SLOT_DISPLAY,
   getAffectionBondTier,
+  getHeroineScheduleAtClock,
   getLustStateLabel,
   getSensitivityStageLabel,
   getSubmissionDynamicLabel,
@@ -657,9 +658,15 @@ export function AshVelvetTelemetryRail({
             );
             const thumb =
               getSpriteSrc(comp.name, "neutral") || comp.baseImageUrl || fallbackSprite;
+            const compSched = getHeroineScheduleAtClock(
+              comp.name,
+              houseState.clockLabel,
+              houseState.timeSlot
+            );
             const compRoom = isHere
               ? location
               : houseState.heroineLocations[comp.name] ||
+                compSched.location ||
                 ASH_VELVET_HEROINE_DOSSIERS[comp.name]?.bedroomLocation ||
                 "412 Maplewood";
             const shortRoom = isHere ? "HERE" : shortenAshVelvetLocation(compRoom);
@@ -670,7 +677,7 @@ export function AshVelvetTelemetryRail({
                 type="button"
                 onClick={() => onSelectSpotlight(comp.name)}
                 onDoubleClick={() => onOpenDossier(comp)}
-                title={`${comp.name} — ${isHere ? "Present here" : `At ${compRoom}`} (Click to inspect • Double-click Dossier)`}
+                title={`${comp.name} — ${isHere ? "Present here" : `At ${compRoom}`} • ${compSched.activity} (Click to inspect • Double-click Dossier)`}
                 className="flex flex-col items-center gap-1 cursor-pointer focus:outline-none group"
               >
                 <div

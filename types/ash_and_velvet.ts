@@ -230,6 +230,15 @@ export type AshVelvetTimeSlot =
   | "LATE_NIGHT"
   | "AFTER_MIDNIGHT";
 
+export interface AshVelvetScheduleWindow {
+  startMinute: number; // 0..1439 (minutes since 12:00 AM)
+  endMinute: number;   // 1..1440
+  timeRangeLabel: string; // e.g. "6:30 AM – 9:30 AM"
+  location: string;    // Exact canonical 15-room name
+  activity: string;    // What she is doing during this window
+  wardrobeKey: string; // Natural outfit key for this window
+}
+
 export interface AshVelvetHeroineMeters {
   affection: number;    // 0-100 emotional warmth, romantic bond & loyalty
   lust: number;         // 0-100 physical heat, craving & late-night tension

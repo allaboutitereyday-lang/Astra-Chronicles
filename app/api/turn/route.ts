@@ -94,6 +94,13 @@ import {
 } from "@/lib/starfallCombatEngine";
 import {
   buildAshVelvetPromptDirective,
+  createInitialAshVelvetState,
+  evaluateAshVelvetClockAndScheduleTick,
+  inferNaturalWardrobeKey,
+  isOffSiteRedbridgeLocation,
+  locationsMatchAshVelvet,
+  resolveAshVelvetDestinationFromAction,
+  resolveHeroineMeters,
 } from "@/lib/ashVelvetEngine";
 import {
   executeOocTwoPassTurn,
@@ -260,9 +267,125 @@ export async function POST(req: Request) {
       return Boolean(nm && fallenMemorialSet.has(nm));
     };
 
-    const physicallyPresentCompanions = (partyMembers || []).filter(
+    const rawPhysicallyPresentCompanions = (partyMembers || []).filter(
       (c: any) => Boolean(c?.isPresent) && !isHeroineFallen(c)
     );
+    const isAshVelvetStoryEarly =
+      storyContext?.id === "ash-and-velvet" || storyContext?.contentRating === "adult_18";
+    const avDestLocation = isAshVelvetStoryEarly
+      ? resolveAshVelvetDestinationFromAction(String(action || ""), gameState?.location || "")
+      : null;
+    const avEffectiveTurnLocation =
+      avDestLocation || gameState?.location || "Clara's Kitchen & Living Room";
+
+    const avLockedIntimateNames: string[] = isAshVelvetStoryEarly
+      ? rawPhysicallyPresentCompanions
+          .filter((c: any) => {
+            const m = resolveHeroineMeters(c);
+            return (
+              m.lust >= 45 ||
+              isIntimateSceneContext({
+                actionText: String(action || ""),
+                latestDialogue: gameState?.dialogue,
+                recentHistory: Array.isArray(recentHistory) ? recentHistory : [],
+                presentCompanions: rawPhysicallyPresentCompanions,
+                storyId: storyContext?.id,
+                location: gameState?.location,
+              })
+            );
+          })
+          .map((c: any) => String(c.name))
+      : [];
+
+    const avPreTurnScheduleEval = isAshVelvetStoryEarly
+      ? evaluateAshVelvetClockAndScheduleTick(
+          playerProfile?.ashVelvetState || createInitialAshVelvetState(undefined, playerProfile?.gold ?? 65),
+          {
+            explicitTimeJump: /\b(sleep|wake up|woke up|next morning|work a shift|worked a shift|hours later|call it a night|until morning|after work|go to bed|crash for the night|later that evening|later that night|wait until (?:morning|afternoon|evening|night|midnight))\b/i.test(
+              String(action || "")
+            ),
+            movedOffSite:
+              Boolean(avDestLocation) &&
+              (isOffSiteRedbridgeLocation(avDestLocation!) ||
+                isOffSiteRedbridgeLocation(gameState?.location || "")),
+            movedRoomInHouse:
+              Boolean(avDestLocation) &&
+              !isOffSiteRedbridgeLocation(avDestLocation!) &&
+              !isOffSiteRedbridgeLocation(gameState?.location || ""),
+            playerLocation: avEffectiveTurnLocation,
+            presentHeroineNames: avDestLocation
+              ? []
+              : rawPhysicallyPresentCompanions.map((c: any) => String(c.name)),
+            lockedIntimateHeroineNames: avDestLocation ? [] : avLockedIntimateNames,
+            suppressWalkIns: Boolean(avDestLocation) || Boolean(continueFromMessageText),
+          }
+        )
+      : null;
+
+    const avScheduledInRoomNames: string[] =
+      isAshVelvetStoryEarly && avPreTurnScheduleEval
+        ? Object.entries(avPreTurnScheduleEval.nextState.heroineLocations)
+            .filter(([, room]) => locationsMatchAshVelvet(room, avEffectiveTurnLocation))
+            .map(([hName]) => hName)
+        : [];
+
+    const physicallyPresentCompanions = (() => {
+      if (!isAshVelvetStoryEarly || !avPreTurnScheduleEval) {
+        return rawPhysicallyPresentCompanions;
+      }
+      if (avDestLocation) {
+        // Player explicitly traveled to a new room/venue: populate who is actually at that destination right now!
+        return (partyMembers || [])
+          .filter(
+            (c: any) =>
+              !isHeroineFallen(c) &&
+              avScheduledInRoomNames.some(
+                (sn) => sn.toLowerCase() === String(c?.name || "").toLowerCase()
+              )
+          )
+          .map((c: any) => ({
+            ...c,
+            isPresent: true,
+            activeWardrobe:
+              c.activeWardrobe && String(c.activeWardrobe).startsWith("nsfw_")
+                ? "base"
+                : inferNaturalWardrobeKey(
+                    c.name,
+                    avDestLocation,
+                    avPreTurnScheduleEval.nextState.timeSlot,
+                    avPreTurnScheduleEval.nextState.clockLabel
+                  ),
+          }));
+      }
+      // Staying in current room: include any scheduled common-room walk-ins
+      if (avPreTurnScheduleEval.arrivingHeroines.length > 0) {
+        const arrivingSet = new Set(
+          avPreTurnScheduleEval.arrivingHeroines.map((a) => a.heroineName.toLowerCase())
+        );
+        const added = (partyMembers || [])
+          .filter(
+            (c: any) =>
+              !isHeroineFallen(c) &&
+              arrivingSet.has(String(c?.name || "").toLowerCase()) &&
+              !rawPhysicallyPresentCompanions.some(
+                (p: any) => String(p?.name || "").toLowerCase() === String(c?.name || "").toLowerCase()
+              )
+          )
+          .map((c: any) => ({
+            ...c,
+            isPresent: true,
+            activeWardrobe: inferNaturalWardrobeKey(
+              c.name,
+              avEffectiveTurnLocation,
+              avPreTurnScheduleEval.nextState.timeSlot,
+              avPreTurnScheduleEval.nextState.clockLabel
+            ),
+          }));
+        return [...rawPhysicallyPresentCompanions, ...added];
+      }
+      return rawPhysicallyPresentCompanions;
+    })();
+
     const isProtagonistAlone = physicallyPresentCompanions.length === 0;
     const presentHeroineNames = physicallyPresentCompanions.map((c: any) => c.name);
 
@@ -620,15 +743,15 @@ The interaction between ${playerProfile.name} and ${sanitizedContextSpeaker} car
       storyContext?.id === "ash-and-velvet" || storyContext?.contentRating === "adult_18";
     const ashVelvetDirective = isAshVelvetStory
       ? buildAshVelvetPromptDirective({
-          houseState: playerProfile?.ashVelvetState || null,
-          presentCompanions: Array.isArray(partyMembers)
-            ? partyMembers.filter((c: any) => c?.isPresent)
-            : [],
-          location: gameState?.location || "Clara's Kitchen & Living Room",
+          houseState: avPreTurnScheduleEval?.nextState || playerProfile?.ashVelvetState || null,
+          presentCompanions: physicallyPresentCompanions,
+          location: avEffectiveTurnLocation,
           playerPersonality: playerProfile?.personality,
           playerConduit: playerProfile?.conduit,
           playerRole: playerProfile?.role,
           playerAction: String(action || ""),
+          arrivingHeroines: avPreTurnScheduleEval?.arrivingHeroines || [],
+          departingHeroines: avPreTurnScheduleEval?.departingHeroines || [],
         })
       : "";
     let portSolarisDirective = "";
@@ -1574,11 +1697,14 @@ ${continueSeedFallback.slice(-2200)}
           settingName,
           location: isStarfallStory
             ? effectiveTurnLocation
+            : isAshVelvetStory
+            ? avEffectiveTurnLocation
             : gameState?.location || "Star Gate Plaza (Main Lobby)",
           timeOfDay: gameState?.timeOfDay,
           playerProfile,
           presentCompanions: physicallyPresentCompanions,
           allCastNames: allNonFallenCastNames,
+          scheduledInRoomNames: avScheduledInRoomNames,
           activeSpeakerName: sanitizedContextSpeaker,
           speakerAffection: companionAffection,
           speakerKnowsPlayerName: activeSpeakerKnowledge.knowsName,
@@ -2163,18 +2289,52 @@ ${continueSeedFallback.slice(-2200)}
     }
 
     // Fail-safe post-processing: reconcile physical scene presence with prose & cast roster
-    // Never trap the player permanently in "Solo Scene" when they enter a room with heroines or heroines arrive!
+    // Never trap the player in "Solo Scene" on real arrivals, and NEVER spawn mentioned-only housemates as ghosts!
     if (!responseData.state_updates) responseData.state_updates = {};
-    const reconciledPresentHeroines = detectPresentCompanionsFromProse({
+    if (isAshVelvetStory && avDestLocation) {
+      responseData.state_updates.current_location = avDestLocation;
+    }
+    const postTurnTargetLocation =
+      responseData.state_updates.current_location || avEffectiveTurnLocation || gameState?.location || "";
+    const postTurnScheduledInRoom: string[] =
+      isAshVelvetStory && avPreTurnScheduleEval
+        ? Object.entries(avPreTurnScheduleEval.nextState.heroineLocations)
+            .filter(([, room]) => locationsMatchAshVelvet(room, postTurnTargetLocation))
+            .map(([hName]) => hName)
+        : [];
+    const playerAskedToStayOrJoin =
+      /\b(?:stay|don['’]t\s+go|wait\s+up|walk\s+with\s+you|come\s+with\s+you|tag\s+along|keep\s+me\s+company)\b/i.test(
+        String(action || "")
+      );
+    const scheduledDepartingSet = new Set(
+      !playerAskedToStayOrJoin && avPreTurnScheduleEval
+        ? avPreTurnScheduleEval.departingHeroines.map((d) => d.heroineName.toLowerCase())
+        : []
+    );
+
+    let reconciledPresentHeroines = detectPresentCompanionsFromProse({
       prose: cleanedProse,
       speaker: responseData.speaker,
       rawPresentList: Array.isArray(responseData.state_updates.present_companions)
         ? responseData.state_updates.present_companions
         : presentHeroineNames,
+      previouslyPresentNames: presentHeroineNames,
+      scheduledInRoomNames: postTurnScheduledInRoom,
       castNames: allNonFallenCastNames,
       fallenNames: fallenMemorialSet,
     });
+    if (scheduledDepartingSet.size > 0) {
+      reconciledPresentHeroines = reconciledPresentHeroines.filter(
+        (name) => !scheduledDepartingSet.has(name.toLowerCase())
+      );
+    }
     responseData.state_updates.present_companions = reconciledPresentHeroines;
+    if (isAshVelvetStory && avPreTurnScheduleEval) {
+      responseData.state_updates.schedule_transitions = {
+        arriving: avPreTurnScheduleEval.arrivingHeroines,
+        departing: playerAskedToStayOrJoin ? [] : avPreTurnScheduleEval.departingHeroines,
+      };
+    }
     const isAloneAfterTurn = reconciledPresentHeroines.length === 0;
 
     const matchedSpeaker = matchCanonicalCompanionName(responseData.speaker, allNonFallenCastNames);

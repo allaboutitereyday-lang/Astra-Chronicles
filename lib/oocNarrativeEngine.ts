@@ -448,6 +448,7 @@ export async function executeOocTwoPassTurn(params: {
   playerProfile: any;
   presentCompanions: any[];
   allCastNames?: string[];
+  scheduledInRoomNames?: string[];
   activeSpeakerName: string;
   speakerAffection: number;
   speakerKnowsPlayerName: boolean;
@@ -1115,6 +1116,8 @@ ${extractedPlayerExecution ? `PROTAGONIST EXECUTION:\n${extractedPlayerExecution
     rawPresentList: Array.isArray(safeMeta.state_updates?.present_companions)
       ? safeMeta.state_updates.present_companions
       : presentNamesList,
+    previouslyPresentNames: presentNamesList,
+    scheduledInRoomNames: params.scheduledInRoomNames || [],
     castNames: fullCastNamesList,
   });
   const canonicalSpeaker =

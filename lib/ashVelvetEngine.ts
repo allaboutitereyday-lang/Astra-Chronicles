@@ -2,6 +2,7 @@ import {
   ASH_VELVET_HEROINE_DOSSIERS,
   AshVelvetHeroineMeters,
   AshVelvetHouseState,
+  AshVelvetScheduleWindow,
   AshVelvetTimeSlot,
 } from "@/types/ash_and_velvet";
 
@@ -30,8 +31,461 @@ export const ASH_VELVET_TIME_SLOT_DISPLAY: Record<AshVelvetTimeSlot, string> = {
 };
 
 /**
- * Default daily schedule mapping every heroine to a natural location across all 14 rooms
- * based on the current Time Slot.
+ * Granular 24-hour clock-driven routines (0..1440 minutes from midnight) for all 7 heroines.
+ * Heroines dynamically transition between rooms/venues and outfits as the live clock crosses
+ * these schedule windows.
+ */
+export const HEROINE_DAILY_ROUTINES: Record<string, AshVelvetScheduleWindow[]> = {
+  "Clara Callahan": [
+    {
+      startMinute: 0,
+      endMinute: 120,
+      timeRangeLabel: "12:00 AM – 2:00 AM",
+      location: "Clara's Late-Night Den",
+      activity: "Sipping chamomile insomnia tea & reviewing house bills",
+      wardrobeKey: "nightwear",
+    },
+    {
+      startMinute: 120,
+      endMinute: 390,
+      timeRangeLabel: "2:00 AM – 6:30 AM",
+      location: "Clara's Master Bedroom (Room 101)",
+      activity: "Sleeping lightly behind closed doors",
+      wardrobeKey: "nightwear",
+    },
+    {
+      startMinute: 390,
+      endMinute: 570,
+      timeRangeLabel: "6:30 AM – 9:30 AM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Brewing fresh coffee & cooking house breakfast",
+      wardrobeKey: "kitchen",
+    },
+    {
+      startMinute: 570,
+      endMinute: 720,
+      timeRangeLabel: "9:30 AM – 12:00 PM",
+      location: "Clara's Master Bedroom (Room 101)",
+      activity: "Sorting mail, mortgage notices & fresh house linens",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 720,
+      endMinute: 840,
+      timeRangeLabel: "12:00 PM – 2:00 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Prepping lunch & checking in on the tenants",
+      wardrobeKey: "kitchen",
+    },
+    {
+      startMinute: 840,
+      endMinute: 1020,
+      timeRangeLabel: "2:00 PM – 5:00 PM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Tending patio planters & drinking afternoon tea",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 1020,
+      endMinute: 1230,
+      timeRangeLabel: "5:00 PM – 8:30 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Simmering dinner on the stove for the house",
+      wardrobeKey: "kitchen",
+    },
+    {
+      startMinute: 1230,
+      endMinute: 1440,
+      timeRangeLabel: "8:30 PM – 12:00 AM",
+      location: "Clara's Late-Night Den",
+      activity: "Unwinding on the sofa with a glass of red wine",
+      wardrobeKey: "lounge",
+    },
+  ],
+  "Hannah Lindqvist": [
+    {
+      startMinute: 0,
+      endMinute: 90,
+      timeRangeLabel: "12:00 AM – 1:30 AM",
+      location: "Velvet Static Dive Bar",
+      activity: "Shooting pool & nursing cheap whiskey",
+      wardrobeKey: "nightout",
+    },
+    {
+      startMinute: 90,
+      endMinute: 210,
+      timeRangeLabel: "1:30 AM – 3:30 AM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Smoking under the porch string lights at 2 AM",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 210,
+      endMinute: 690,
+      timeRangeLabel: "3:30 AM – 11:30 AM",
+      location: "Hannah's Studio Bedroom (Room 202)",
+      activity: "Crashed out late beneath tangled sheets",
+      wardrobeKey: "nightwear",
+    },
+    {
+      startMinute: 690,
+      endMinute: 780,
+      timeRangeLabel: "11:30 AM – 1:00 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Drinking black coffee half-awake in an oversized tee",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 780,
+      endMinute: 1080,
+      timeRangeLabel: "1:00 PM – 6:00 PM",
+      location: "Hannah's Studio Bedroom (Room 202)",
+      activity: "Charcoal sketching & painting with headphones on",
+      wardrobeKey: "overalls",
+    },
+    {
+      startMinute: 1080,
+      endMinute: 1230,
+      timeRangeLabel: "6:00 PM – 8:30 PM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Sketching at dusk & flicking her lighter",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 1230,
+      endMinute: 1440,
+      timeRangeLabel: "8:30 PM – 12:00 AM",
+      location: "Velvet Static Dive Bar",
+      activity: "Back booth drinks & loud jukebox static",
+      wardrobeKey: "nightout",
+    },
+  ],
+  "Brianna Chen": [
+    {
+      startMinute: 0,
+      endMinute: 75,
+      timeRangeLabel: "12:00 AM – 1:15 AM",
+      location: "Velvet Static Dive Bar",
+      activity: "Holding court at a neon booth with late drinks",
+      wardrobeKey: "party",
+    },
+    {
+      startMinute: 75,
+      endMinute: 435,
+      timeRangeLabel: "1:15 AM – 7:15 AM",
+      location: "Brianna's Bedroom (Room 203)",
+      activity: "Late-night phone scrolling & sleeping in",
+      wardrobeKey: "nightwear",
+    },
+    {
+      startMinute: 435,
+      endMinute: 510,
+      timeRangeLabel: "7:15 AM – 8:30 AM",
+      location: "Upstairs Hallway & Shared Bath",
+      activity: "Fresh out of a hot shower in a damp bath towel",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 510,
+      endMinute: 600,
+      timeRangeLabel: "8:30 AM – 10:00 AM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Making iced coffee & teasing whoever walks in",
+      wardrobeKey: "casual",
+    },
+    {
+      startMinute: 600,
+      endMinute: 930,
+      timeRangeLabel: "10:00 AM – 3:30 PM",
+      location: "Brianna's Bedroom (Room 203)",
+      activity: "Online lectures & ring-light outfit shoots",
+      wardrobeKey: "casual",
+    },
+    {
+      startMinute: 930,
+      endMinute: 1110,
+      timeRangeLabel: "3:30 PM – 6:30 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Raiding the fridge & lounging against the counter",
+      wardrobeKey: "casual",
+    },
+    {
+      startMinute: 1110,
+      endMinute: 1290,
+      timeRangeLabel: "6:30 PM – 9:30 PM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Playing music & pre-gaming before going out",
+      wardrobeKey: "party",
+    },
+    {
+      startMinute: 1290,
+      endMinute: 1440,
+      timeRangeLabel: "9:30 PM – 12:00 AM",
+      location: "Velvet Static Dive Bar",
+      activity: "Dancing & flirting over cocktails under neon lights",
+      wardrobeKey: "party",
+    },
+  ],
+  "Sierra Holloway": [
+    {
+      startMinute: 0,
+      endMinute: 60,
+      timeRangeLabel: "12:00 AM – 1:00 AM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Stretching tired shoulders in the cool night air",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 60,
+      endMinute: 420,
+      timeRangeLabel: "1:00 AM – 7:00 AM",
+      location: "Sierra's Bedroom (Room 204)",
+      activity: "Curled up asleep after a double shift",
+      wardrobeKey: "nightwear",
+    },
+    {
+      startMinute: 420,
+      endMinute: 540,
+      timeRangeLabel: "7:00 AM – 9:00 AM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Packing shift meal & pouring sweet morning coffee",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 540,
+      endMinute: 930,
+      timeRangeLabel: "9:00 AM – 3:30 PM",
+      location: "Starlight Retro Diner",
+      activity: "Working the breakfast & lunch counter rush",
+      wardrobeKey: "diner",
+    },
+    {
+      startMinute: 930,
+      endMinute: 1050,
+      timeRangeLabel: "3:30 PM – 5:30 PM",
+      location: "Sierra's Bedroom (Room 204)",
+      activity: "Resting sore feet between diner shifts",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 1050,
+      endMinute: 1230,
+      timeRangeLabel: "5:30 PM – 8:30 PM",
+      location: "Starlight Retro Diner",
+      activity: "Serving milkshakes & burgers on the evening rush",
+      wardrobeKey: "diner",
+    },
+    {
+      startMinute: 1230,
+      endMinute: 1350,
+      timeRangeLabel: "8:30 PM – 10:30 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Bringing home leftover diner pie & making tea",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 1350,
+      endMinute: 1440,
+      timeRangeLabel: "10:30 PM – 12:00 AM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Unwinding quietly under the patio string lights",
+      wardrobeKey: "lounge",
+    },
+  ],
+  "Chloe Bellamy": [
+    {
+      startMinute: 0,
+      endMinute: 90,
+      timeRangeLabel: "12:00 AM – 1:30 AM",
+      location: "Clara's Late-Night Den",
+      activity: "Reading late with her heels off & guard lowered",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 90,
+      endMinute: 405,
+      timeRangeLabel: "1:30 AM – 6:45 AM",
+      location: "Chloe's Executive Bedroom (Room 205)",
+      activity: "Sleeping in crisp silk sheets",
+      wardrobeKey: "nightwear",
+    },
+    {
+      startMinute: 405,
+      endMinute: 495,
+      timeRangeLabel: "6:45 AM – 8:15 AM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Drinking black espresso in tailored office attire",
+      wardrobeKey: "office",
+    },
+    {
+      startMinute: 495,
+      endMinute: 735,
+      timeRangeLabel: "8:15 AM – 12:15 PM",
+      location: "Chloe's Executive Bedroom (Room 205)",
+      activity: "Drafting legal briefs & taking firm calls",
+      wardrobeKey: "office",
+    },
+    {
+      startMinute: 735,
+      endMinute: 840,
+      timeRangeLabel: "12:15 PM – 2:00 PM",
+      location: "Starlight Retro Diner",
+      activity: "Working lunch in a corner booth with case files",
+      wardrobeKey: "office",
+    },
+    {
+      startMinute: 840,
+      endMinute: 1080,
+      timeRangeLabel: "2:00 PM – 6:00 PM",
+      location: "Chloe's Executive Bedroom (Room 205)",
+      activity: "Reviewing depositions & senior partner memos",
+      wardrobeKey: "office",
+    },
+    {
+      startMinute: 1080,
+      endMinute: 1170,
+      timeRangeLabel: "6:00 PM – 7:30 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Pouring a chilled glass of white wine after work",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 1170,
+      endMinute: 1440,
+      timeRangeLabel: "7:30 PM – 12:00 AM",
+      location: "After-Hours Bourbon Lounge",
+      activity: "Sipping neat bourbon alone in a velvet corner booth",
+      wardrobeKey: "afterhours",
+    },
+  ],
+  "Jill Smith": [
+    {
+      startMinute: 0,
+      endMinute: 60,
+      timeRangeLabel: "12:00 AM – 1:00 AM",
+      location: "Clara's Late-Night Den",
+      activity: "Finishing exam flashcards under a throw blanket",
+      wardrobeKey: "lounge",
+    },
+    {
+      startMinute: 60,
+      endMinute: 450,
+      timeRangeLabel: "1:00 AM – 7:30 AM",
+      location: "Clara's Late-Night Den",
+      activity: "Sleeping on the downstairs parlor sofa bed",
+      wardrobeKey: "nightwear",
+    },
+    {
+      startMinute: 450,
+      endMinute: 570,
+      timeRangeLabel: "7:30 AM – 9:30 AM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Making toast & organizing college textbooks",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 570,
+      endMinute: 780,
+      timeRangeLabel: "9:30 AM – 1:00 PM",
+      location: "Starlight Retro Diner",
+      activity: "Studying lecture notes over coffee in a sunny booth",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 780,
+      endMinute: 990,
+      timeRangeLabel: "1:00 PM – 4:30 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Helping Clara tidy up & studying at the kitchen table",
+      wardrobeKey: "casual",
+    },
+    {
+      startMinute: 990,
+      endMinute: 1140,
+      timeRangeLabel: "4:30 PM – 7:00 PM",
+      location: "Upstairs Hallway & Shared Bath",
+      activity: "Checking upstairs on Tina & folding clean laundry",
+      wardrobeKey: "casual",
+    },
+    {
+      startMinute: 1140,
+      endMinute: 1320,
+      timeRangeLabel: "7:00 PM – 10:00 PM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Getting evening fresh air away from textbook stress",
+      wardrobeKey: "casual",
+    },
+    {
+      startMinute: 1320,
+      endMinute: 1440,
+      timeRangeLabel: "10:00 PM – 12:00 AM",
+      location: "Clara's Late-Night Den",
+      activity: "Watching quiet late-night TV in the parlor",
+      wardrobeKey: "lounge",
+    },
+  ],
+  "Tina Smith": [
+    {
+      startMinute: 0,
+      endMinute: 30,
+      timeRangeLabel: "12:00 AM – 12:30 AM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Sneaking late-night air on the back porch steps",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 30,
+      endMinute: 630,
+      timeRangeLabel: "12:30 AM – 10:30 AM",
+      location: "Tina's Bedroom (Room 206)",
+      activity: "Texting late in bed & sleeping past her alarm",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 630,
+      endMinute: 750,
+      timeRangeLabel: "10:30 AM – 12:30 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Stealing kitchen snacks & scrolling her phone",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 750,
+      endMinute: 930,
+      timeRangeLabel: "12:30 PM – 3:30 PM",
+      location: "Starlight Retro Diner",
+      activity: "Skipping study prep over a strawberry milkshake",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 930,
+      endMinute: 1110,
+      timeRangeLabel: "3:30 PM – 6:30 PM",
+      location: "Tina's Bedroom (Room 206)",
+      activity: "Taking mirror selfies & playing music with the door cracked",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 1110,
+      endMinute: 1290,
+      timeRangeLabel: "6:30 PM – 9:30 PM",
+      location: "Clara's Kitchen & Living Room",
+      activity: "Picking at dinner & teasing Jill across the counter",
+      wardrobeKey: "base",
+    },
+    {
+      startMinute: 1290,
+      endMinute: 1440,
+      timeRangeLabel: "9:30 PM – 12:00 AM",
+      location: "Backyard Porch & Smoke Patio",
+      activity: "Lounging on the patio railing looking for trouble",
+      wardrobeKey: "base",
+    },
+  ],
+};
+
+/**
+ * Coarse 5-slot summary derived for backward compatibility.
  */
 export const HEROINE_SCHEDULE_BY_SLOT: Record<AshVelvetTimeSlot, Record<string, string>> = {
   MORNING: {
@@ -533,6 +987,179 @@ export function isBedroomKeyUnlocked(meters: AshVelvetHeroineMeters): boolean {
   return meters.trust >= 50 || (meters.affection >= 45 && meters.lust >= 40);
 }
 
+export function parseClockLabelToMinutes(
+  label: string,
+  fallbackSlot: AshVelvetTimeSlot = "AFTERNOON"
+): number {
+  const match = (label || "").trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (!match) {
+    const def = TIME_SLOT_CLOCK_LABELS[fallbackSlot] || "2:40 PM";
+    return parseClockLabelToMinutes(def, "AFTERNOON");
+  }
+  let hours = parseInt(match[1], 10);
+  const mins = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (period === "PM" && hours !== 12) hours += 12;
+  if (period === "AM" && hours === 12) hours = 0;
+  return hours * 60 + mins;
+}
+
+export function getHeroineScheduleAtMinutes(
+  heroineName: string,
+  totalMinutes: number
+): AshVelvetScheduleWindow {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  const key =
+    Object.keys(HEROINE_DAILY_ROUTINES).find(
+      (k) => k.toLowerCase() === (heroineName || "").trim().toLowerCase()
+    ) || heroineName;
+  const routine = HEROINE_DAILY_ROUTINES[key];
+  if (Array.isArray(routine) && routine.length > 0) {
+    const found = routine.find(
+      (w) => normalized >= w.startMinute && normalized < w.endMinute
+    );
+    if (found) return found;
+    return routine[0];
+  }
+  const fallbackRoom =
+    ASH_VELVET_HEROINE_DOSSIERS[key]?.bedroomLocation || "Clara's Kitchen & Living Room";
+  return {
+    startMinute: 0,
+    endMinute: 1440,
+    timeRangeLabel: "All Day",
+    location: fallbackRoom,
+    activity: "Around the house",
+    wardrobeKey: "base",
+  };
+}
+
+export function getHeroineScheduleAtClock(
+  heroineName: string,
+  clockLabel: string,
+  fallbackSlot: AshVelvetTimeSlot = "AFTERNOON"
+): AshVelvetScheduleWindow {
+  const mins = parseClockLabelToMinutes(clockLabel, fallbackSlot);
+  return getHeroineScheduleAtMinutes(heroineName, mins);
+}
+
+export function computeScheduledHeroineLocationsAtClock(
+  clockLabel: string,
+  fallbackSlot: AshVelvetTimeSlot = "AFTERNOON"
+): Record<string, string> {
+  const mins = parseClockLabelToMinutes(clockLabel, fallbackSlot);
+  const map: Record<string, string> = {};
+  for (const name of Object.keys(HEROINE_DAILY_ROUTINES)) {
+    map[name] = getHeroineScheduleAtMinutes(name, mins).location;
+  }
+  return map;
+}
+
+/**
+ * Returns true if `location` is a shared common area at 412 Maplewood or a public Redbridge venue
+ * where scheduled housemate arrivals can naturally walk into an ongoing scene (never private bedrooms/bath).
+ */
+export function isAshVelvetCommonOrPublicLocation(location: string): boolean {
+  const l = (location || "").toLowerCase();
+  if (!l) return false;
+  if (
+    l.includes("bedroom") ||
+    l.includes("room 101") ||
+    l.includes("room 202") ||
+    l.includes("room 203") ||
+    l.includes("room 204") ||
+    l.includes("room 205") ||
+    l.includes("room 206") ||
+    l.includes("attic") ||
+    l.includes("shared bathroom")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export const ASH_VELVET_CANON_LOCATIONS: string[] = [
+  "Clara's Kitchen & Living Room",
+  "Upstairs Hallway & Shared Bath",
+  "Upstairs Shared Bathroom",
+  "Clara's Late-Night Den",
+  "The Attic Sanctuary Room",
+  "Velvet Static Dive Bar",
+  "Backyard Porch & Smoke Patio",
+  "Clara's Master Bedroom (Room 101)",
+  "Hannah's Studio Bedroom (Room 202)",
+  "Brianna's Bedroom (Room 203)",
+  "Sierra's Bedroom (Room 204)",
+  "Chloe's Executive Bedroom (Room 205)",
+  "Tina's Bedroom (Room 206)",
+  "Starlight Retro Diner",
+  "After-Hours Bourbon Lounge",
+];
+
+export function locationsMatchAshVelvet(locA?: string | null, locB?: string | null): boolean {
+  const a = (locA || "").trim().toLowerCase();
+  const b = (locB || "").trim().toLowerCase();
+  if (!a || !b) return false;
+  if (a === b || a.includes(b) || b.includes(a)) return true;
+  return shortenAshVelvetLocation(locA || "") === shortenAshVelvetLocation(locB || "");
+}
+
+/**
+ * Detects if a player action is explicitly moving/traveling to a different Ash & Velvet room/venue,
+ * returning the canonical destination room name so `/api/turn` can immediately populate the scheduled cast there.
+ */
+export function resolveAshVelvetDestinationFromAction(
+  actionText: string,
+  currentLocation: string
+): string | null {
+  const raw = (actionText || "").trim();
+  if (!raw) return null;
+
+  // Check explicit bracket travel e.g. "[Move to Starlight Retro Diner]" or "[Move/Transition]: ..."
+  const explicitMoveBracket = raw.match(/^\[Move\s+to\s+([^\]]+)\]/i);
+  if (explicitMoveBracket) {
+    const target = explicitMoveBracket[1].trim();
+    const matched = ASH_VELVET_CANON_LOCATIONS.find((c) => locationsMatchAshVelvet(c, target));
+    if (matched && !locationsMatchAshVelvet(matched, currentLocation)) return matched;
+  }
+
+  const hasTravelVerb =
+    /^\[Move\/Transition\]/i.test(raw) ||
+    /\b(?:head|walk|go|step|move|travel|drive|stroll|sneak|slip|retreat|return|visit|knock\s+on)\s+(?:over\s+to|down\s+to|up\s+to|out\s+to|into|to|toward|downstairs\s+to|upstairs\s+to)\b/i.test(
+      raw
+    );
+  if (!hasTravelVerb) return null;
+
+  const lower = raw.toLowerCase();
+  for (const canon of ASH_VELVET_CANON_LOCATIONS) {
+    if (lower.includes(canon.toLowerCase()) && !locationsMatchAshVelvet(canon, currentLocation)) {
+      return canon;
+    }
+  }
+  const keywordPairs: Array<[RegExp, string]> = [
+    [/\b(?:kitchen|living\s+room|downstairs)\b/i, "Clara's Kitchen & Living Room"],
+    [/\b(?:shared\s+bathroom|shower)\b/i, "Upstairs Shared Bathroom"],
+    [/\b(?:upstairs\s+hallway|hallway)\b/i, "Upstairs Hallway & Shared Bath"],
+    [/\b(?:late-night\s+den|parlor|clara['’]s\s+den)\b/i, "Clara's Late-Night Den"],
+    [/\b(?:attic|my\s+room|your\s+room)\b/i, "The Attic Sanctuary Room"],
+    [/\b(?:velvet\s+static|dive\s+bar)\b/i, "Velvet Static Dive Bar"],
+    [/\b(?:patio|porch|backyard|smoke\s+deck)\b/i, "Backyard Porch & Smoke Patio"],
+    [/\b(?:room\s+101|clara['’]s\s+(?:master\s+)?bedroom|clara['’]s\s+room)\b/i, "Clara's Master Bedroom (Room 101)"],
+    [/\b(?:room\s+202|hannah['’]s\s+(?:studio|bedroom|room))\b/i, "Hannah's Studio Bedroom (Room 202)"],
+    [/\b(?:room\s+203|brianna['’]s\s+(?:bedroom|room))\b/i, "Brianna's Bedroom (Room 203)"],
+    [/\b(?:room\s+204|sierra['’]s\s+(?:bedroom|room))\b/i, "Sierra's Bedroom (Room 204)"],
+    [/\b(?:room\s+205|chloe['’]s\s+(?:executive\s+)?(?:bedroom|room))\b/i, "Chloe's Executive Bedroom (Room 205)"],
+    [/\b(?:room\s+206|tina['’]s\s+(?:bedroom|room))\b/i, "Tina's Bedroom (Room 206)"],
+    [/\b(?:starlight|diner)\b/i, "Starlight Retro Diner"],
+    [/\b(?:bourbon\s+lounge|after-hours\s+lounge|lounge)\b/i, "After-Hours Bourbon Lounge"],
+  ];
+  for (const [rx, dest] of keywordPairs) {
+    if (rx.test(lower) && !locationsMatchAshVelvet(dest, currentLocation)) {
+      return dest;
+    }
+  }
+  return null;
+}
+
 export function createInitialAshVelvetState(
   startingNodeId?: string,
   startingCash: number = 65
@@ -570,7 +1197,7 @@ export function createInitialAshVelvetState(
     cashUsd: startingCash,
     rentDueDay: 7,
     rentAmountUsd: 450,
-    heroineLocations: { ...HEROINE_SCHEDULE_BY_SLOT[timeSlot] },
+    heroineLocations: computeScheduledHeroineLocationsAtClock(clockLabel, timeSlot),
   };
 }
 
@@ -579,30 +1206,17 @@ export function advanceAshVelvetClock(state: AshVelvetHouseState): AshVelvetHous
   const nextIdx = (idx + 1) % ASH_VELVET_TIME_SLOTS.length;
   const wrappedDay = nextIdx === 0 ? state.day + 1 : state.day;
   const nextSlot = ASH_VELVET_TIME_SLOTS[nextIdx];
+  const nextClockLabel = TIME_SLOT_CLOCK_LABELS[nextSlot];
   const viceDecay = nextSlot === "MORNING" ? 45 : 10;
 
   return {
     ...state,
     day: wrappedDay,
     timeSlot: nextSlot,
-    clockLabel: TIME_SLOT_CLOCK_LABELS[nextSlot],
+    clockLabel: nextClockLabel,
     viceLevel: clampMeter(state.viceLevel - viceDecay),
-    heroineLocations: { ...HEROINE_SCHEDULE_BY_SLOT[nextSlot] },
+    heroineLocations: computeScheduledHeroineLocationsAtClock(nextClockLabel, nextSlot),
   };
-}
-
-function parseClockLabelToMinutes(label: string, fallbackSlot: AshVelvetTimeSlot): number {
-  const match = (label || "").trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) {
-    const def = TIME_SLOT_CLOCK_LABELS[fallbackSlot] || "2:40 PM";
-    return parseClockLabelToMinutes(def, "AFTERNOON");
-  }
-  let hours = parseInt(match[1], 10);
-  const mins = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-  return hours * 60 + mins;
 }
 
 function formatMinutesToClockLabel(totalMinutes: number): string {
@@ -648,52 +1262,174 @@ export function isOffSiteRedbridgeLocation(loc: string): boolean {
  * - Traveling to/from an off-site Redbridge venue (Diner, Dive Bar, Lounge): +18 minutes
  * - Explicit multi-hour time jump (sleeping, working a shift, waiting until evening/morning): advances to next Time Slot.
  */
+export interface AshVelvetScheduleTransitionEvent {
+  heroineName: string;
+  fromLocation: string;
+  toLocation: string;
+  activity: string;
+  wardrobeKey: string;
+  timeRangeLabel: string;
+}
+
+/**
+ * Evaluates a clock tick along with dynamic heroine schedule transitions:
+ * - Off-screen heroines follow their 24-hour `HEROINE_DAILY_ROUTINES` in real time.
+ * - Common-room walk-ins (`arrivingHeroines`) fire when a heroine's schedule brings her into the player's shared/public room.
+ * - Casual departures (`departingHeroines`) fire when a present heroine's schedule shifts elsewhere (unless locked by an intimate/heated scene).
+ */
+export function evaluateAshVelvetClockAndScheduleTick(
+  state: AshVelvetHouseState,
+  options?: {
+    explicitTimeJump?: boolean;
+    movedOffSite?: boolean;
+    movedRoomInHouse?: boolean;
+    playerLocation?: string;
+    presentHeroineNames?: string[];
+    lockedIntimateHeroineNames?: string[];
+    suppressWalkIns?: boolean;
+  }
+): {
+  nextState: AshVelvetHouseState;
+  arrivingHeroines: AshVelvetScheduleTransitionEvent[];
+  departingHeroines: AshVelvetScheduleTransitionEvent[];
+} {
+  const prevMinutes = parseClockLabelToMinutes(state.clockLabel, state.timeSlot);
+  let nextBaseState: AshVelvetHouseState;
+
+  if (options?.explicitTimeJump) {
+    nextBaseState = advanceAshVelvetClock(state);
+  } else {
+    const deltaMinutes = options?.movedOffSite
+      ? 18
+      : options?.movedRoomInHouse
+      ? 6
+      : 4;
+    const rawNextMinutes = prevMinutes + deltaMinutes;
+    const nextMinutes = rawNextMinutes % 1440;
+    const nextClockLabel = formatMinutesToClockLabel(nextMinutes);
+    const nextSlot = resolveTimeSlotFromMinutes(nextMinutes);
+    const slotChanged = nextSlot !== state.timeSlot;
+    const crossedMorningBoundary = prevMinutes < 360 && rawNextMinutes >= 360;
+    const nextDay = crossedMorningBoundary ? state.day + 1 : state.day;
+    const viceDecay = slotChanged ? (nextSlot === "MORNING" ? 45 : 8) : 1;
+
+    nextBaseState = {
+      ...state,
+      day: nextDay,
+      timeSlot: nextSlot,
+      clockLabel: nextClockLabel,
+      viceLevel: clampMeter(state.viceLevel - viceDecay),
+      heroineLocations: { ...state.heroineLocations },
+    };
+  }
+
+  const nextMinutesResolved = parseClockLabelToMinutes(
+    nextBaseState.clockLabel,
+    nextBaseState.timeSlot
+  );
+  const presentSet = new Set(
+    (options?.presentHeroineNames || []).map((n) => n.trim().toLowerCase())
+  );
+  const lockedSet = new Set(
+    (options?.lockedIntimateHeroineNames || []).map((n) => n.trim().toLowerCase())
+  );
+  const playerLoc = (options?.playerLocation || "").trim();
+  const canAcceptWalkIn =
+    Boolean(playerLoc) &&
+    isAshVelvetCommonOrPublicLocation(playerLoc) &&
+    !options?.suppressWalkIns &&
+    lockedSet.size === 0;
+
+  const updatedLocations: Record<string, string> = { ...state.heroineLocations };
+  const arrivingHeroines: AshVelvetScheduleTransitionEvent[] = [];
+  const departingHeroines: AshVelvetScheduleTransitionEvent[] = [];
+
+  for (const heroineName of Object.keys(HEROINE_DAILY_ROUTINES)) {
+    const nameLower = heroineName.toLowerCase();
+    const prevWindow = getHeroineScheduleAtMinutes(heroineName, prevMinutes);
+    const nextWindow = getHeroineScheduleAtMinutes(heroineName, nextMinutesResolved);
+    const windowChanged =
+      prevWindow.startMinute !== nextWindow.startMinute ||
+      prevWindow.location !== nextWindow.location;
+    const curActualLoc = state.heroineLocations?.[heroineName] || prevWindow.location;
+    const isPresentWithPlayer = presentSet.has(nameLower);
+    const isLockedInIntimateScene = lockedSet.has(nameLower);
+
+    if (isPresentWithPlayer) {
+      if (isLockedInIntimateScene || !windowChanged) {
+        // Stay with the player in the current room until the window shifts (or until intimate scene ends)
+        updatedLocations[heroineName] = playerLoc || curActualLoc;
+      } else if (!locationsMatchAshVelvet(nextWindow.location, playerLoc || curActualLoc)) {
+        // Her schedule window just shifted to a different place during casual conversation!
+        updatedLocations[heroineName] = nextWindow.location;
+        departingHeroines.push({
+          heroineName,
+          fromLocation: playerLoc || curActualLoc,
+          toLocation: nextWindow.location,
+          activity: nextWindow.activity,
+          wardrobeKey: nextWindow.wardrobeKey,
+          timeRangeLabel: nextWindow.timeRangeLabel,
+        });
+      } else {
+        updatedLocations[heroineName] = nextWindow.location;
+      }
+    } else {
+      // Off-screen heroine: always sync to her live scheduled location
+      updatedLocations[heroineName] = nextWindow.location;
+      if (
+        canAcceptWalkIn &&
+        windowChanged &&
+        !locationsMatchAshVelvet(curActualLoc, playerLoc) &&
+        locationsMatchAshVelvet(nextWindow.location, playerLoc)
+      ) {
+        arrivingHeroines.push({
+          heroineName,
+          fromLocation: curActualLoc,
+          toLocation: nextWindow.location,
+          activity: nextWindow.activity,
+          wardrobeKey: nextWindow.wardrobeKey,
+          timeRangeLabel: nextWindow.timeRangeLabel,
+        });
+      }
+    }
+  }
+
+  return {
+    nextState: {
+      ...nextBaseState,
+      heroineLocations: updatedLocations,
+    },
+    arrivingHeroines,
+    departingHeroines,
+  };
+}
+
 export function tickAshVelvetClock(
   state: AshVelvetHouseState,
   options?: {
     explicitTimeJump?: boolean;
     movedOffSite?: boolean;
     movedRoomInHouse?: boolean;
+    playerLocation?: string;
+    presentHeroineNames?: string[];
+    lockedIntimateHeroineNames?: string[];
   }
 ): AshVelvetHouseState {
-  if (options?.explicitTimeJump) {
-    return advanceAshVelvetClock(state);
-  }
-
-  const deltaMinutes = options?.movedOffSite
-    ? 18
-    : options?.movedRoomInHouse
-    ? 6
-    : 4;
-
-  const prevMinutes = parseClockLabelToMinutes(state.clockLabel, state.timeSlot);
-  const rawNextMinutes = prevMinutes + deltaMinutes;
-  const nextMinutes = rawNextMinutes % 1440;
-  const nextClockLabel = formatMinutesToClockLabel(nextMinutes);
-  const nextSlot = resolveTimeSlotFromMinutes(nextMinutes);
-  const slotChanged = nextSlot !== state.timeSlot;
-  // Day increments when crossing 6:00 AM into MORNING from AFTER_MIDNIGHT/LATE_NIGHT
-  const crossedMorningBoundary = prevMinutes < 360 && rawNextMinutes >= 360;
-  const nextDay = crossedMorningBoundary ? state.day + 1 : state.day;
-  const viceDecay = slotChanged ? (nextSlot === "MORNING" ? 45 : 8) : 1;
-
-  return {
-    ...state,
-    day: nextDay,
-    timeSlot: nextSlot,
-    clockLabel: nextClockLabel,
-    viceLevel: clampMeter(state.viceLevel - viceDecay),
-    heroineLocations: slotChanged
-      ? { ...HEROINE_SCHEDULE_BY_SLOT[nextSlot] }
-      : { ...state.heroineLocations },
-  };
+  return evaluateAshVelvetClockAndScheduleTick(state, options).nextState;
 }
 
 export function inferNaturalWardrobeKey(
   heroineName: string,
   location: string,
-  timeSlot: AshVelvetTimeSlot
+  timeSlot: AshVelvetTimeSlot,
+  clockLabel?: string
 ): string {
+  if (clockLabel) {
+    const scheduled = getHeroineScheduleAtClock(heroineName, clockLabel, timeSlot);
+    if (locationsMatchAshVelvet(scheduled.location, location) && scheduled.wardrobeKey) {
+      return scheduled.wardrobeKey;
+    }
+  }
   const n = (heroineName || "").toLowerCase();
   const l = (location || "").toLowerCase();
 
@@ -906,9 +1642,41 @@ export function buildAshVelvetPromptDirective(params: {
   playerConduit?: string;
   playerRole?: string;
   playerAction?: string;
+  arrivingHeroines?: AshVelvetScheduleTransitionEvent[];
+  departingHeroines?: AshVelvetScheduleTransitionEvent[];
 }): string {
   const hs = params.houseState || createInitialAshVelvetState();
   const viceInfo = getViceLabel(hs.viceLevel);
+  const presentNameSet = new Set(
+    params.presentCompanions.map((c) => c.name.trim().toLowerCase())
+  );
+
+  // Build authoritative live whereabouts across 412 Maplewood & Redbridge so the AI knows who is here vs elsewhere
+  const elsewhereLines: string[] = [];
+  for (const hName of Object.keys(HEROINE_DAILY_ROUTINES)) {
+    if (presentNameSet.has(hName.toLowerCase())) continue;
+    const schedWindow = getHeroineScheduleAtClock(hName, hs.clockLabel, hs.timeSlot);
+    const liveRoom = hs.heroineLocations?.[hName] || schedWindow.location;
+    elsewhereLines.push(
+      `  * ${hName}: Currently at "${liveRoom}" (${schedWindow.activity} • ${schedWindow.timeRangeLabel})`
+    );
+  }
+
+  const transitionLines: string[] = [];
+  for (const arr of params.arrivingHeroines || []) {
+    transitionLines.push(
+      `  * [SCHEDULE ARRIVAL THIS TURN]: ${arr.heroineName} just walked into ${params.location} from ${arr.fromLocation} (${arr.activity}). Depict her natural entrance in prose and include "${arr.heroineName}" in state_updates.present_companions!`
+    );
+  }
+  for (const dep of params.departingHeroines || []) {
+    transitionLines.push(
+      `  * [SCHEDULE DEPARTURE THIS TURN]: The clock just hit ${hs.clockLabel} (${dep.timeRangeLabel}), so ${dep.heroineName} needs to head out to "${dep.toLocation}" (${dep.activity}). Have her naturally mention needing to head out and step away at the end of her beat (or give the protagonist a choice to walk with her)!`
+    );
+  }
+  const scheduleTransitionBlock =
+    transitionLines.length > 0
+      ? `\n- LIVE CLOCK TRANSITION EVENTS (${hs.clockLabel}):\n${transitionLines.join("\n")}`
+      : "";
 
   const heroineLines =
     params.presentCompanions.length > 0
@@ -935,7 +1703,11 @@ export function buildAshVelvetPromptDirective(params: {
               ? `Kinks & Fetishes (${dossier.kinkDynamicSummary}): ${dossier.kinks.map((k) => `${k.name} [${k.intensity}]`).join("; ")}`
               : "";
             const outfitDesc = describeHeroineVisibleOutfit(c.name, c.activeWardrobe || "base");
-            return `  * ${c.name} [Current Visible Outfit (${c.activeWardrobe || "base"}): Wearing ${outfitDesc} | Synergy: ${evalResult.compatibility.summaryLabel}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Body Sensitivity ${sens}/100 (${getSensitivityStageLabel(sens)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100\n    - Gaze/Body Tell: ${dossier?.gazeReactionTell || "Flushes under your lingering gaze."}${kinkSummaryLine ? `\n    - ${kinkSummaryLine}` : ""}\n    - Emotional Guard & Secret Status: ${secretLine}${evalResult.narrativeOutcomeDirective ? `\n    - THIS TURN DIRECTIVE: ${evalResult.narrativeOutcomeDirective}` : ""}`;
+            const schedNow = getHeroineScheduleAtClock(c.name, hs.clockLabel, hs.timeSlot);
+            const activityNote = locationsMatchAshVelvet(schedNow.location, params.location)
+              ? ` | Current Routine (${schedNow.timeRangeLabel}): ${schedNow.activity}`
+              : "";
+            return `  * ${c.name} [Current Visible Outfit (${c.activeWardrobe || "base"}): Wearing ${outfitDesc}${activityNote} | Synergy: ${evalResult.compatibility.summaryLabel}]: Affection ${m.affection}/100 (${getAffectionBondTier(m.affection)}), Lust ${m.lust}/100 (${getLustStateLabel(m.lust)}), Body Sensitivity ${sens}/100 (${getSensitivityStageLabel(sens)}), Submission ${m.submission}/100 (${getSubmissionDynamicLabel(m.submission)}), Trust ${m.trust}/100, Jealousy ${m.jealousy}/100\n    - Gaze/Body Tell: ${dossier?.gazeReactionTell || "Flushes under your lingering gaze."}${kinkSummaryLine ? `\n    - ${kinkSummaryLine}` : ""}\n    - Emotional Guard & Secret Status: ${secretLine}${evalResult.narrativeOutcomeDirective ? `\n    - THIS TURN DIRECTIVE: ${evalResult.narrativeOutcomeDirective}` : ""}`;
           })
           .join("\n")
       : "  * Protagonist is currently alone in this room.";
@@ -944,7 +1716,10 @@ export function buildAshVelvetPromptDirective(params: {
 - SETTING & GROUNDED REALISM: Contemporary Western graphic-novel adult drama at 412 Maplewood Ave (Redbridge District). NO fantasy magic, NO swords, NO dungeon spells, NO LitRPG mana jargon. Tension flows from abusive-home recovery, shared-house friction, rent pressure ($${hs.cashUsd} cash on hand; $${hs.rentAmountUsd} rent due Day ${hs.rentDueDay}), alcohol/vice, volatile exes, jealousy, power dynamics, and doujin-style physical conditioning.
 - LIVE HOUSE STATUS: Day ${hs.day} • ${ASH_VELVET_TIME_SLOT_DISPLAY[hs.timeSlot]} (${hs.clockLabel}) | Location: ${params.location} | Protagonist Composure: ${hs.composure}/100 | Vice/Intoxication: ${hs.viceLevel}/100 (${viceInfo.label}).
 - PRESENT HEROINE PSYCHOLOGY, VISIBLE OUTFIT, SENSITIVITY, KINKS & BOUNDARY STATE (DESCRIBE HER EXACT CURRENT VISIBLE OUTFIT IN PROSE — NEVER INVENT CONTRADICTORY CLOTHING!):
-${heroineLines}
+${heroineLines}${scheduleTransitionBlock}
+- HOUSEMATES CURRENTLY ELSEWHERE AT ${hs.clockLabel} (STRICT ROOM SEPARATION — DO NOT SPAWN THEM IN "${params.location}"):
+${elsewhereLines.length > 0 ? elsewhereLines.join("\n") : "  * All housemates are currently in this room."}
+  * CRITICAL ROOM SEPARATION RULE: Present characters MAY naturally mention absent housemates in spoken dialogue (e.g., telling you where someone is or talking about house life), and you MUST NOT write any character from "HOUSEMATES CURRENTLY ELSEWHERE" physically speaking, reacting, or standing in "${params.location}"—nor add them to "state_updates.present_companions"—unless the protagonist travels to their location!
 - DUAL-TRACK PROGRESSION (DOUJIN BODY SENSITIVITY vs. PORT SOLARIS EMOTIONAL GUARDRAILS):
   * TRACK 1 — DOUJIN GAZE/TOUCH CONDITIONING & BODY SENSITIVITY (0–100): If the protagonist stares at her curves, checks her out, teases her shamelessly, or brushes against her within her receptive threshold, her body grows physically conditioned ("sensitive") to his gaze and touch. At Sensitivity 20–39% her skin tingles and flushes under his eyes; at 40–64% she craves his gaze, shows off more skin, and starts making bold moves on him; at 65%+ her body trembles and yields to his touch even when her pride tries to resist.
   * TRACK 2 — EARNED AFFECTION, TRUST & SECRETS: True emotional Affection and personal secrets are guarded just like Port Solaris. Do NOT dump her locked secretBio early—he must earn her Trust.

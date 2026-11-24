@@ -57,6 +57,7 @@ import { ASH_VELVET_HEROINE_DOSSIERS } from "@/types/ash_and_velvet";
 import {
   ASH_VELVET_TIME_SLOTS,
   ASH_VELVET_TIME_SLOT_DISPLAY,
+  HEROINE_DAILY_ROUTINES,
   HEROINE_SCHEDULE_BY_SLOT,
   getAffectionBondTier,
   getLustStateLabel,
@@ -64,6 +65,7 @@ import {
   getSubmissionDynamicLabel,
   isBedroomKeyUnlocked,
   isHeroineSecretUnlocked,
+  parseClockLabelToMinutes,
   resolveHeroineMeters,
 } from "@/lib/ashVelvetEngine";
 
@@ -107,6 +109,7 @@ export interface CharacterCardModalProps {
   onSelectRole?: (role: ShopRole) => void;
   starfallRosterEntry?: HeroRosterEntry | null;
   onSelectWardrobe?: (compName: string, wardrobeKey: string) => void;
+  ashVelvetClockLabel?: string;
 }
 
 export const STARFALL_PORTRAITS: Record<string, string> = {
@@ -572,6 +575,7 @@ export function CharacterCardModal({
   onSelectRole,
   starfallRosterEntry,
   onSelectWardrobe,
+  ashVelvetClockLabel,
 }: CharacterCardModalProps) {
   const [activeTab, setActiveTab] = useState<ActiveModalTab>("overview");
   const isStarfall = storyId === "starfall-labyrinth";
@@ -1876,36 +1880,83 @@ export function CharacterCardModal({
                       )}
                     </div>
 
-                    {/* 5-Slot Daily House Schedule at 412 Maplewood */}
+                    {/* Granular 24-Hour Daily Routine at 412 Maplewood & Redbridge */}
                     <div className="p-4 bg-[#15141E] border-2 border-[#07070A] shadow-[4px_4px_0_#07070A] space-y-3">
                       <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-2">
                         <span className="text-xs font-mono font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
                           <Clock className="w-3.5 h-3.5 text-amber-400" />
-                          412 Maplewood Daily Routine
+                          24-Hour Daily Schedule
                         </span>
                         <span className="text-[10px] font-mono text-zinc-400">
-                          {avDossier?.bedroomLocation || "Callahan Shared House"}
+                          {ashVelvetClockLabel
+                            ? `Now: ${ashVelvetClockLabel}`
+                            : avDossier?.bedroomLocation || "Callahan Shared House"}
                         </span>
                       </div>
 
                       <div className="space-y-1.5">
-                        {ASH_VELVET_TIME_SLOTS.map((slot) => {
-                          const roomForSlot =
-                            HEROINE_SCHEDULE_BY_SLOT[slot]?.[companion.name] ||
-                            avDossier?.bedroomLocation ||
-                            "412 Maplewood Ave";
-                          return (
-                            <div
-                              key={slot}
-                              className="px-3 py-2 bg-[#0E0D14] border border-white/10 flex items-center justify-between gap-2 text-[11px] font-mono"
-                            >
-                              <span className="font-black uppercase text-amber-300">
-                                {ASH_VELVET_TIME_SLOT_DISPLAY[slot]}
-                              </span>
-                              <span className="text-zinc-200 truncate">{roomForSlot}</span>
-                            </div>
-                          );
-                        })}
+                        {(() => {
+                          const routine = HEROINE_DAILY_ROUTINES[companion.name];
+                          const nowMins = ashVelvetClockLabel
+                            ? parseClockLabelToMinutes(ashVelvetClockLabel)
+                            : -1;
+                          if (Array.isArray(routine) && routine.length > 0) {
+                            return routine.map((win, wIdx) => {
+                              const isNow =
+                                nowMins >= 0 &&
+                                nowMins >= win.startMinute &&
+                                nowMins < win.endMinute;
+                              return (
+                                <div
+                                  key={`${win.startMinute}_${wIdx}`}
+                                  className={`px-3 py-2 border flex flex-col gap-0.5 text-[11px] font-mono transition-colors ${
+                                    isNow
+                                      ? "bg-amber-500/15 border-amber-400 shadow-[2px_2px_0_#07070A]"
+                                      : "bg-[#0E0D14] border-white/10"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span
+                                      className={`font-black uppercase flex items-center gap-1.5 ${
+                                        isNow ? "text-amber-200" : "text-amber-400/90"
+                                      }`}
+                                    >
+                                      {isNow && (
+                                        <span className="px-1.5 py-0.2 bg-emerald-500 text-[#09090D] text-[9px] font-black uppercase">
+                                          NOW
+                                        </span>
+                                      )}
+                                      <span>{win.timeRangeLabel}</span>
+                                    </span>
+                                    <span className="text-zinc-100 font-bold truncate">
+                                      {win.location}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-zinc-400 font-sans leading-snug">
+                                    {win.activity}
+                                  </span>
+                                </div>
+                              );
+                            });
+                          }
+                          return ASH_VELVET_TIME_SLOTS.map((slot) => {
+                            const roomForSlot =
+                              HEROINE_SCHEDULE_BY_SLOT[slot]?.[companion.name] ||
+                              avDossier?.bedroomLocation ||
+                              "412 Maplewood Ave";
+                            return (
+                              <div
+                                key={slot}
+                                className="px-3 py-2 bg-[#0E0D14] border border-white/10 flex items-center justify-between gap-2 text-[11px] font-mono"
+                              >
+                                <span className="font-black uppercase text-amber-300">
+                                  {ASH_VELVET_TIME_SLOT_DISPLAY[slot]}
+                                </span>
+                                <span className="text-zinc-200 truncate">{roomForSlot}</span>
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
                     </div>
 
